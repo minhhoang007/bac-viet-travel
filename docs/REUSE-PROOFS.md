@@ -51,6 +51,11 @@ Done 2026-09-30 on Hạ Long Tours (profile site): `v1.0.0-rc.1` → `v1.0.0-rc.
 | U3 | `package.json` `name`/`version` conflict on every upgrade (init changes name, releases bump version on adjacent lines) | ✅ rc.3: `.starter-version`; `package.json` version fixed at `0.0.0`, init sets `0.1.0` |
 | U4 | Starter E2E tests live in the same file projects edit, and they assert starter text | ✅ rc.3: content-agnostic `tests/e2e/starter.spec.ts` + project-owned `site.spec.ts` |
 
+**Second upgrade rc.2 → rc.3 (2026-09-30):** exactly the 2 conflicts announced in the rc.3 notes
+(`package.json` version, `tests/e2e/site.spec.ts`), both resolved with "ours" per the conflict table.
+Result: 60 unit, 25 pages, 15 E2E (10 starter-owned generic + 5 project) green. From rc.3 on, neither file
+should conflict again — to be confirmed by the next upgrade.
+
 ## 3. Minimal configuration ✅ (automated)
 
 All modules off, no secrets → builds, runs, no module endpoints or jobs.
