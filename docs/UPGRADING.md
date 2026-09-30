@@ -31,6 +31,13 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
+### v1.0.0-rc.2 (2026-09-30)
+- **Breaking (content):** `MarketingContent.nav` now only has `switchLocale` — header links moved to `config/navigation.ts`. Remove `nav.features/faq/contact` from `content/*/marketing.ts` and put your links in `config/navigation.ts`.
+- **Breaking (content):** `hero.primaryHref` and `hero.secondaryHref` are required (anchor like `"#contact"` or path like `"/tours"`).
+- **New project-owned files** (create if missing after the merge): `config/navigation.ts`, `product/home.tsx`, `tests/e2e/server-env.ts`; `product/manifest.ts` must export `sitemapPaths`.
+- New: `ContactForm` `defaults` prop; `serializeJsonLd` / `<JsonLd>`; sitemap includes `/terms` and `/privacy`.
+- Migrations: none.
+
 ### v1.0.0-rc.1 (2026-09-30)
 - First release candidate. Nothing to upgrade from.
 - Initialize projects with `pnpm init:project`; it writes `starter.lock.json`.

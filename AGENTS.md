@@ -15,6 +15,8 @@ Dependencies flow one way: Product → Modules (public API only) → Core. Detai
 - If a requirement is ambiguous or conflicts with the docs, stop and ask. Do not guess on architecture.
 
 ## Where you may work
+- Need a protected file to show something project-specific (menu, home section, sitemap path, hero link)? Use the
+  extension points: `config/navigation.ts`, `product/home.tsx`, `product/manifest.ts`, `content/**`. If none fits, propose one.
 - ALLOWED: `product/**`, `app/dashboard/product/**`, `app/(product)/**`, `config/*.ts` project overrides,
   `content/**`, new files under `tests/**`, new migrations in `db/migrations/product/`.
 - PROTECTED (explain the technical reason first, then edit):

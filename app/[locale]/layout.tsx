@@ -5,6 +5,7 @@ import { setRequestLocale } from "next-intl/server";
 import { routing, localePath } from "@/core/i18n/routing";
 import { appConfig, type Locale } from "@/config/app";
 import { brand } from "@/config/brand";
+import { siteNavigation } from "@/config/navigation";
 import { getAppContent, getMarketingContent } from "@/content";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
@@ -42,11 +43,7 @@ export default async function LocaleLayout({
           <SiteHeader
             logoText={brand.logoText}
             homeHref={home}
-            links={[
-              { label: c.nav.features, href: `${home === "/" ? "" : home}/#features` },
-              { label: c.nav.faq, href: `${home === "/" ? "" : home}/#faq` },
-              { label: c.nav.contact, href: `${home === "/" ? "" : home}/#contact` },
-            ]}
+            links={siteNavigation.map((l) => ({ label: l.label[locale as Locale], href: localePath(locale, l.href) }))}
             localeSwitch={{ label: c.nav.switchLocale, href: localePath(other), hrefLang: other }}
           />
           <main className="flex-1">{children}</main>

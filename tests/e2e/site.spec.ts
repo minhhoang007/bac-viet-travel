@@ -58,3 +58,10 @@ test("legal pages render in both locales", async ({ page }) => {
   await page.goto("/en/privacy");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Privacy Policy");
 });
+
+test("header links come from config/navigation.ts and sitemap includes legal pages", async ({ page, request }) => {
+  await page.goto("/en");
+  await expect(page.getByRole("banner").getByRole("link", { name: "FAQ", exact: true })).toHaveAttribute("href", "/en/#faq");
+  const sitemap = await (await request.get("/sitemap.xml")).text();
+  expect(sitemap).toContain("/terms");
+});
