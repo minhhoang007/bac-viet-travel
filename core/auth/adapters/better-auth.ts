@@ -8,6 +8,7 @@ import { users } from "@/core/users/schema";
 import { accounts, sessions, verifications } from "../schema";
 
 export interface BetterAuthDeps {
+  appName: string;
   db: Db;
   mail: MailPort;
   secret: string;
@@ -21,7 +22,7 @@ export interface BetterAuthDeps {
 
 export function createBetterAuth(deps: BetterAuthDeps) {
   return betterAuth({
-    appName: "Minh Starter",
+    appName: deps.appName,
     baseURL: deps.baseURL,
     secret: deps.secret,
     trustedOrigins: [deps.baseURL],

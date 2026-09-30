@@ -20,7 +20,8 @@ export interface AuthService {
   requireUser(headers: Headers): Promise<AuthUser>;
   /** Throws AUTH_ERROR / PERMISSION_ERROR. */
   requireRole(headers: Headers, role: Role): Promise<AuthUser>;
-  signInMagicLink(email: string, callbackURL: string, headers: Headers): Promise<void>;
+  /** errorCallbackURL receives `?error=...` when the link is invalid or expired. */
+  signInMagicLink(email: string, callbackURL: string, errorCallbackURL: string, headers: Headers): Promise<void>;
   /** Returns the provider URL to redirect to. */
   signInGoogle(callbackURL: string, headers: Headers): Promise<string>;
   signOut(headers: Headers): Promise<void>;
@@ -52,8 +53,8 @@ export function createAuthService(auth: BetterAuthInstance, methods: AuthService
       if (role === "admin" && user.role !== "admin") throw new AppError("PERMISSION_ERROR");
       return user;
     },
-    async signInMagicLink(email, callbackURL, headers) {
-      await auth.api.signInMagicLink({ body: { email, callbackURL }, headers });
+    async signInMagicLink(email, callbackURL, errorCallbackURL, headers) {
+      await auth.api.signInMagicLink({ body: { email, callbackURL, errorCallbackURL }, headers });
     },
     async signInGoogle(callbackURL, headers) {
       const res = await auth.api.signInSocial({ body: { provider: "google", callbackURL }, headers });

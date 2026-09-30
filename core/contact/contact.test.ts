@@ -25,6 +25,12 @@ describe("contact service", () => {
     );
   });
 
+  it("strips control characters from the subject (no header injection)", async () => {
+    const { service, mail } = setup();
+    await service.submit({ ...valid, name: "An\r\nBcc: victim@example.com" }, "ip1");
+    expect(mail.send).toHaveBeenCalledWith(expect.objectContaining({ subject: "Contact form: An Bcc: victim@example.com" }));
+  });
+
   it("returns field error codes for invalid input", async () => {
     const { service, mail } = setup();
     const result = await service.submit({ name: "", email: "nope", message: "x".repeat(5001) }, "ip1");

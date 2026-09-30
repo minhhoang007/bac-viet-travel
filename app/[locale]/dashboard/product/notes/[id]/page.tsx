@@ -4,7 +4,7 @@ import { requirePageUser } from "@/app/_lib/session";
 import { isAppError } from "@/core/errors";
 import { localePath } from "@/core/i18n/routing";
 import type { Locale } from "@/config/app";
-import { getAppContent } from "@/content";
+import { getNotesContent } from "@/product/_example-notes/content";
 import { deleteNote, updateNote } from "@/product/_example-notes/actions";
 import { NoteForm } from "@/product/_example-notes/components/note-form";
 
@@ -12,7 +12,7 @@ export default async function NotePage({ params }: { params: Promise<{ locale: L
   const { locale, id } = await params;
   setRequestLocale(locale);
   const { app, user } = await requirePageUser(locale);
-  const c = getAppContent(locale).notes;
+  const c = getNotesContent(locale);
 
   // Another user's note is NOT_FOUND (ownerId-scoped) → 404, never 403, so existence does not leak.
   const note = await app.product.notes.get(user.id, id).catch((error: unknown) => {

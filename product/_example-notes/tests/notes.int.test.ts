@@ -39,6 +39,20 @@ describe("example notes (vertical slice)", () => {
     expect(await notes.get(a.id, note.id)).toMatchObject({ title: "Private" });
   });
 
+  it("account export includes only the user's own notes; account delete cascades them", async () => {
+    const { a, b } = await twoUsers();
+    await notes.create(a.id, { title: "Mine" });
+    await notes.create(b.id, { title: "Theirs" });
+
+    const data = await t.app.account.exportAccount(a.id);
+    expect(data.notes).toEqual([expect.objectContaining({ title: "Mine" })]);
+    expect(JSON.stringify(data)).not.toContain("Theirs");
+
+    await t.app.account.deleteAccount(a.id);
+    expect(await notes.list(a.id)).toEqual([]);
+    expect(await notes.list(b.id)).toHaveLength(1);
+  });
+
   it("rejects invalid input and malformed ids", async () => {
     const { a } = await twoUsers();
     await expect(notes.create(a.id, { title: "" })).rejects.toMatchObject({ code: "VALIDATION_ERROR" });

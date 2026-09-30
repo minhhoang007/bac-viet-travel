@@ -31,4 +31,7 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
-_No releases yet._
+### v1.0.0-rc.1 (2026-09-30)
+- First release candidate. Nothing to upgrade from.
+- Initialize projects with `pnpm init:project`; it writes `starter.lock.json`.
+- Starter migrations: `db/migrations/starter/0000_*` (users, sessions, accounts, verifications).

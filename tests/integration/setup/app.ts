@@ -33,7 +33,7 @@ export function testApp(db: Db) {
 
 /** Signs in through the real magic-link flow and returns request headers carrying the session cookie. */
 export async function signIn(t: ReturnType<typeof testApp>, email: string): Promise<Headers> {
-  await t.app.auth.signInMagicLink(email, "/dashboard", new Headers({ origin: BASE_URL }));
+  await t.app.auth.signInMagicLink(email, "/dashboard", "/login", new Headers({ origin: BASE_URL }));
   const message = t.sent.findLast((m) => m.to === email);
   const url = message?.text.match(/https?:\/\/\S+/)?.[0];
   if (!url) throw new Error("magic link not sent");

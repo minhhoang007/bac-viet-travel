@@ -24,22 +24,24 @@ describe("auth (magic link, real DB)", () => {
   });
 
   it("magic link email goes to the requested address and targets this site", async () => {
-    await t.app.auth.signInMagicLink("binh@example.com", "/dashboard", new Headers({ origin: BASE_URL }));
+    await t.app.auth.signInMagicLink("binh@example.com", "/dashboard", "/login", new Headers({ origin: BASE_URL }));
     const message = t.sent.at(-1)!;
     expect(message.to).toBe("binh@example.com");
     expect(message.text).toContain(`${BASE_URL}/api/auth/magic-link/verify?token=`);
   });
 
   it("a magic link token works only once", async () => {
-    await t.app.auth.signInMagicLink("once@example.com", "/dashboard", new Headers({ origin: BASE_URL }));
+    await t.app.auth.signInMagicLink("once@example.com", "/dashboard", "/login", new Headers({ origin: BASE_URL }));
     const url = t.sent.at(-1)!.text.match(/https?:\/\/\S+/)![0];
     await t.app.auth.handler(new Request(url));
     const second = await t.app.auth.handler(new Request(url));
     expect(second.headers.getSetCookie().some((c) => c.includes("session_token=") && !c.includes("Max-Age=0"))).toBe(false);
+    // The user lands on the login page with a message instead of a blank redirect.
+    expect(second.headers.get("location")).toMatch(/\/login\?error=/);
   });
 
   it("session cookie is HttpOnly and SameSite=Lax", async () => {
-    await t.app.auth.signInMagicLink("cookie@example.com", "/dashboard", new Headers({ origin: BASE_URL }));
+    await t.app.auth.signInMagicLink("cookie@example.com", "/dashboard", "/login", new Headers({ origin: BASE_URL }));
     const url = t.sent.at(-1)!.text.match(/https?:\/\/\S+/)![0];
     const res = await t.app.auth.handler(new Request(url));
     const session = res.headers.getSetCookie().find((c) => c.includes("session_token="))!;

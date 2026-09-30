@@ -18,7 +18,12 @@ export async function sendMagicLink(_prev: MagicLinkState, formData: FormData): 
   if (!email.success) return { status: "invalid_email" };
   const locale = localeSchema.parse(formData.get("locale"));
   try {
-    await app.auth.signInMagicLink(email.data, localePath(locale, authConfig.afterSignInPath), await headers());
+    await app.auth.signInMagicLink(
+      email.data,
+      localePath(locale, authConfig.afterSignInPath),
+      localePath(locale, authConfig.signInPath), // Better Auth appends ?error=<CODE>
+      await headers(),
+    );
     return { status: "sent" };
   } catch {
     return { status: "error" };

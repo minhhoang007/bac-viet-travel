@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 const bothOrNeither = (a: string | undefined, b: string | undefined) => !a === !b;
+const isLocalhost = (url: string) => ["localhost", "127.0.0.1"].includes(new URL(url).hostname);
 
 /** Env for every profile. Optional groups must be set together. */
 export const baseEnvSchema = z
@@ -26,6 +27,10 @@ export const baseEnvSchema = z
     message: "set both GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET, or neither",
     path: ["GOOGLE_CLIENT_ID"],
   })
+  .refine(
+    (e) => e.NODE_ENV !== "production" || e.NEXT_PUBLIC_SITE_URL.startsWith("https://") || isLocalhost(e.NEXT_PUBLIC_SITE_URL),
+    { message: "must use https in production (secure cookies depend on it)", path: ["NEXT_PUBLIC_SITE_URL"] },
+  )
   .refine((e) => !(e.NODE_ENV === "production" && e.EMAIL_PROVIDER === "console"), {
     message: 'EMAIL_PROVIDER="console" is not allowed in production',
     path: ["EMAIL_PROVIDER"],

@@ -8,10 +8,10 @@ export interface AppContent {
     linkSent: string;
     or: string;
     google: string;
-    errors: { invalid_email: string; error: string };
+    errors: { invalid_email: string; error: string; link: string };
   };
   dashboard: {
-    nav: { overview: string; account: string; notes: string };
+    nav: { overview: string; account: string };
     signOut: string;
     welcome: string;
     overviewText: string;
@@ -26,17 +26,6 @@ export interface AppContent {
     deleteText: string;
     deleteConfirmLabel: string;
     deleteButton: string;
-  };
-  notes: {
-    title: string;
-    empty: string;
-    titleLabel: string;
-    bodyLabel: string;
-    create: string;
-    save: string;
-    delete: string;
-    back: string;
-    errors: { required: string; too_long: string; error: string };
   };
   legal: { terms: string; privacy: string; lastUpdated: string; templateNotice: string };
 }

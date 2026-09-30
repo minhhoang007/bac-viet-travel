@@ -12,6 +12,7 @@ import { consoleEmailProvider } from "@/providers/email/console";
 import { resendProvider } from "@/providers/email/resend";
 import { upstashRateLimiter } from "@/providers/rate-limit/upstash";
 import { createProduct, type Product } from "@/product/manifest";
+import { appConfig } from "@/config/app";
 import { authConfig } from "@/config/auth";
 import { features } from "@/config/features";
 import { getEnv, type Env } from "./env";
@@ -81,6 +82,7 @@ function buildApp(env: Env, mail: MailPort, db = createDb(env.extra.DATABASE_URL
 
   const auth = createAuthService(
     createBetterAuth({
+      appName: appConfig.name,
       db,
       mail,
       secret: env.extra.BETTER_AUTH_SECRET!,

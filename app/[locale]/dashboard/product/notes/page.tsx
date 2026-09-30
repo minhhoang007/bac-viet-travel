@@ -2,7 +2,7 @@ import { setRequestLocale } from "next-intl/server";
 import { requirePageUser } from "@/app/_lib/session";
 import { localePath } from "@/core/i18n/routing";
 import type { Locale } from "@/config/app";
-import { getAppContent } from "@/content";
+import { getNotesContent } from "@/product/_example-notes/content";
 import { createNote } from "@/product/_example-notes/actions";
 import { NoteForm } from "@/product/_example-notes/components/note-form";
 
@@ -10,7 +10,7 @@ export default async function NotesPage({ params }: { params: Promise<{ locale: 
   const { locale } = await params;
   setRequestLocale(locale);
   const { app, user } = await requirePageUser(locale);
-  const c = getAppContent(locale).notes;
+  const c = getNotesContent(locale);
   const notes = await app.product.notes.list(user.id);
 
   return (

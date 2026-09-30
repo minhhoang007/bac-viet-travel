@@ -14,7 +14,19 @@ describe("validateEnv", () => {
 
   it("app profile requires DB and auth secrets", () => {
     expect(() => validateEnv({}, app, [])).toThrow(/DATABASE_URL: required[\s\S]*BETTER_AUTH_SECRET: required/);
-    expect(() => validateEnv({ DATABASE_URL: "postgres://x", BETTER_AUTH_SECRET: "s" }, app, [])).not.toThrow();
+    expect(() => validateEnv({ DATABASE_URL: "postgres://x", BETTER_AUTH_SECRET: "s".repeat(32) }, app, [])).not.toThrow();
+  });
+
+  it("rejects a short auth secret", () => {
+    expect(() => validateEnv({ DATABASE_URL: "postgres://x", BETTER_AUTH_SECRET: "short" }, app, [])).toThrow(
+      /at least 32 characters/,
+    );
+  });
+
+  it("requires https in production, except localhost", () => {
+    expect(() => validateEnv({ NODE_ENV: "production", NEXT_PUBLIC_SITE_URL: "http://example.com" }, site, [])).toThrow(/https/);
+    expect(() => validateEnv({ NODE_ENV: "production", NEXT_PUBLIC_SITE_URL: "https://example.com" }, site, [])).not.toThrow();
+    expect(() => validateEnv({ NODE_ENV: "production", NEXT_PUBLIC_SITE_URL: "http://localhost:3000" }, site, [])).not.toThrow();
   });
 
   it("requires env of enabled modules only", () => {
@@ -27,7 +39,7 @@ describe("validateEnv", () => {
   });
 
   it("app profile with magic link requires the email module (fail fast at startup)", () => {
-    const secrets = { DATABASE_URL: "postgres://x", BETTER_AUTH_SECRET: "s" };
+    const secrets = { DATABASE_URL: "postgres://x", BETTER_AUTH_SECRET: "s".repeat(32) };
     const auth = { methods: { magicLink: true, google: false } };
     expect(() => validateEnv(secrets, app, [], { auth })).toThrow(/"magicLink" requires the "email" module/);
   });

@@ -8,7 +8,7 @@ export function testDb() {
   return createDb(TEST_DATABASE_URL, { max: 5 });
 }
 
-/** Empties every app table (keeps migration journals). */
+/** Empties every app table (keeps migration journals). CASCADE also clears product tables referencing users. */
 export async function resetDb(db: ReturnType<typeof testDb>["db"]) {
-  await db.execute(sql`TRUNCATE users, sessions, accounts, verifications, notes RESTART IDENTITY CASCADE`);
+  await db.execute(sql`TRUNCATE users, sessions, accounts, verifications RESTART IDENTITY CASCADE`);
 }
