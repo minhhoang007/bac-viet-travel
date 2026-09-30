@@ -138,7 +138,8 @@ export type Product = ReturnType<typeof createProduct>;
 
 // ── package.json name + lock file ─────────────────────────────────────
 const pkg = JSON.parse(readFileSync("package.json", "utf8")) as { name: string; version: string };
-const starterVersion = pkg.version;
+// The starter version lives in .starter-version (not package.json), so upgrades never conflict on it.
+const starterVersion = readFileSync(".starter-version", "utf8").trim();
 const slug =
   name
     .normalize("NFD")
@@ -147,7 +148,8 @@ const slug =
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "") || "my-app";
-write("package.json", `${JSON.stringify({ ...pkg, name: slug }, null, 2)}\n`);
+// The project's own version starts at 0.1.0; the starter never touches these lines again.
+write("package.json", `${JSON.stringify({ ...pkg, name: slug, version: "0.1.0" }, null, 2)}\n`);
 write(
   "starter.lock.json",
   `${JSON.stringify(

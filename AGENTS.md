@@ -23,7 +23,7 @@ Dependencies flow one way: Product → Modules (public API only) → Core. Detai
   `core/**`, `components/**`, `modules/**`, `providers/**`, `bootstrap/**`, `app/**` outside product routes,
   `config/*.defaults.ts`, `db/migrations/starter/`.
 - NEVER edit an existing migration. Add a new one.
-- NEVER delete Core/Modules tests.
+- NEVER delete Core/Modules tests. Never edit `tests/e2e/starter.spec.ts`; project E2E goes in `tests/e2e/site.spec.ts`.
 
 ## Architecture rules (enforced by `pnpm check`)
 - Core never imports Modules/Product/providers/bootstrap. Core needs something → define a port in `core/ports/`.

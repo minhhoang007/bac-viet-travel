@@ -4,6 +4,17 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.0.0-rc.3] — 2026-09-30
+
+Upgrade friction found by upgrading Hạ Long Tours rc.1 → rc.2 (docs/REUSE-PROOFS.md U1–U4).
+
+### Changed
+- Starter version lives in `.starter-version`; `package.json` version fixed at `0.0.0`; `init:project` sets the project version to `0.1.0`.
+- E2E split into starter-owned, content-agnostic `tests/e2e/starter.spec.ts` and project-owned `tests/e2e/site.spec.ts`.
+
+### Docs
+- Release rules that keep upgrades conflict-free (CONTRIBUTING); conflict-resolution table (UPGRADING).
+
 ## [1.0.0-rc.2] — 2026-09-30
 
 Extension points found by the first real project (Hạ Long Tours, docs/REUSE-PROOFS.md F1–F7).

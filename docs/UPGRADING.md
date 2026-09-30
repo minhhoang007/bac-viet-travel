@@ -11,8 +11,14 @@ Strategy: clone with history + release tags ([ADR-0004](adr/0004-config-override
    git checkout -b upgrade/vX.Y.Z
    git merge vX.Y.Z
    ```
-4. Resolve conflicts. Expected places: `config/*.defaults.ts` (take theirs), `bootstrap/`, `package.json`, lockfile (regenerate).
-   Project overrides (`config/*.ts`, `content/`, `product/`, `db/migrations/product/`) should not conflict.
+4. Resolve conflicts with this table:
+
+   | Conflict in | Resolution |
+   |---|---|
+   | starter-owned (`core/`, `modules/`, `components/`, `bootstrap/`, `*.defaults.ts`, `tests/e2e/starter.spec.ts`) | take **theirs**; if you had edited it, re-apply your change through an extension point or send it upstream |
+   | project-owned (`config/*.ts`, `content/`, `product/`, `tests/e2e/site.spec.ts`, `tests/e2e/server-env.ts`) | take **ours**, then add any new fields listed in the version notes |
+   | same new file added by both sides (you created an extension-point file before the starter shipped it) | take **ours** |
+   | `pnpm-lock.yaml` | take theirs, then `pnpm install` |
 5. `pnpm install && pnpm check && pnpm test:int && pnpm test:e2e`.
 6. Run `pnpm db:migrate` against the DB copy. Verify.
 7. Update `starter.lock.json`, open PR, merge, deploy.
@@ -30,6 +36,14 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Migrations: ...
 - Config: new defaults / renamed keys ...
 -->
+
+### v1.0.0-rc.3 (2026-09-30)
+- The starter version moved to `.starter-version`; the starter's `package.json` version is fixed at `0.0.0`.
+  **One last conflict** on `package.json` `version`: keep yours. Later upgrades will not touch it.
+- E2E split: `tests/e2e/starter.spec.ts` (starter-owned, reads texts from `content/`/`config/`) and
+  `tests/e2e/site.spec.ts` (yours). If your `site.spec.ts` conflicts, keep ours and delete tests that
+  `starter.spec.ts` now covers (hero, locale switch, headers, robots/sitemap, legal, theme, app routes).
+- Migrations: none. Content schema: unchanged.
 
 ### v1.0.0-rc.2 (2026-09-30)
 - **Breaking (content):** `MarketingContent.nav` now only has `switchLocale` — header links moved to `config/navigation.ts`. Remove `nav.features/faq/contact` from `content/*/marketing.ts` and put your links in `config/navigation.ts`.
