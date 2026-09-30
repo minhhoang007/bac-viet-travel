@@ -24,6 +24,12 @@
 | Hosting | Vercel (see ADR-0002) | — |
 | Billing | Chosen by market (ADR pending). For a Vietnam entity, prefer merchant-of-record (Polar, Lemon Squeezy, Paddle) | Stripe |
 
+## Version pins (2026-09-30)
+- TypeScript **6.x**: dependency-cruiser does not support TS 7 yet. Revisit when it does.
+- ESLint **9.x**: eslint-plugin-react (via eslint-config-next) breaks on ESLint 10.
+- Next.js 16 uses `proxy.ts` (formerly `middleware.ts`).
+- next-intl: `localePrefix: "as-needed"`, `localeDetection: false` (no Accept-Language redirects; `/` is always `vi`).
+
 ## Consequences
 - Verify current docs of Better Auth (account linking), Vercel limits and the billing provider at implementation time.
 - Vendor SDKs isolated in `providers/` and `core/auth/adapters/` so swaps stay local.

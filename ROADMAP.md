@@ -7,18 +7,18 @@ Trạng thái: ⬜ chưa làm · 🟨 đang làm · ✅ xong
 
 ---
 
-## Phase 0 — Chốt thiết kế (không code) 🟨
+## Phase 0 — Chốt thiết kế (không code) ✅
 
 - [x] Viết bộ docs, ADR và skill cho agent.
 - [x] ADR 0001, 0003, 0004 Accepted (2026-09-30). ADR-0002 để đến trước V1.1.
 - [x] i18n: có — next-intl, `vi` (mặc định) + `en`.
-- [ ] `git init`, push repo starter, bật branch protection + CODEOWNERS.
+- [x] `git init` (local). Còn lại khi có remote: push, branch protection, thay `@OWNER` trong `.github/CODEOWNERS`.
 
 **Exit:** mọi ADR cần cho V0.x đã *Accepted*.
 
 ---
 
-## V0.1a — Nền móng ⬜
+## V0.1a — Nền móng ✅ (chờ review)
 
 | # | Task | Kiểm chứng |
 |---|---|---|

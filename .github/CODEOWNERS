@@ -1,0 +1,11 @@
+# Protected paths need maintainer review (AGENTS.md, ARCHITECTURE.md §4).
+/core/             @OWNER
+/components/       @OWNER
+/modules/          @OWNER
+/providers/        @OWNER
+/bootstrap/        @OWNER
+/config/*.defaults.ts @OWNER
+/db/migrations/starter/ @OWNER
+/.dependency-cruiser.cjs @OWNER
+/tests/arch-fixtures/ @OWNER
+/AGENTS.md         @OWNER
