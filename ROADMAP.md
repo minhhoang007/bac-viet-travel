@@ -18,7 +18,7 @@ Trạng thái: ⬜ chưa làm · 🟨 đang làm · ✅ xong
 
 ---
 
-## V0.1a — Nền móng ✅ (chờ review)
+## V0.1a — Nền móng ✅
 
 | # | Task | Kiểm chứng |
 |---|---|---|
@@ -35,7 +35,7 @@ Trạng thái: ⬜ chưa làm · 🟨 đang làm · ✅ xong
 
 **Exit:** site tĩnh chạy được, `pnpm check` xanh, CI build không cần secret nào.
 
-## V0.1b — Email + form liên hệ ⬜
+## V0.1b — Email + form liên hệ ✅ (chờ review)
 
 | # | Task | Kiểm chứng |
 |---|---|---|

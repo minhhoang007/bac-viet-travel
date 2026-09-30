@@ -1,4 +1,5 @@
 import type { ModuleManifest } from "@/core/module";
+import { emailModule } from "@/modules/email";
 
-/** Manifests of all modules shipped with the starter. Modules are added here as they are built (V0.1b+). */
-export const moduleManifests: readonly ModuleManifest[] = [];
+/** Manifests of all modules shipped with the starter. */
+export const moduleManifests: readonly ModuleManifest[] = [emailModule];

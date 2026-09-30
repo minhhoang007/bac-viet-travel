@@ -11,7 +11,7 @@ Report vulnerabilities privately to the maintainer (hoangvanminh007@gmail.com). 
 | Output | Escape/sanitize user content; never render raw HTML from users |
 | AuthN | Session cookie `HttpOnly`, `Secure`, `SameSite=Lax`; Google OAuth + magic link only in V1 |
 | AuthZ | Role-level (`user`/`admin`) + object-level (`ownerId` on every user query — anti-IDOR) |
-| CSRF | Origin check on every mutation |
+| CSRF | Origin check on every mutation. Server Actions: Next.js compares Origin with Host automatically; custom route handlers must check explicitly |
 | Account linking | Only verified email + trusted provider (`config/providers.ts`) |
 | Rate limiting | Auth endpoints, contact form, expensive APIs; Redis in prod, in-memory fallback for `site` |
 | Headers | CSP, HSTS, X-Content-Type-Options, Referrer-Policy, frame-ancestors |

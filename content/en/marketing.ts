@@ -29,6 +29,21 @@ export const marketing: MarketingContent = {
     ],
   },
   cta: { title: "Ready to start?", subtitle: "Clone the starter, adjust the config and build your product.", button: "Contact" },
+  contact: {
+    name: "Name",
+    email: "Email",
+    message: "Message",
+    submit: "Send",
+    sending: "Sending…",
+    success: "Thank you! We will get back to you soon.",
+    errors: {
+      required: "This field is required.",
+      invalid_email: "Please enter a valid email.",
+      too_long: "This is too long.",
+      rate_limited: "Too many attempts. Please try again later.",
+      error: "Could not send. Please try again.",
+    },
+  },
   footer: { rights: "All rights reserved." },
   notFound: { title: "Page not found", back: "Back to home" },
 };

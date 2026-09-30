@@ -24,7 +24,8 @@ describe("content", () => {
 
   it("marketing and layout components contain no hard-coded visible text", () => {
     // A JSX text node starting with a letter, e.g. <h2>Features</h2>
-    const jsxText = />\s*\p{L}[^<>{}]*</u;
+    // (skips TS generics/arrows such as `=> Promise<T>`)
+    const jsxText = /(?<!=)>\s*\p{L}[^<>{}();=]*</u;
     for (const dir of ["components/marketing", "components/layout"]) {
       for (const file of readdirSync(dir).filter((f) => f.endsWith(".tsx"))) {
         const source = readFileSync(path.join(dir, file), "utf8");

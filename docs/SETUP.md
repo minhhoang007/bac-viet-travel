@@ -54,7 +54,15 @@ pnpm db:seed
 - Module tắt không cần biến của nó.
 - Thiếu biến bắt buộc → lỗi rõ ràng ngay khi khởi động.
 
-## 6. Lệnh chính (dự kiến)
+## 6. Bật module email + form liên hệ
+
+1. `config/features.ts`: `export const features: Features = { ...featureDefaults, email: true };`
+2. Đặt `EMAIL_FROM`, `EMAIL_API_KEY` (Resend), `CONTACT_TO_EMAIL` trong `.env.local`. Thiếu biến → lỗi rõ khi khởi động.
+3. Production nhiều instance: đặt thêm `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` cho rate limit dùng chung.
+
+Khi `email: false`: form không hiển thị, server action trả 404, không cần biến nào của email.
+
+## 7. Lệnh chính
 
 | Lệnh | Việc |
 |---|---|
