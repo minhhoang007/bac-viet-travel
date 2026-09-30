@@ -18,12 +18,14 @@ export interface ContactFormLabels {
 export interface ContactFormProps {
   action: (prev: ContactResult | null, formData: FormData) => Promise<ContactResult>;
   labels: ContactFormLabels;
+  /** Prefilled values, e.g. the tour a visitor asks about. */
+  defaults?: Partial<Record<Field, string>>;
 }
 
 const inputClass =
   "mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-primary";
 
-export function ContactForm({ action, labels }: ContactFormProps) {
+export function ContactForm({ action, labels, defaults }: ContactFormProps) {
   const [state, formAction, pending] = useActionState(action, null);
 
   if (state?.status === "success") {
@@ -54,6 +56,7 @@ export function ContactForm({ action, labels }: ContactFormProps) {
         const common = {
           id: `contact-${f.name}`,
           name: f.name,
+          defaultValue: defaults?.[f.name],
           className: inputClass,
           "aria-invalid": error ? true : undefined,
           "aria-describedby": error ? `contact-${f.name}-error` : undefined,

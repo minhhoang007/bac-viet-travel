@@ -123,6 +123,9 @@ export interface ProductNavItem {
 /** Dashboard menu entries for product pages (href without locale prefix). */
 export const productNav: ProductNavItem[] = [];
 
+/** Public product pages for sitemap.xml (paths without locale prefix). */
+export const sitemapPaths: string[] = [];
+
 export type Product = ReturnType<typeof createProduct>;
 `,
   );

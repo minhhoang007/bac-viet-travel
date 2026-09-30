@@ -26,3 +26,6 @@ export const productNav: ProductNavItem[] = [
 ];
 
 export type Product = ReturnType<typeof createProduct>;
+
+/** Public product pages for sitemap.xml (paths without locale prefix). The notes example is private: none. */
+export const sitemapPaths: string[] = [];

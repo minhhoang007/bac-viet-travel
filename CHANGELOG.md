@@ -4,6 +4,22 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.0.0-rc.2] — 2026-09-30
+
+Extension points found by the first real project (Hạ Long Tours, docs/REUSE-PROOFS.md F1–F7).
+
+### Added
+- `config/navigation.ts` (header links, per-locale labels) over `config/navigation.defaults.ts`.
+- `product/home.tsx` `ProductHomeSections`: product sections on the home page.
+- `sitemapPaths` in `product/manifest.ts`; sitemap also lists `/terms`, `/privacy`.
+- `serializeJsonLd` (core/seo) and `<JsonLd>` (components/ui).
+- `ContactForm` `defaults` prop.
+- `tests/e2e/server-env.ts`: env for the Playwright production server.
+
+### Changed (breaking for content)
+- Hero button targets come from content (`hero.primaryHref`, `hero.secondaryHref`).
+- Header link labels moved from `content.nav` to `config/navigation.ts`.
+
 ### Security
 - Magic-link requests are rate limited per client (5/10 min) and per recipient (3/10 min) in `AuthService`; server-side `auth.api.*` calls bypassed Better Auth's HTTP limiter (P1).
 - Email logs contain only `{ id, kind }` — no subject (which carried the contact sender's name).

@@ -1,7 +1,16 @@
 export interface MarketingContent {
   meta: { title: string; description: string };
-  nav: { features: string; faq: string; contact: string; switchLocale: string };
-  hero: { eyebrow: string; title: string; subtitle: string; primaryCta: string; secondaryCta: string };
+  nav: { switchLocale: string };
+  hero: {
+    eyebrow: string;
+    title: string;
+    subtitle: string;
+    primaryCta: string;
+    /** Anchor ("#contact") or path without locale prefix ("/tours"). */
+    primaryHref: string;
+    secondaryCta: string;
+    secondaryHref: string;
+  };
   features: { title: string; items: { title: string; description: string }[] };
   faq: { title: string; items: { question: string; answer: string }[] };
   cta: { title: string; subtitle: string; button: string };

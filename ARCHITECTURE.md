@@ -48,7 +48,8 @@ Enforced by dependency-cruiser + `scripts/check-module-deps.ts` + `tests/arch-fi
 | `providers/**` | Wiring | Add/replace adapters |
 | `modules/**` | Modules | Protected; change with reason + tests |
 | `config/*.defaults.ts` | Core | Protected (starter-owned) |
-| `config/*.ts` (overrides), `content/**` | Project | Edit at project init |
+| `config/*.ts` (overrides incl. `navigation.ts`), `content/**` | Project | Edit at project init |
+| `product/home.tsx`, `product/manifest.ts` (`productNav`, `sitemapPaths`), `tests/e2e/server-env.ts` | Project | Extension points read by starter files |
 | `db/migrations/starter/` | Core | Starter-owned, add-only |
 | `db/migrations/product/` | Product | Project-owned, add-only |
 | `product/**`, `app/dashboard/product/**`, `app/(product)/**` | Product | Free |
