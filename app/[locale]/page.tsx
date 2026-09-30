@@ -9,6 +9,9 @@ import { Hero } from "@/components/marketing/hero";
 import { Features } from "@/components/marketing/features";
 import { Faq } from "@/components/marketing/faq";
 import { Cta } from "@/components/marketing/cta";
+import { ContactForm } from "@/components/marketing/contact-form";
+import { features } from "@/config/features";
+import { submitContact } from "@/app/actions/contact";
 
 type Props = { params: Promise<{ locale: Locale }> };
 
@@ -39,7 +42,9 @@ export default async function HomePage({ params }: Props) {
       />
       <Features id="features" title={c.features.title} items={c.features.items} />
       <Faq id="faq" title={c.faq.title} items={c.faq.items} />
-      <Cta id="contact" title={c.cta.title} subtitle={c.cta.subtitle} button={{ label: c.cta.button, href: "#contact" }} />
+      <Cta id="contact" title={c.cta.title} subtitle={c.cta.subtitle} button={{ label: c.cta.button, href: "#contact" }}>
+        {features.email ? <ContactForm action={submitContact} labels={c.contact} /> : null}
+      </Cta>
     </>
   );
 }

@@ -29,6 +29,21 @@ export const marketing: MarketingContent = {
     ],
   },
   cta: { title: "Sẵn sàng bắt đầu?", subtitle: "Clone starter, chỉnh cấu hình và xây sản phẩm của bạn.", button: "Liên hệ" },
+  contact: {
+    name: "Họ tên",
+    email: "Email",
+    message: "Nội dung",
+    submit: "Gửi",
+    sending: "Đang gửi…",
+    success: "Cảm ơn bạn! Chúng tôi sẽ phản hồi sớm.",
+    errors: {
+      required: "Vui lòng nhập trường này.",
+      invalid_email: "Email không hợp lệ.",
+      too_long: "Nội dung quá dài.",
+      rate_limited: "Bạn gửi quá nhiều lần. Vui lòng thử lại sau.",
+      error: "Không gửi được. Vui lòng thử lại.",
+    },
+  },
   footer: { rights: "Bảo lưu mọi quyền." },
   notFound: { title: "Không tìm thấy trang", back: "Về trang chủ" },
 };

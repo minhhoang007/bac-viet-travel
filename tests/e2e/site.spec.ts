@@ -33,3 +33,9 @@ test("robots.txt and sitemap.xml are served", async ({ request }) => {
   const sitemap = await (await request.get("/sitemap.xml")).text();
   expect(sitemap).toContain("hreflang=\"en\"");
 });
+
+test("contact form is absent when the email module is off (default config)", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.locator("#contact")).toBeVisible();
+  await expect(page.locator("#contact form")).toHaveCount(0);
+});
