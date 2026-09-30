@@ -3,7 +3,7 @@
 Reusable Next.js starter for content/service websites (profile `site`) and logged-in web apps (profile `app`).
 Small, boring, tested: architecture rules are enforced by tooling, and every optional module is *really off* when disabled.
 
-**Status:** `v1.0.0-rc.1` — foundation, email + contact form, app profile with auth and an example vertical slice.
+**Status:** `v1.0.0-rc.3` — foundation, email + contact form, app profile with auth and an example vertical slice.
 V1.0 final waits for the reuse proofs in [docs/REUSE-PROOFS.md](docs/REUSE-PROOFS.md). Billing, jobs and usage come in V1.1 ([ROADMAP.md](ROADMAP.md)).
 
 ## What you get

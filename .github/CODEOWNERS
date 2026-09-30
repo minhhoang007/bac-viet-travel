@@ -9,3 +9,5 @@
 /.dependency-cruiser.cjs @OWNER
 /tests/arch-fixtures/ @OWNER
 /AGENTS.md         @OWNER
+/tests/e2e/starter.spec.ts @OWNER
+/.starter-version @OWNER

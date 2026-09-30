@@ -46,10 +46,10 @@ Done 2026-09-30 on Hạ Long Tours (profile site): `v1.0.0-rc.1` → `v1.0.0-rc.
 
 | # | Observation | Follow-up |
 |---|---|---|
-| U1 | add/add conflicts happened because the project created the extension-point files before the starter shipped them | One-off for this project; future projects get them at init. Note in UPGRADING: "project-owned file added by both sides → keep ours" |
-| U2 | Starter releases that edit default `content/` text conflict with every project (content is project-owned) | Rule: releases change `content/` only by adding fields; UPGRADING lists new fields to add by hand |
-| U3 | `package.json` `name`/`version` conflict on every upgrade (init changes name, releases bump version on adjacent lines) | Keep the starter version out of `package.json` (e.g. `.starter-version`); init sets the project's own version |
-| U4 | Starter E2E tests live in the same file projects edit, and they assert starter text | Split: starter-owned `tests/e2e/starter.spec.ts` reading texts from `content/` (content-agnostic), project-owned `site.spec.ts` |
+| U1 | add/add conflicts happened because the project created the extension-point files before the starter shipped them | ✅ rc.3: UPGRADING conflict table ("added by both sides → keep ours") |
+| U2 | Starter releases that edit default `content/` text conflict with every project (content is project-owned) | ✅ rc.3: release rules in CONTRIBUTING (content: add fields only) |
+| U3 | `package.json` `name`/`version` conflict on every upgrade (init changes name, releases bump version on adjacent lines) | ✅ rc.3: `.starter-version`; `package.json` version fixed at `0.0.0`, init sets `0.1.0` |
+| U4 | Starter E2E tests live in the same file projects edit, and they assert starter text | ✅ rc.3: content-agnostic `tests/e2e/starter.spec.ts` + project-owned `site.spec.ts` |
 
 ## 3. Minimal configuration ✅ (automated)
 
