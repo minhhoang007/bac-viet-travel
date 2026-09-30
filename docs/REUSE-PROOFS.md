@@ -4,6 +4,18 @@ V1.0 is only tagged when all three are done. Until then, projects use `v1.0.0-rc
 
 ## 1. Two different real projects 🟨 (A done, B pending)
 
+**Project B = your real app project** (decision 2026-09-30). While building it:
+
+1. Start from the latest tag: `git clone --branch v1.0.0-rc.3 D:\dev\minh-starter <project>` → `git remote rename origin starter`
+   → `pnpm init:project --name "…" --profile app`.
+2. Every time you (or an agent) must edit a **protected path** (`core/`, `modules/`, `components/`, `bootstrap/`, `app/` outside
+   product routes, `*.defaults.ts`, `tests/e2e/starter.spec.ts`), add a row to the findings table below: file, why, what
+   extension point would have avoided it.
+3. Add at least one table in `product/schema/` + `pnpm db:generate:product` + `pnpm db:migrate`.
+4. When the starter ships a release with a **starter migration**, upgrade the project (docs/UPGRADING.md) on a DB copy
+   and fill in proof 2's migration row.
+5. Findings go back to the starter as a separate PR (CONTRIBUTING: "Improvements found in a project").
+
 | | Project A (site) | Project B (app) |
 |---|---|---|
 | Name / repo | Hạ Long Tours — `D:\dev\halong-tours` (local) | |

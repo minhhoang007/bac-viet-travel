@@ -69,12 +69,15 @@ Trạng thái: ⬜ chưa làm · 🟨 đang làm · ✅ xong
 
 ---
 
-## V1.0 — Release 🟨 (`v1.0.0-rc.1`, chờ bài kiểm chứng 36.B-1/2)
+## V1.0 — Release 🟨 (`v1.0.0-rc.3`, chờ project app thật của chủ repo)
+
+> Quyết định 2026-09-30: project B (app) là **project thật** của chủ repo, không dựng project thử nghiệm.
+> V1.0 được tag khi project đó chạy thật và phát hiện đã được ghi vào [docs/REUSE-PROOFS.md](docs/REUSE-PROOFS.md).
 
 - [x] `pnpm init:project` (đổi tên/brand, chọn profile, bật module, xoá `_example-notes`) + `pnpm verify:init` (4 biến thể trên clone sạch).
 - [x] Security review → [docs/security/review-v1.0.md](docs/security/review-v1.0.md) (5 lỗi đã sửa, 5 rủi ro chấp nhận có ghi lại).
 - [x] Docs đầy đủ (README, ARCHITECTURE, AGENTS, SECURITY, UPGRADING, DEPLOY, REUSE-PROOFS).
-- [ ] **36.B-1:** hai project thật (một site, một app); ghi mọi chỗ phải sửa Core/Modules. — 🟨 Site Hạ Long Tours xong (F1–F7 → rc.2); còn project app.
+- [ ] **36.B-1:** hai project thật (một site, một app); ghi mọi chỗ phải sửa Core/Modules. — 🟨 Site Hạ Long Tours (thử nghiệm) xong (F1–F7 → rc.2); project app = project thật của chủ repo.
 - [x] **36.B-2:** nâng cấp một project từ tag cũ lên tag mới theo [docs/UPGRADING.md](docs/UPGRADING.md). — Hạ Long Tours rc.1 → rc.2; xung đột chỉ ở file project sở hữu; follow-up U1–U4; bước migration chưa được thử.
 - [x] **36.B-3:** cấu hình tối thiểu (mọi module tắt, không secret) build + chạy — CI `build-minimal` + E2E.
 
