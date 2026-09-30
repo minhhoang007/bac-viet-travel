@@ -1,13 +1,28 @@
+import { createAccountService, type AccountService } from "@/core/account";
+import { createAuthService, type AuthService } from "@/core/auth";
+import { createBetterAuth } from "@/core/auth/adapters/better-auth";
 import { createContactService, type ContactService } from "@/core/contact";
 import { createLogger, type Logger } from "@/core/logger";
 import type { Features } from "@/core/module";
 import { noopMail, type MailPort } from "@/core/ports/mail";
 import { createMemoryRateLimiter, type RateLimiter, type RateLimitRule } from "@/core/security/rate-limit";
-import { createEmailModule } from "@/modules/email";
+import { createDb, type Db } from "@/db/client";
+import { createEmailModule, type EmailProvider } from "@/modules/email";
+import { consoleEmailProvider } from "@/providers/email/console";
 import { resendProvider } from "@/providers/email/resend";
 import { upstashRateLimiter } from "@/providers/rate-limit/upstash";
+import { createProduct, type Product } from "@/product/manifest";
+import { authConfig } from "@/config/auth";
 import { features } from "@/config/features";
 import { getEnv, type Env } from "./env";
+
+/** Services available only in profile "app". */
+export interface AppServices {
+  db: Db;
+  auth: AuthService;
+  account: AccountService;
+  product: Product["services"];
+}
 
 /** Services wired for the running project. */
 export interface Container {
@@ -16,6 +31,14 @@ export interface Container {
   mail: MailPort;
   /** Only present when the email module is enabled. */
   contact?: ContactService;
+  /** Only present in profile "app". */
+  app?: AppServices;
+}
+
+export interface ContainerOverrides {
+  rateLimiter?: RateLimiter;
+  mail?: MailPort;
+  db?: Db;
 }
 
 const CONTACT_LIMIT: RateLimitRule = { max: 5, windowMs: 10 * 60_000 };
@@ -27,16 +50,14 @@ export function getContainer(): Container {
   return (cached ??= buildContainer(features, getEnv()));
 }
 
-export function buildContainer(features: Features, env: Env, overrides: { rateLimiter?: RateLimiter } = {}): Container {
+export function buildContainer(features: Features, env: Env, overrides: ContainerOverrides = {}): Container {
   const logger = createLogger({ level: env.LOG_LEVEL });
 
-  const mail: MailPort = features.email
-    ? createEmailModule({
-        provider: resendProvider({ apiKey: env.extra.EMAIL_API_KEY! }),
-        from: env.extra.EMAIL_FROM!,
-        logger,
-      }).asMailPort()
-    : noopMail;
+  const mail: MailPort =
+    overrides.mail ??
+    (features.email
+      ? createEmailModule({ provider: emailProvider(env, logger), from: env.extra.EMAIL_FROM!, logger }).asMailPort()
+      : noopMail);
 
   const contact = features.email
     ? createContactService({
@@ -47,7 +68,36 @@ export function buildContainer(features: Features, env: Env, overrides: { rateLi
       })
     : undefined;
 
-  return { features, logger, mail, contact };
+  const app = features.profile === "app" ? buildApp(env, mail, overrides.db) : undefined;
+
+  return { features, logger, mail, contact, app };
+}
+
+function buildApp(env: Env, mail: MailPort, db = createDb(env.extra.DATABASE_URL!).db): AppServices {
+  const google =
+    env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
+      ? { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET }
+      : undefined;
+
+  const auth = createAuthService(
+    createBetterAuth({
+      db,
+      mail,
+      secret: env.extra.BETTER_AUTH_SECRET!,
+      baseURL: env.NEXT_PUBLIC_SITE_URL,
+      methods: authConfig.methods,
+      trustedProviders: authConfig.trustedProviders,
+      google,
+      disableRateLimit: env.NODE_ENV === "test",
+    }),
+    { magicLink: authConfig.methods.magicLink, google: authConfig.methods.google && Boolean(google) },
+  );
+  const product = createProduct(db);
+  return { db, auth, account: createAccountService(db, product.exporters), product: product.services };
+}
+
+function emailProvider(env: Env, logger: Logger): EmailProvider {
+  return env.EMAIL_PROVIDER === "console" ? consoleEmailProvider(logger) : resendProvider({ apiKey: env.EMAIL_API_KEY! });
 }
 
 function rateLimiterFor(env: Env, rule: RateLimitRule): RateLimiter {

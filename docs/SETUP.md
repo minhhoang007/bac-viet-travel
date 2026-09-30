@@ -29,10 +29,16 @@ pnpm dev
 ## 3. Database (profile app)
 
 ```bash
-docker compose up -d db
-pnpm db:migrate          # starter trước, product sau (ADR-0004)
-pnpm db:seed
+pnpm db:up               # Postgres 18 trong Docker, cổng 54329 (tránh đụng Postgres cài sẵn trên máy)
+pnpm db:migrate          # starter trước, product sau (ADR-0004); đọc DATABASE_URL từ .env.local
+pnpm test:int            # integration test trên DB minh_test
 ```
+
+### Chạy thử profile app ở local
+
+1. `config/features.ts`: `{ ...featureDefaults, profile: "app", email: true }`
+2. `.env.local`: `DATABASE_URL=postgres://postgres:postgres@localhost:54329/minh`, `BETTER_AUTH_SECRET=<chuỗi ngẫu nhiên>`, `EMAIL_PROVIDER=console`, `EMAIL_FROM`, `CONTACT_TO_EMAIL`.
+3. `pnpm db:migrate && pnpm dev` → mở `/login`. Với `EMAIL_PROVIDER=console`, magic link được in ra log của server.
 
 ## 4. Agent tooling (ADR-0003)
 

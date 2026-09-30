@@ -5,7 +5,7 @@ import { setRequestLocale } from "next-intl/server";
 import { routing, localePath } from "@/core/i18n/routing";
 import { appConfig, type Locale } from "@/config/app";
 import { brand } from "@/config/brand";
-import { getMarketingContent } from "@/content";
+import { getAppContent, getMarketingContent } from "@/content";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import "../globals.css";
@@ -26,6 +26,7 @@ export default async function LocaleLayout({
   setRequestLocale(locale);
 
   const c = getMarketingContent(locale as Locale);
+  const legal = getAppContent(locale as Locale).legal;
   const other = appConfig.locales.find((l) => l !== locale) ?? appConfig.defaultLocale;
   const home = localePath(locale);
 
@@ -44,7 +45,15 @@ export default async function LocaleLayout({
             localeSwitch={{ label: c.nav.switchLocale, href: localePath(other), hrefLang: other }}
           />
           <main className="flex-1">{children}</main>
-          <SiteFooter name={appConfig.name} rights={c.footer.rights} year={new Date().getFullYear()} />
+          <SiteFooter
+            name={appConfig.name}
+            rights={c.footer.rights}
+            year={new Date().getFullYear()}
+            links={[
+              { label: legal.terms, href: localePath(locale, "/terms") },
+              { label: legal.privacy, href: localePath(locale, "/privacy") },
+            ]}
+          />
         </NextIntlClientProvider>
       </body>
     </html>

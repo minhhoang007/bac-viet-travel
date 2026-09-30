@@ -1,12 +1,18 @@
+import { checkAuthConfig, type AuthMethodsConfig } from "@/core/auth/config-check";
 import { appProfileEnvKeys, baseEnvSchema, type BaseEnv } from "@/core/env";
 import { AppError } from "@/core/errors";
 import { isModuleEnabled, validateModules, type Features, type ModuleManifest } from "@/core/module";
+import { authConfig } from "@/config/auth";
 import { features as projectFeatures } from "@/config/features";
 import { moduleManifests } from "./modules";
 
 type EnvSource = Record<string, string | undefined>;
 
 export type Env = BaseEnv & { extra: Record<string, string> };
+
+export interface ValidateOptions {
+  auth?: AuthMethodsConfig;
+}
 
 /** Required env keys beyond the base schema, for the given profile and enabled modules only. */
 export function requiredEnvKeys(features: Features, manifests: readonly ModuleManifest[]): string[] {
@@ -18,7 +24,12 @@ export function requiredEnvKeys(features: Features, manifests: readonly ModuleMa
 }
 
 /** Pure validation — throws one error listing every problem. */
-export function validateEnv(source: EnvSource, features: Features, manifests: readonly ModuleManifest[]): Env {
+export function validateEnv(
+  source: EnvSource,
+  features: Features,
+  manifests: readonly ModuleManifest[],
+  options: ValidateOptions = {},
+): Env {
   const problems = validateModules(features, manifests);
 
   const base = baseEnvSchema.safeParse(source);
@@ -33,6 +44,13 @@ export function validateEnv(source: EnvSource, features: Features, manifests: re
     else extra[key] = value;
   }
 
+  if (base.success) {
+    if (features.email && base.data.EMAIL_PROVIDER === "resend" && !base.data.EMAIL_API_KEY) {
+      problems.push('EMAIL_API_KEY: required when EMAIL_PROVIDER is "resend"');
+    }
+    if (options.auth) problems.push(...checkAuthConfig(features, options.auth, base.data));
+  }
+
   if (problems.length > 0 || !base.success) {
     throw new AppError("INTERNAL_ERROR", `Invalid configuration:\n  - ${problems.join("\n  - ")}`);
   }
@@ -43,5 +61,19 @@ let cached: Env | undefined;
 
 /** Lazily validated env for the running project. The only place that reads process.env. */
 export function getEnv(): Env {
-  return (cached ??= validateEnv(process.env, projectFeatures, moduleManifests));
+  return (cached ??= validateEnv(process.env, projectFeatures, moduleManifests, { auth: authConfig }));
+}
+
+export interface PublicEnv {
+  NEXT_PUBLIC_SITE_URL: string;
+}
+
+/**
+ * Public, non-secret values for statically rendered pages (metadata, robots, sitemap).
+ * Does not require runtime secrets, so marketing pages can be prerendered at build time.
+ */
+export function getPublicEnv(): PublicEnv {
+  const url = baseEnvSchema.shape.NEXT_PUBLIC_SITE_URL.safeParse(process.env.NEXT_PUBLIC_SITE_URL);
+  if (!url.success) throw new AppError("INTERNAL_ERROR", "Invalid configuration:\n  - NEXT_PUBLIC_SITE_URL: invalid URL");
+  return { NEXT_PUBLIC_SITE_URL: url.data };
 }

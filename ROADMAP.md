@@ -35,7 +35,7 @@ Trạng thái: ⬜ chưa làm · 🟨 đang làm · ✅ xong
 
 **Exit:** site tĩnh chạy được, `pnpm check` xanh, CI build không cần secret nào.
 
-## V0.1b — Email + form liên hệ ✅ (chờ review)
+## V0.1b — Email + form liên hệ ✅
 
 | # | Task | Kiểm chứng |
 |---|---|---|
@@ -50,7 +50,7 @@ Trạng thái: ⬜ chưa làm · 🟨 đang làm · ✅ xong
 
 ---
 
-## V0.2 — Profile app + vertical slice ⬜
+## V0.2 — Profile app + vertical slice ✅ (chờ review; task 10 deploy còn chờ)
 
 | # | Task | Kiểm chứng |
 |---|---|---|

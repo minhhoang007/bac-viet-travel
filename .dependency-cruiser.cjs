@@ -50,6 +50,13 @@ const rules = [
     to: { path: "(^|node_modules/)(stripe|resend|@upstash|@aws-sdk|@anthropic-ai|openai|better-auth|posthog-node|@sentry|@lemonsqueezy|@paddle|@polar-sh)(/|$)" },
   },
   {
+    name: "no-db-in-ui-and-routes",
+    severity: "error",
+    comment: "UI, routes and actions must not touch the database; go through a service from getContainer().",
+    from: { path: "^(app|components|product/(components|actions)|product/[^/]+/(components|actions))(/|\\.ts)" },
+    to: { path: "^db/|(^|node_modules/)drizzle-orm(/|$)" },
+  },
+  {
     name: "db-driver-only-in-db",
     severity: "error",
     comment: "Database drivers only in db/.",

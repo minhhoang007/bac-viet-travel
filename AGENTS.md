@@ -35,7 +35,9 @@ Dependencies flow one way: Product → Modules (public API only) → Core. Detai
   This includes `config/**` (use functions such as `getPriceIds()`, not `env.X` at module scope).
 - Every route/page/action of an optional module calls `assertModuleEnabled("<name>")`.
 - Every user-owned table has `ownerId`; every query on user data filters by it.
-- Edge middleware only reads cookies; real auth checks happen in server components/routes.
+- `proxy.ts` only reads cookies (optimistic redirect); real auth checks happen in pages/actions/routes via `app/_lib/session.ts`.
+- Pages needing runtime secrets go through `requireAppServices()`/`requirePageUser()` (request-time rendering). Static pages use `getPublicEnv()`, never `getEnv()`, so builds need no secrets.
+- Another user's record must be indistinguishable from a missing one: services return `NOT_FOUND`, pages respond 404.
 
 ## Conventions
 - TypeScript strict. Validate all external input with schemas (zod).
