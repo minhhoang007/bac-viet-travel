@@ -1,5 +1,43 @@
-// Starter-owned. Colors map to CSS tokens in app/globals.css.
+// Starter-owned. Projects override in config/brand.ts (ADR-0004).
+// Colors are the single source of the theme: components/ui/theme.ts turns them into CSS variables.
+export interface ThemeColors {
+  background: string;
+  foreground: string;
+  muted: string;
+  mutedForeground: string;
+  border: string;
+  primary: string;
+  primaryForeground: string;
+}
+
+export interface BrandColors {
+  light: ThemeColors;
+  /** Used with prefers-color-scheme: dark. Omit to keep the light palette in dark mode. */
+  dark?: ThemeColors;
+}
+
+const defaultColors: BrandColors = {
+  light: {
+    background: "#ffffff",
+    foreground: "#0f172a",
+    muted: "#f1f5f9",
+    mutedForeground: "#475569",
+    border: "#e2e8f0",
+    primary: "#2563eb",
+    primaryForeground: "#ffffff",
+  },
+  dark: {
+    background: "#0b1120",
+    foreground: "#e2e8f0",
+    muted: "#1e293b",
+    mutedForeground: "#94a3b8",
+    border: "#1e293b",
+    primary: "#60a5fa",
+    primaryForeground: "#0b1120",
+  },
+};
+
 export const brandDefaults = {
   logoText: "Minh Starter",
-  colors: { primary: "#2563eb", primaryForeground: "#ffffff" },
+  colors: defaultColors,
 };

@@ -92,6 +92,8 @@ docs/           adr UPGRADING.md SETUP.md
 | Account lifecycle | `core/account` | export aggregates `AccountDataExporter`s from the product manifest; delete relies on `ON DELETE CASCADE` |
 | Product entry point | `product/manifest.ts` | `createProduct(db)` → services, exporters; `productNav` |
 | Static pages | `getPublicEnv()` | reads only public values, so marketing pages prerender without secrets |
+| Theme | `config/brand.ts` → `components/ui/theme.ts` | CSS variables (light/dark) rendered in the root layout; `globals.css` holds no color values |
+| Rate limits | `core/security/rate-limit.ts` | `withFallback(upstash, memory)`; magic links limited per client + recipient in `AuthService` |
 
 ## 7. Module lifecycle ("really off")
 

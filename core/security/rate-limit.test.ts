@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createMemoryRateLimiter } from "./rate-limit";
+import { createMemoryRateLimiter, withFallback } from "./rate-limit";
 
 describe("memory rate limiter", () => {
   it("blocks after max in a window and resets afterwards", async () => {
@@ -13,5 +13,17 @@ describe("memory rate limiter", () => {
 
     t = 1000;
     expect(await limiter.limit("a")).toMatchObject({ success: true, remaining: 1, resetAt: 2000 });
+  });
+});
+
+describe("withFallback", () => {
+  it("uses the fallback limiter and reports the error when the primary store fails", async () => {
+    const errors: unknown[] = [];
+    const broken = { limit: async () => { throw new Error("upstash down"); } };
+    const limiter = withFallback(broken, createMemoryRateLimiter({ max: 1, windowMs: 1000 }), (e) => errors.push(e));
+
+    expect((await limiter.limit("k")).success).toBe(true);
+    expect((await limiter.limit("k")).success).toBe(false); // still limited
+    expect(errors).toHaveLength(2);
   });
 });

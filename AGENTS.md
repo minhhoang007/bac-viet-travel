@@ -51,6 +51,9 @@ Dependencies flow one way: Product → Modules (public API only) → Core. Detai
 - Webhooks: verify signature on raw body; store event + enqueue job in one transaction; ack fast; idempotent handler;
   states received → processing → processed/failed/dead; sweeper re-queues stale ones.
 - Usage: reserve → execute → commit/release with an idempotencyKey. Never check-then-write.
+- Server-side calls into auth/SDK libraries (`auth.api.*`) skip their HTTP rate limiters: rate-limit in the service.
+- Logs: ids and `kind` only — never subjects, bodies, names, emails or IPs.
+- External stores in user flows (rate limit, email) must fail safely: catch and return a state, never crash the action.
 - Jobs: idempotent, resumable, respect lease and maxAttempts.
 - Account linking only for verified emails from trusted providers.
 

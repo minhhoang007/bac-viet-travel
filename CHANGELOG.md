@@ -4,6 +4,17 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+### Security
+- Magic-link requests are rate limited per client (5/10 min) and per recipient (3/10 min) in `AuthService`; server-side `auth.api.*` calls bypassed Better Auth's HTTP limiter (P1).
+- Email logs contain only `{ id, kind }` — no subject (which carried the contact sender's name).
+- Rate limiters fall back to in-memory when Upstash fails; the contact form never throws on limiter errors.
+
+### Fixed
+- `config/brand.ts` colors now drive the theme (light/dark CSS variables generated and validated from config).
+
+### Added
+- `pnpm test:e2e:app`: browser E2E for profile app on a fresh app-profile clone (sign in, notes CRUD, IDOR, export, delete, sign out, rate limit, invalid link) + CI job.
+
 ## [1.0.0-rc.1] — 2026-09-30
 
 ### Added

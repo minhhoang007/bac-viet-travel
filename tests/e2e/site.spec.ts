@@ -40,6 +40,12 @@ test("contact form is absent when the email module is off (default config)", asy
   await expect(page.locator("#contact form")).toHaveCount(0);
 });
 
+test("theme colors come from config/brand.ts", async ({ page }) => {
+  await page.goto("/");
+  const primary = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--primary").trim());
+  expect(primary).toBe("#2563eb"); // brandDefaults.colors.light.primary
+});
+
 test("profile site exposes no app routes", async ({ request }) => {
   expect((await request.get("/login")).status()).toBe(404);
   expect((await request.get("/api/auth/get-session")).status()).toBe(404);

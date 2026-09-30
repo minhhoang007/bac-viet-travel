@@ -2,12 +2,18 @@
 
 import { useActionState } from "react";
 
-type State = { status: "sent" } | { status: "invalid_email" } | { status: "error" } | null;
+type State = { status: "sent" } | { status: "invalid_email" } | { status: "rate_limited" } | { status: "error" } | null;
 
 export interface LoginFormProps {
   locale: string;
   sendMagicLink: (prev: State, formData: FormData) => Promise<State>;
-  labels: { email: string; sendLink: string; sending: string; linkSent: string; errors: { invalid_email: string; error: string } };
+  labels: {
+    email: string;
+    sendLink: string;
+    sending: string;
+    linkSent: string;
+    errors: { invalid_email: string; rate_limited: string; error: string };
+  };
 }
 
 export function LoginForm({ locale, sendMagicLink, labels }: LoginFormProps) {
@@ -20,7 +26,8 @@ export function LoginForm({ locale, sendMagicLink, labels }: LoginFormProps) {
       </p>
     );
   }
-  const error = state?.status === "invalid_email" ? labels.errors.invalid_email : state?.status === "error" ? labels.errors.error : undefined;
+  // "sent" returned above, so any remaining state is an error code.
+  const error = state ? labels.errors[state.status] : undefined;
 
   return (
     <form action={action} className="grid gap-3" noValidate>

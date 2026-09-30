@@ -5,7 +5,7 @@ import { resetDb, testDb } from "./setup/db";
 import { BASE_URL, signIn, testApp } from "./setup/app";
 
 const handle = testDb();
-const t = testApp(handle.db);
+const t = testApp(handle.db, { realRateLimits: true });
 
 beforeEach(() => resetDb(handle.db));
 afterAll(() => handle.close());
@@ -24,14 +24,14 @@ describe("auth (magic link, real DB)", () => {
   });
 
   it("magic link email goes to the requested address and targets this site", async () => {
-    await t.app.auth.signInMagicLink("binh@example.com", "/dashboard", "/login", new Headers({ origin: BASE_URL }));
+    await t.app.auth.signInMagicLink({ email: "binh@example.com", callbackURL: "/dashboard", errorCallbackURL: "/login", clientKey: crypto.randomUUID() }, new Headers({ origin: BASE_URL }));
     const message = t.sent.at(-1)!;
     expect(message.to).toBe("binh@example.com");
     expect(message.text).toContain(`${BASE_URL}/api/auth/magic-link/verify?token=`);
   });
 
   it("a magic link token works only once", async () => {
-    await t.app.auth.signInMagicLink("once@example.com", "/dashboard", "/login", new Headers({ origin: BASE_URL }));
+    await t.app.auth.signInMagicLink({ email: "once@example.com", callbackURL: "/dashboard", errorCallbackURL: "/login", clientKey: crypto.randomUUID() }, new Headers({ origin: BASE_URL }));
     const url = t.sent.at(-1)!.text.match(/https?:\/\/\S+/)![0];
     await t.app.auth.handler(new Request(url));
     const second = await t.app.auth.handler(new Request(url));
@@ -40,8 +40,33 @@ describe("auth (magic link, real DB)", () => {
     expect(second.headers.get("location")).toMatch(/\/login\?error=/);
   });
 
+  it("magic links are rate limited per recipient even from many clients (no email spam)", async () => {
+    const send = (clientKey: string) =>
+      t.app.auth.signInMagicLink(
+        { email: "victim@example.com", callbackURL: "/dashboard", errorCallbackURL: "/login", clientKey },
+        new Headers({ origin: BASE_URL }),
+      );
+    for (let i = 0; i < 3; i++) await send(`client-${i}`);
+    const sentBefore = t.sent.filter((m) => m.to === "victim@example.com").length;
+
+    await expect(send("client-99")).rejects.toMatchObject({ code: "RATE_LIMIT_ERROR" });
+    expect(t.sent.filter((m) => m.to === "victim@example.com")).toHaveLength(sentBefore);
+    expect(sentBefore).toBe(3);
+  });
+
+  it("magic links are rate limited per client across recipients", async () => {
+    const send = (i: number) =>
+      t.app.auth.signInMagicLink(
+        { email: `spray-${i}@example.com`, callbackURL: "/dashboard", errorCallbackURL: "/login", clientKey: "198.51.100.7" },
+        new Headers({ origin: BASE_URL }),
+      );
+    for (let i = 0; i < 5; i++) await send(i);
+    await expect(send(5)).rejects.toMatchObject({ code: "RATE_LIMIT_ERROR" });
+    expect(t.sent.some((m) => m.to === "spray-5@example.com")).toBe(false);
+  });
+
   it("session cookie is HttpOnly and SameSite=Lax", async () => {
-    await t.app.auth.signInMagicLink("cookie@example.com", "/dashboard", "/login", new Headers({ origin: BASE_URL }));
+    await t.app.auth.signInMagicLink({ email: "cookie@example.com", callbackURL: "/dashboard", errorCallbackURL: "/login", clientKey: crypto.randomUUID() }, new Headers({ origin: BASE_URL }));
     const url = t.sent.at(-1)!.text.match(/https?:\/\/\S+/)![0];
     const res = await t.app.auth.handler(new Request(url));
     const session = res.headers.getSetCookie().find((c) => c.includes("session_token="))!;

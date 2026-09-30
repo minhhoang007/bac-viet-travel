@@ -51,7 +51,8 @@ Details: [docs/SETUP.md](docs/SETUP.md).
 | `pnpm dev` / `pnpm build` / `pnpm start` | Next.js |
 | `pnpm check` | lint (0 warnings) + typecheck + architecture lint + unit tests (incl. lint-rule fixtures) |
 | `pnpm test:int` | integration tests on real Postgres (`minh_test`) |
-| `pnpm test:e2e` | Playwright against a production build (`pnpm build` first) |
+| `pnpm test:e2e` | Playwright against a production build (`pnpm build` first), profile site |
+| `pnpm test:e2e:app` | browser E2E for profile app on a fresh app-profile clone (needs Postgres) |
 | `pnpm db:up` / `db:migrate` | local Postgres / run migrations |
 | `pnpm db:generate:product` | generate a migration for tables in `product/schema/` |
 | `pnpm init:project` | initialize a project (name, profile, modules, remove example) |

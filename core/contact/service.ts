@@ -37,12 +37,19 @@ export function createContactService(deps: {
         return { status: "invalid", fieldErrors };
       }
 
-      const { success } = await deps.rateLimiter.limit(`contact:${clientKey}`);
-      if (!success) return { status: "rate_limited" };
+      try {
+        const { success } = await deps.rateLimiter.limit(`contact:${clientKey}`);
+        if (!success) return { status: "rate_limited" };
+      } catch (error) {
+        // Limiter unavailable: fail closed for this request, never crash the action.
+        deps.logger.error("contact.rate_limit_failed", { error });
+        return { status: "error" };
+      }
 
       const { name, email, message } = parsed.data;
       try {
         await deps.mail.send({
+          kind: "contact",
           to: deps.to,
           replyTo: email,
           // Control characters stripped so user input can never add header lines.

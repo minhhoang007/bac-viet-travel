@@ -10,7 +10,10 @@ export const app: AppContent = {
     linkSent: "Đã gửi! Kiểm tra hộp thư và nhấn vào liên kết để đăng nhập.",
     or: "hoặc",
     google: "Tiếp tục với Google",
-    errors: { invalid_email: "Email không hợp lệ.", error: "Không gửi được liên kết. Vui lòng thử lại.",
+    errors: {
+      invalid_email: "Email không hợp lệ.",
+      rate_limited: "Bạn yêu cầu quá nhiều lần. Vui lòng thử lại sau ít phút.",
+      error: "Không gửi được liên kết. Vui lòng thử lại.",
       link: "Liên kết đăng nhập không hợp lệ hoặc đã hết hạn. Hãy yêu cầu liên kết mới.",
     },
   },

@@ -10,7 +10,10 @@ export const app: AppContent = {
     linkSent: "Sent! Check your inbox and click the link to sign in.",
     or: "or",
     google: "Continue with Google",
-    errors: { invalid_email: "Please enter a valid email.", error: "Could not send the link. Please try again.",
+    errors: {
+      invalid_email: "Please enter a valid email.",
+      rate_limited: "Too many requests. Please try again in a few minutes.",
+      error: "Could not send the link. Please try again.",
       link: "This sign-in link is invalid or has expired. Please request a new one.",
     },
   },

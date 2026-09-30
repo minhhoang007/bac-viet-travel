@@ -1,11 +1,11 @@
 import { createAccountService, type AccountService } from "@/core/account";
-import { createAuthService, type AuthService } from "@/core/auth";
+import { createAuthService, type AuthRateLimits, type AuthService } from "@/core/auth";
 import { createBetterAuth } from "@/core/auth/adapters/better-auth";
 import { createContactService, type ContactService } from "@/core/contact";
 import { createLogger, type Logger } from "@/core/logger";
 import type { Features } from "@/core/module";
 import { noopMail, type MailPort } from "@/core/ports/mail";
-import { createMemoryRateLimiter, type RateLimiter, type RateLimitRule } from "@/core/security/rate-limit";
+import { createMemoryRateLimiter, withFallback, type RateLimiter, type RateLimitRule } from "@/core/security/rate-limit";
 import { createDb, type Db } from "@/db/client";
 import { createEmailModule, type EmailProvider } from "@/modules/email";
 import { consoleEmailProvider } from "@/providers/email/console";
@@ -38,11 +38,14 @@ export interface Container {
 
 export interface ContainerOverrides {
   rateLimiter?: RateLimiter;
+  authRateLimits?: AuthRateLimits;
   mail?: MailPort;
   db?: Db;
 }
 
 const CONTACT_LIMIT: RateLimitRule = { max: 5, windowMs: 10 * 60_000 };
+const MAGIC_LINK_PER_CLIENT: RateLimitRule = { max: 5, windowMs: 10 * 60_000 };
+const MAGIC_LINK_PER_RECIPIENT: RateLimitRule = { max: 3, windowMs: 10 * 60_000 };
 
 let cached: Container | undefined;
 
@@ -63,18 +66,19 @@ export function buildContainer(features: Features, env: Env, overrides: Containe
   const contact = features.email
     ? createContactService({
         mail,
-        rateLimiter: overrides.rateLimiter ?? rateLimiterFor(env, CONTACT_LIMIT),
+        rateLimiter: overrides.rateLimiter ?? rateLimiterFor(env, CONTACT_LIMIT, logger),
         to: env.extra.CONTACT_TO_EMAIL!,
         logger,
       })
     : undefined;
 
-  const app = features.profile === "app" ? buildApp(env, mail, overrides.db) : undefined;
+  const app = features.profile === "app" ? buildApp(env, mail, logger, overrides) : undefined;
 
   return { features, logger, mail, contact, app };
 }
 
-function buildApp(env: Env, mail: MailPort, db = createDb(env.extra.DATABASE_URL!).db): AppServices {
+function buildApp(env: Env, mail: MailPort, logger: Logger, overrides: ContainerOverrides): AppServices {
+  const db = overrides.db ?? createDb(env.extra.DATABASE_URL!).db;
   const google =
     env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
       ? { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET }
@@ -93,6 +97,10 @@ function buildApp(env: Env, mail: MailPort, db = createDb(env.extra.DATABASE_URL
       disableRateLimit: env.NODE_ENV === "test",
     }),
     { magicLink: authConfig.methods.magicLink, google: authConfig.methods.google && Boolean(google) },
+    overrides.authRateLimits ?? {
+      perClient: rateLimiterFor(env, MAGIC_LINK_PER_CLIENT, logger),
+      perRecipient: rateLimiterFor(env, MAGIC_LINK_PER_RECIPIENT, logger),
+    },
   );
   const product = createProduct(db);
   return { db, auth, account: createAccountService(db, product.exporters), product: product.services };
@@ -102,8 +110,10 @@ function emailProvider(env: Env, logger: Logger): EmailProvider {
   return env.EMAIL_PROVIDER === "console" ? consoleEmailProvider(logger) : resendProvider({ apiKey: env.EMAIL_API_KEY! });
 }
 
-function rateLimiterFor(env: Env, rule: RateLimitRule): RateLimiter {
-  return env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN
-    ? upstashRateLimiter({ url: env.UPSTASH_REDIS_REST_URL, token: env.UPSTASH_REDIS_REST_TOKEN }, rule)
-    : createMemoryRateLimiter(rule);
+/** Upstash when configured (falling back to memory if it fails), otherwise in-memory. */
+function rateLimiterFor(env: Env, rule: RateLimitRule, logger: Logger): RateLimiter {
+  const memory = createMemoryRateLimiter(rule);
+  if (!env.UPSTASH_REDIS_REST_URL || !env.UPSTASH_REDIS_REST_TOKEN) return memory;
+  const upstash = upstashRateLimiter({ url: env.UPSTASH_REDIS_REST_URL, token: env.UPSTASH_REDIS_REST_TOKEN }, rule);
+  return withFallback(upstash, memory, (error) => logger.warn("ratelimit.store_failed", { error }));
 }

@@ -49,6 +49,32 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm test:int
 
+  e2e-app:
+    name: Browser E2E (profile app)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: minh_e2e
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 2s --health-retries 30
+    env:
+      E2E_DATABASE_URL: postgres://postgres:postgres@localhost:5432/minh_e2e
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e:app
+
   build-minimal:
     # Guards "really off": default config (profile site, all modules off) must build and run with NO secrets.
     name: Build + E2E with no secrets

@@ -19,7 +19,8 @@
     "db:migrate": "node --env-file-if-exists=.env.local scripts/db-migrate.ts",
     "test:int": "vitest run --config vitest.integration.config.ts",
     "init:project": "node scripts/init-project.ts",
-    "verify:init": "bash scripts/verify-init.sh"
+    "verify:init": "bash scripts/verify-init.sh",
+    "test:e2e:app": "bash scripts/e2e-app.sh"
   },
   "dependencies": {
     "better-auth": "^1.7.6",

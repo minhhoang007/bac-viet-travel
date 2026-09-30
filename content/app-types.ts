@@ -8,7 +8,7 @@ export interface AppContent {
     linkSent: string;
     or: string;
     google: string;
-    errors: { invalid_email: string; error: string; link: string };
+    errors: { invalid_email: string; rate_limited: string; error: string; link: string };
   };
   dashboard: {
     nav: { overview: string; account: string };

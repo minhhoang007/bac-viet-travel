@@ -55,6 +55,33 @@ describe("contact service", () => {
     expect(await service.submit(valid, "ip2")).toEqual({ status: "success" });
   });
 
+  it("returns an error state (no exception, no email) when the limiter throws", async () => {
+    const mail = { send: vi.fn(async () => {}) };
+    const service = createContactService({
+      mail,
+      rateLimiter: { limit: async () => { throw new Error("redis down"); } },
+      to: "owner@example.com",
+      logger: createLogger({ write: () => {} }),
+    });
+    expect(await service.submit(valid, "ip1")).toEqual({ status: "error" });
+    expect(mail.send).not.toHaveBeenCalled();
+  });
+
+  it("never logs the sender's name or email", async () => {
+    const lines: string[] = [];
+    const service = createContactService({
+      mail: { send: async () => { throw new Error("smtp down"); } },
+      rateLimiter: createMemoryRateLimiter({ max: 5, windowMs: 60_000 }),
+      to: "owner@example.com",
+      logger: createLogger({ write: (l) => lines.push(l) }),
+    });
+    const person = { name: "Zed Unique", email: "zed.unique@example.com", message: "hi" };
+    await service.submit({ ...person, website: "x" }, "203.0.113.9");
+    await service.submit(person, "203.0.113.9");
+    expect(lines.length).toBeGreaterThan(0);
+    expect(lines.join("\n")).not.toMatch(/Zed Unique|zed\.unique@example\.com|203\.0\.113\.9/);
+  });
+
   it("reports a generic error when sending fails", async () => {
     const { service } = setup({ send: async () => { throw new Error("smtp down"); } });
     expect(await service.submit(valid, "ip1")).toEqual({ status: "error" });
