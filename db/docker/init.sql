@@ -1,0 +1,1 @@
+CREATE DATABASE minh_test;

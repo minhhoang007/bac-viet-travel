@@ -26,6 +26,22 @@ describe("validateEnv", () => {
     expect(() => validateEnv({ NEXT_PUBLIC_SITE_URL: "not a url" }, site, [])).toThrow(/NEXT_PUBLIC_SITE_URL/);
   });
 
+  it("app profile with magic link requires the email module (fail fast at startup)", () => {
+    const secrets = { DATABASE_URL: "postgres://x", BETTER_AUTH_SECRET: "s" };
+    const auth = { methods: { magicLink: true, google: false } };
+    expect(() => validateEnv(secrets, app, [], { auth })).toThrow(/"magicLink" requires the "email" module/);
+  });
+
+  it("console email provider is refused in production", () => {
+    expect(() => validateEnv({ NODE_ENV: "production", EMAIL_PROVIDER: "console" }, site, [])).toThrow(
+      /not allowed in production/,
+    );
+  });
+
+  it("Google credentials must be set together", () => {
+    expect(() => validateEnv({ GOOGLE_CLIENT_ID: "id" }, site, [])).toThrow(/GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET/);
+  });
+
   it("includes module problems in the same error", () => {
     const billing = defineModule({ name: "billing", profiles: ["app"], requires: ["jobs"] });
     expect(() => validateEnv({}, { ...site, billing: true }, [billing])).toThrow(/not available in profile "site"/);

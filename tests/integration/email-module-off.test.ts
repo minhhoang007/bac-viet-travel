@@ -37,7 +37,9 @@ describe("email module off", () => {
 
 describe("email module on", () => {
   it("requires its secrets", () => {
-    expect(() => validateEnv({}, on, moduleManifests)).toThrow(/EMAIL_FROM[\s\S]*EMAIL_API_KEY[\s\S]*CONTACT_TO_EMAIL/);
+    for (const key of ["EMAIL_FROM", "EMAIL_API_KEY", "CONTACT_TO_EMAIL"]) {
+      expect(() => validateEnv({}, on, moduleManifests)).toThrow(new RegExp(`${key}: required`));
+    }
   });
 
   it("wires the contact service", () => {

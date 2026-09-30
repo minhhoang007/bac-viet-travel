@@ -9,7 +9,7 @@ const fixtures = path.resolve(import.meta.dirname, "../arch-fixtures");
 
 async function violations() {
   const result = await cruise(
-    ["core", "app", "product", "modules", "providers"],
+    ["core", "app", "product", "modules", "providers", "db"],
     { baseDir: fixtures, validate: true, ruleSet: { forbidden } } as never,
   );
   const output = result.output as { summary: { violations: { rule: { name: string }; from: string }[] } };
@@ -28,6 +28,7 @@ describe("architecture rules catch their fixtures", () => {
     expect(byRule("modules-public-api-only-outside")).toEqual(["app/imports-module-internal.ts"]);
     expect(byRule("vendor-sdk-only-in-adapters")).toEqual(["product/uses-stripe.ts"]);
     expect(byRule("db-driver-only-in-db")).toEqual(["core/uses-pg.ts"]);
+    expect(byRule("no-db-in-ui-and-routes")).toEqual(["app/route-uses-db.ts"]);
     // One report per cycle; which end is "from" is not guaranteed.
     expect(byRule("no-circular")).toHaveLength(1);
     expect(byRule("no-circular")[0]).toMatch(/^product\/cycle-[ab]\.ts$/);

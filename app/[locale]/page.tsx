@@ -4,7 +4,7 @@ import type { Locale } from "@/config/app";
 import { getMarketingContent } from "@/content";
 import { createMetadata } from "@/core/seo";
 import { seoSite } from "@/core/seo/site";
-import { getEnv } from "@/bootstrap/env";
+import { getPublicEnv } from "@/bootstrap/env";
 import { Hero } from "@/components/marketing/hero";
 import { Features } from "@/components/marketing/features";
 import { Faq } from "@/components/marketing/faq";
@@ -18,7 +18,7 @@ type Props = { params: Promise<{ locale: Locale }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
   const c = getMarketingContent(locale);
-  return createMetadata(seoSite(getEnv().NEXT_PUBLIC_SITE_URL), {
+  return createMetadata(seoSite(getPublicEnv().NEXT_PUBLIC_SITE_URL), {
     title: c.meta.title,
     description: c.meta.description,
     path: "/",

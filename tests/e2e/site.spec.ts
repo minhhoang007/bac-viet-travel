@@ -39,3 +39,16 @@ test("contact form is absent when the email module is off (default config)", asy
   await expect(page.locator("#contact")).toBeVisible();
   await expect(page.locator("#contact form")).toHaveCount(0);
 });
+
+test("profile site exposes no app routes", async ({ request }) => {
+  expect((await request.get("/login")).status()).toBe(404);
+  expect((await request.get("/api/auth/get-session")).status()).toBe(404);
+  expect((await request.get("/api/account/export")).status()).toBe(404);
+});
+
+test("legal pages render in both locales", async ({ page }) => {
+  await page.goto("/terms");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Điều khoản sử dụng");
+  await page.goto("/en/privacy");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Privacy Policy");
+});
