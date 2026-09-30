@@ -38,3 +38,20 @@ export function createMemoryRateLimiter(rule: RateLimitRule, now: () => number =
     },
   };
 }
+
+/**
+ * Uses `primary` (e.g. Upstash) and falls back to `fallback` (in-memory) when the store fails,
+ * so an outage neither crashes the caller nor removes rate limiting entirely.
+ */
+export function withFallback(primary: RateLimiter, fallback: RateLimiter, onError?: (error: unknown) => void): RateLimiter {
+  return {
+    async limit(key) {
+      try {
+        return await primary.limit(key);
+      } catch (error) {
+        onError?.(error);
+        return fallback.limit(key);
+      }
+    },
+  };
+}

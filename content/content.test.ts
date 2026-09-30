@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { appConfig } from "@/config/app";
@@ -35,6 +35,7 @@ describe("content", () => {
     // (skips TS generics/arrows such as `=> Promise<T>`)
     const jsxText = /(?<!=)>\s*\p{L}[^<>{}();=]*</u;
     for (const dir of ["components/marketing", "components/layout", "components/dashboard", "components/auth", "product/_example-notes/components"]) {
+      if (!existsSync(dir)) continue;
       for (const file of readdirSync(dir).filter((f) => f.endsWith(".tsx"))) {
         const source = readFileSync(path.join(dir, file), "utf8");
         expect(source, `${dir}/${file}`).not.toMatch(jsxText);

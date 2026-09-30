@@ -1,26 +1,8 @@
 @import "tailwindcss";
 
+/* Color values come from config/brand.ts (components/ui/theme.ts renders them in the root layout). */
 :root {
-  --background: #ffffff;
-  --foreground: #0f172a;
-  --muted: #f1f5f9;
-  --muted-foreground: #475569;
-  --border: #e2e8f0;
-  --primary: #2563eb;
-  --primary-foreground: #ffffff;
   --radius: 0.5rem;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0b1120;
-    --foreground: #e2e8f0;
-    --muted: #1e293b;
-    --muted-foreground: #94a3b8;
-    --border: #1e293b;
-    --primary: #60a5fa;
-    --primary-foreground: #0b1120;
-  }
 }
 
 @theme inline {

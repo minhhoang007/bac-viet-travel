@@ -8,6 +8,7 @@ import { brand } from "@/config/brand";
 import { getAppContent, getMarketingContent } from "@/content";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
+import { themeCss } from "@/components/ui/theme";
 import "../globals.css";
 
 export function generateStaticParams() {
@@ -32,6 +33,10 @@ export default async function LocaleLayout({
 
   return (
     <html lang={locale}>
+      <head>
+        {/* Theme variables from config/brand.ts (validated color values only). */}
+        <style dangerouslySetInnerHTML={{ __html: themeCss(brand.colors) }} />
+      </head>
       <body className="flex min-h-screen flex-col">
         <NextIntlClientProvider>
           <SiteHeader

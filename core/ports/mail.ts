@@ -1,6 +1,8 @@
 import { AppError } from "@/core/errors";
 
 export interface MailMessage {
+  /** Category for logs/metrics (e.g. "contact", "magic_link"). Logs never contain subject, body or recipient. */
+  kind: string;
   to: string;
   subject: string;
   text: string;

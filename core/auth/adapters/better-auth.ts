@@ -8,6 +8,7 @@ import { users } from "@/core/users/schema";
 import { accounts, sessions, verifications } from "../schema";
 
 export interface BetterAuthDeps {
+  appName: string;
   db: Db;
   mail: MailPort;
   secret: string;
@@ -21,7 +22,7 @@ export interface BetterAuthDeps {
 
 export function createBetterAuth(deps: BetterAuthDeps) {
   return betterAuth({
-    appName: "Minh Starter",
+    appName: deps.appName,
     baseURL: deps.baseURL,
     secret: deps.secret,
     trustedOrigins: [deps.baseURL],
@@ -61,6 +62,7 @@ export function createBetterAuth(deps: BetterAuthDeps) {
               expiresIn: 60 * 10,
               sendMagicLink: async ({ email, url }) => {
                 await deps.mail.send({
+                  kind: "magic_link",
                   to: email,
                   subject: "Đăng nhập / Sign in",
                   text: `Nhấn vào liên kết để đăng nhập (hết hạn sau 10 phút):\nClick the link to sign in (expires in 10 minutes):\n\n${url}`,

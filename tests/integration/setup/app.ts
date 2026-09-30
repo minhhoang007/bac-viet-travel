@@ -3,13 +3,17 @@ import { validateEnv } from "@/bootstrap/env";
 import { moduleManifests } from "@/bootstrap/modules";
 import { featureDefaults } from "@/config/features.defaults";
 import type { MailMessage, MailPort } from "@/core/ports/mail";
+import { createMemoryRateLimiter } from "@/core/security/rate-limit";
 import type { Db } from "@/db/client";
 import { TEST_DATABASE_URL } from "./db";
 
 export const BASE_URL = "http://localhost:3000";
 
-/** Container in profile "app" against the test DB, with a mail port that records messages. */
-export function testApp(db: Db) {
+/**
+ * Container in profile "app" against the test DB, with a mail port that records messages.
+ * Rate limits are relaxed unless `realRateLimits` is set (auth tests exercise the production limits).
+ */
+export function testApp(db: Db, options: { realRateLimits?: boolean } = {}) {
   const sent: MailMessage[] = [];
   const mail: MailPort = { send: async (m) => void sent.push(m) };
   const features = { ...featureDefaults, profile: "app" as const, email: true };
@@ -27,13 +31,15 @@ export function testApp(db: Db) {
     features,
     moduleManifests,
   );
-  const container = buildContainer(features, env, { mail, db });
+  const unlimited = createMemoryRateLimiter({ max: Number.MAX_SAFE_INTEGER, windowMs: 60_000 });
+  const authRateLimits = options.realRateLimits ? undefined : { perClient: unlimited, perRecipient: unlimited };
+  const container = buildContainer(features, env, { mail, db, authRateLimits });
   return { container, app: container.app!, sent };
 }
 
 /** Signs in through the real magic-link flow and returns request headers carrying the session cookie. */
 export async function signIn(t: ReturnType<typeof testApp>, email: string): Promise<Headers> {
-  await t.app.auth.signInMagicLink(email, "/dashboard", new Headers({ origin: BASE_URL }));
+  await t.app.auth.signInMagicLink({ email: email, callbackURL: "/dashboard", errorCallbackURL: "/login", clientKey: crypto.randomUUID() }, new Headers({ origin: BASE_URL }));
   const message = t.sent.findLast((m) => m.to === email);
   const url = message?.text.match(/https?:\/\/\S+/)?.[0];
   if (!url) throw new Error("magic link not sent");

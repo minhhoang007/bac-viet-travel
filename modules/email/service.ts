@@ -19,9 +19,10 @@ export function createEmailModule({ provider, from, logger }: EmailModuleDeps): 
   const send = async (message: MailMessage) => {
     try {
       const { id } = await provider.send({ ...message, from });
-      logger.info("email.sent", { id, subject: message.subject });
+      // Only id + kind: subject/body/recipient may contain personal data.
+      logger.info("email.sent", { id, kind: message.kind });
     } catch (error) {
-      logger.error("email.failed", { error, subject: message.subject });
+      logger.error("email.failed", { kind: message.kind, error: error instanceof Error ? error.message : "unknown" });
       throw new AppError("INTERNAL_ERROR", "Email delivery failed", { cause: error });
     }
   };

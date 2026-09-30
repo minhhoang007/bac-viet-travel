@@ -81,6 +81,20 @@ docs/           adr UPGRADING.md SETUP.md
 - Startup checks fail fast on: missing `requires`, wrong profile, `app` + magic link without `email`.
 - `bootstrap/` contains no business logic.
 
+### Profile "app" wiring (V0.2)
+
+| Piece | Location | Notes |
+|---|---|---|
+| DB handle | `db/client.ts` (`createDb`) | created lazily in `buildContainer`, profile app only |
+| Auth library | `core/auth/adapters/better-auth.ts` | the only file importing `better-auth`; wrapped by `AuthService` (`core/auth/service.ts`) |
+| Session helpers | `app/_lib/session.ts` | `requireAppServices()` (404 in site, forces request-time render), `requirePageUser()` (redirect to login), `currentUser()` |
+| Optimistic redirect | `proxy.ts` | cookie presence only — never authorization |
+| Account lifecycle | `core/account` | export aggregates `AccountDataExporter`s from the product manifest; delete relies on `ON DELETE CASCADE` |
+| Product entry point | `product/manifest.ts` | `createProduct(db)` → services, exporters; `productNav` |
+| Static pages | `getPublicEnv()` | reads only public values, so marketing pages prerender without secrets |
+| Theme | `config/brand.ts` → `components/ui/theme.ts` | CSS variables (light/dark) rendered in the root layout; `globals.css` holds no color values |
+| Rate limits | `core/security/rate-limit.ts` | `withFallback(upstash, memory)`; magic links limited per client + recipient in `AuthService` |
+
 ## 7. Module lifecycle ("really off")
 
 When a module is off:
@@ -117,6 +131,6 @@ Two Drizzle configs, two folders, two journal tables:
 | Config | Schema globs | Out | migrationsTable |
 |---|---|---|---|
 | `drizzle.starter.config.ts` | `core/**/schema.ts`, `modules/*/schema.ts` | `db/migrations/starter` | `__starter_migrations` |
-| `drizzle.product.config.ts` | `product/schema/*.ts` | `db/migrations/product` | `__product_migrations` |
+| `drizzle.product.config.ts` | `product/schema/*.ts` (+ `product/_example-notes/schema.ts` until `init:project` removes it) | `db/migrations/product` | `__product_migrations` |
 
 `pnpm db:migrate` runs starter first, then product. See [ADR-0004](docs/adr/0004-config-overrides-and-migrations.md).

@@ -27,8 +27,8 @@ export function createContactService(deps: {
         for (const issue of parsed.error.issues) {
           const field = issue.path[0] as keyof ContactInput;
           if (field === "website") {
-            // Bot filled the honeypot: pretend success, send nothing.
-            deps.logger.warn("contact.honeypot", { clientKey });
+            // Bot filled the honeypot: pretend success, send nothing. (No IP in logs: personal data.)
+            deps.logger.warn("contact.honeypot");
             return { status: "success" };
           }
           const code = (["required", "invalid_email", "too_long"] as const).find((c) => c === issue.message);
@@ -37,15 +37,23 @@ export function createContactService(deps: {
         return { status: "invalid", fieldErrors };
       }
 
-      const { success } = await deps.rateLimiter.limit(`contact:${clientKey}`);
-      if (!success) return { status: "rate_limited" };
+      try {
+        const { success } = await deps.rateLimiter.limit(`contact:${clientKey}`);
+        if (!success) return { status: "rate_limited" };
+      } catch (error) {
+        // Limiter unavailable: fail closed for this request, never crash the action.
+        deps.logger.error("contact.rate_limit_failed", { error });
+        return { status: "error" };
+      }
 
       const { name, email, message } = parsed.data;
       try {
         await deps.mail.send({
+          kind: "contact",
           to: deps.to,
           replyTo: email,
-          subject: `Contact form: ${name}`,
+          // Control characters stripped so user input can never add header lines.
+          subject: `Contact form: ${name.replace(/[\p{Cc}\p{Cf}]+/gu, " ").trim()}`,
           text: `From: ${name} <${email}>\n\n${message}`,
         });
         return { status: "success" };

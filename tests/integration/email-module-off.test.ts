@@ -21,7 +21,7 @@ describe("email module off", () => {
   it("wires no contact service and a mail port that refuses to send", async () => {
     const c = buildContainer(off, validateEnv({}, off, moduleManifests));
     expect(c.contact).toBeUndefined();
-    await expect(c.mail.send({ to: "a@b.c", subject: "s", text: "t" })).rejects.toMatchObject({ code: "MODULE_DISABLED" });
+    await expect(c.mail.send({ kind: "test", to: "a@b.c", subject: "s", text: "t" })).rejects.toMatchObject({ code: "MODULE_DISABLED" });
   });
 
   it("contact action responds 404 when the module is off", async () => {

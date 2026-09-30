@@ -49,6 +49,9 @@ export function validateEnv(
       problems.push('EMAIL_API_KEY: required when EMAIL_PROVIDER is "resend"');
     }
     if (options.auth) problems.push(...checkAuthConfig(features, options.auth, base.data));
+    if (extra.BETTER_AUTH_SECRET && extra.BETTER_AUTH_SECRET.length < 32) {
+      problems.push("BETTER_AUTH_SECRET: must be at least 32 characters (openssl rand -base64 32)");
+    }
   }
 
   if (problems.length > 0 || !base.success) {

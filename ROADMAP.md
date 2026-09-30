@@ -50,7 +50,7 @@ Trạng thái: ⬜ chưa làm · 🟨 đang làm · ✅ xong
 
 ---
 
-## V0.2 — Profile app + vertical slice ✅ (chờ review; task 10 deploy còn chờ)
+## V0.2 — Profile app + vertical slice ✅ (task 10 deploy còn chờ tài khoản Vercel/Neon/Resend)
 
 | # | Task | Kiểm chứng |
 |---|---|---|
@@ -69,14 +69,14 @@ Trạng thái: ⬜ chưa làm · 🟨 đang làm · ✅ xong
 
 ---
 
-## V1.0 — Release ⬜
+## V1.0 — Release 🟨 (`v1.0.0-rc.1`, chờ bài kiểm chứng 36.B-1/2)
 
-- [ ] `pnpm init:project` (đổi tên/brand, chọn profile, tắt module, xoá `_example-notes`).
-- [ ] Security review theo skill `security-review-starter` + [SECURITY.md](SECURITY.md).
-- [ ] Docs đầy đủ (README, ARCHITECTURE, AGENTS, SECURITY, UPGRADING).
+- [x] `pnpm init:project` (đổi tên/brand, chọn profile, bật module, xoá `_example-notes`) + `pnpm verify:init` (4 biến thể trên clone sạch).
+- [x] Security review → [docs/security/review-v1.0.md](docs/security/review-v1.0.md) (5 lỗi đã sửa, 5 rủi ro chấp nhận có ghi lại).
+- [x] Docs đầy đủ (README, ARCHITECTURE, AGENTS, SECURITY, UPGRADING, DEPLOY, REUSE-PROOFS).
 - [ ] **36.B-1:** hai project thật (một site, một app); ghi mọi chỗ phải sửa Core/Modules.
 - [ ] **36.B-2:** nâng cấp một project từ tag cũ lên tag mới theo [docs/UPGRADING.md](docs/UPGRADING.md).
-- [ ] **36.B-3:** cấu hình tối thiểu (mọi module tắt, không secret) build + chạy.
+- [x] **36.B-3:** cấu hình tối thiểu (mọi module tắt, không secret) build + chạy — CI `build-minimal` + E2E.
 
 > V1.0 phụ thuộc vào hai project thật. Trong lúc chờ, phát hành `v1.0.0-rc.N` để dùng.
 

@@ -25,6 +25,12 @@ describe("contact service", () => {
     );
   });
 
+  it("strips control characters from the subject (no header injection)", async () => {
+    const { service, mail } = setup();
+    await service.submit({ ...valid, name: "An\r\nBcc: victim@example.com" }, "ip1");
+    expect(mail.send).toHaveBeenCalledWith(expect.objectContaining({ subject: "Contact form: An Bcc: victim@example.com" }));
+  });
+
   it("returns field error codes for invalid input", async () => {
     const { service, mail } = setup();
     const result = await service.submit({ name: "", email: "nope", message: "x".repeat(5001) }, "ip1");
@@ -47,6 +53,33 @@ describe("contact service", () => {
     await service.submit(valid, "ip1");
     expect(await service.submit(valid, "ip1")).toEqual({ status: "rate_limited" });
     expect(await service.submit(valid, "ip2")).toEqual({ status: "success" });
+  });
+
+  it("returns an error state (no exception, no email) when the limiter throws", async () => {
+    const mail = { send: vi.fn(async () => {}) };
+    const service = createContactService({
+      mail,
+      rateLimiter: { limit: async () => { throw new Error("redis down"); } },
+      to: "owner@example.com",
+      logger: createLogger({ write: () => {} }),
+    });
+    expect(await service.submit(valid, "ip1")).toEqual({ status: "error" });
+    expect(mail.send).not.toHaveBeenCalled();
+  });
+
+  it("never logs the sender's name or email", async () => {
+    const lines: string[] = [];
+    const service = createContactService({
+      mail: { send: async () => { throw new Error("smtp down"); } },
+      rateLimiter: createMemoryRateLimiter({ max: 5, windowMs: 60_000 }),
+      to: "owner@example.com",
+      logger: createLogger({ write: (l) => lines.push(l) }),
+    });
+    const person = { name: "Zed Unique", email: "zed.unique@example.com", message: "hi" };
+    await service.submit({ ...person, website: "x" }, "203.0.113.9");
+    await service.submit(person, "203.0.113.9");
+    expect(lines.length).toBeGreaterThan(0);
+    expect(lines.join("\n")).not.toMatch(/Zed Unique|zed\.unique@example\.com|203\.0\.113\.9/);
   });
 
   it("reports a generic error when sending fails", async () => {

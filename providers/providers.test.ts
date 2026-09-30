@@ -8,7 +8,7 @@ describe("resend provider", () => {
   it("posts the message to the Resend API", async () => {
     const fetch = vi.fn(async () => json({ id: "re_1" }));
     const provider = resendProvider({ apiKey: "key", fetch });
-    const result = await provider.send({ from: "f@x.com", to: "t@x.com", subject: "s", text: "t", replyTo: "r@x.com" });
+    const result = await provider.send({ kind: "test", from: "f@x.com", to: "t@x.com", subject: "s", text: "t", replyTo: "r@x.com" });
 
     expect(result).toEqual({ id: "re_1" });
     const [url, init] = fetch.mock.calls[0] as unknown as [string, RequestInit];
@@ -19,7 +19,7 @@ describe("resend provider", () => {
 
   it("throws on non-2xx without leaking the key", async () => {
     const provider = resendProvider({ apiKey: "secret-key", fetch: async () => json({}, 403) });
-    await expect(provider.send({ from: "f", to: "t", subject: "s", text: "t" })).rejects.toThrow("Resend responded 403");
+    await expect(provider.send({ kind: "test", from: "f", to: "t", subject: "s", text: "t" })).rejects.toThrow("Resend responded 403");
   });
 });
 

@@ -30,4 +30,4 @@ Report vulnerabilities privately to the maintainer (hoangvanminh007@gmail.com). 
 - Agent-authored PRs touching protected paths require maintainer review (CODEOWNERS).
 
 ## Review checklist
-Use the `security-review-starter` skill before each release tag.
+Use the `security-review-starter` skill before each release tag. Reports and accepted risks: [docs/security/](docs/security/).

@@ -1,4 +1,5 @@
 import { AppError } from "@/core/errors";
+import type { RateLimiter } from "@/core/security/rate-limit";
 import type { BetterAuthInstance } from "./adapters/better-auth";
 
 export type Role = "user" | "admin";
@@ -20,7 +21,11 @@ export interface AuthService {
   requireUser(headers: Headers): Promise<AuthUser>;
   /** Throws AUTH_ERROR / PERMISSION_ERROR. */
   requireRole(headers: Headers, role: Role): Promise<AuthUser>;
-  signInMagicLink(email: string, callbackURL: string, headers: Headers): Promise<void>;
+  /**
+   * Rate limited per client and per recipient (throws RATE_LIMIT_ERROR). Server-side `auth.api.*` calls bypass
+   * Better Auth's HTTP limiter, so the limit lives here. errorCallbackURL receives `?error=...` for bad links.
+   */
+  signInMagicLink(input: MagicLinkRequest, headers: Headers): Promise<void>;
   /** Returns the provider URL to redirect to. */
   signInGoogle(callbackURL: string, headers: Headers): Promise<string>;
   signOut(headers: Headers): Promise<void>;
@@ -28,7 +33,24 @@ export interface AuthService {
   handler(request: Request): Promise<Response>;
 }
 
-export function createAuthService(auth: BetterAuthInstance, methods: AuthService["methods"]): AuthService {
+export interface MagicLinkRequest {
+  email: string;
+  callbackURL: string;
+  errorCallbackURL: string;
+  /** Client identifier for rate limiting (usually the IP). */
+  clientKey: string;
+}
+
+export interface AuthRateLimits {
+  perClient: RateLimiter;
+  perRecipient: RateLimiter;
+}
+
+export function createAuthService(
+  auth: BetterAuthInstance,
+  methods: AuthService["methods"],
+  limits: AuthRateLimits,
+): AuthService {
   const getUser = async (headers: Headers): Promise<AuthUser | null> => {
     const session = await auth.api.getSession({ headers });
     if (!session) return null;
@@ -52,8 +74,13 @@ export function createAuthService(auth: BetterAuthInstance, methods: AuthService
       if (role === "admin" && user.role !== "admin") throw new AppError("PERMISSION_ERROR");
       return user;
     },
-    async signInMagicLink(email, callbackURL, headers) {
-      await auth.api.signInMagicLink({ body: { email, callbackURL }, headers });
+    async signInMagicLink({ email, callbackURL, errorCallbackURL, clientKey }, headers) {
+      const [client, recipient] = await Promise.all([
+        limits.perClient.limit(`magic-link:client:${clientKey}`),
+        limits.perRecipient.limit(`magic-link:to:${email.trim().toLowerCase()}`),
+      ]);
+      if (!client.success || !recipient.success) throw new AppError("RATE_LIMIT_ERROR");
+      await auth.api.signInMagicLink({ body: { email, callbackURL, errorCallbackURL }, headers });
     },
     async signInGoogle(callbackURL, headers) {
       const res = await auth.api.signInSocial({ body: { provider: "google", callbackURL }, headers });
