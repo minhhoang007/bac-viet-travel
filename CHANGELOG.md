@@ -4,6 +4,18 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+### Added — V1.1 SaaS (ADR-0002, ADR-0005)
+- `jobs` module: Postgres job queue (SKIP LOCKED claim, lease, backoff, dead, dedupe, purge), `/api/jobs/run`, Vercel Cron (`vercel.json`).
+- `entitlements` module: time-bounded access grants, stacked periods, typed `can` / `getLimit`.
+- `billing` module: Polar subscriptions (checkout, customer portal, webhook state machine with sweeper and reconcile, official SDK verification) and VNPay one-time period purchases (signed payment URL, IPN, return page); pricing page and dashboard billing page.
+- Email retries through jobs when direct send fails.
+- Account deletion revokes live Polar subscriptions first (aborts if the provider fails); account export includes billing records; financial records are anonymized, not deleted.
+- `init:project --modules billing` (adds jobs + entitlements); starter migration `0001` (jobs, access_grants, webhook_events, subscriptions, billing_orders).
+- Tests: integration (jobs concurrency, webhooks duplicate/out-of-order/crash/dead, VNPay IPN codes), provider tests (Polar SDK signature, VNPay HMAC), browser E2E for billing with signed simulated provider traffic.
+
+### Changed
+- Module nav labels can be per-locale. Content: new `billing` section in `content/*/app.ts` (add it in projects).
+
 ## [1.0.0-rc.3] — 2026-09-30
 
 Upgrade friction found by upgrading Hạ Long Tours rc.1 → rc.2 (docs/REUSE-PROOFS.md U1–U4).

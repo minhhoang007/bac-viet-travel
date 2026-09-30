@@ -6,11 +6,12 @@ set -euo pipefail
 ROOT="$(git rev-parse --show-toplevel)"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
-export E2E_DATABASE_URL="${E2E_DATABASE_URL:-postgres://postgres:postgres@localhost:54329/minh_test}"
+export E2E_DATABASE_URL="${E2E_DATABASE_URL:-postgres://postgres:postgres@localhost:54329/minh_e2e}"
 
 git clone -q "$ROOT" "$WORK/app"
 cd "$WORK/app"
 pnpm install --frozen-lockfile --silent
-node scripts/init-project.ts --name "E2E App" --profile app --keep-example >/dev/null
+node scripts/init-project.ts --name "E2E App" --profile app --modules billing --keep-example >/dev/null
+DATABASE_URL="$E2E_DATABASE_URL" node scripts/db-reset-test.ts
 DATABASE_URL="$E2E_DATABASE_URL" node scripts/db-migrate.ts
 pnpm exec playwright test -c playwright.app.config.ts "$@"

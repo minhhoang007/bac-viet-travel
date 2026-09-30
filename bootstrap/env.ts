@@ -3,6 +3,7 @@ import { appProfileEnvKeys, baseEnvSchema, type BaseEnv } from "@/core/env";
 import { AppError } from "@/core/errors";
 import { isModuleEnabled, validateModules, type Features, type ModuleManifest } from "@/core/module";
 import { authConfig } from "@/config/auth";
+import { billingConfig } from "@/config/billing";
 import { features as projectFeatures } from "@/config/features";
 import { moduleManifests } from "./modules";
 
@@ -12,6 +13,7 @@ export type Env = BaseEnv & { extra: Record<string, string> };
 
 export interface ValidateOptions {
   auth?: AuthMethodsConfig;
+  billingProviders?: readonly string[];
 }
 
 /** Required env keys beyond the base schema, for the given profile and enabled modules only. */
@@ -49,6 +51,20 @@ export function validateEnv(
       problems.push('EMAIL_API_KEY: required when EMAIL_PROVIDER is "resend"');
     }
     if (options.auth) problems.push(...checkAuthConfig(features, options.auth, base.data));
+    if (features.billing) {
+      const needed: Record<string, readonly (keyof BaseEnv)[]> = {
+        polar: ["POLAR_ACCESS_TOKEN", "POLAR_WEBHOOK_SECRET", "POLAR_PRODUCT_PRO_MONTHLY", "POLAR_PRODUCT_PRO_YEARLY"],
+        vnpay: ["VNPAY_TMN_CODE", "VNPAY_HASH_SECRET"],
+      };
+      for (const provider of options.billingProviders ?? []) {
+        for (const key of needed[provider] ?? []) {
+          if (!base.data[key]) problems.push(`${key}: required when billing provider "${provider}" is enabled`);
+        }
+      }
+      if (base.data.NODE_ENV === "production" && base.data.POLAR_SERVER === "sandbox" && options.billingProviders?.includes("polar")) {
+        problems.push('POLAR_SERVER: "sandbox" in production — set POLAR_SERVER=production');
+      }
+    }
     if (extra.BETTER_AUTH_SECRET && extra.BETTER_AUTH_SECRET.length < 32) {
       problems.push("BETTER_AUTH_SECRET: must be at least 32 characters (openssl rand -base64 32)");
     }
@@ -64,7 +80,10 @@ let cached: Env | undefined;
 
 /** Lazily validated env for the running project. The only place that reads process.env. */
 export function getEnv(): Env {
-  return (cached ??= validateEnv(process.env, projectFeatures, moduleManifests, { auth: authConfig }));
+  return (cached ??= validateEnv(process.env, projectFeatures, moduleManifests, {
+    auth: authConfig,
+    billingProviders: billingConfig.providers,
+  }));
 }
 
 export interface PublicEnv {

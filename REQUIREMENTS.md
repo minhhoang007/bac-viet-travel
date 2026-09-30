@@ -33,9 +33,9 @@ Kubernetes, event bus, CRM, complex CMS, password auth, credit ledger, multiple 
 
 ## 4. Module DoD (required for "Stable")
 - **All modules:** off → no secrets → build OK → endpoints 404 → no jobs.
-- **jobs:** parallel claim no duplicates; expired lease re-claimed; backoff retry; `dead` after maxAttempts, visible in admin; scheduler meets ADR-0002 frequencies.
-- **billing/webhook:** test-mode checkout E2E; signature verified; duplicates processed once; out-of-order safe; crash after store → sweeper completes; reconcile works.
-- **entitlements:** subscription update/cancel reflected; wrong key is a type error.
+- **jobs** (✅ tested; scheduler frequency per ADR-0002): parallel claim no duplicates; expired lease re-claimed; backoff retry; `dead` after maxAttempts, visible in admin; scheduler meets ADR-0002 frequencies.
+- **billing/webhook** (✅ simulated; ⏳ real sandbox checkout): test-mode checkout E2E; signature verified; duplicates processed once; out-of-order safe; crash after store → sweeper completes; reconcile works.
+- **entitlements** (✅): subscription update/cancel reflected; wrong key is a type error.
 - **usage:** reserve/commit/release; parallel reserve never exceeds limit; duplicate idempotencyKey does not double count; crash after reserve handled; streaming disconnect commits used part.
 - **email:** real send in test env; magic link works; retry with jobs.
 - **storage:** upload/download/delete, expiring signed URL, MIME + size + `ownerId` + quota checks.

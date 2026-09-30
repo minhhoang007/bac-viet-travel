@@ -9,7 +9,8 @@ export type Profile = "site" | "app";
 export type Features = { profile: Profile } & Record<ModuleName, boolean>;
 
 export interface NavItem {
-  label: string;
+  /** Plain text, or per-locale labels ({ vi, en }). */
+  label: string | Record<string, string>;
   href: string;
 }
 

@@ -80,3 +80,7 @@ test("profile site exposes no app routes", async ({ request }) => {
   expect((await request.get("/api/auth/get-session")).status()).toBe(404);
   expect((await request.get("/api/account/export")).status()).toBe(404);
 });
+
+test("pricing page follows the billing module flag", async ({ request }) => {
+  expect((await request.get("/pricing")).status()).toBe(features.billing ? 200 : 404);
+});

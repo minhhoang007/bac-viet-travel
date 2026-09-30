@@ -37,6 +37,13 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
+### Next release (V1.1 SaaS, unreleased)
+- **Migration:** starter `0001` creates jobs, access_grants, webhook_events, subscriptions, billing_orders. Run `pnpm db:migrate` on a DB copy first.
+- **Content (add fields):** `billing` section in `content/*/app.ts` (see starter's `content/vi/app.ts`).
+- **New config:** `config/billing.ts` (project-owned): plans, prices, providers. Modules stay off until enabled in `config/features.ts`.
+- **New files:** `vercel.json` (daily cron). If you already had one, merge the `crons` entry.
+- **Account deletion** now runs registered hooks first (billing revokes subscriptions).
+
 ### v1.0.0-rc.3 (2026-09-30)
 - The starter version moved to `.starter-version`; the starter's `package.json` version is fixed at `0.0.0`.
   **One last conflict** on `package.json` `version`: keep yours. Later upgrades will not touch it.

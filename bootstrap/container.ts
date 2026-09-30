@@ -4,16 +4,22 @@ import { createBetterAuth } from "@/core/auth/adapters/better-auth";
 import { createContactService, type ContactService } from "@/core/contact";
 import { createLogger, type Logger } from "@/core/logger";
 import type { Features } from "@/core/module";
-import { noopMail, type MailPort } from "@/core/ports/mail";
+import { noopMail, type MailMessage, type MailPort } from "@/core/ports/mail";
 import { createMemoryRateLimiter, withFallback, type RateLimiter, type RateLimitRule } from "@/core/security/rate-limit";
 import { createDb, type Db } from "@/db/client";
-import { createEmailModule, type EmailProvider } from "@/modules/email";
+import { createBillingModule, PROCESS_WEBHOOK_JOB, type BillingModule, type OneTimePaymentProvider, type SubscriptionProvider } from "@/modules/billing";
+import { createEmailModule, SEND_EMAIL_JOB, type EmailProvider } from "@/modules/email";
+import { createEntitlementsModule, type EntitlementsModule } from "@/modules/entitlements";
+import { createJobsModule, type JobHandler, type JobsModule } from "@/modules/jobs";
+import { polarProvider } from "@/providers/billing/polar";
+import { vnpayProvider } from "@/providers/billing/vnpay";
 import { consoleEmailProvider } from "@/providers/email/console";
 import { resendProvider } from "@/providers/email/resend";
 import { upstashRateLimiter } from "@/providers/rate-limit/upstash";
 import { createProduct, type Product } from "@/product/manifest";
 import { appConfig } from "@/config/app";
 import { authConfig } from "@/config/auth";
+import { billingConfig } from "@/config/billing";
 import { features } from "@/config/features";
 import { getEnv, type Env } from "./env";
 
@@ -25,22 +31,26 @@ export interface AppServices {
   product: Product["services"];
 }
 
-/** Services wired for the running project. */
+/** Services wired for the running project. Optional members exist only when their module/profile is on. */
 export interface Container {
   features: Features;
   logger: Logger;
   mail: MailPort;
-  /** Only present when the email module is enabled. */
   contact?: ContactService;
-  /** Only present in profile "app". */
   app?: AppServices;
+  jobs?: JobsModule;
+  entitlements?: EntitlementsModule;
+  billing?: BillingModule;
 }
 
 export interface ContainerOverrides {
   rateLimiter?: RateLimiter;
   authRateLimits?: AuthRateLimits;
   mail?: MailPort;
+  emailProvider?: EmailProvider;
   db?: Db;
+  billingProviders?: { polar?: SubscriptionProvider; vnpay?: OneTimePaymentProvider };
+  now?: () => Date;
 }
 
 const CONTACT_LIMIT: RateLimitRule = { max: 5, windowMs: 10 * 60_000 };
@@ -56,12 +66,24 @@ export function getContainer(): Container {
 
 export function buildContainer(features: Features, env: Env, overrides: ContainerOverrides = {}): Container {
   const logger = createLogger({ level: env.LOG_LEVEL });
+  const db = features.profile === "app" ? (overrides.db ?? createDb(env.extra.DATABASE_URL!).db) : undefined;
 
-  const mail: MailPort =
-    overrides.mail ??
-    (features.email
-      ? createEmailModule({ provider: emailProvider(env, logger), from: env.extra.EMAIL_FROM!, logger }).asMailPort()
-      : noopMail);
+  // Jobs: handlers/periodic tasks are registered below by the modules that own them.
+  const handlers: Record<string, JobHandler> = {};
+  const periodic: Record<string, () => Promise<void>> = {};
+  const jobs = features.jobs && db ? createJobsModule({ db, logger, handlers, periodic }) : undefined;
+
+  const email = features.email
+    ? createEmailModule({
+        provider: overrides.emailProvider ?? emailProvider(env, logger),
+        from: env.extra.EMAIL_FROM!,
+        logger,
+        scheduleRetry: jobs ? (message) => jobs.enqueue(SEND_EMAIL_JOB, { message }, { maxAttempts: 6 }) : undefined,
+      })
+    : undefined;
+  if (email && jobs) handlers[SEND_EMAIL_JOB] = (payload) => email.sendNow(payload.message as MailMessage);
+
+  const mail: MailPort = overrides.mail ?? email?.asMailPort() ?? noopMail;
 
   const contact = features.email
     ? createContactService({
@@ -72,13 +94,55 @@ export function buildContainer(features: Features, env: Env, overrides: Containe
       })
     : undefined;
 
-  const app = features.profile === "app" ? buildApp(env, mail, logger, overrides) : undefined;
+  const entitlements = features.entitlements && db ? createEntitlementsModule(db, billingConfig.plans, overrides.now) : undefined;
 
-  return { features, logger, mail, contact, app };
+  const billing =
+    features.billing && db && jobs && entitlements
+      ? buildBilling(env, { db, logger, jobs, entitlements, overrides })
+      : undefined;
+  if (billing) {
+    handlers[PROCESS_WEBHOOK_JOB] = (payload) => billing.processWebhookEvent(String(payload.eventRowId));
+    periodic["billing.sweep_webhooks"] = async () => void (await billing.sweepWebhookEvents());
+    periodic["billing.reconcile"] = async () => void (await billing.reconcileSubscriptions());
+  }
+
+  const app = features.profile === "app" && db ? buildApp(env, mail, logger, overrides, db, billing) : undefined;
+
+  return { features, logger, mail, contact, app, jobs, entitlements, billing };
 }
 
-function buildApp(env: Env, mail: MailPort, logger: Logger, overrides: ContainerOverrides): AppServices {
-  const db = overrides.db ?? createDb(env.extra.DATABASE_URL!).db;
+function buildBilling(
+  env: Env,
+  ctx: { db: Db; logger: Logger; jobs: JobsModule; entitlements: EntitlementsModule; overrides: ContainerOverrides },
+): BillingModule {
+  const enabled = billingConfig.providers;
+  const polar = enabled.includes("polar")
+    ? (ctx.overrides.billingProviders?.polar ??
+      polarProvider({ accessToken: env.POLAR_ACCESS_TOKEN!, webhookSecret: env.POLAR_WEBHOOK_SECRET!, server: env.POLAR_SERVER }))
+    : undefined;
+  const vnpay = enabled.includes("vnpay")
+    ? (ctx.overrides.billingProviders?.vnpay ??
+      vnpayProvider({ tmnCode: env.VNPAY_TMN_CODE!, hashSecret: env.VNPAY_HASH_SECRET!, paymentUrl: env.VNPAY_PAYMENT_URL }))
+    : undefined;
+
+  return createBillingModule({
+    db: ctx.db,
+    logger: ctx.logger,
+    jobs: ctx.jobs,
+    entitlements: ctx.entitlements,
+    plans: billingConfig.plans,
+    periodDays: billingConfig.periodDays,
+    providers: enabled,
+    polar: polar && {
+      ...polar,
+      products: { pro: { month: env.POLAR_PRODUCT_PRO_MONTHLY ?? "", year: env.POLAR_PRODUCT_PRO_YEARLY ?? "" } },
+    },
+    vnpay,
+    now: ctx.overrides.now,
+  });
+}
+
+function buildApp(env: Env, mail: MailPort, logger: Logger, overrides: ContainerOverrides, db: Db, billing?: BillingModule): AppServices {
   const google =
     env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
       ? { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET }
@@ -103,7 +167,13 @@ function buildApp(env: Env, mail: MailPort, logger: Logger, overrides: Container
     },
   );
   const product = createProduct(db);
-  return { db, auth, account: createAccountService(db, product.exporters), product: product.services };
+  const account = createAccountService(
+    db,
+    [...product.exporters, ...(billing ? [{ name: "billing", export: (userId: string) => billing.exportForUser(userId) }] : [])],
+    // Never delete an account that would keep being charged.
+    billing ? [async (userId: string) => void (await billing.revokeSubscriptionsForUser(userId))] : [],
+  );
+  return { db, auth, account, product: product.services };
 }
 
 function emailProvider(env: Env, logger: Logger): EmailProvider {

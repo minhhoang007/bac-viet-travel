@@ -25,6 +25,19 @@ The first version of this report missed the findings below; an independent revie
 | 8 | Medium (P2) | An Upstash failure threw out of the contact action (limiter call outside try/catch), so users got an error page instead of the prepared message | `withFallback(upstash, memory)` for every shared limiter (logs `ratelimit.store_failed`); contact service also catches limiter errors and returns `{ status: "error" }` without sending | `core/security/rate-limit.test.ts`, `core/contact/contact.test.ts` "limiter throws" |
 | 9 | Medium (P2) | `config/brand.ts` colors had no effect (hard-coded in `globals.css`), forcing projects to edit a starter-owned file | Theme variables are generated from `brand.colors` (light/dark) by `components/ui/theme.ts` in the root layout; values are validated so config cannot inject CSS | `components/ui/theme.test.ts`, E2E "theme colors come from config" |
 
+## V1.1 billing addendum (2026-09-30)
+
+| Check | Status | Evidence |
+|---|---|---|
+| Webhook signature on raw body, replay window | ok | official Polar SDK; forged / tampered / stale timestamp rejected (`providers/billing/billing-providers.test.ts`) |
+| Webhook idempotency, ordering, crash safety | ok | `tests/integration/billing.int.test.ts` |
+| VNPay IPN: signature, TmnCode, amount, idempotency | ok | codes 97/01/04/02/00 tested; forged IPN in E2E |
+| Access never granted from the browser return URL | ok | return page reads status only |
+| Cron endpoint auth | ok | timing-safe Bearer check; 401 tests |
+| Deleting an account cannot leave a paying subscription | ok | revoke-first hook; deletion aborts if the provider fails |
+| Personal data at rest in jobs | ok with note | queued emails live in `jobs.payload` until purged (7 days succeeded, 30 days dead) |
+| Real-money flows | ⏳ | sandbox purchase per provider required before go-live (DEPLOY.md) |
+
 ## Checklist result
 
 | # | Item | Status | Evidence / note |

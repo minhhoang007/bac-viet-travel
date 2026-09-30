@@ -87,11 +87,24 @@ Trạng thái: ⬜ chưa làm · 🟨 đang làm · ✅ xong
 
 ---
 
-## V1.1 — SaaS ⬜
+## V1.1 — SaaS ✅ (chờ review; không có module usage theo quyết định 2026-09-30)
+
+- [x] ADR-0002 (Vercel: `after()` + cron hằng ngày) và ADR-0005 (Polar quốc tế + VNPay Việt Nam, quyền có thời hạn).
+- [x] `jobs`: claim nguyên tử, lease, retry backoff, dead, dedupe, dọn job cũ; `/api/jobs/run` + Vercel Cron.
+- [x] `entitlements`: grant có thời hạn, cộng dồn kỳ, `can/getLimit` kiểm tra kiểu.
+- [x] `billing`: Polar (checkout, portal, webhook state machine, sweeper, reconcile), VNPay (URL ký HMAC-SHA512, IPN, trang trả về).
+- [x] Email: gửi trực tiếp, lỗi thì xếp job retry.
+- [x] Xoá tài khoản huỷ subscription Polar trước; export có dữ liệu thanh toán; bản ghi tài chính được ẩn danh.
+- [ ] Thanh toán thật trên sandbox Polar + VNPay (cần tài khoản của chủ repo).
+- [ ] `usage` (giới hạn sử dụng): hoãn theo quyết định.
+
+<details><summary>Kế hoạch gốc</summary>
+
 
 Thứ tự: ADR-0002 (hosting/scheduler) → `jobs` → plans → `entitlements` → `billing` + webhook state machine → `usage` → email qua jobs.
 Thêm `check-module-deps.ts` và fixture đầy đủ ở phase này (khi đã có nhiều module thật).
 Mỗi module chỉ được gắn nhãn **Stable** khi đạt Module DoD ([REQUIREMENTS.md](REQUIREMENTS.md) §4).
+</details>
 
 ## V1.2 — Vận hành ⬜
 `admin` (audit log), `analytics` (consent), `storage`.
