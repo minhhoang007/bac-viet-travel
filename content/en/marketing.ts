@@ -2,35 +2,37 @@ import type { MarketingContent } from "../types";
 
 export const marketing: MarketingContent = {
   meta: {
-    title: "A starter for websites and web apps",
-    description: "Minh Starter helps you ship service websites and web apps quickly, reliably and maintainably.",
+    title: "Ha Long Bay, Ninh Binh and Sapa tours from Hanoi",
+    description: "Bac Viet Travel: Ha Long Bay cruises, Trang An and Mua Cave, Sapa trekking. Transparent prices, small groups, local guides.",
   },
   nav: { switchLocale: "Tiếng Việt" },
   hero: {
-    eyebrow: "Minh Web App Starter",
-    title: "Build the product, not the plumbing",
-    subtitle: "Config, content, SEO, security and architecture are ready. Focus on what makes your product unique.",
-    primaryCta: "Get started",
-    primaryHref: "#contact",
-    secondaryCta: "See features",
-    secondaryHref: "#features",
+    eyebrow: "Bac Viet Travel · Northern Vietnam tours from Hanoi",
+    title: "Discover Ha Long Bay, Ninh Binh and Sapa your way",
+    subtitle: "Overnight cruises on the bay, boat rides through the caves of Trang An, treks across rice terraces. Small groups, all-inclusive prices, 24/7 support on WhatsApp.",
+    primaryCta: "See tours",
+    primaryHref: "/tours",
+    secondaryCta: "Ask us",
+    secondaryHref: "#contact",
   },
   features: {
-    title: "What's included",
+    title: "Booking is easy",
     items: [
-      { title: "Multilingual", description: "Vietnamese and English, with content separated from UI." },
-      { title: "SEO ready", description: "Metadata, sitemap, robots and hreflang generated for you." },
-      { title: "Verified architecture", description: "Layering rules are checked automatically in CI." },
+      { title: "1. Choose a tour", description: "Detailed itineraries with clear inclusions and exclusions." },
+      { title: "2. Send a request", description: "Use the form or message us on WhatsApp. No payment needed now." },
+      { title: "3. Confirm", description: "We reply within 24 hours to confirm the date and price." },
     ],
   },
   faq: {
     title: "Frequently asked questions",
     items: [
-      { question: "Who is this starter for?", answer: "Service websites and web apps that need a stable, reusable foundation." },
-      { question: "Do I need a database?", answer: "Not for the site profile. Only the app profile needs a database and login." },
+      { question: "Do you pick up from my hotel?", answer: "Yes. All tours include free pick-up from hotels in Hanoi's Old Quarter." },
+      { question: "When do I pay?", answer: "Once we confirm your date, a 30% deposit by bank transfer or card link; the rest before departure." },
+      { question: "What is the cancellation policy?", answer: "Free cancellation up to 7 days before departure. Weather cancellations by the authorities are rescheduled or refunded." },
+      { question: "Do children pay full price?", answer: "Children under 5 travel free; ages 5–10 pay 75% of the adult price (depending on the tour)." },
     ],
   },
-  cta: { title: "Ready to start?", subtitle: "Clone the starter, adjust the config and build your product.", button: "Contact" },
+  cta: { title: "Want a tailor-made itinerary?", subtitle: "Send us a message or chat with us on WhatsApp.", button: "Contact" },
   contact: {
     name: "Name",
     email: "Email",

@@ -1,6 +1,7 @@
 import type { AccountDataExporter } from "@/core/account";
 import type { Locale } from "@/config/app";
 import type { Db } from "@/db/client";
+import { getTourCatalog } from "./tours/catalog";
 
 /** The only file bootstrap/ imports from product/. Declares product services, menu and account-data exporters. */
 export function createProduct(db: Db) {
@@ -18,6 +19,6 @@ export interface ProductNavItem {
 export const productNav: ProductNavItem[] = [];
 
 /** Public product pages for sitemap.xml (paths without locale prefix). */
-export const sitemapPaths: string[] = [];
+export const sitemapPaths: string[] = ["/tours", ...getTourCatalog().slugs().map((slug) => `/tours/${slug}`)];
 
 export type Product = ReturnType<typeof createProduct>;

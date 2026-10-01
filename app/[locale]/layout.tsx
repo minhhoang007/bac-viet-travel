@@ -13,6 +13,7 @@ import { themeCss } from "@/components/ui/theme";
 import { AnalyticsTracker } from "@/components/analytics/tracker";
 import { ConsentBanner } from "@/components/analytics/consent-banner";
 import { features } from "@/config/features";
+import { ProductLayoutExtras } from "@/product/layout";
 import "../globals.css";
 
 export function generateStaticParams() {
@@ -62,6 +63,7 @@ export default async function LocaleLayout({
               { label: legal.privacy, href: localePath(locale, "/privacy") },
             ]}
           />
+          <ProductLayoutExtras locale={locale as Locale} />
           {features.analytics && (
             <>
               <AnalyticsTracker />

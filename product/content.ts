@@ -1,0 +1,178 @@
+import type { Locale } from "@/config/app";
+import type { Destination } from "./tours/catalog";
+
+/** Project-owned UI text for tour pages (starter text lives in content/). */
+const vi = {
+  nav: { tours: "Tour" },
+  destinations: {
+    "ha-long": { name: "Vịnh Hạ Long", tagline: "Di sản thiên nhiên thế giới, ngủ đêm trên du thuyền giữa hàng nghìn đảo đá vôi." },
+    "ninh-binh": { name: "Ninh Bình", tagline: "“Hạ Long trên cạn”: đi thuyền qua hang động Tràng An, ngắm Tam Cốc từ đỉnh Hang Múa." },
+    sapa: { name: "Sapa", tagline: "Ruộng bậc thang, bản làng dân tộc và đỉnh Fansipan 3.143 m." },
+  } satisfies Record<Destination, { name: string; tagline: string }>,
+  home: {
+    destinationsTitle: "Điểm đến miền Bắc",
+    featuredTitle: "Tour được đặt nhiều",
+    whyTitle: "Vì sao chọn Bắc Việt Travel",
+    why: [
+      { title: "Giá minh bạch", description: "Báo giá trọn gói, ghi rõ bao gồm và không bao gồm. Không phát sinh." },
+      { title: "Hướng dẫn viên địa phương", description: "Người bản địa dẫn đường, nói tiếng Việt và tiếng Anh." },
+      { title: "Nhóm nhỏ", description: "Tối đa 12–16 khách mỗi đoàn để chuyến đi thoải mái." },
+      { title: "Hỗ trợ 24/7", description: "Liên hệ ngay qua Zalo, WhatsApp hoặc hotline trong suốt chuyến đi." },
+    ],
+    reviewsTitle: "Khách hàng nói gì",
+    reviews: [
+      { name: "Chị Lan, Hà Nội", text: "Du thuyền sạch, đồ ăn ngon, hướng dẫn viên nhiệt tình. Cả nhà rất hài lòng." },
+      { name: "Mark, Australia", text: "The Trang An boat ride was the highlight of our trip to Vietnam. Great organisation." },
+      { name: "Anh Tuấn, TP.HCM", text: "Trek Sapa vừa sức, homestay ấm cúng, cảnh ruộng bậc thang tuyệt đẹp." },
+    ],
+    viewAll: "Xem tất cả tour",
+  },
+  tours: {
+    title: "Tour du lịch miền Bắc",
+    subtitle: "Hạ Long, Ninh Bình, Sapa: khởi hành từ Hà Nội, có xe đón tận nơi.",
+    from: "Từ",
+    perPerson: "/ khách",
+    days: (d: number, n: number) => (n > 0 ? `${d} ngày ${n} đêm` : `${d} ngày`),
+    viewTour: "Xem chi tiết",
+    highlights: "Điểm nổi bật",
+    itinerary: "Lịch trình",
+    day: "Ngày",
+    includes: "Giá bao gồm",
+    excludes: "Không bao gồm",
+    departure: "Khởi hành",
+    groupSize: "Quy mô đoàn",
+    duration: "Thời gian",
+    related: "Tour cùng điểm đến",
+    priceNote: "Giá tham khảo cho đoàn 2 khách trở lên; giá cuối cùng tuỳ ngày khởi hành.",
+    allDestinations: "Tất cả",
+  },
+  inquiry: {
+    title: "Gửi yêu cầu đặt tour",
+    subtitle: "Miễn phí, không cần thanh toán trước. Chúng tôi liên hệ lại trong 24 giờ.",
+    name: "Họ tên",
+    email: "Email",
+    phone: "Số điện thoại / WhatsApp",
+    channel: "Liên hệ với tôi qua",
+    channels: { zalo: "Zalo", whatsapp: "WhatsApp", phone: "Điện thoại", email: "Email" },
+    date: "Ngày khởi hành",
+    adults: "Người lớn",
+    children: "Trẻ em",
+    note: "Ghi chú (yêu cầu ăn uống, đón tại khách sạn…)",
+    submit: "Gửi yêu cầu",
+    sending: "Đang gửi…",
+    success: "Đã gửi! Chúng tôi sẽ liên hệ lại trong 24 giờ. Email xác nhận đã được gửi tới hộp thư của bạn.",
+    errors: {
+      required: "Vui lòng nhập thông tin này.",
+      invalid_email: "Email không hợp lệ.",
+      invalid_phone: "Số điện thoại không hợp lệ.",
+      invalid_date: "Ngày không hợp lệ.",
+      past_date: "Vui lòng chọn ngày từ hôm nay trở đi.",
+      invalid_number: "Số lượng không hợp lệ.",
+      too_long: "Nội dung quá dài.",
+      rate_limited: "Bạn gửi quá nhiều lần. Vui lòng thử lại sau ít phút hoặc nhắn Zalo cho chúng tôi.",
+      error: "Không gửi được. Vui lòng thử lại hoặc liên hệ qua Zalo / hotline.",
+    },
+  },
+  contact: {
+    title: "Liên hệ nhanh",
+    zalo: "Chat Zalo",
+    whatsapp: "WhatsApp",
+    call: "Gọi hotline",
+    email: "Email",
+    whatsappText: (tour?: string) => (tour ? `Xin chào, tôi muốn hỏi về tour "${tour}".` : "Xin chào, tôi muốn được tư vấn tour."),
+    license: "Giấy phép lữ hành",
+  },
+  credits: { title: "Nguồn ảnh", text: "Ảnh minh hoạ từ Unsplash (Unsplash License)." },
+};
+
+type ProductContent = typeof vi;
+
+const en: ProductContent = {
+  nav: { tours: "Tours" },
+  destinations: {
+    "ha-long": { name: "Ha Long Bay", tagline: "UNESCO World Heritage: sleep on a cruise among thousands of limestone islands." },
+    "ninh-binh": { name: "Ninh Binh", tagline: "“Ha Long Bay on land”: row through the caves of Trang An and climb Mua Cave for the view." },
+    sapa: { name: "Sapa", tagline: "Rice terraces, ethnic minority villages and Fansipan, the 3,143 m roof of Indochina." },
+  },
+  home: {
+    destinationsTitle: "Northern Vietnam destinations",
+    featuredTitle: "Most booked tours",
+    whyTitle: "Why travel with Bac Viet Travel",
+    why: [
+      { title: "Transparent prices", description: "All-inclusive quotes with clear inclusions and exclusions. No surprises." },
+      { title: "Local guides", description: "Guides from the region, speaking Vietnamese and English." },
+      { title: "Small groups", description: "12–16 travellers at most, for a relaxed trip." },
+      { title: "24/7 support", description: "Reach us on WhatsApp, Zalo or by phone during your trip." },
+    ],
+    reviewsTitle: "What travellers say",
+    reviews: [
+      { name: "Mark, Australia", text: "The Trang An boat ride was the highlight of our trip to Vietnam. Great organisation." },
+      { name: "Lan, Hanoi", text: "Clean cruise, great food and a very friendly guide. The whole family loved it." },
+      { name: "Sophie, France", text: "The Sapa trek was the right level and the homestay was so welcoming." },
+    ],
+    viewAll: "See all tours",
+  },
+  tours: {
+    title: "Northern Vietnam tours",
+    subtitle: "Ha Long Bay, Ninh Binh and Sapa: departing from Hanoi with hotel pick-up.",
+    from: "From",
+    perPerson: "/ person",
+    days: (d: number, n: number) => (n > 0 ? `${d} days ${n} night${n > 1 ? "s" : ""}` : `${d} day${d > 1 ? "s" : ""}`),
+    viewTour: "View tour",
+    highlights: "Highlights",
+    itinerary: "Itinerary",
+    day: "Day",
+    includes: "Included",
+    excludes: "Not included",
+    departure: "Departure",
+    groupSize: "Group size",
+    duration: "Duration",
+    related: "More tours in this destination",
+    priceNote: "Indicative price for groups of 2 or more; final price depends on the departure date.",
+    allDestinations: "All",
+  },
+  inquiry: {
+    title: "Request this tour",
+    subtitle: "Free and no payment needed now. We reply within 24 hours.",
+    name: "Full name",
+    email: "Email",
+    phone: "Phone / WhatsApp",
+    channel: "Contact me via",
+    channels: { zalo: "Zalo", whatsapp: "WhatsApp", phone: "Phone call", email: "Email" },
+    date: "Departure date",
+    adults: "Adults",
+    children: "Children",
+    note: "Notes (dietary needs, hotel pick-up…)",
+    submit: "Send request",
+    sending: "Sending…",
+    success: "Sent! We will get back to you within 24 hours. A confirmation email is on its way.",
+    errors: {
+      required: "Please fill in this field.",
+      invalid_email: "Invalid email address.",
+      invalid_phone: "Invalid phone number.",
+      invalid_date: "Invalid date.",
+      past_date: "Please choose today or a later date.",
+      invalid_number: "Invalid number.",
+      too_long: "Too long.",
+      rate_limited: "Too many requests. Please try again in a few minutes or message us on WhatsApp.",
+      error: "Could not send. Please try again or contact us on WhatsApp.",
+    },
+  },
+  contact: {
+    title: "Quick contact",
+    zalo: "Zalo",
+    whatsapp: "Chat on WhatsApp",
+    call: "Call us",
+    email: "Email",
+    whatsappText: (tour?: string) => (tour ? `Hello, I would like to ask about the tour "${tour}".` : "Hello, I would like some advice on a tour."),
+    license: "Tour operator licence",
+  },
+  credits: { title: "Photo credits", text: "Illustrative photos from Unsplash (Unsplash License)." },
+};
+
+const content: Record<Locale, ProductContent> = { vi, en };
+
+export function getProductContent(locale: Locale): ProductContent {
+  return content[locale];
+}
+export type { ProductContent };

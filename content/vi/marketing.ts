@@ -2,35 +2,37 @@ import type { MarketingContent } from "../types";
 
 export const marketing: MarketingContent = {
   meta: {
-    title: "Nền tảng khởi đầu cho website và web app",
-    description: "Minh Starter giúp dựng website dịch vụ và web app nhanh, ổn định, dễ bảo trì.",
+    title: "Tour Hạ Long, Ninh Bình, Sapa khởi hành từ Hà Nội",
+    description: "Bắc Việt Travel: tour du thuyền Hạ Long, Tràng An – Hang Múa, trekking Sapa. Giá minh bạch, nhóm nhỏ, hướng dẫn viên địa phương.",
   },
   nav: { switchLocale: "English" },
   hero: {
-    eyebrow: "Minh Web App Starter",
-    title: "Xây sản phẩm, không dựng lại hạ tầng",
-    subtitle: "Cấu hình, nội dung, SEO, bảo mật và kiến trúc đã sẵn sàng. Bạn chỉ tập trung vào phần sản phẩm.",
-    primaryCta: "Bắt đầu",
-    primaryHref: "#contact",
-    secondaryCta: "Xem tính năng",
-    secondaryHref: "#features",
+    eyebrow: "Bắc Việt Travel · Tour miền Bắc từ Hà Nội",
+    title: "Khám phá Hạ Long, Ninh Bình và Sapa theo cách của bạn",
+    subtitle: "Du thuyền ngủ đêm trên vịnh, thuyền qua hang động Tràng An, trekking ruộng bậc thang. Nhóm nhỏ, giá trọn gói, hỗ trợ 24/7 qua Zalo.",
+    primaryCta: "Xem tour",
+    primaryHref: "/tours",
+    secondaryCta: "Nhận tư vấn",
+    secondaryHref: "#contact",
   },
   features: {
-    title: "Có sẵn những gì",
+    title: "Đặt tour dễ dàng",
     items: [
-      { title: "Đa ngôn ngữ", description: "Tiếng Việt và tiếng Anh, nội dung tách khỏi giao diện." },
-      { title: "SEO chuẩn", description: "Metadata, sitemap, robots, hreflang được sinh tự động." },
-      { title: "Kiến trúc có kiểm chứng", description: "Luật phân tầng được kiểm tra tự động trong CI." },
+      { title: "1. Chọn tour", description: "Xem lịch trình chi tiết, giá bao gồm và không bao gồm." },
+      { title: "2. Gửi yêu cầu", description: "Điền form hoặc nhắn Zalo / WhatsApp, không cần thanh toán trước." },
+      { title: "3. Xác nhận", description: "Chúng tôi gọi lại trong 24 giờ để chốt lịch và giá." },
     ],
   },
   faq: {
     title: "Câu hỏi thường gặp",
     items: [
-      { question: "Starter này dành cho ai?", answer: "Cho website dịch vụ và web app cần nền tảng ổn định để tái sử dụng." },
-      { question: "Có cần database không?", answer: "Không với profile site. Profile app mới cần database và đăng nhập." },
+      { question: "Tour có đón tại khách sạn không?", answer: "Có. Tất cả tour đón miễn phí tại khách sạn hoặc nhà riêng trong khu phố cổ Hà Nội." },
+      { question: "Khi nào phải thanh toán?", answer: "Sau khi chúng tôi xác nhận lịch, bạn đặt cọc 30% qua chuyển khoản; phần còn lại thanh toán trước ngày khởi hành." },
+      { question: "Huỷ tour có mất phí không?", answer: "Huỷ trước 7 ngày được hoàn cọc 100%. Huỷ do thời tiết xấu theo thông báo của cơ quan chức năng được đổi ngày hoặc hoàn tiền." },
+      { question: "Trẻ em tính giá thế nào?", answer: "Trẻ dưới 5 tuổi miễn phí, 5–10 tuổi tính 75% giá người lớn (tuỳ tour)." },
     ],
   },
-  cta: { title: "Sẵn sàng bắt đầu?", subtitle: "Clone starter, chỉnh cấu hình và xây sản phẩm của bạn.", button: "Liên hệ" },
+  cta: { title: "Cần tư vấn lịch trình riêng?", subtitle: "Gửi tin nhắn cho chúng tôi, hoặc chat ngay qua Zalo.", button: "Liên hệ" },
   contact: {
     name: "Họ tên",
     email: "Email",
