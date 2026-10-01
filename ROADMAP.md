@@ -115,8 +115,16 @@ Mỗi module chỉ được gắn nhãn **Stable** khi đạt Module DoD ([REQUI
 - [x] Dev/CI: SeaweedFS (S3) trong docker compose.
 - [ ] Chạy thật trên R2 (cần tài khoản Cloudflare của chủ repo).
 
-## V1.x — Tuỳ chọn ⬜
-`ai`, `blog`, CLI `create-minh-app`.
+## V1.x — Tuỳ chọn 🟨
+
+### Blog ✅ (chờ review)
+- [x] ADR-0007: bài viết là file MDX trong `content/blog/<locale>/`, frontmatter kiểm tra bằng zod (sai → build lỗi).
+- [x] Trang danh sách (phân trang), bài viết, tag; tất cả prerender tĩnh, slug lạ → 404.
+- [x] SEO: metadata + OpenGraph article, JSON-LD BlogPosting, hreflang theo `translationKey`, sitemap, RSS mỗi ngôn ngữ.
+- [x] Bài nháp chỉ hiện khi dev; link "Blog" trong header khi bật module; 2 bài mẫu (xoá khi `init:project` trừ `--keep-example`).
+
+### Còn lại ⬜
+`ai` (+ `usage`), CLI `create-minh-app`.
 
 ---
 

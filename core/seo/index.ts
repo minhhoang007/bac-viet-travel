@@ -1,2 +1,2 @@
 export { createMetadata, localizedUrl, type SeoSite, type PageSeo } from "./metadata";
-export { serializeJsonLd } from "./json-ld";
+export { serializeJsonLd, articleJsonLd, type ArticleLd } from "./json-ld";

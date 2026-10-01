@@ -2,6 +2,7 @@ import type { ModuleManifest } from "@/core/module";
 import { adminModule } from "@/modules/admin";
 import { analyticsModule } from "@/modules/analytics";
 import { billingModule } from "@/modules/billing";
+import { blogModule } from "@/modules/blog";
 import { emailModule } from "@/modules/email";
 import { entitlementsModule } from "@/modules/entitlements";
 import { jobsModule } from "@/modules/jobs";
@@ -16,4 +17,5 @@ export const moduleManifests: readonly ModuleManifest[] = [
   adminModule,
   analyticsModule,
   storageModule,
+  blogModule,
 ];

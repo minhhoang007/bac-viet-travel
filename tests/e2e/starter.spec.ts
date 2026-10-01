@@ -94,3 +94,10 @@ test("ops modules follow their flags (admin, analytics, storage)", async ({ page
     await expect(page.getByRole("dialog")).toHaveCount(0); // no consent banner without analytics
   }
 });
+
+test("blog follows the module flag", async ({ request }) => {
+  test.skip(features.blog, "blog on: covered by tests/e2e-app/blog.spec.ts");
+  expect((await request.get("/blog")).status()).toBe(404);
+  expect((await request.get("/en/blog/rss.xml")).status()).toBe(404);
+  expect(await (await request.get("/sitemap.xml")).text()).not.toContain("/blog");
+});

@@ -37,6 +37,11 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
+### Next release (blog, unreleased)
+- **Content (add fields):** `blog` section in `content/*/app.ts`.
+- **New files:** `config/blog.ts` (project-owned), `content/blog/` sample posts (delete them, or keep as a template).
+- No migration. The module stays off until `blog: true` in `config/features.ts`.
+
 ### v1.0.0-rc.5 (2026-10-01) — V1.2 ops
 - **Migration:** starter `0002` creates audit_logs, analytics_events, files. Run `pnpm db:migrate` on a DB copy first.
 - **Content (add fields):** `files`, `consent`, `admin` sections and `dashboard.nav.admin` in `content/*/app.ts`.

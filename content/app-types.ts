@@ -107,4 +107,20 @@ export interface AppContent {
     done: string;
     failed: string;
   };
+  blog: {
+    nav: string;
+    title: string;
+    subtitle: string;
+    /** "{n}" is replaced with the number of minutes. */
+    readingTime: string;
+    tagTitle: string;
+    tags: string;
+    empty: string;
+    previous: string;
+    next: string;
+    allPosts: string;
+    updated: string;
+    otherLanguage: string;
+    rss: string;
+  };
 }

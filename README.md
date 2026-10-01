@@ -81,3 +81,4 @@ Vercel + Postgres (Neon) + Resend. See [docs/DEPLOY.md](docs/DEPLOY.md).
 
 **Create → Configure → Enable Modules → Build Product → Test → Deploy.**
 The starter proves its value on the second reuse and the first upgrade, not by feature count.
+- [docs/BLOG.md](docs/BLOG.md) — writing blog posts (MDX)

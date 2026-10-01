@@ -10,7 +10,7 @@ import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 
 const MODULES = ["email", "jobs", "entitlements", "billing", "usage", "storage", "analytics", "admin", "ai", "blog"];
-const AVAILABLE = ["email", "jobs", "entitlements", "billing", "admin", "analytics", "storage"]; // modules implemented in this starter version
+const AVAILABLE = ["email", "jobs", "entitlements", "billing", "admin", "analytics", "storage", "blog"]; // modules implemented in this starter version
 
 const { values } = parseArgs({
   options: {
@@ -112,6 +112,8 @@ export const seoConfig = { ...seoDefaults, titleTemplate: ${q(`%s | ${name}`)} }
 
 // ── Remove the example vertical slice ─────────────────────────────────
 if (!values["keep-example"]) {
+  remove("content/blog/vi/chao-mung-den-voi-blog.mdx");
+  remove("content/blog/en/welcome-to-the-blog.mdx");
   remove("product/_example-notes");
   remove("app/[locale]/dashboard/product");
   remove("db/migrations/product");

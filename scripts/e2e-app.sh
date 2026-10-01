@@ -11,7 +11,7 @@ export E2E_DATABASE_URL="${E2E_DATABASE_URL:-postgres://postgres:postgres@localh
 git clone -q "$ROOT" "$WORK/app"
 cd "$WORK/app"
 pnpm install --frozen-lockfile --silent
-node scripts/init-project.ts --name "E2E App" --profile app --modules billing,admin,analytics,storage --keep-example >/dev/null
+node scripts/init-project.ts --name "E2E App" --profile app --modules billing,admin,analytics,storage,blog --keep-example >/dev/null
 DATABASE_URL="$E2E_DATABASE_URL" node scripts/db-reset-test.ts
 DATABASE_URL="$E2E_DATABASE_URL" node scripts/db-migrate.ts
 TEST_STORAGE_ENDPOINT="${E2E_STORAGE_ENDPOINT:-http://localhost:58333}" node --input-type=module -e "await (await import('./tests/integration/setup/storage.ts')).ensureBucket('minh-e2e')"

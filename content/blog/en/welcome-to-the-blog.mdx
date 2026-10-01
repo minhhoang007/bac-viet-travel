@@ -1,0 +1,29 @@
+---
+title: "Welcome to the blog"
+description: "Sample post: how to write posts in MDX with this starter, with frontmatter, images, tables and callouts."
+date: "2026-10-01"
+tags: ["guide", "starter"]
+translationKey: "welcome"
+---
+
+This is a **sample post**. Each post is an `.mdx` file in `content/blog/<locale>/`; the file name is the URL.
+
+<Callout>
+  Sample posts are removed by `pnpm init:project` (unless you pass `--keep-example`).
+</Callout>
+
+## Writing a post
+
+1. Create `content/blog/en/my-post.mdx`.
+2. Fill in the frontmatter: `title`, `description`, `date` (required), `tags`, `cover`, `draft` (optional).
+3. Give the Vietnamese version the same `translationKey` so the two are linked.
+
+| Field | Required | Example |
+|---|---|---|
+| `title` | yes | Ha Long travel tips |
+| `date` | yes | 2026-10-01 |
+| `draft` | no | `true` = only shown in development |
+
+> Invalid frontmatter fails the build with the file name and the field.
+
+See the [Next.js docs](https://nextjs.org/docs).
