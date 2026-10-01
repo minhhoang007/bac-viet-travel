@@ -4,6 +4,8 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.0.0-rc.7] - 2026-10-01
+
 ### Added — UI kit (shadcn/ui) and reuse findings G1–G4
 - shadcn/ui (Radix, new-york) in `components/ui/`: Button, Input, Textarea, Label, Select, Popover, Calendar, DatePicker (vi/en, submits YYYY-MM-DD), Dialog, Sheet, Accordion, Carousel, Separator, Toaster (sonner); `components.json`; icons via `lucide-react`.
 - Theme: shadcn tokens derived from the 7 brand colors in `app/globals.css` (one source: `config/brand.ts`).
