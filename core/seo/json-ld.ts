@@ -10,3 +10,33 @@ export function serializeJsonLd(data: Record<string, unknown> | Record<string, u
     .replace(/\u2028/g, "\\u2028")
     .replace(/\u2029/g, "\\u2029");
 }
+
+export interface ArticleLd {
+  title: string;
+  description: string;
+  url: string;
+  image?: string;
+  datePublished: string;
+  dateModified?: string;
+  author?: string;
+  publisher: string;
+  locale: string;
+}
+
+/** schema.org BlogPosting for a blog post page. */
+export function articleJsonLd(a: ArticleLd): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    headline: a.title,
+    description: a.description,
+    mainEntityOfPage: a.url,
+    url: a.url,
+    inLanguage: a.locale,
+    datePublished: a.datePublished,
+    dateModified: a.dateModified ?? a.datePublished,
+    ...(a.image ? { image: [a.image] } : {}),
+    ...(a.author ? { author: { "@type": "Person", name: a.author } } : {}),
+    publisher: { "@type": "Organization", name: a.publisher },
+  };
+}

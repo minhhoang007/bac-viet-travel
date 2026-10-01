@@ -95,6 +95,7 @@ docs/           adr UPGRADING.md SETUP.md
 | Static pages | `getPublicEnv()` | reads only public values, so marketing pages prerender without secrets |
 | Theme | `config/brand.ts` → `components/ui/theme.ts` | CSS variables (light/dark) rendered in the root layout; `globals.css` holds no color values |
 | Jobs / billing | `modules/jobs`, `modules/entitlements`, `modules/billing` | wired in `buildContainer`; job handlers + periodic tasks registered there; ADR-0002, ADR-0005 |
+| Blog | `modules/blog`, `bootstrap/blog.ts`, `components/blog/mdx.tsx`, `content/blog/` | prerendered, no container (no secrets); ADR-0007 |
 | Admin / analytics / storage | `modules/admin`, `modules/analytics`, `modules/storage` | admin guard `app/_lib/admin.ts`; storage provider `providers/storage/s3.ts`; ADR-0006 |
 | Rate limits | `core/security/rate-limit.ts` | `withFallback(upstash, memory)`; magic links limited per client + recipient in `AuthService` |
 

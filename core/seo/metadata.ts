@@ -18,6 +18,9 @@ export interface PageSeo {
   locale: string;
   image?: string;
   noIndex?: boolean;
+  /** Per-locale paths when they differ (e.g. translated blog slugs); locales missing here get no hreflang. */
+  alternatePaths?: Record<string, string>;
+  article?: { publishedTime: string; modifiedTime?: string; authors?: string[]; tags?: string[] };
 }
 
 export function localizedUrl(site: SeoSite, locale: string, path: string): string {
@@ -29,15 +32,20 @@ export function localizedUrl(site: SeoSite, locale: string, path: string): strin
 export function createMetadata(site: SeoSite, page: PageSeo): Metadata {
   const url = localizedUrl(site, page.locale, page.path);
   const image = new URL(page.image ?? site.defaultOgImage, site.siteUrl).toString();
-  const languages = Object.fromEntries(site.locales.map((l) => [l, localizedUrl(site, l, page.path)]));
+  const paths = page.alternatePaths ?? Object.fromEntries(site.locales.map((l) => [l, page.path]));
+  const languages = Object.fromEntries(Object.entries({ ...paths, [page.locale]: page.path }).map(([l, p]) => [l, localizedUrl(site, l, p)]));
+  const xDefault = paths[site.defaultLocale] ?? (page.locale === site.defaultLocale ? page.path : undefined);
 
   return {
     metadataBase: new URL(site.siteUrl),
     title: { absolute: site.titleTemplate.replace("%s", page.title) },
     description: page.description,
-    alternates: { canonical: url, languages: { ...languages, "x-default": localizedUrl(site, site.defaultLocale, page.path) } },
+    alternates: {
+      canonical: url,
+      languages: { ...languages, ...(xDefault !== undefined ? { "x-default": localizedUrl(site, site.defaultLocale, xDefault) } : {}) },
+    },
     openGraph: {
-      type: "website",
+      ...(page.article ? { type: "article" as const, ...page.article } : { type: "website" as const }),
       url,
       siteName: site.siteName,
       title: page.title,

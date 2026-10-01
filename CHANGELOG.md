@@ -4,6 +4,17 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.0.0-rc.6] - 2026-10-01
+
+### Added — blog module (ADR-0007)
+- `blog` module (site + app): MDX posts in `content/blog/<locale>/`, validated frontmatter, index with pagination, post and tag pages (all prerendered), drafts in development only.
+- SEO for posts: OpenGraph `article`, JSON-LD `BlogPosting` (`articleJsonLd`), hreflang between translations (`translationKey`), sitemap entries, RSS feed per locale.
+- `createMetadata` accepts `alternatePaths` (per-locale paths) and `article`.
+- `init:project --modules blog`; sample posts removed unless `--keep-example`.
+
+### Changed
+- Content: new `blog` section in `content/*/app.ts` (add it in projects). New `config/blog.ts` (project-owned).
+
 ## [1.0.0-rc.5] - 2026-10-01
 
 ### Added — V1.2 ops (ADR-0006)

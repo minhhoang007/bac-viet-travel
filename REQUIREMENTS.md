@@ -41,7 +41,8 @@ Kubernetes, event bus, CRM, complex CMS, password auth, credit ledger, multiple 
 - **storage** (✅ on S3-compatible server; ⏳ real R2): upload/download/delete, expiring signed URL, MIME + size + `ownerId` + quota checks.
 - **analytics** (✅): standard events; consent respected.
 - **admin** (✅): pages only for enabled modules; actions audit-logged.
-- **ai / blog:** Beta until they have their own DoD.
+- **blog** (✅): invalid post fails the build; prerendered; hreflang only for real translations; sitemap + RSS; off → 404 and absent from sitemap.
+- **ai:** Beta until it has its own DoD.
 
 ## 5. Open questions
 Tracked in [docs/adr/](docs/adr/) as *Proposed* ADRs and in [ROADMAP.md](ROADMAP.md) Phase 0.

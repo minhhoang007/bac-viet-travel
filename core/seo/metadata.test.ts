@@ -34,4 +34,24 @@ describe("SEO", () => {
     const m = createMetadata(site, { title: "t", description: "d", path: "/", locale: "vi", noIndex: true });
     expect(m.robots).toEqual({ index: false, follow: false });
   });
+
+  it("translated pages: hreflang only for existing translations, article OpenGraph", () => {
+    const m = createMetadata(site, {
+      title: "Tips",
+      description: "d",
+      path: "/blog/ha-long-tips",
+      locale: "en",
+      alternatePaths: { vi: "/blog/meo-ha-long" },
+      article: { publishedTime: "2026-10-01", tags: ["ha-long"] },
+    });
+    expect(m.alternates?.languages).toEqual({
+      vi: "https://example.com/blog/meo-ha-long",
+      en: "https://example.com/en/blog/ha-long-tips",
+      "x-default": "https://example.com/blog/meo-ha-long",
+    });
+    expect(m.openGraph).toMatchObject({ type: "article", publishedTime: "2026-10-01", tags: ["ha-long"] });
+
+    const alone = createMetadata(site, { title: "T", description: "d", path: "/blog/only-en", locale: "en", alternatePaths: {} });
+    expect(alone.alternates?.languages).toEqual({ en: "https://example.com/en/blog/only-en" });
+  });
 });

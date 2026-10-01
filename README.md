@@ -74,6 +74,7 @@ Vercel + Postgres (Neon) + Resend. See [docs/DEPLOY.md](docs/DEPLOY.md).
 | [ROADMAP.md](ROADMAP.md) / [REQUIREMENTS.md](REQUIREMENTS.md) | Phases, scope, definitions of done |
 | [SECURITY.md](SECURITY.md) / [docs/security/](docs/security/) | Baseline and review reports |
 | [docs/UPGRADING.md](docs/UPGRADING.md) | Upgrading a project to a newer starter tag |
+| [docs/BLOG.md](docs/BLOG.md) | Writing blog posts (MDX) |
 | [docs/adr/](docs/adr/) | Architecture decisions |
 | [.claude/skills/](.claude/skills/) | Project skills for agents |
 

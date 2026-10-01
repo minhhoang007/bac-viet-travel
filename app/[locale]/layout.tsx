@@ -31,7 +31,7 @@ export default async function LocaleLayout({
   setRequestLocale(locale);
 
   const c = getMarketingContent(locale as Locale);
-  const { legal, consent } = getAppContent(locale as Locale);
+  const { legal, consent, blog } = getAppContent(locale as Locale);
   const other = appConfig.locales.find((l) => l !== locale) ?? appConfig.defaultLocale;
   const home = localePath(locale);
 
@@ -46,7 +46,10 @@ export default async function LocaleLayout({
           <SiteHeader
             logoText={brand.logoText}
             homeHref={home}
-            links={siteNavigation.map((l) => ({ label: l.label[locale as Locale], href: localePath(locale, l.href) }))}
+            links={[
+              ...siteNavigation.map((l) => ({ label: l.label[locale as Locale], href: localePath(locale, l.href) })),
+              ...(features.blog ? [{ label: blog.nav, href: localePath(locale, "/blog") }] : []),
+            ]}
             localeSwitch={{ label: c.nav.switchLocale, href: localePath(other), hrefLang: other }}
           />
           <main className="flex-1">{children}</main>

@@ -1,0 +1,29 @@
+---
+title: "Chào mừng đến với blog"
+description: "Bài viết mẫu: cách viết bài bằng MDX trong starter, với frontmatter, ảnh, bảng và hộp ghi chú."
+date: "2026-10-01"
+tags: ["huong-dan", "starter"]
+translationKey: "welcome"
+---
+
+Đây là **bài viết mẫu**. Mỗi bài là một file `.mdx` trong `content/blog/<ngôn-ngữ>/`, tên file chính là đường dẫn.
+
+<Callout>
+  Bài mẫu bị xoá khi chạy `pnpm init:project` (trừ khi dùng `--keep-example`).
+</Callout>
+
+## Viết bài mới
+
+1. Tạo file `content/blog/vi/ten-bai-viet.mdx`.
+2. Điền frontmatter: `title`, `description`, `date` (bắt buộc), `tags`, `cover`, `draft` (tuỳ chọn).
+3. Bản tiếng Anh dùng cùng `translationKey` để hai bài liên kết với nhau.
+
+| Trường | Bắt buộc | Ví dụ |
+|---|---|---|
+| `title` | có | Kinh nghiệm du lịch Hạ Long |
+| `date` | có | 2026-10-01 |
+| `draft` | không | `true` = chỉ hiện khi chạy dev |
+
+> Sai frontmatter thì build báo lỗi, kèm tên file và trường bị sai.
+
+Xem thêm [tài liệu Next.js](https://nextjs.org/docs).
