@@ -55,6 +55,7 @@ Upgraded **rc.6 → rc.7** (UI kit): 2 conflicts, both predicted by UPGRADING (`
 | B (Bắc Việt booking) | `app/_lib/booking.ts` | G7: `createProduct(db)` got only the database; services needing a logger/rate limiter were built outside the manifest, and product code could not register jobs | Yes → `ProductContext` + `ProductJobs` (rc.10) |
 | B (Bắc Việt booking) | (would copy `providers/billing/vnpay.ts`) | G8: VNPay was reachable only through the subscription billing module; booking deposits are one-time payments | Yes → `container.payments.vnpay` / `ctx.payments` (rc.10) |
 | B (Bắc Việt admin) | `app/[locale]/admin/layout.tsx` (starter-owned) | G9: the admin menu was fixed; product admin pages (bookings, departures) could not be listed without editing a starter file, and product actions had no audit log | Yes → `productAdminNav` + `ctx.audit` (rc.11) |
+| B (Bắc Việt deploy) | (none — failed only on Vercel) | G10: dynamic pages reading `content/tours/*.mdx` at request time got an empty catalog (404) because Vercel bundles only imported files; local `next start` hid it | Yes → `outputFileTracingIncludes` for `content/**` (rc.12) |
 | A2 | `tests/e2e/server-env.ts` | G6: with the email module on, the production E2E server cannot send (console provider is dev-only), so successful form submissions are only covered by unit tests | Maybe → a test-only mail sink allowed when `E2E=1` |
 
 Lesson from A2: the rc.2 extension points (navigation, home sections, sitemap paths, form defaults, JSON-LD, server env)

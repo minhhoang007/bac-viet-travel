@@ -10,6 +10,9 @@ const storageOrigin = process.env.STORAGE_ENDPOINT ? new URL(process.env.STORAGE
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Content read from disk at request time (dynamic product pages, blog…) must ship with the serverless
+  // functions; Vercel only bundles files the code imports. Found on a real deployment (reuse finding G10).
+  outputFileTracingIncludes: { "/**/*": ["./content/**/*"] },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders({ isDev: process.env.NODE_ENV !== "production", connectSrc: storageOrigin ? [storageOrigin] : [] }) }];
   },
