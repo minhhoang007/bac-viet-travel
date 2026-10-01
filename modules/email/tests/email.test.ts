@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createLogger } from "@/core/logger";
-import { createEmailModule, type EmailProvider } from "..";
+import { createEmailModule, textToHtml, type EmailProvider } from "..";
 
 const logger = createLogger({ write: () => {} });
 
@@ -44,5 +44,23 @@ describe("email module", () => {
       code: "INTERNAL_ERROR",
       message: "Email delivery failed",
     });
+  });
+
+  it("adds an escaped HTML version to plain-text emails; links stay clickable; explicit html wins", async () => {
+    const provider: EmailProvider = { send: vi.fn(async () => ({ id: "m1" })) };
+    const email = createEmailModule({ provider, from: "f@example.com", logger, html: { brand: "Acme <Co>", accent: "#0f766e" } });
+    await email.send({ kind: "t", to: "a@example.com", subject: "s", text: "Xin chào <b>Lan</b>\n\nhttps://example.com/x?a=1&b=2" });
+    const sent = vi.mocked(provider.send).mock.calls[0]![0];
+    expect(sent.html).toContain("Xin chào &lt;b&gt;Lan&lt;/b&gt;");
+    expect(sent.html).toContain("Acme &lt;Co&gt;");
+    expect(sent.html).toContain(`<a href="https://example.com/x?a=1&amp;b=2"`);
+    expect(sent.text).toContain("<b>Lan</b>"); // text part untouched
+
+    await email.send({ kind: "t", to: "a@example.com", subject: "s", text: "t", html: "<p>own</p>" });
+    expect(vi.mocked(provider.send).mock.calls[1]![0].html).toBe("<p>own</p>");
+  });
+
+  it("textToHtml rejects a non-hex accent (no CSS injection)", () => {
+    expect(textToHtml("x", { brand: "B", accent: "red;background:url(x)" })).not.toContain("url(x)");
   });
 });

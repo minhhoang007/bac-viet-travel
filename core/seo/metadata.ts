@@ -5,6 +5,8 @@ export interface SeoSite {
   siteName: string;
   titleTemplate: string;
   defaultOgImage: string;
+  /** Generate per-page images at /api/og?title=… when a page has no image. */
+  dynamicOgImage?: boolean;
   locales: readonly string[];
   defaultLocale: string;
   twitterHandle?: string;
@@ -31,7 +33,8 @@ export function localizedUrl(site: SeoSite, locale: string, path: string): strin
 
 export function createMetadata(site: SeoSite, page: PageSeo): Metadata {
   const url = localizedUrl(site, page.locale, page.path);
-  const image = new URL(page.image ?? site.defaultOgImage, site.siteUrl).toString();
+  const fallback = site.dynamicOgImage ? `/api/og?title=${encodeURIComponent(page.title)}` : site.defaultOgImage;
+  const image = new URL(page.image ?? fallback, site.siteUrl).toString();
   const paths = page.alternatePaths ?? Object.fromEntries(site.locales.map((l) => [l, page.path]));
   const languages = Object.fromEntries(Object.entries({ ...paths, [page.locale]: page.path }).map(([l, p]) => [l, localizedUrl(site, l, p)]));
   const xDefault = paths[site.defaultLocale] ?? (page.locale === site.defaultLocale ? page.path : undefined);

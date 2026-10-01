@@ -1,6 +1,7 @@
 import { AppError } from "@/core/errors";
 import type { Logger } from "@/core/logger";
 import type { MailMessage, MailPort } from "@/core/ports/mail";
+import { textToHtml } from "./html";
 import type { EmailProvider } from "./ports";
 
 export const SEND_EMAIL_JOB = "email.send";
@@ -14,6 +15,8 @@ export interface EmailModuleDeps {
    * Direct send stays the fast path, so magic links are not delayed by the job scheduler.
    */
   scheduleRetry?: (message: MailMessage) => Promise<void>;
+  /** Brand for the generated HTML version of plain-text emails. */
+  html?: { brand: string; accent?: string };
 }
 
 export interface EmailModule {
@@ -24,9 +27,10 @@ export interface EmailModule {
   asMailPort(): MailPort;
 }
 
-export function createEmailModule({ provider, from, logger, scheduleRetry }: EmailModuleDeps): EmailModule {
+export function createEmailModule({ provider, from, logger, scheduleRetry, html }: EmailModuleDeps): EmailModule {
   const sendNow = async (message: MailMessage) => {
-    const { id } = await provider.send({ ...message, from });
+    const withHtml = html && !message.html ? { ...message, html: textToHtml(message.text, html) } : message;
+    const { id } = await provider.send({ ...withHtml, from });
     // Only id + kind: subject/body/recipient may contain personal data.
     logger.info("email.sent", { id, kind: message.kind });
   };

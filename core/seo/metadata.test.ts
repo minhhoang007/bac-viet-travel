@@ -54,4 +54,11 @@ describe("SEO", () => {
     const alone = createMetadata(site, { title: "T", description: "d", path: "/blog/only-en", locale: "en", alternatePaths: {} });
     expect(alone.alternates?.languages).toEqual({ en: "https://example.com/en/blog/only-en" });
   });
+
+  it("pages without an image get a generated one with their title when dynamicOgImage is on", () => {
+    const m = createMetadata({ ...site, dynamicOgImage: true }, { title: "Tour Hạ Long", description: "d", path: "/", locale: "vi" });
+    expect(m.openGraph?.images).toEqual([{ url: "https://example.com/api/og?title=Tour%20H%E1%BA%A1%20Long" }]);
+    const own = createMetadata({ ...site, dynamicOgImage: true }, { title: "T", description: "d", path: "/", locale: "vi", image: "/a.jpg" });
+    expect(own.openGraph?.images).toEqual([{ url: "https://example.com/a.jpg" }]);
+  });
 });

@@ -50,5 +50,11 @@ export const marketing: MarketingContent = {
     },
   },
   footer: { rights: "All rights reserved." },
+  error: {
+    title: "Something went wrong",
+    text: "Sorry, this page ran into a problem. Please try again in a moment.",
+    retry: "Try again",
+    back: "Back to home",
+  },
   notFound: { title: "Page not found", back: "Back to home" },
 };

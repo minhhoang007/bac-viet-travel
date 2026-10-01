@@ -50,5 +50,11 @@ export const marketing: MarketingContent = {
     },
   },
   footer: { rights: "Bảo lưu mọi quyền." },
+  error: {
+    title: "Đã có lỗi xảy ra",
+    text: "Xin lỗi, trang gặp sự cố. Vui lòng thử lại sau ít phút.",
+    retry: "Thử lại",
+    back: "Về trang chủ",
+  },
   notFound: { title: "Không tìm thấy trang", back: "Về trang chủ" },
 };

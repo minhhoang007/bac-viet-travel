@@ -7,6 +7,7 @@ import { submitTourInquiry } from "@/app/actions/tour-inquiry";
 import { Check, X } from "lucide-react";
 import { MdxContent } from "@/components/blog/mdx";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import { ButtonLink } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { localePath } from "@/core/i18n/routing";
 import { createMetadata, localizedUrl, serializeJsonLd } from "@/core/seo";
@@ -14,6 +15,7 @@ import { seoSite } from "@/core/seo/site";
 import type { Locale } from "@/config/app";
 import { contactConfig, whatsappUrl, zaloUrl } from "@/config/contact";
 import { features } from "@/config/features";
+import { getBookingContent } from "@/product/booking/content";
 import { InquiryForm } from "@/product/components/inquiry-form";
 import { TourCard } from "@/product/components/tour-card";
 import { getProductContent } from "@/product/content";
@@ -48,6 +50,7 @@ export default async function TourPage({ params }: Props) {
   const tour = catalog.get(locale, slug);
   if (!tour) notFound();
   const c = getProductContent(locale);
+  const b = getBookingContent(locale);
   const site = seoSite(getPublicEnv().NEXT_PUBLIC_SITE_URL);
   const url = localizedUrl(site, locale, `/tours/${slug}`);
   const price = formatPrice(tour, locale);
@@ -193,7 +196,11 @@ export default async function TourPage({ params }: Props) {
           <p className="text-sm text-muted-foreground">
             {c.tours.from} <span className="text-2xl font-bold text-primary">{price}</span> {c.tours.perPerson}
           </p>
-          <h2 className="mt-3 text-lg font-semibold">{c.inquiry.title}</h2>
+          <ButtonLink href={localePath(locale, `/tours/${slug}/book`)} className="mt-3 w-full" data-testid="book-online">
+            {b.cta}
+          </ButtonLink>
+          <p className="mt-1 text-xs text-muted-foreground">{b.ctaHint}</p>
+          <h2 className="mt-5 border-t border-border pt-4 text-lg font-semibold">{c.inquiry.title}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{c.inquiry.subtitle}</p>
           <div className="mt-4">
             {features.email ? (

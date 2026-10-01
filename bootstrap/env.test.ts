@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { defineModule } from "@/core/module";
 import { featureDefaults } from "@/config/features.defaults";
-import { validateEnv } from "./env";
+import { validateEnv, resolveSiteUrl } from "./env";
 
 const site = { ...featureDefaults, profile: "site" as const };
 const app = { ...featureDefaults, profile: "app" as const };
@@ -57,5 +57,13 @@ describe("validateEnv", () => {
   it("includes module problems in the same error", () => {
     const billing = defineModule({ name: "billing", profiles: ["app"], requires: ["jobs"] });
     expect(() => validateEnv({}, { ...site, billing: true }, [billing])).toThrow(/not available in profile "site"/);
+  });
+
+  it("on Vercel: falls back to the production domain, and refuses localhost or a missing URL in production", () => {
+    expect(validateEnv({ VERCEL_PROJECT_PRODUCTION_URL: "my-site.vercel.app" }, site, []).NEXT_PUBLIC_SITE_URL).toBe("https://my-site.vercel.app");
+    expect(validateEnv({ NEXT_PUBLIC_SITE_URL: "https://example.com", VERCEL_PROJECT_PRODUCTION_URL: "x.vercel.app" }, site, []).NEXT_PUBLIC_SITE_URL).toBe("https://example.com");
+    expect(() => validateEnv({ VERCEL_ENV: "production", NODE_ENV: "production" }, site, [])).toThrow(/required on Vercel production/);
+    expect(() => validateEnv({ VERCEL_ENV: "production", NODE_ENV: "production", NEXT_PUBLIC_SITE_URL: "http://localhost:3000" }, site, [])).toThrow(/localhost/);
+    expect(resolveSiteUrl({})).toBeUndefined();
   });
 });

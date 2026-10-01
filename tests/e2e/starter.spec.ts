@@ -134,3 +134,24 @@ test("no serious accessibility violations on the home and legal pages (axe)", as
     expect(serious.map((v) => `${path}: ${v.id} (${v.nodes.length})`)).toEqual([]);
   }
 });
+
+test("share image exists for every page (og:image responds with a PNG)", async ({ page, request }) => {
+  await page.goto("/");
+  const og = await page.locator('meta[property="og:image"]').getAttribute("content");
+  const res = await request.get(new URL(og!).pathname + new URL(og!).search);
+  expect(res.status()).toBe(200);
+  expect(res.headers()["content-type"]).toBe("image/png");
+});
+
+test("health endpoint responds without caching", async ({ request }) => {
+  const health = await request.get("/api/health");
+  expect(health.status()).toBe(200);
+  expect(await health.json()).toMatchObject({ status: "ok" });
+  expect(health.headers()["cache-control"]).toBe("no-store");
+});
+
+test("profile site: /dashboard is a plain 404 (no redirect to a missing login page)", async ({ request }) => {
+  test.skip(features.profile !== "site", "profile app redirects signed-out visitors to the login page");
+  const res = await request.get("/dashboard", { maxRedirects: 0 });
+  expect(res.status()).toBe(404);
+});
