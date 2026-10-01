@@ -14,6 +14,7 @@ export const marketing: MarketingContent = {
     primaryHref: "/tours",
     secondaryCta: "Nhận tư vấn",
     secondaryHref: "#contact",
+    image: { src: "/tours/halong-1.jpg", alt: "Du thuyền giữa các đảo đá vôi trên vịnh Hạ Long" },
   },
   features: {
     title: "Đặt tour dễ dàng",

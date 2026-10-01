@@ -1,6 +1,9 @@
 "use client";
 
 import { useActionState } from "react";
+import { DatePicker } from "@/components/ui/date-picker";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import type { InquiryError, InquiryField, InquiryResult } from "../tours/inquiry";
 
 export interface InquiryFormLabels {
@@ -10,6 +13,7 @@ export interface InquiryFormLabels {
   channel: string;
   channels: { zalo: string; whatsapp: string; phone: string; email: string };
   date: string;
+  datePlaceholder: string;
   adults: string;
   children: string;
   note: string;
@@ -26,8 +30,7 @@ export interface InquiryFormProps {
   locale: "vi" | "en";
 }
 
-const input =
-  "mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-primary";
+const input = "mt-1";
 
 export function InquiryForm({ action, labels, tour, locale }: InquiryFormProps) {
   const [state, formAction, pending] = useActionState(action, null);
@@ -67,18 +70,18 @@ export function InquiryForm({ action, labels, tour, locale }: InquiryFormProps) 
       <input type="hidden" name="locale" value={locale} />
       <label htmlFor="inquiry-name" className="text-sm font-medium">
         {labels.name}
-        <input {...field("name")} autoComplete="name" />
+        <Input {...field("name")} autoComplete="name" />
         {message("name")}
       </label>
       <div className="grid gap-4 sm:grid-cols-2">
         <label htmlFor="inquiry-email" className="text-sm font-medium">
           {labels.email}
-          <input {...field("email")} type="email" autoComplete="email" />
+          <Input {...field("email")} type="email" autoComplete="email" />
           {message("email")}
         </label>
         <label htmlFor="inquiry-phone" className="text-sm font-medium">
           {labels.phone}
-          <input {...field("phone")} type="tel" autoComplete="tel" />
+          <Input {...field("phone")} type="tel" autoComplete="tel" />
           {message("phone")}
         </label>
       </div>
@@ -93,27 +96,35 @@ export function InquiryForm({ action, labels, tour, locale }: InquiryFormProps) 
           ))}
         </div>
       </fieldset>
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-[1.4fr_1fr_1fr]">
         <label htmlFor="inquiry-date" className="text-sm font-medium">
           {labels.date}
-          {/* Past dates are rejected by the server (the page is prerendered, so no build-time "today" here). */}
-          <input {...field("date")} type="date" />
+          {/* Past days are disabled in the calendar and rejected again by the server. */}
+          <DatePicker
+            id="inquiry-date"
+            name="date"
+            locale={locale}
+            placeholder={labels.datePlaceholder}
+            futureOnly
+            aria-invalid={error("date") ? true : undefined}
+            aria-describedby={error("date") ? "inquiry-date-error" : undefined}
+          />
           {message("date")}
         </label>
         <label htmlFor="inquiry-adults" className="text-sm font-medium">
           {labels.adults}
-          <input {...field("adults")} type="number" min={1} max={50} defaultValue={2} />
+          <Input {...field("adults")} type="number" min={1} max={50} defaultValue={2} />
           {message("adults")}
         </label>
         <label htmlFor="inquiry-children" className="text-sm font-medium">
           {labels.children}
-          <input {...field("children")} type="number" min={0} max={50} defaultValue={0} />
+          <Input {...field("children")} type="number" min={0} max={50} defaultValue={0} />
           {message("children")}
         </label>
       </div>
       <label htmlFor="inquiry-note" className="text-sm font-medium">
         {labels.note}
-        <textarea {...field("note")} rows={3} />
+        <Textarea {...field("note")} rows={3} />
         {message("note")}
       </label>
       {/* Honeypot, hidden from humans and assistive tech */}

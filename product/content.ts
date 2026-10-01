@@ -45,6 +45,7 @@ const vi = {
     related: "Tour cùng điểm đến",
     priceNote: "Giá tham khảo cho đoàn 2 khách trở lên; giá cuối cùng tuỳ ngày khởi hành.",
     allDestinations: "Tất cả",
+    gallery: "Ảnh tour",
   },
   inquiry: {
     title: "Gửi yêu cầu đặt tour",
@@ -55,6 +56,7 @@ const vi = {
     channel: "Liên hệ với tôi qua",
     channels: { zalo: "Zalo", whatsapp: "WhatsApp", phone: "Điện thoại", email: "Email" },
     date: "Ngày khởi hành",
+    datePlaceholder: "Chọn ngày",
     adults: "Người lớn",
     children: "Trẻ em",
     note: "Ghi chú (yêu cầu ăn uống, đón tại khách sạn…)",
@@ -130,6 +132,7 @@ const en: ProductContent = {
     related: "More tours in this destination",
     priceNote: "Indicative price for groups of 2 or more; final price depends on the departure date.",
     allDestinations: "All",
+    gallery: "Tour photos",
   },
   inquiry: {
     title: "Request this tour",
@@ -140,6 +143,7 @@ const en: ProductContent = {
     channel: "Contact me via",
     channels: { zalo: "Zalo", whatsapp: "WhatsApp", phone: "Phone call", email: "Email" },
     date: "Departure date",
+    datePlaceholder: "Pick a date",
     adults: "Adults",
     children: "Children",
     note: "Notes (dietary needs, hotel pick-up…)",

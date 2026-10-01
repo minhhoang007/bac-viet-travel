@@ -14,6 +14,7 @@ export const marketing: MarketingContent = {
     primaryHref: "/tours",
     secondaryCta: "Ask us",
     secondaryHref: "#contact",
+    image: { src: "/tours/halong-1.jpg", alt: "Cruise boats among the limestone islands of Ha Long Bay" },
   },
   features: {
     title: "Booking is easy",

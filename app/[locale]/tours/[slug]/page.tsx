@@ -4,7 +4,9 @@ import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
 import { getPublicEnv } from "@/bootstrap/env";
 import { submitTourInquiry } from "@/app/actions/tour-inquiry";
+import { Check, X } from "lucide-react";
 import { MdxContent } from "@/components/blog/mdx";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { Container } from "@/components/ui/container";
 import { localePath } from "@/core/i18n/routing";
 import { createMetadata, localizedUrl, serializeJsonLd } from "@/core/seo";
@@ -114,9 +116,7 @@ export default async function TourPage({ params }: Props) {
             <ul className="mt-3 grid gap-2 sm:grid-cols-2">
               {tour.highlights.map((h) => (
                 <li key={h} className="flex gap-2">
-                  <span aria-hidden="true" className="text-primary">
-                    ✓
-                  </span>
+                  <Check aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-primary" />
                   {h}
                 </li>
               ))}
@@ -130,13 +130,19 @@ export default async function TourPage({ params }: Props) {
           )}
 
           {tour.images.length > 1 && (
-            <div className="mt-8 grid grid-cols-2 gap-3">
-              {tour.images.slice(1).map((src) => (
-                <div key={src} className="relative aspect-[4/3] overflow-hidden rounded-lg">
-                  <Image src={src} alt={tour.title} fill sizes="(min-width: 1024px) 400px, 50vw" className="object-cover" />
-                </div>
-              ))}
-            </div>
+            <Carousel className="mt-8" opts={{ loop: true }} aria-label={c.tours.gallery} data-testid="gallery">
+              <CarouselContent>
+                {tour.images.map((src, i) => (
+                  <CarouselItem key={src} className="sm:basis-1/2">
+                    <div className="relative aspect-[4/3] overflow-hidden rounded-lg">
+                      <Image src={src} alt={`${tour.title} (${i + 1}/${tour.images.length})`} fill sizes="(min-width: 1024px) 400px, (min-width: 640px) 50vw, 100vw" className="object-cover" />
+                    </div>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              <CarouselPrevious className="left-2" />
+              <CarouselNext className="right-2" />
+            </Carousel>
           )}
 
           <section className="mt-10" data-testid="itinerary">
@@ -159,7 +165,10 @@ export default async function TourPage({ params }: Props) {
               <h2 className="font-semibold">{c.tours.includes}</h2>
               <ul className="mt-2 grid gap-1 text-sm">
                 {tour.includes.map((x) => (
-                  <li key={x}>✓ {x}</li>
+                  <li key={x} className="flex gap-2">
+                    <Check aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-primary" />
+                    {x}
+                  </li>
                 ))}
               </ul>
             </section>
@@ -168,7 +177,10 @@ export default async function TourPage({ params }: Props) {
                 <h2 className="font-semibold">{c.tours.excludes}</h2>
                 <ul className="mt-2 grid gap-1 text-sm text-muted-foreground">
                   {tour.excludes.map((x) => (
-                    <li key={x}>✗ {x}</li>
+                    <li key={x} className="flex gap-2">
+                      <X aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+                      {x}
+                    </li>
                   ))}
                 </ul>
               </section>
@@ -189,7 +201,7 @@ export default async function TourPage({ params }: Props) {
             ) : null}
           </div>
           <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
-            <a href={whatsappUrl(c.contact.whatsappText(tour.title))} target="_blank" rel="noopener noreferrer" className="rounded-md bg-[#25d366] px-3 py-2 text-center font-medium text-white">
+            <a href={whatsappUrl(c.contact.whatsappText(tour.title))} target="_blank" rel="noopener noreferrer" className="rounded-md bg-[#25d366] px-3 py-2 text-center font-medium text-[#052e16]">
               {c.contact.whatsapp}
             </a>
             <a href={zaloUrl()} target="_blank" rel="noopener noreferrer" className="rounded-md bg-[#0068ff] px-3 py-2 text-center font-medium text-white">

@@ -1,5 +1,6 @@
 // Project-owned E2E: Bac Viet Travel pages and content.
 // Generic starter guarantees live in tests/e2e/starter.spec.ts (starter-owned, do not edit).
+import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
 test("home: destinations, featured tours, TravelAgency JSON-LD, quick contact (Zalo first in Vietnamese)", async ({ page }) => {
@@ -38,11 +39,18 @@ test("inquiry form validates on the server and keeps the visitor on the page", a
   await form.getByLabel("Họ tên").fill("Nguyễn Văn A");
   await form.getByLabel("Email", { exact: true }).and(form.locator("input[type=email]")).fill("not-an-email");
   await form.getByLabel("Số điện thoại / WhatsApp").fill("abc");
-  await form.getByLabel("Ngày khởi hành").fill("2020-01-01");
   await form.getByRole("button", { name: "Gửi yêu cầu" }).click();
   await expect(form.getByText("Email không hợp lệ.")).toBeVisible();
   await expect(form.getByText("Số điện thoại không hợp lệ.")).toBeVisible();
-  await expect(form.getByText("Vui lòng chọn ngày từ hôm nay trở đi.")).toBeVisible();
+  await expect(form.getByText("Ngày không hợp lệ.")).toBeVisible(); // no date picked
+
+  // Date picker: localized calendar, past days disabled, picked day submitted as YYYY-MM-DD.
+  await form.getByLabel("Ngày khởi hành").click(); // the trigger is named by its <label>
+  const calendar = page.getByRole("grid");
+  await expect(calendar).toBeVisible();
+  await expect(calendar.locator("button:disabled").first()).toBeVisible();
+  await calendar.locator("button:not(:disabled)").last().click();
+  await expect(form.locator("input[name=date]")).toHaveValue(/^\d{4}-\d{2}-\d{2}$/);
 });
 
 test("blog posts link their translation; sitemap lists tours and posts; unknown tour is 404", async ({ page, request }) => {
@@ -58,4 +66,20 @@ test("blog posts link their translation; sitemap lists tours and posts; unknown 
 test("photo credits page links every Unsplash photographer", async ({ page }) => {
   await page.goto("/credits");
   await expect(page.locator('a[href^="https://unsplash.com/@"]')).toHaveCount(9);
+});
+
+test("tour gallery, mobile menu and accessibility (axe) on travel pages", async ({ page }) => {
+  await page.goto("/tours/ha-long-cruise-2d1n");
+  const gallery = page.getByTestId("gallery");
+  await expect(gallery.locator("img")).toHaveCount(3);
+  for (const path of ["/", "/tours", "/tours/ha-long-cruise-2d1n"]) {
+    await page.goto(path);
+    const result = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
+    expect(result.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => `${path}: ${v.id}`)).toEqual([]);
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Mở menu" }).click();
+  await page.getByTestId("mobile-menu").getByRole("link", { name: "Sapa" }).click();
+  await expect(page).toHaveURL(/\/tours#sapa$/);
 });
