@@ -53,6 +53,16 @@ Everything above, plus:
    Keep the bucket private (no public access, no r2.dev URL): downloads use short-lived signed URLs.
 4. **Before going live:** upload, download and delete one file on the deployed site; check `/admin` stats.
 
+## Monitoring and backups
+
+1. **Uptime:** point a monitor (Better Stack, UptimeRobot…) at `https://<domain>/api/health` — 200 healthy, 503 when the
+   database is unreachable. The response also shows the deployed commit.
+2. **Errors:** every server error is one JSON log line `request.error` with a `digest`; users see the same digest as
+   "ref" on the error page. Search Vercel logs by digest. To get alerts, add an error tracker in `instrumentation.ts`.
+3. **Backups (Neon):** point-in-time restore is on by default (retention depends on the plan). Before a release with a
+   starter or product migration, create a Neon branch, run `pnpm db:migrate` against it, then migrate production.
+4. **Dependencies:** Dependabot opens weekly PRs; merge only with CI green.
+
 ## Verify after deploy
 
 - `/` and `/en` render; `/robots.txt`, `/sitemap.xml` list the real domain.

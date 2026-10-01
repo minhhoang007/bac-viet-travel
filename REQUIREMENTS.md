@@ -18,18 +18,18 @@ Multi-tenancy, organizations, complex RBAC, team invitations, enterprise SSO, wo
 Kubernetes, event bus, CRM, complex CMS, password auth, credit ledger, multiple payment providers at once.
 
 ## 3. V1.0 Definition of Done
-- [ ] Clean clone → `pnpm install && pnpm check` green.
-- [ ] Local app running from README in under 30 minutes.
-- [ ] `.env.example` complete; missing required var → clear startup error; `site` needs no DB/auth secrets.
-- [ ] Migrations run on an empty DB (`app`).
-- [ ] Arch lint in CI; fixture test proves each rule catches its sample violation.
-- [ ] Login/logout, protected route, dashboard tested; IDOR test (A cannot access B).
-- [ ] Vertical slice works on a real deployment.
-- [ ] Input validation, rate limiting, logging, security headers have automated checks.
-- [ ] Production build + unit, integration, critical E2E pass.
-- [ ] README, ARCHITECTURE, AGENTS, SECURITY, UPGRADING complete.
-- [ ] No product-specific code in Core/Modules (except `_example-notes`).
-- [ ] Reuse proofs: two real projects; one upgrade across tags; minimal config (all modules off) builds and runs.
+- [x] Clean clone → `pnpm install && pnpm check` green. *(verify:init, CI on GitHub)*
+- [x] Local app running from README in under 30 minutes. *(two projects set up from the README)*
+- [x] `.env.example` complete; missing required var → clear startup error; `site` needs no DB/auth secrets. *(bootstrap/env.test.ts, CI build-minimal)*
+- [x] Migrations run on an empty DB (`app`). *(integration global setup, e2e-app reset + migrate)*
+- [x] Arch lint in CI; fixture test proves each rule catches its sample violation. *(tests/arch)*
+- [x] Login/logout, protected route, dashboard tested; IDOR test (A cannot access B). *(auth/account int, e2e-app)*
+- [ ] Vertical slice works on a real deployment. *(⏳ needs Vercel/Neon/Resend accounts)*
+- [x] Input validation, rate limiting, logging, security headers have automated checks.
+- [x] Production build + unit, integration, critical E2E pass. *(CI)*
+- [x] README, ARCHITECTURE, AGENTS, SECURITY, UPGRADING complete.
+- [x] No product-specific code in Core/Modules (except `_example-notes`). *(arch rules; reuse projects needed no Core edits after rc.7)*
+- [ ] Reuse proofs: two real projects; one upgrade across tags; minimal config (all modules off) builds and runs. *(⏳ sites A/A2 done, upgrades rc.1→rc.2 and rc.6→rc.7 done; real app project + migration upgrade pending)*
 
 ## 4. Module DoD (required for "Stable")
 - **All modules:** off → no secrets → build OK → endpoints 404 → no jobs.

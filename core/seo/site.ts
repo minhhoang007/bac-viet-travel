@@ -9,6 +9,7 @@ export function seoSite(siteUrl: string): SeoSite {
     siteName: appConfig.name,
     titleTemplate: seoConfig.titleTemplate,
     defaultOgImage: seoConfig.defaultOgImage,
+    dynamicOgImage: seoConfig.dynamicOgImage,
     locales: appConfig.locales,
     defaultLocale: appConfig.defaultLocale,
     twitterHandle: seoConfig.twitterHandle,

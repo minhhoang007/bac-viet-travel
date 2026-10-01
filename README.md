@@ -3,19 +3,23 @@
 Reusable Next.js starter for content/service websites (profile `site`) and logged-in web apps (profile `app`).
 Small, boring, tested: architecture rules are enforced by tooling, and every optional module is *really off* when disabled.
 
-**Status:** `v1.0.0-rc.3` — foundation, email + contact form, app profile with auth and an example vertical slice.
-V1.0 final waits for the reuse proofs in [docs/REUSE-PROOFS.md](docs/REUSE-PROOFS.md). Billing, jobs and usage come in V1.1 ([ROADMAP.md](ROADMAP.md)).
+**Status:** `v1.0.0-rc.8` — site + app profiles, 9 optional modules, UI kit, production hardening.
+V1.0 final waits for a real deployment and a real app project ([docs/REUSE-PROOFS.md](docs/REUSE-PROOFS.md), [ROADMAP.md](ROADMAP.md)).
 
 ## What you get
 
 | | `site` | `app` |
 |---|---|---|
-| Next.js 16, TypeScript strict, Tailwind 4 | ✓ | ✓ |
-| i18n (vi default at `/`, en at `/en`), SEO (metadata, hreflang, sitemap, robots) | ✓ | ✓ |
-| Env validation per profile/module, safe errors, redacting JSON logger, security headers | ✓ | ✓ |
-| Contact form (validation, honeypot, rate limit) — module `email` | optional | optional |
-| Postgres 18 + Drizzle, Better Auth (magic link, optional Google), roles | | ✓ |
-| Dashboard shell, account export/delete, legal page templates | | ✓ |
+| Next.js 16 (App Router), React 19, TypeScript strict, Tailwind 4, **shadcn/ui** + lucide icons | ✓ | ✓ |
+| i18n (vi default at `/`, en at `/en`), SEO (metadata, hreflang, sitemap, robots, JSON-LD, generated share images) | ✓ | ✓ |
+| Env validation per profile/module, safe errors + error pages, redacting JSON logger, request-error logging, security headers, `/api/health` | ✓ | ✓ |
+| Mobile menu, accessible FAQ, hero with photo, axe accessibility checks in E2E | ✓ | ✓ |
+| `email`: contact form (validation, honeypot, rate limit), HTML emails | optional | optional |
+| `blog`: MDX posts, tags, RSS, translations | optional | optional |
+| `analytics`: first-party page views with consent (no third-party scripts) | optional (needs a DB) | optional |
+| Postgres 18 + Drizzle, Better Auth (magic link, optional Google), roles, account export/delete, dashboard | | ✓ |
+| `jobs`, `entitlements`, `billing`: background jobs, Free/Pro plans, Polar (international) + VNPay (Vietnam) | | optional |
+| `admin` (audit log), `storage` (direct uploads to Cloudflare R2) | | optional |
 | Example vertical slice (`product/_example-notes`, ownerId-scoped CRUD) | | ✓ (removable) |
 
 ## Requirements
