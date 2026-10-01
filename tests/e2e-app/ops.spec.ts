@@ -117,7 +117,7 @@ test.describe("storage", () => {
     expect((await other.request.get(href, { maxRedirects: 0 })).status()).toBe(404);
 
     await owner.locator("input[type=file]").setInputFiles({ name: "x.html", mimeType: "text/html", buffer: Buffer.from("<b>x</b>") });
-    await expect(owner.getByRole("alert")).toHaveText("Loại tệp này không được hỗ trợ.");
+    await expect(owner.locator("p[role=alert]")).toHaveText("Loại tệp này không được hỗ trợ.");
 
     await item.getByRole("button", { name: "Xoá" }).click();
     await expect(owner.getByText("Chưa có tệp nào.")).toBeVisible();
