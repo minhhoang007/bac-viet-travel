@@ -4,6 +4,8 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.0.0-rc.5] - 2026-10-01
+
 ### Added — V1.2 ops (ADR-0006)
 - `admin` module: `/admin` (404 for non-admins) with overview stats, users (search, disable/enable, role), failed jobs (retry), billing (failed webhooks, reprocess), audit log; every action recorded in `audit_logs`; `pnpm admin:grant <email>`.
 - `analytics` module (site + app): first-party page views in Postgres, path-only, no IP/user agent stored, consent banner (daily visitor hash only with consent), stats in admin, 13-month retention, included in account export.

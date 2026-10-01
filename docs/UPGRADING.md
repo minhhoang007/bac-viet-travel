@@ -37,7 +37,7 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
-### Next release (V1.2 ops, unreleased)
+### v1.0.0-rc.5 (2026-10-01) — V1.2 ops
 - **Migration:** starter `0002` creates audit_logs, analytics_events, files. Run `pnpm db:migrate` on a DB copy first.
 - **Content (add fields):** `files`, `consent`, `admin` sections and `dashboard.nav.admin` in `content/*/app.ts`.
 - **Config:** if your `config/billing.ts` defines its own plans, add `"storage.max_bytes"` to each plan's entitlements.
