@@ -13,6 +13,7 @@ import { themeCss } from "@/components/ui/theme";
 import { AnalyticsTracker } from "@/components/analytics/tracker";
 import { ConsentBanner } from "@/components/analytics/consent-banner";
 import { features } from "@/config/features";
+import { Toaster } from "@/components/ui/sonner";
 import { ProductLayoutExtras } from "@/product/layout";
 import "../globals.css";
 
@@ -52,6 +53,7 @@ export default async function LocaleLayout({
               ...(features.blog ? [{ label: blog.nav, href: localePath(locale, "/blog") }] : []),
             ]}
             localeSwitch={{ label: c.nav.switchLocale, href: localePath(other), hrefLang: other }}
+            menu={{ open: c.nav.menu, close: c.nav.close }}
           />
           <main className="flex-1">{children}</main>
           <SiteFooter
@@ -64,6 +66,7 @@ export default async function LocaleLayout({
             ]}
           />
           <ProductLayoutExtras locale={locale as Locale} />
+          <Toaster />
           {features.analytics && (
             <>
               <AnalyticsTracker />

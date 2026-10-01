@@ -1,6 +1,7 @@
 // Starter-owned E2E: generic guarantees of every project built from the starter.
 // Content-agnostic — expected texts come from content/ and config/, so projects never need to edit this file.
 // Put project-specific tests in tests/e2e/site.spec.ts.
+import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { appConfig } from "@/config/app";
 import { brand } from "@/config/brand";
@@ -100,4 +101,36 @@ test("blog follows the module flag", async ({ request }) => {
   expect((await request.get("/blog")).status()).toBe(404);
   expect((await request.get("/en/blog/rss.xml")).status()).toBe(404);
   expect(await (await request.get("/sitemap.xml")).text()).not.toContain("/blog");
+});
+
+test("mobile: header links move into a menu sheet", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  const first = siteNavigation[0];
+  test.skip(!first, "no header links configured");
+  await page.getByRole("button", { name: getMarketingContent(defaultLocale).nav.menu }).click();
+  const menu = page.getByTestId("mobile-menu");
+  await expect(menu.getByRole("link", { name: first!.label[defaultLocale] })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(menu).toBeHidden();
+});
+
+test("FAQ answers are in the server HTML (SEO) and open on click", async ({ page, request }) => {
+  const item = getMarketingContent(defaultLocale).faq.items[0];
+  test.skip(!item, "no FAQ items");
+  expect(await (await request.get("/")).text()).toContain(item!.answer.replace(/&/g, "&amp;").slice(0, 20));
+  await page.goto("/");
+  const answer = page.locator("[data-faq-answer]").first();
+  await expect(answer).toBeHidden();
+  await page.getByRole("button", { name: item!.question }).click();
+  await expect(answer).toBeVisible();
+});
+
+test("no serious accessibility violations on the home and legal pages (axe)", async ({ page }) => {
+  for (const path of ["/", "/privacy"]) {
+    await page.goto(path);
+    const result = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
+    const serious = result.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
+    expect(serious.map((v) => `${path}: ${v.id} (${v.nodes.length})`)).toEqual([]);
+  }
 });

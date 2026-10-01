@@ -5,7 +5,7 @@ export const marketing: MarketingContent = {
     title: "Ha Long Bay, Ninh Binh and Sapa tours from Hanoi",
     description: "Bac Viet Travel: Ha Long Bay cruises, Trang An and Mua Cave, Sapa trekking. Transparent prices, small groups, local guides.",
   },
-  nav: { switchLocale: "Tiếng Việt" },
+  nav: { switchLocale: "Tiếng Việt", menu: "Open menu", close: "Close" },
   hero: {
     eyebrow: "Bac Viet Travel · Northern Vietnam tours from Hanoi",
     title: "Discover Ha Long Bay, Ninh Binh and Sapa your way",

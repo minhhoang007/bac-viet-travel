@@ -5,7 +5,7 @@ export const marketing: MarketingContent = {
     title: "Tour Hạ Long, Ninh Bình, Sapa khởi hành từ Hà Nội",
     description: "Bắc Việt Travel: tour du thuyền Hạ Long, Tràng An – Hang Múa, trekking Sapa. Giá minh bạch, nhóm nhỏ, hướng dẫn viên địa phương.",
   },
-  nav: { switchLocale: "English" },
+  nav: { switchLocale: "English", menu: "Mở menu", close: "Đóng" },
   hero: {
     eyebrow: "Bắc Việt Travel · Tour miền Bắc từ Hà Nội",
     title: "Khám phá Hạ Long, Ninh Bình và Sapa theo cách của bạn",

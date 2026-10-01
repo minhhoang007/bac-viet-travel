@@ -37,6 +37,15 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
+### v1.0.0-rc.7 (2026-10-01) — UI kit
+- **Content (add fields):** `nav.menu`, `nav.close` in `content/*/marketing.ts` (mobile menu labels).
+- **New project-owned file:** `product/layout.tsx` (`ProductLayoutExtras`). If you already render site-wide UI by editing
+  `app/[locale]/layout.tsx`, move it into this file and take the starter's layout on merge.
+- **Button:** `components/ui/button.tsx` now exports shadcn's `Button`; `ButtonLink` is unchanged.
+- **CSS:** `app/globals.css` imports `tw-animate-css` and adds derived tokens; keep the starter version on merge
+  (put project CSS in a separate file).
+- New dependencies (`radix-ui`, `lucide-react`, `date-fns`, `react-day-picker`, `embla-carousel-react`, `sonner`…): run `pnpm install`.
+
 ### v1.0.0-rc.6 (2026-10-01) — blog
 - **Content (add fields):** `blog` section in `content/*/app.ts`.
 - **New files:** `config/blog.ts` (project-owned), `content/blog/` sample posts (delete them, or keep as a template).

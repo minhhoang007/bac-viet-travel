@@ -1,13 +1,13 @@
 # Protected paths need maintainer review (AGENTS.md, ARCHITECTURE.md §4).
-/core/             @OWNER
-/components/       @OWNER
-/modules/          @OWNER
-/providers/        @OWNER
-/bootstrap/        @OWNER
-/config/*.defaults.ts @OWNER
-/db/migrations/starter/ @OWNER
-/.dependency-cruiser.cjs @OWNER
-/tests/arch-fixtures/ @OWNER
-/AGENTS.md         @OWNER
-/tests/e2e/starter.spec.ts @OWNER
-/.starter-version @OWNER
+/core/             @minhhoang007
+/components/       @minhhoang007
+/modules/          @minhhoang007
+/providers/        @minhhoang007
+/bootstrap/        @minhhoang007
+/config/*.defaults.ts @minhhoang007
+/db/migrations/starter/ @minhhoang007
+/.dependency-cruiser.cjs @minhhoang007
+/tests/arch-fixtures/ @minhhoang007
+/AGENTS.md         @minhhoang007
+/tests/e2e/starter.spec.ts @minhhoang007
+/.starter-version @minhhoang007

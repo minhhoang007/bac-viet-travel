@@ -1,3 +1,4 @@
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Container } from "@/components/ui/container";
 
 export interface FaqProps {
@@ -11,14 +12,17 @@ export function Faq({ id, title, items }: FaqProps) {
     <section id={id} className="border-t border-border py-16">
       <Container className="max-w-3xl">
         <h2 className="text-center text-3xl font-bold">{title}</h2>
-        <div className="mt-8 divide-y divide-border">
+        <Accordion type="single" collapsible className="mt-8">
           {items.map((item) => (
-            <details key={item.question} className="py-4">
-              <summary className="cursor-pointer font-medium">{item.question}</summary>
-              <p className="mt-2 text-muted-foreground">{item.answer}</p>
-            </details>
+            <AccordionItem key={item.question} value={item.question}>
+              <AccordionTrigger className="text-base">{item.question}</AccordionTrigger>
+              {/* forceMount keeps answers in the server HTML (search engines), hidden until opened */}
+              <AccordionContent forceMount className="text-muted-foreground" data-faq-answer="">
+                {item.answer}
+              </AccordionContent>
+            </AccordionItem>
           ))}
-        </div>
+        </Accordion>
       </Container>
     </section>
   );
