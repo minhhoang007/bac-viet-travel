@@ -4,7 +4,7 @@ import { featureDefaults } from "./features.defaults";
 
 export const features: Features = {
   ...featureDefaults,
-  profile: "site",
+  profile: "app",
   email: true,
   blog: true,
 };
