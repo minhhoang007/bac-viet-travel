@@ -4,6 +4,20 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.0.0-rc.5] - 2026-10-01
+
+### Added — V1.2 ops (ADR-0006)
+- `admin` module: `/admin` (404 for non-admins) with overview stats, users (search, disable/enable, role), failed jobs (retry), billing (failed webhooks, reprocess), audit log; every action recorded in `audit_logs`; `pnpm admin:grant <email>`.
+- `analytics` module (site + app): first-party page views in Postgres, path-only, no IP/user agent stored, consent banner (daily visitor hash only with consent), stats in admin, 13-month retention, included in account export.
+- `storage` module: direct uploads to S3-compatible storage (Cloudflare R2) with presigned URLs; type/size/quota checks (quota = `storage.max_bytes` entitlement), post-upload verification, expiring download URLs, objects deleted before the account; "My files" page.
+- `jobs.list/retry`, `billing.adminOverview/retryWebhookEvent`, `entitlements.countActiveOwners`.
+- Starter migration `0002` (audit_logs, analytics_events, files). docker compose `storage` service (SeaweedFS) for development and CI.
+
+### Changed
+- CSP `connect-src` accepts extra origins (`securityHeaders({ connectSrc })`); next.config adds `STORAGE_ENDPOINT`.
+- Content: new `files`, `consent`, `admin` sections and `dashboard.nav.admin` in `content/*/app.ts` (add them in projects).
+- Plans: new entitlement `storage.max_bytes` (projects with their own `config/billing.ts` plans must add it).
+
 ## [1.0.0-rc.4] - 2026-10-01
 
 ### Added — V1.1 SaaS (ADR-0002, ADR-0005)

@@ -6,6 +6,7 @@ import { E2E_BILLING } from "./tests/e2e-app/billing-secrets";
 const PORT = 3200;
 const DATABASE_URL = process.env.E2E_DATABASE_URL ?? "postgres://postgres:postgres@localhost:54329/minh_e2e";
 process.env.E2E_DATABASE_URL = DATABASE_URL;
+const STORAGE_ENDPOINT = process.env.E2E_STORAGE_ENDPOINT ?? "http://localhost:58333";
 
 export default defineConfig({
   testDir: "tests/e2e-app",
@@ -34,6 +35,12 @@ export default defineConfig({
       POLAR_PRODUCT_PRO_YEARLY: "prod_e2e_pro_year",
       VNPAY_TMN_CODE: E2E_BILLING.vnpayTmnCode,
       VNPAY_HASH_SECRET: E2E_BILLING.vnpayHashSecret,
+      // Ops modules: analytics + storage against the local S3-compatible server (bucket created by e2e-app.sh).
+      ANALYTICS_SECRET: "e2e-analytics-secret-0123456789abcdef",
+      STORAGE_ENDPOINT,
+      STORAGE_BUCKET: "minh-e2e",
+      STORAGE_ACCESS_KEY_ID: "devaccess",
+      STORAGE_SECRET_ACCESS_KEY: "devsecret-local-only",
     },
   },
 });

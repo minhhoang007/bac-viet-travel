@@ -15,6 +15,13 @@
       "when": 1790783011891,
       "tag": "0001_rare_bullseye",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790817228558,
+      "tag": "0002_silky_bloodstorm",
+      "breakpoints": true
     }
   ]
 }

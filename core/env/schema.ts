@@ -27,6 +27,8 @@ export const baseEnvSchema = z
     VNPAY_TMN_CODE: z.string().min(1).optional(),
     VNPAY_HASH_SECRET: z.string().min(1).optional(),
     VNPAY_PAYMENT_URL: z.url().optional(),
+    // Storage module (S3-compatible; Cloudflare R2 uses region "auto").
+    STORAGE_REGION: z.string().min(1).default("auto"),
   })
   .refine((e) => bothOrNeither(e.UPSTASH_REDIS_REST_URL, e.UPSTASH_REDIS_REST_TOKEN), {
     message: "set both UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN, or neither",

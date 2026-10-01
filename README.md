@@ -38,6 +38,7 @@ Profile `app` additionally:
 
 ```bash
 pnpm db:up          # Postgres 18 on localhost:54329
+pnpm storage:up     # S3-compatible storage on localhost:58333 (storage module + integration tests)
 pnpm db:migrate     # starter migrations, then product migrations
 pnpm dev            # open /login; with EMAIL_PROVIDER=console the magic link is printed in the server log
 ```
@@ -54,6 +55,8 @@ Details: [docs/SETUP.md](docs/SETUP.md).
 | `pnpm test:e2e` | Playwright against a production build (`pnpm build` first), profile site |
 | `pnpm test:e2e:app` | browser E2E for profile app on a fresh app-profile clone (needs Postgres) |
 | `pnpm db:up` / `db:migrate` | local Postgres / run migrations |
+| `pnpm storage:up` | local S3-compatible storage (SeaweedFS, stands in for Cloudflare R2) |
+| `pnpm admin:grant <email>` | make a signed-in user an admin |
 | `pnpm db:generate:product` | generate a migration for tables in `product/schema/` |
 | `pnpm init:project` | initialize a project (name, profile, modules, remove example) |
 | `pnpm verify:init` | clean-clone check of four init variants |

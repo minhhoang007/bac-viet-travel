@@ -27,4 +27,5 @@ run_case site-email --name "Khách sạn Biển" --profile site --modules email
 run_case app --name "My SaaS" --profile app
 run_case app-keep-example --name "Demo" --profile app --keep-example
 run_case app-billing --name "SaaS Billing" --profile app --modules billing
+run_case app-ops --name "SaaS Ops" --profile app --modules admin,analytics,storage,jobs
 echo "All init cases passed."

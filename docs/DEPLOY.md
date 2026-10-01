@@ -37,6 +37,22 @@ Everything above, plus:
 4. **Before going live:** one sandbox purchase per provider end to end (checkout → webhook/IPN → Pro shown on
    /dashboard/billing → Polar portal cancel → access until period end). Tests only simulate provider traffic.
 
+## Admin, analytics, storage (V1.2)
+
+1. **Admin:** after the first sign-in, run `DATABASE_URL=<prod url> pnpm admin:grant you@example.com`. The Admin link
+   then appears in the dashboard; `/admin` is a 404 for everyone else.
+2. **Analytics:** set `ANALYTICS_SECRET` (≥32 chars). Update the privacy page (content/legal.ts): first-party
+   statistics, consent cookie `analytics_consent`, 13-month retention.
+3. **Storage (Cloudflare R2):** create a bucket; create an R2 API token (Object Read & Write, that bucket only) →
+   `STORAGE_ACCESS_KEY_ID` / `STORAGE_SECRET_ACCESS_KEY`; `STORAGE_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com`,
+   `STORAGE_BUCKET`. Set `STORAGE_ENDPOINT` for **builds** too (CSP allows the browser to upload there).
+   Add a CORS rule on the bucket:
+   ```json
+   [{ "AllowedOrigins": ["https://<your-domain>"], "AllowedMethods": ["PUT", "GET"], "AllowedHeaders": ["content-type"], "MaxAgeSeconds": 3600 }]
+   ```
+   Keep the bucket private (no public access, no r2.dev URL): downloads use short-lived signed URLs.
+4. **Before going live:** upload, download and delete one file on the deployed site; check `/admin` stats.
+
 ## Verify after deploy
 
 - `/` and `/en` render; `/robots.txt`, `/sitemap.xml` list the real domain.

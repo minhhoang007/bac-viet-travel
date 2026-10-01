@@ -16,7 +16,7 @@ Report vulnerabilities privately to the maintainer (hoangvanminh007@gmail.com). 
 | Rate limiting | Auth endpoints, contact form, expensive APIs; Redis in prod, in-memory fallback for `site` |
 | Headers | CSP, HSTS, X-Content-Type-Options, Referrer-Policy, frame-ancestors |
 | Webhooks | Signature on raw body, idempotent storage, async processing |
-| Uploads | Real MIME check, size limit, owner, quota |
+| Uploads | Type allowlist (no HTML/SVG/JS), signed content type + size, owner, quota, forced `attachment` downloads (ADR-0006) |
 | Secrets | Per-environment, never shared between dev/preview/prod; rotation procedure documented |
 | Logging | Structured, request id; never log secrets, tokens, personal data |
 | Errors | Safe user messages; raw DB/provider errors never reach the client |

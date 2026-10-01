@@ -84,3 +84,13 @@ test("profile site exposes no app routes", async ({ request }) => {
 test("pricing page follows the billing module flag", async ({ request }) => {
   expect((await request.get("/pricing")).status()).toBe(features.billing ? 200 : 404);
 });
+
+test("ops modules follow their flags (admin, analytics, storage)", async ({ page, request }) => {
+  if (!features.admin) expect((await request.get("/admin")).status()).toBe(404);
+  if (!features.storage) expect((await request.get("/api/storage/files/00000000-0000-0000-0000-000000000000")).status()).toBe(404);
+  if (!features.analytics) {
+    expect((await request.post("/api/analytics/collect", { data: '{"path":"/"}' })).status()).toBe(404);
+    await page.goto("/");
+    await expect(page.getByRole("dialog")).toHaveCount(0); // no consent banner without analytics
+  }
+});

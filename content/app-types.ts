@@ -11,7 +11,7 @@ export interface AppContent {
     errors: { invalid_email: string; rate_limited: string; error: string; link: string };
   };
   dashboard: {
-    nav: { overview: string; account: string };
+    nav: { overview: string; account: string; admin: string };
     signOut: string;
     welcome: string;
     overviewText: string;
@@ -52,5 +52,59 @@ export interface AppContent {
     backToBilling: string;
     checkoutSuccess: string;
     error: string;
+  };
+  files: {
+    title: string;
+    usage: string;
+    upload: string;
+    uploading: string;
+    allowed: string;
+    empty: string;
+    download: string;
+    delete: string;
+    errors: { type: string; size: string; quota: string; failed: string };
+  };
+  consent: { text: string; accept: string; decline: string; privacyLink: string };
+  admin: {
+    title: string;
+    backToApp: string;
+    nav: { overview: string; users: string; jobs: string; billing: string; audit: string };
+    overview: {
+      newUsers: string;
+      proUsers: string;
+      totalUsers: string;
+      views: string;
+      visitors: string;
+      topPages: string;
+      topReferrers: string;
+      events: string;
+      storage: string;
+      noData: string;
+      last30Days: string;
+    };
+    users: {
+      search: string;
+      email: string;
+      role: string;
+      status: string;
+      createdAt: string;
+      plan: string;
+      activeUntil: string;
+      orders: string;
+      subscriptions: string;
+      files: string;
+      disable: string;
+      enable: string;
+      makeAdmin: string;
+      makeUser: string;
+      previous: string;
+      next: string;
+      selfNote: string;
+    };
+    jobs: { title: string; name: string; attempts: string; lastError: string; retry: string; empty: string };
+    billing: { subscriptions: string; orders: string; problemEvents: string; retry: string; empty: string };
+    audit: { title: string; time: string; actor: string; action: string; target: string; empty: string };
+    done: string;
+    failed: string;
   };
 }

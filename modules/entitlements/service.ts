@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, isNull, or, sql } from "drizzle-orm";
+import { and, desc, eq, gt, isNull, lte, or, sql } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import type { EntitlementKey, Entitlements, PlanDefinition, PlanId } from "@/config/billing.defaults";
 import { accessGrants } from "./schema";
@@ -24,6 +24,8 @@ export interface EntitlementsModule {
    * Idempotent per (source, sourceId): re-running returns the existing grant.
    */
   grantPeriod(grant: { ownerId: string; plan: PlanId; source: GrantSource; sourceId: string; days: number }, tx?: DbExecutor): Promise<{ startsAt: Date; endsAt: Date }>;
+  /** Admin stats: number of users with access to the plan right now. */
+  countActiveOwners(plan: PlanId): Promise<number>;
 }
 
 const RANK: Record<PlanId, number> = { free: 0, pro: 1 };
@@ -96,6 +98,14 @@ export function createEntitlementsModule(db: Db, plans: Record<PlanId, PlanDefin
       const endsAt = new Date(startsAt.getTime() + grant.days * 24 * 60 * 60_000);
       await tx.insert(accessGrants).values({ ...grant, startsAt, endsAt }).onConflictDoNothing();
       return { startsAt, endsAt };
+    },
+    async countActiveOwners(plan) {
+      const t = now();
+      const [row] = await db
+        .select({ n: sql<number>`count(distinct ${accessGrants.ownerId})::int` })
+        .from(accessGrants)
+        .where(and(eq(accessGrants.plan, plan), lte(accessGrants.startsAt, t), or(isNull(accessGrants.endsAt), gt(accessGrants.endsAt, t))));
+      return row?.n ?? 0;
     },
   };
 }

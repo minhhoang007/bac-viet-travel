@@ -1,4 +1,4 @@
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import type { Logger } from "@/core/logger";
 import type { Db } from "@/db/client";
 import { jobs, type JobRow } from "./schema";
@@ -31,7 +31,13 @@ export interface JobsModule {
   tick(options?: { budgetMs?: number }): Promise<RunResult>;
   /** Deletes finished jobs (payloads may hold personal data, e.g. queued emails). */
   purgeFinished(options?: { succeededDays?: number; deadDays?: number }): Promise<number>;
+  /** Admin: most recent jobs in the given statuses (payloads omitted — they may hold personal data). */
+  list(options?: { statuses?: JobRow["status"][]; limit?: number }): Promise<JobSummary[]>;
+  /** Admin: re-queue a failed or dead job now with a fresh attempt budget. False if not retryable. */
+  retry(jobId: string): Promise<boolean>;
 }
+
+export type JobSummary = Pick<JobRow, "id" | "name" | "status" | "attempts" | "maxAttempts" | "runAt" | "lastError" | "updatedAt">;
 
 export interface JobsModuleDeps {
   db: Db;
@@ -146,6 +152,37 @@ export function createJobsModule(deps: JobsModuleDeps): JobsModule {
     },
     runDue,
     purgeFinished,
+    async list({ statuses = ["failed", "dead"] as JobRow["status"][], limit = 50 } = {}) {
+      return deps.db
+        .select({
+          id: jobs.id,
+          name: jobs.name,
+          status: jobs.status,
+          attempts: jobs.attempts,
+          maxAttempts: jobs.maxAttempts,
+          runAt: jobs.runAt,
+          lastError: jobs.lastError,
+          updatedAt: jobs.updatedAt,
+        })
+        .from(jobs)
+        .where(inArray(jobs.status, statuses))
+        .orderBy(desc(jobs.updatedAt))
+        .limit(limit);
+    },
+    async retry(jobId) {
+      try {
+        const rows = await deps.db
+          .update(jobs)
+          .set({ status: "queued", attempts: 0, runAt: new Date(now()), lockedUntil: null })
+          .where(and(eq(jobs.id, jobId), inArray(jobs.status, ["failed", "dead"])))
+          .returning({ id: jobs.id });
+        return rows.length > 0;
+      } catch (error) {
+        // A dead job whose dedupe key already has an active job: the active one does the work.
+        if ((error as { code?: string }).code === "23505") return false;
+        throw error;
+      }
+    },
     async tick(options = {}) {
       try {
         await purgeFinished();
