@@ -68,7 +68,7 @@ Dependencies flow one way: Product → Modules (public API only) → Core. Detai
 
 ## Project skills
 `.claude/skills/`: `karpathy-guidelines`, `phase-execution`, `product-feature`, `module-authoring`,
-`tdd-critical-flows`, `security-review-starter`, `starter-upgrade`.
+`tdd-critical-flows`, `security-review-starter`, `starter-upgrade`, `ui-components`.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

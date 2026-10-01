@@ -1,8 +1,24 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
 /* Color values come from config/brand.ts (components/ui/theme.ts renders them in the root layout). */
 :root {
   --radius: 0.5rem;
+  /*
+   * Extra tokens used by shadcn/ui components (components/ui), derived from the 7 brand colors so that
+   * changing config/brand.ts re-themes everything. Override any of them here if a project needs to.
+   */
+  --card: var(--background);
+  --card-foreground: var(--foreground);
+  --popover: var(--background);
+  --popover-foreground: var(--foreground);
+  --secondary: var(--muted);
+  --secondary-foreground: var(--foreground);
+  --accent: var(--muted);
+  --accent-foreground: var(--foreground);
+  --input: var(--border);
+  --ring: var(--primary);
+  --destructive: #dc2626;
 }
 
 @theme inline {
@@ -13,7 +29,21 @@
   --color-border: var(--border);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-destructive: var(--destructive);
+  --radius-sm: calc(var(--radius) - 4px);
   --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 6px);
 }
 
 body {

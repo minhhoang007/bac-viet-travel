@@ -44,6 +44,7 @@ export default async function HomePage({ params }: Props) {
         subtitle={c.hero.subtitle}
         primary={{ label: c.hero.primaryCta, href: heroHref(locale, c.hero.primaryHref) }}
         secondary={{ label: c.hero.secondaryCta, href: heroHref(locale, c.hero.secondaryHref) }}
+        image={c.hero.image}
       />
       <Features id="features" title={c.features.title} items={c.features.items} />
       <ProductHomeSections locale={locale} />

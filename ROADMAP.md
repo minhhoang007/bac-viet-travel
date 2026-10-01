@@ -123,6 +123,11 @@ Mỗi module chỉ được gắn nhãn **Stable** khi đạt Module DoD ([REQUI
 - [x] SEO: metadata + OpenGraph article, JSON-LD BlogPosting, hreflang theo `translationKey`, sitemap, RSS mỗi ngôn ngữ.
 - [x] Bài nháp chỉ hiện khi dev; link "Blog" trong header khi bật module; 2 bài mẫu (xoá khi `init:project` trừ `--keep-example`).
 
+### UI kit ✅ (chờ review)
+- [x] shadcn/ui trong `components/ui/`, theme lấy từ `config/brand.ts`, icon `lucide-react`.
+- [x] Menu mobile (G3), FAQ accordion, Hero có ảnh (G4), slot `ProductLayoutExtras` (G1), DatePicker tiếng Việt, Toaster.
+- [x] Kiểm tra a11y bằng axe trong E2E; skill `ui-components`.
+
 ### Còn lại ⬜
 `ai` (+ `usage`), CLI `create-minh-app`.
 
