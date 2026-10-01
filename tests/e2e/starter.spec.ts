@@ -149,3 +149,9 @@ test("health endpoint responds without caching", async ({ request }) => {
   expect(await health.json()).toMatchObject({ status: "ok" });
   expect(health.headers()["cache-control"]).toBe("no-store");
 });
+
+test("profile site: /dashboard is a plain 404 (no redirect to a missing login page)", async ({ request }) => {
+  test.skip(features.profile !== "site", "profile app redirects signed-out visitors to the login page");
+  const res = await request.get("/dashboard", { maxRedirects: 0 });
+  expect(res.status()).toBe(404);
+});

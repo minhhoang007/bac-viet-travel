@@ -9,6 +9,31 @@ import { moduleManifests } from "./modules";
 
 type EnvSource = Record<string, string | undefined>;
 
+const LOCAL_HOSTS = ["localhost", "127.0.0.1"];
+
+/**
+ * The public site URL. An explicit NEXT_PUBLIC_SITE_URL wins. On Vercel without it, the production domain of the
+ * project (system env VERCEL_PROJECT_PRODUCTION_URL) is used, so canonical URLs, sitemap and share images never point
+ * to localhost. Previews also use the production domain: canonical links should name the real site.
+ */
+export function resolveSiteUrl(source: EnvSource): string | undefined {
+  if (source.NEXT_PUBLIC_SITE_URL) return source.NEXT_PUBLIC_SITE_URL;
+  if (source.VERCEL_PROJECT_PRODUCTION_URL) return `https://${source.VERCEL_PROJECT_PRODUCTION_URL}`;
+  return undefined;
+}
+
+/** A Vercel production deployment must not advertise localhost (it would break auth callbacks, SEO and emails). */
+function siteUrlProblem(source: EnvSource, siteUrl: string | undefined): string | undefined {
+  if (source.VERCEL_ENV !== "production") return undefined;
+  if (!siteUrl) return "NEXT_PUBLIC_SITE_URL: required on Vercel production (e.g. https://example.com)";
+  try {
+    if (LOCAL_HOSTS.includes(new URL(siteUrl).hostname)) return "NEXT_PUBLIC_SITE_URL: points to localhost on a Vercel production deployment";
+  } catch {
+    // invalid URLs are reported by the schema
+  }
+  return undefined;
+}
+
 export type Env = BaseEnv & { extra: Record<string, string> };
 
 export interface ValidateOptions {
@@ -34,7 +59,10 @@ export function validateEnv(
 ): Env {
   const problems = validateModules(features, manifests);
 
-  const base = baseEnvSchema.safeParse(source);
+  const siteUrl = resolveSiteUrl(source);
+  const siteProblem = siteUrlProblem(source, siteUrl);
+  if (siteProblem) problems.push(siteProblem);
+  const base = baseEnvSchema.safeParse({ ...source, NEXT_PUBLIC_SITE_URL: siteUrl });
   if (!base.success) {
     for (const issue of base.error.issues) problems.push(`${issue.path.join(".")}: ${issue.message}`);
   }
@@ -98,7 +126,10 @@ export interface PublicEnv {
  * Does not require runtime secrets, so marketing pages can be prerendered at build time.
  */
 export function getPublicEnv(): PublicEnv {
-  const url = baseEnvSchema.shape.NEXT_PUBLIC_SITE_URL.safeParse(process.env.NEXT_PUBLIC_SITE_URL);
+  const siteUrl = resolveSiteUrl(process.env);
+  const problem = siteUrlProblem(process.env, siteUrl);
+  if (problem) throw new AppError("INTERNAL_ERROR", `Invalid configuration:\n  - ${problem}`);
+  const url = baseEnvSchema.shape.NEXT_PUBLIC_SITE_URL.safeParse(siteUrl);
   if (!url.success) throw new AppError("INTERNAL_ERROR", "Invalid configuration:\n  - NEXT_PUBLIC_SITE_URL: invalid URL");
   return { NEXT_PUBLIC_SITE_URL: url.data };
 }
