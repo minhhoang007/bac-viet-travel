@@ -6,7 +6,7 @@ Default target: **Vercel** (ADR-0001). Any Node host works; see "Other hosts".
 
 1. Import the repository in Vercel (framework: Next.js; install `pnpm install --frozen-lockfile`).
 2. Environment variables (Production and Preview separately — never share secrets):
-   - `NEXT_PUBLIC_SITE_URL` = `https://your-domain` (https is required in production)
+   - `NEXT_PUBLIC_SITE_URL` = `https://your-domain` (https is required in production). Without it, Vercel deployments use the project production domain (`*.vercel.app`); a production deployment with no URL or localhost refuses to start.
    - Email module on: `EMAIL_PROVIDER=resend`, `EMAIL_API_KEY`, `EMAIL_FROM` (a verified Resend domain), `CONTACT_TO_EMAIL`
    - Optional: `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` (shared rate limit across instances)
 3. Deploy. The build needs no secrets; missing runtime variables fail fast with a list of problems.
@@ -52,6 +52,16 @@ Everything above, plus:
    ```
    Keep the bucket private (no public access, no r2.dev URL): downloads use short-lived signed URLs.
 4. **Before going live:** upload, download and delete one file on the deployed site; check `/admin` stats.
+
+## Monitoring and backups
+
+1. **Uptime:** point a monitor (Better Stack, UptimeRobot…) at `https://<domain>/api/health` — 200 healthy, 503 when the
+   database is unreachable. The response also shows the deployed commit.
+2. **Errors:** every server error is one JSON log line `request.error` with a `digest`; users see the same digest as
+   "ref" on the error page. Search Vercel logs by digest. To get alerts, add an error tracker in `instrumentation.ts`.
+3. **Backups (Neon):** point-in-time restore is on by default (retention depends on the plan). Before a release with a
+   starter or product migration, create a Neon branch, run `pnpm db:migrate` against it, then migrate production.
+4. **Dependencies:** Dependabot opens weekly PRs; merge only with CI green.
 
 ## Verify after deploy
 

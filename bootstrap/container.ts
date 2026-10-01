@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { createAccountService, type AccountService } from "@/core/account";
 import { createAuthService, type AuthRateLimits, type AuthService } from "@/core/auth";
 import { createBetterAuth } from "@/core/auth/adapters/better-auth";
@@ -22,6 +23,7 @@ import { upstashRateLimiter } from "@/providers/rate-limit/upstash";
 import { s3Storage } from "@/providers/storage/s3";
 import { createProduct, type Product } from "@/product/manifest";
 import { appConfig } from "@/config/app";
+import { brand } from "@/config/brand";
 import { authConfig } from "@/config/auth";
 import { billingConfig } from "@/config/billing";
 import { features } from "@/config/features";
@@ -39,6 +41,13 @@ export interface AppServices {
 /** Services wired for the running project. Optional members exist only when their module/profile is on. */
 export interface Container {
   features: Features;
+  /** Liveness of dependencies for /api/health (no details that could leak configuration). */
+  health(): Promise<{ db: "ok" | "error" | "skipped" }>;
+  /**
+   * Shared rate limiter for project features (e.g. a booking form): Upstash when configured, else in-memory.
+   * Memoized per name, so call it on every request and get the same limiter.
+   */
+  rateLimiter(name: string, rule: RateLimitRule): RateLimiter;
   logger: Logger;
   mail: MailPort;
   contact?: ContactService;
@@ -90,6 +99,7 @@ export function buildContainer(features: Features, env: Env, overrides: Containe
         from: env.extra.EMAIL_FROM!,
         logger,
         scheduleRetry: jobs ? (message) => jobs.enqueue(SEND_EMAIL_JOB, { message }, { maxAttempts: 6 }) : undefined,
+        html: { brand: appConfig.name, accent: brand.colors.light.primary },
       })
     : undefined;
   if (email && jobs) handlers[SEND_EMAIL_JOB] = (payload) => email.sendNow(payload.message as MailMessage);
@@ -146,7 +156,25 @@ export function buildContainer(features: Features, env: Env, overrides: Containe
 
   const app = features.profile === "app" && db ? buildApp(env, mail, logger, overrides, db, { billing, analytics, storage }) : undefined;
 
-  return { features, logger, mail, contact, app, jobs, entitlements, billing, admin, analytics, storage };
+  const limiters = new Map<string, RateLimiter>();
+  const rateLimiter = (name: string, rule: RateLimitRule) => {
+    let limiter = limiters.get(name);
+    if (!limiter) limiters.set(name, (limiter = overrides.rateLimiter ?? rateLimiterFor(env, rule, logger)));
+    return limiter;
+  };
+
+  const health = async () => {
+    if (!db) return { db: "skipped" as const };
+    try {
+      await db.execute(sql`select 1`);
+      return { db: "ok" as const };
+    } catch (error) {
+      logger.error("health.db_failed", { error });
+      return { db: "error" as const };
+    }
+  };
+
+  return { features, logger, mail, health, rateLimiter, contact, app, jobs, entitlements, billing, admin, analytics, storage };
 }
 
 function buildBilling(

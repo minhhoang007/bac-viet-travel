@@ -27,6 +27,7 @@ V1.0 is only tagged when all three are done. Until then, projects use `v1.0.0-rc
 `v1.0.0-rc.6`, `--profile site --modules email,blog`. Tours (Hạ Long, Ninh Bình, Sapa) as validated MDX content, booking
 inquiry form (team email + visitor confirmation), Zalo / WhatsApp / hotline buttons, 6 blog posts, Unsplash photos.
 Result: **2 lines changed in starter-owned files** (`app/[locale]/layout.tsx`); `pnpm check` 101 tests, site E2E 18.
+Upgraded **rc.6 → rc.7** (UI kit): 2 conflicts, both predicted by UPGRADING (`app/[locale]/layout.tsx` → take the starter, `product/layout.tsx` → keep the project); after the upgrade the project modifies **no starter-owned file**. axe found one real issue in project code (white text on WhatsApp green, 1.98:1), fixed in the project.
 
 **Every edit to Core/Modules/bootstrap/components (the protected paths) needed by the project:**
 
@@ -40,7 +41,7 @@ Result: **2 lines changed in starter-owned files** (`app/[locale]/layout.tsx`); 
 | A | `app/[locale]/page.tsx` | F6: hero buttons hard-coded to `#contact` / `#features`; needed `/tours` | Yes → `hero.primaryHref` / `secondaryHref` in content (rc.2) |
 | A | `playwright.config.ts` | F7: E2E server env (email module on) not configurable | Yes → project-owned `tests/e2e/server-env.ts` (rc.2) |
 | A2 | `app/[locale]/layout.tsx` | G1: no slot for site-wide product UI (floating Zalo/WhatsApp buttons, licence line under the footer); added 2 lines | Yes → `ProductLayoutExtras` slot in `product/layout.tsx` (UI kit release) |
-| A2 | (product action) | G2: profile site has no way to wire product services; the inquiry action builds its service from `getContainer().mail` and a **per-instance memory** rate limiter (no Upstash) | Yes → expose `rateLimiterFor(rule)` (or product services for profile site) from the container |
+| A2 | (product action) | G2: profile site has no way to wire product services; the inquiry action builds its service from `getContainer().mail` and a **per-instance memory** rate limiter (no Upstash) | Yes → `container.rateLimiter(name, rule)` (rc.8) |
 | A2 | `components/layout/site-header.tsx` (not edited) | G3: header links are hidden below `sm` and there is no mobile menu: on phones visitors only reach tours via the hero button | Yes → mobile menu (sheet) in the starter header (UI kit release) |
 | A2 | `components/marketing/hero.tsx` (not edited) | G4: hero has no background image; a travel site wants a photo hero (worked around with image cards below) | Yes → optional `image` prop (UI kit release) |
 | A2 | (product code) | G5: tours copy the blog's frontmatter/zod/MDX pattern (~60 lines) | Maybe → generic "content collection" helper (schema + folder + locales) shared by blog and products |

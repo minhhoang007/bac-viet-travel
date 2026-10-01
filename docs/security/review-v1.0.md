@@ -54,6 +54,23 @@ The first version of this report missed the findings below; an independent revie
 | Stored XSS via uploads | ok with note | no HTML/SVG/JS allowed, forced `attachment`; no magic-byte check (server never sees bytes) |
 | Personal files on account deletion | ok | objects deleted first; storage failure aborts deletion |
 
+## Re-review for rc.8 (2026-10-01)
+
+Status changes since the V1.0 checklist below:
+
+| Item | Now | Evidence |
+|---|---|---|
+| 9 Webhooks | ok | V1.1 addendum (signature, idempotency, ordering, crash safety) |
+| 12 Uploads | ok with note | V1.2 addendum (type allowlist, signed type/size, quota race, IDOR, attachment downloads) |
+| 15 Audit log | ok | V1.2 addendum (`audit_logs`, admin actions tested) |
+| 14 Dependencies | ok with note | same single moderate advisory (esbuild dev server), now reached via `better-auth → drizzle-kit`; not used at runtime. Dependabot weekly |
+| Accepted risk 5 (disabled users) | **resolved** | disabling deletes sessions; `getUser` rejects disabled users (admin int + E2E) |
+| Accepted risk 1 (CSP `'unsafe-inline'`) | still accepted | re-checked: analytics is first-party (same origin), MDX is trusted repo content, shadcn/Radix load no external scripts. Move to nonces before any third-party script |
+| New: `/api/health` | ok | returns only `status`, commit and `db` state; no config or error details; `no-store` |
+| New: `/api/og` (share images) | ok with note | renders a length-limited title in brand colors; anyone can request an image with arbitrary text (no data exposure; CDN-cached) |
+| New: error pages | ok | show a digest reference only; the server logs the error with path (no query string) via `instrumentation.ts` |
+| New: HTML emails | ok | generated from text with full escaping; only http(s) URLs become links; accent color validated |
+
 ## Checklist result
 
 | # | Item | Status | Evidence / note |

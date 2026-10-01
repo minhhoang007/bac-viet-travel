@@ -27,4 +27,6 @@ export interface MarketingContent {
   };
   footer: { rights: string };
   notFound: { title: string; back: string };
+  /** Unexpected error page (500). */
+  error: { title: string; text: string; retry: string; back: string };
 }
