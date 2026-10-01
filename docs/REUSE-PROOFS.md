@@ -23,6 +23,13 @@ V1.0 is only tagged when all three are done. Until then, projects use `v1.0.0-rc
 | Init command | `pnpm init:project --name "…" --profile site --modules email` | `pnpm init:project --name "…" --profile app` |
 | Deployed URL | not deployed yet | |
 
+**Real deployment proof (2026-10-01):** demo app `minhhoang007/minh-starter-demo` (profile app, example slice, from rc.9) on
+https://minh-starter-demo.vercel.app with Neon (pooled) and Resend. Migrations run with `pnpm db:migrate`; `/api/health`
+`db: ok`; browser smoke test passed (magic link sign-in, notes create/edit, signed-out note page → login, export 401
+anonymous / 200 with the note, account deletion cascades). Found and fixed on the way: site URL fell back to localhost on
+Vercel (rc.9). Note: Vercel env vars must be added to the project and the deployment redeployed; until then app routes
+fail fast with "Invalid configuration" (logged with a digest).
+
 **Project A2 (site, owner's travel agency — demo stage):** Bắc Việt Travel — `D:\dev\bac-viet-travel` (local), from
 `v1.0.0-rc.6`, `--profile site --modules email,blog`. Tours (Hạ Long, Ninh Bình, Sapa) as validated MDX content, booking
 inquiry form (team email + visitor confirmation), Zalo / WhatsApp / hotline buttons, 6 blog posts, Unsplash photos.
@@ -45,6 +52,8 @@ Upgraded **rc.6 → rc.7** (UI kit): 2 conflicts, both predicted by UPGRADING (`
 | A2 | `components/layout/site-header.tsx` (not edited) | G3: header links are hidden below `sm` and there is no mobile menu: on phones visitors only reach tours via the hero button | Yes → mobile menu (sheet) in the starter header (UI kit release) |
 | A2 | `components/marketing/hero.tsx` (not edited) | G4: hero has no background image; a travel site wants a photo hero (worked around with image cards below) | Yes → optional `image` prop (UI kit release) |
 | A2 | (product code) | G5: tours copy the blog's frontmatter/zod/MDX pattern (~60 lines) | Maybe → generic "content collection" helper (schema + folder + locales) shared by blog and products |
+| B (Bắc Việt booking) | `app/_lib/booking.ts` | G7: `createProduct(db)` got only the database; services needing a logger/rate limiter were built outside the manifest, and product code could not register jobs | Yes → `ProductContext` + `ProductJobs` (rc.10) |
+| B (Bắc Việt booking) | (would copy `providers/billing/vnpay.ts`) | G8: VNPay was reachable only through the subscription billing module; booking deposits are one-time payments | Yes → `container.payments.vnpay` / `ctx.payments` (rc.10) |
 | A2 | `tests/e2e/server-env.ts` | G6: with the email module on, the production E2E server cannot send (console provider is dev-only), so successful form submissions are only covered by unit tests | Maybe → a test-only mail sink allowed when `E2E=1` |
 
 Lesson from A2: the rc.2 extension points (navigation, home sections, sitemap paths, form defaults, JSON-LD, server env)

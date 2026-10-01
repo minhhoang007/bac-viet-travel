@@ -4,6 +4,17 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.0.0-rc.10] - 2026-10-01
+
+### Added — found while building a real app project (reuse findings G7, G8)
+- `ProductContext` (`core/product/context.ts`): `createProduct(db, ctx)` now also receives `logger`, `mail`, `rateLimiter(name, rule)`, `payments`, `jobs` (when the jobs module is on) and `now`.
+- Product jobs: `createProduct` may return `jobs: { handlers, periodic }`; they are registered with the jobs module (periodic tasks run as `product.<name>` on every tick). Ignored with a warning when the jobs module is off.
+- `container.payments.vnpay`: one-time VNPay payments configured by env alone (no billing module needed), with a `sandbox` flag. The billing module reuses the same instance.
+- Env: `VNPAY_TMN_CODE` and `VNPAY_HASH_SECRET` must be set together.
+
+### Changed
+- `OneTimePaymentProvider` moved to `core/ports/payments.ts` (still re-exported by `@/modules/billing`).
+
 ## [1.0.0-rc.9] - 2026-10-01
 
 ### Fixed (found on the first real Vercel deployment)

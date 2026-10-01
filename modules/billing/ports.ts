@@ -39,17 +39,5 @@ export interface SubscriptionProvider {
   revokeSubscription(id: string): Promise<ProviderSubscription>;
 }
 
-export interface OneTimePaymentProvider {
-  buildPaymentUrl(input: {
-    txnRef: string;
-    amount: number;
-    orderInfo: string;
-    ipAddr: string;
-    returnUrl: string;
-    locale: "vi" | "en";
-    createdAt: Date;
-    expiresAt: Date;
-  }): string;
-  /** Verifies the provider signature on callback params (IPN / return URL). */
-  verify(params: Record<string, string>): boolean;
-}
+// Moved to core so product code can use it too (rc.10).
+export type { OneTimePaymentProvider } from "@/core/ports/payments";
