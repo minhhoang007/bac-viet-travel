@@ -68,11 +68,22 @@ export function visitorHash(secret: string, day: string, ip: string, userAgent: 
   return createHash("sha256").update(dailyKey).update(ip).update("\n").update(userAgent).digest("hex").slice(0, 32);
 }
 
-export function createAnalyticsModule(deps: { db: Db; secret: string; now?: () => Date }): AnalyticsModule {
+export interface AnalyticsDeps {
+  db: Db;
+  secret: string;
+  /** Without the jobs module nothing runs purge() periodically: collect() then purges at most once a day. */
+  purgeOnCollect?: boolean;
+  now?: () => Date;
+}
+
+const DAY_MS = 24 * 60 * 60_000;
+
+export function createAnalyticsModule(deps: AnalyticsDeps): AnalyticsModule {
   const { db } = deps;
   const now = deps.now ?? (() => new Date());
+  let lastPurge = 0;
 
-  return {
+  const analytics: AnalyticsModule = {
     async collect(input) {
       if (BOT.test(input.userAgent)) return false;
       const path = cleanPath(input.path);
@@ -86,6 +97,10 @@ export function createAnalyticsModule(deps: { db: Db; secret: string; now?: () =
         userId: input.consent ? (input.userId ?? null) : null,
         createdAt: t,
       });
+      if (deps.purgeOnCollect && t.getTime() - lastPurge > DAY_MS) {
+        lastPurge = t.getTime();
+        await analytics.purge();
+      }
       return true;
     },
 
@@ -130,4 +145,5 @@ export function createAnalyticsModule(deps: { db: Db; secret: string; now?: () =
         .where(eq(analyticsEvents.userId, userId));
     },
   };
+  return analytics;
 }

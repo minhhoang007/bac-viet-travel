@@ -117,7 +117,7 @@ export function buildContainer(features: Features, env: Env, overrides: Containe
     periodic["billing.reconcile"] = async () => void (await billing.reconcileSubscriptions());
   }
 
-  const analytics = features.analytics && db ? createAnalyticsModule({ db, secret: env.extra.ANALYTICS_SECRET!, now: overrides.now }) : undefined;
+  const analytics = features.analytics && db ? createAnalyticsModule({ db, secret: env.extra.ANALYTICS_SECRET!, purgeOnCollect: !jobs, now: overrides.now }) : undefined;
   if (analytics) periodic["analytics.purge"] = async () => void (await analytics.purge());
 
   const storage =

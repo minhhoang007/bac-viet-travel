@@ -92,12 +92,16 @@ describe("storage: validation and quota", () => {
     expect((await storage.usage(id)).usedBytes).toBe(0);
   });
 
-  it("unconfirmed reservations are purged", async () => {
+  it("unconfirmed reservations stop counting after an hour (periodic purge, or on the user's next upload)", async () => {
     const id = await user();
-    await storage.requestUpload(id, { name: "a.txt", contentType: "text/plain", size: 5 });
-    expect(await storage.purgePending(60)).toBe(0);
-    expect(await storage.purgePending(-1)).toBe(1);
-    expect((await storage.usage(id)).usedBytes).toBe(0);
+    const { fileId } = await storage.requestUpload(id, { name: "a.txt", contentType: "text/plain", size: 5 });
+    expect(await storage.purgePending()).toBe(0);
+    await db.update(files).set({ createdAt: new Date(Date.now() - 61 * 60_000) }).where(eq(files.id, fileId));
+    expect((await storage.usage(id)).usedBytes).toBe(5);
+    await storage.requestUpload(id, { name: "b.txt", contentType: "text/plain", size: 7 }); // purges the stale one first
+    expect((await storage.usage(id)).usedBytes).toBe(7);
+    await db.update(files).set({ createdAt: new Date(Date.now() - 61 * 60_000) });
+    expect(await storage.purgePending()).toBe(1);
   });
 });
 

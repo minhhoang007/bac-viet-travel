@@ -85,6 +85,15 @@ describe("analytics: stats, retention, export", () => {
     expect((await rows()).map((r) => r.path)).toEqual(["/new"]);
   });
 
+  it("without jobs, collect purges old events at most once a day", async () => {
+    const self = createAnalyticsModule({ db, secret: "s".repeat(32), purgeOnCollect: true, now: () => clock });
+    clock = new Date("2025-08-01T00:00:00Z");
+    await analytics.collect({ ...visit, path: "/old", consent: false });
+    clock = new Date("2026-10-01T00:00:00Z");
+    await self.collect({ ...visit, path: "/new", consent: false });
+    expect((await rows()).map((r) => r.path)).toEqual(["/new"]);
+  });
+
   it("export contains only the user's consented events; account deletion unlinks them", async () => {
     const [u] = await db.insert(users).values({ email: "a@example.com" }).returning();
     await analytics.collect({ ...visit, path: "/x", consent: true, userId: u!.id });

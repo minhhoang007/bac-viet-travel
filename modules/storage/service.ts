@@ -26,7 +26,7 @@ export interface StorageModule {
   deleteAllForUser(userId: string): Promise<number>;
   exportForUser(userId: string): Promise<FileSummary[]>;
   /** Periodic: drop reservations whose upload was never confirmed. */
-  purgePending(olderThanMinutes?: number): Promise<number>;
+  purgePending(): Promise<number>;
   /** Admin: totals across all users. */
   totals(): Promise<{ files: number; bytes: number; users: number }>;
 }
@@ -57,6 +57,26 @@ export function createStorageModule(deps: StorageDeps): StorageModule {
     return Number(row?.n ?? 0);
   };
 
+  // Abandoned reservations (upload never confirmed) stop counting toward the quota after this long.
+  const PENDING_MINUTES = 60;
+  const purgeStale = async (userId?: string) => {
+    const stale = await db
+      .select({ id: files.id, key: files.key })
+      .from(files)
+      .where(
+        and(
+          eq(files.status, "pending"),
+          lt(files.createdAt, sql`now() - make_interval(mins => ${PENDING_MINUTES})`),
+          userId ? eq(files.ownerId, userId) : undefined,
+        ),
+      )
+      .limit(500);
+    if (!stale.length) return 0;
+    await objects.delete(stale.map((r) => r.key));
+    for (const { id } of stale) await db.delete(files).where(and(eq(files.id, id), eq(files.status, "pending")));
+    return stale.length;
+  };
+
   const ownFile = async (userId: string, fileId: string) => {
     if (!/^[0-9a-f-]{36}$/i.test(fileId)) throw new AppError("NOT_FOUND");
     const [row] = await db.select().from(files).where(and(eq(files.id, fileId), eq(files.ownerId, userId)));
@@ -73,6 +93,8 @@ export function createStorageModule(deps: StorageDeps): StorageModule {
       if (!Number.isInteger(input.size) || input.size <= 0 || input.size > config.maxFileBytes) {
         throw new AppError("VALIDATION_ERROR", "File too large");
       }
+      // Also covers projects without the jobs module, where purgePending() never runs periodically.
+      await purgeStale(userId);
       const quota = await deps.quotaFor(userId);
       const key = `u/${userId}/${crypto.randomUUID()}`;
       const fileId = await db.transaction(async (tx) => {
@@ -135,16 +157,8 @@ export function createStorageModule(deps: StorageDeps): StorageModule {
       return db.select(summary).from(files).where(and(eq(files.ownerId, userId), eq(files.status, "ready")));
     },
 
-    async purgePending(olderThanMinutes = 60) {
-      const stale = await db
-        .select({ id: files.id, key: files.key })
-        .from(files)
-        .where(and(eq(files.status, "pending"), lt(files.createdAt, sql`now() - make_interval(mins => ${olderThanMinutes})`)))
-        .limit(500);
-      if (!stale.length) return 0;
-      await objects.delete(stale.map((r) => r.key));
-      for (const { id } of stale) await db.delete(files).where(and(eq(files.id, id), eq(files.status, "pending")));
-      return stale.length;
+    async purgePending() {
+      return purgeStale();
     },
 
     async totals() {
