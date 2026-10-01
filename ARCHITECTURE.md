@@ -91,7 +91,7 @@ docs/           adr UPGRADING.md SETUP.md
 | Session helpers | `app/_lib/session.ts` | `requireAppServices()` (404 in site, forces request-time render), `requirePageUser()` (redirect to login), `currentUser()` |
 | Optimistic redirect | `proxy.ts` | cookie presence only — never authorization |
 | Account lifecycle | `core/account` | export aggregates `AccountDataExporter`s from the product manifest; delete relies on `ON DELETE CASCADE` |
-| Product entry point | `product/manifest.ts` | `createProduct(db)` → services, exporters; `productNav` |
+| Product entry point | `product/manifest.ts` | `createProduct(db, ctx: ProductContext)` → services, exporters, jobs; `productNav` |
 | Static pages | `getPublicEnv()` | reads only public values, so marketing pages prerender without secrets |
 | Theme | `config/brand.ts` → `components/ui/theme.ts` | CSS variables (light/dark) rendered in the root layout; `globals.css` holds no color values |
 | Jobs / billing | `modules/jobs`, `modules/entitlements`, `modules/billing` | wired in `buildContainer`; job handlers + periodic tasks registered there; ADR-0002, ADR-0005 |
