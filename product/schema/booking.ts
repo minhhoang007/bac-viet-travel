@@ -22,7 +22,8 @@ export const departures = pgTable(
   ],
 );
 
-export const BOOKING_STATUSES = ["held", "expired", "deposit_paid", "confirmed", "cancelled"] as const;
+/** refund_due: a deposit arrived after the hold expired and the seats were gone (staff refunds it). */
+export const BOOKING_STATUSES = ["held", "expired", "deposit_paid", "refund_due", "confirmed", "cancelled"] as const;
 export type BookingStatus = (typeof BOOKING_STATUSES)[number];
 
 export const bookings = pgTable(
@@ -49,6 +50,7 @@ export const bookings = pgTable(
     unitPriceVnd: integer("unit_price_vnd").notNull(),
     totalVnd: integer("total_vnd").notNull(),
     depositVnd: integer("deposit_vnd").notNull(),
+    depositPaidAt: timestamp("deposit_paid_at", { withTimezone: true }),
     ...timestamps(),
   },
   (t) => [
@@ -58,5 +60,30 @@ export const bookings = pgTable(
   ],
 );
 
+export const PAYMENT_STATUSES = ["pending", "paid", "failed"] as const;
+
+/** One VNPay attempt for a booking deposit. A guest may retry after a failed attempt. */
+export const bookingPayments = pgTable(
+  "booking_payments",
+  {
+    id: id(),
+    bookingId: uuid("booking_id").notNull().references(() => bookings.id, { onDelete: "cascade" }),
+    /** vnp_TxnRef we send (unique per attempt). */
+    txnRef: text("txn_ref").notNull(),
+    amountVnd: integer("amount_vnd").notNull(),
+    status: text("status", { enum: PAYMENT_STATUSES }).notNull().default("pending"),
+    /** VNPay transaction number and response code from the IPN. */
+    providerTxnNo: text("provider_txn_no"),
+    responseCode: text("response_code"),
+    bankCode: text("bank_code"),
+    /** Guest link token, kept only until the IPN emails the link (then erased). */
+    linkToken: text("link_token"),
+    paidAt: timestamp("paid_at", { withTimezone: true }),
+    ...timestamps(),
+  },
+  (t) => [uniqueIndex("booking_payments_txn_ref_idx").on(t.txnRef), index("booking_payments_booking_idx").on(t.bookingId)],
+);
+
+export type BookingPayment = typeof bookingPayments.$inferSelect;
 export type Departure = typeof departures.$inferSelect;
 export type Booking = typeof bookings.$inferSelect;

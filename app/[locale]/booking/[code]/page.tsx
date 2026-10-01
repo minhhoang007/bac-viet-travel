@@ -1,16 +1,19 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import { setRequestLocale } from "next-intl/server";
-import { getBooking } from "@/app/_lib/booking";
+import { getBooking, isPaymentsSandbox } from "@/app/_lib/booking";
+import { startDeposit } from "@/app/actions/booking";
 import { ButtonLink } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { localePath } from "@/core/i18n/routing";
 import type { Locale } from "@/config/app";
 import { formatDay, formatVnd, getBookingContent } from "@/product/booking/content";
+import { AutoRefresh } from "@/product/components/auto-refresh";
+import { DepositButton } from "@/product/components/deposit-button";
 import { HoldCountdown } from "@/product/components/hold-countdown";
 import { getTourCatalog } from "@/product/tours/catalog";
 
-type Props = { params: Promise<{ locale: Locale; code: string }>; searchParams: Promise<{ t?: string }> };
+type Props = { params: Promise<{ locale: Locale; code: string }>; searchParams: Promise<{ t?: string; pay?: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
@@ -23,7 +26,7 @@ export default async function BookingPage({ params, searchParams }: Props) {
   const { locale, code } = await params;
   setRequestLocale(locale);
   const t = getBookingContent(locale);
-  const { t: token } = await searchParams;
+  const { t: token, pay } = await searchParams;
   const booking = token ? await getBooking().getForGuest(code, token) : null;
 
   if (!booking) {
@@ -39,6 +42,9 @@ export default async function BookingPage({ params, searchParams }: Props) {
 
   const tour = getTourCatalog().get(locale, booking.departure.tourSlug);
   const status = booking.isExpired ? "expired" : booking.status;
+  const sandbox = isPaymentsSandbox();
+  // Back from VNPay with a success code, but the IPN has not arrived yet.
+  const confirming = status === "held" && pay === "pending";
   const rebook = localePath(locale, `/tours/${booking.departure.tourSlug}/book?d=${booking.departure.id}`);
   const guests = [booking.adults && `${booking.adults} ${t.adults.toLowerCase()}`, booking.children && `${booking.children} ${t.children.toLowerCase()}`, booking.infants && `${booking.infants} ${t.infants.toLowerCase()}`].filter(Boolean).join(", ");
 
@@ -50,14 +56,45 @@ export default async function BookingPage({ params, searchParams }: Props) {
         <span data-booking-status={status}>{t.booking.status[status]}</span>
       </p>
 
-      {status === "held" && (
+      {sandbox && (status === "held" || confirming) && (
+        <p className="mt-6 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900" data-testid="sandbox-banner">
+          {t.booking.sandbox}
+          <br />
+          <span className="font-mono text-xs">{t.booking.sandboxCard}</span>
+        </p>
+      )}
+      {confirming && (
+        <section className="mt-6 rounded-xl border border-border p-5" data-testid="confirming">
+          <p className="font-medium">{t.booking.confirming}</p>
+          <AutoRefresh />
+        </section>
+      )}
+      {(status === "deposit_paid" || status === "confirmed") && (
+        <section className="mt-6 rounded-xl border border-green-300 bg-green-50 p-5 text-green-950" data-testid="paid">
+          <h2 className="text-lg font-semibold">{t.booking.paidTitle}</h2>
+          <p className="mt-1 text-sm">{t.booking.paidText}</p>
+        </section>
+      )}
+      {status === "refund_due" && (
+        <section className="mt-6 rounded-xl border border-amber-300 bg-amber-50 p-5 text-amber-950">
+          <h2 className="text-lg font-semibold">{t.booking.refundTitle}</h2>
+          <p className="mt-1 text-sm">{t.booking.refundText}</p>
+        </section>
+      )}
+      {status === "held" && !confirming && (
         <section className="mt-6 rounded-xl border border-primary/40 bg-primary/5 p-5">
           <h2 className="text-lg font-semibold">{t.booking.heldTitle}</h2>
           <p className="mt-1 text-sm">{t.booking.heldText}</p>
           <p className="mt-4 text-sm">
             {t.booking.remaining}: <HoldCountdown expiresAt={booking.holdExpiresAt.toISOString()} />
           </p>
-          <p className="mt-3 text-sm text-muted-foreground">{t.booking.payNext}</p>
+          {pay === "failed" && (
+            <p role="alert" className="mt-3 text-sm text-red-700">
+              {t.booking.payFailed}
+            </p>
+          )}
+          <DepositButton action={startDeposit} code={booking.code} token={token!} locale={locale} label={t.booking.pay(formatVnd(booking.depositVnd, locale))} errorText={t.booking.payUnavailable} />
+          <p className="mt-2 text-xs text-muted-foreground">{t.booking.payHint}</p>
         </section>
       )}
       {status === "expired" && (

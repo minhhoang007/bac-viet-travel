@@ -1,17 +1,9 @@
 import { getContainer } from "@/bootstrap/container";
-import { createBookingService, type BookingService } from "@/product/booking/service";
-import { getTourCatalog } from "@/product/tours/catalog";
 
-let service: BookingService | undefined;
+/** Booking services built in product/manifest.ts (profile app). */
+export const getBooking = () => getContainer().app!.product.booking;
+export const getDeposits = () => getContainer().app!.product.deposits;
+export const isPaymentsSandbox = () => getContainer().app!.product.paymentsSandbox;
 
-/** Booking service for server pages and actions (profile app). 10 holds / 10 minutes per client. */
-export function getBooking(): BookingService {
-  if (service) return service;
-  const container = getContainer();
-  return (service = createBookingService({
-    db: container.app!.db,
-    logger: container.logger,
-    rateLimiter: container.rateLimiter("booking-hold", { max: 10, windowMs: 10 * 60_000 }),
-    tourPrice: (slug) => getTourCatalog().get("vi", slug)?.price.vnd ?? null,
-  }));
-}
+/** Cookie that brings the guest back to their private page after VNPay (the return URL cannot carry the token). */
+export const BOOKING_COOKIE = (code: string) => `bk_${code}`;

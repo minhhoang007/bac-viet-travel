@@ -13,7 +13,12 @@ if (!process.env.TEST_WORKER_INDEX) {
   }
 }
 
+/** Fake VNPay sandbox merchant: tests sign IPN / return params with this secret. */
+export const E2E_VNPAY = { tmnCode: "BVE2E001", hashSecret: "e2e-vnpay-hash-secret" };
+
 export const e2eServerEnv: Record<string, string> = {
+  VNPAY_TMN_CODE: E2E_VNPAY.tmnCode,
+  VNPAY_HASH_SECRET: E2E_VNPAY.hashSecret,
   DATABASE_URL,
   BETTER_AUTH_SECRET: "e2e-secret-0123456789abcdef0123456789",
   EMAIL_PROVIDER: "resend",
