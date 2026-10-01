@@ -27,6 +27,7 @@ V1.0 is only tagged when all three are done. Until then, projects use `v1.0.0-rc
 `v1.0.0-rc.6`, `--profile site --modules email,blog`. Tours (Hạ Long, Ninh Bình, Sapa) as validated MDX content, booking
 inquiry form (team email + visitor confirmation), Zalo / WhatsApp / hotline buttons, 6 blog posts, Unsplash photos.
 Result: **2 lines changed in starter-owned files** (`app/[locale]/layout.tsx`); `pnpm check` 101 tests, site E2E 18.
+Upgraded **rc.6 → rc.7** (UI kit): 2 conflicts, both predicted by UPGRADING (`app/[locale]/layout.tsx` → take the starter, `product/layout.tsx` → keep the project); after the upgrade the project modifies **no starter-owned file**. axe found one real issue in project code (white text on WhatsApp green, 1.98:1), fixed in the project.
 
 **Every edit to Core/Modules/bootstrap/components (the protected paths) needed by the project:**
 
