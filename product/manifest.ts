@@ -44,4 +44,7 @@ export const productNav: ProductNavItem[] = [];
 /** Public product pages for sitemap.xml (paths without locale prefix). */
 export const sitemapPaths: string[] = ["/tours", ...getTourCatalog().slugs().map((slug) => `/tours/${slug}`)];
 
+/** Admin menu entries for product pages (e.g. "/admin/orders"); shown when the admin module is on. */
+export const productAdminNav: ProductNavItem[] = [];
+
 export type Product = ReturnType<typeof createProduct>;
