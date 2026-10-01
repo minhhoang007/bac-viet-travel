@@ -37,7 +37,7 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
-### Next release (blog, unreleased)
+### v1.0.0-rc.6 (2026-10-01) — blog
 - **Content (add fields):** `blog` section in `content/*/app.ts`.
 - **New files:** `config/blog.ts` (project-owned), `content/blog/` sample posts (delete them, or keep as a template).
 - No migration. The module stays off until `blog: true` in `config/features.ts`.

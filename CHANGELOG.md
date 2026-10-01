@@ -4,6 +4,8 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.0.0-rc.6] - 2026-10-01
+
 ### Added — blog module (ADR-0007)
 - `blog` module (site + app): MDX posts in `content/blog/<locale>/`, validated frontmatter, index with pagination, post and tag pages (all prerendered), drafts in development only.
 - SEO for posts: OpenGraph `article`, JSON-LD `BlogPosting` (`articleJsonLd`), hreflang between translations (`translationKey`), sitemap entries, RSS feed per locale.

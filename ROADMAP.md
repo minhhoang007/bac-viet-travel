@@ -69,7 +69,7 @@ Trạng thái: ⬜ chưa làm · 🟨 đang làm · ✅ xong
 
 ---
 
-## V1.0 — Release 🟨 (`v1.0.0-rc.5`, chờ project app thật của chủ repo)
+## V1.0 — Release 🟨 (`v1.0.0-rc.6`, chờ project app thật của chủ repo)
 
 > Quyết định 2026-09-30: project B (app) là **project thật** của chủ repo, không dựng project thử nghiệm.
 > V1.0 được tag khi project đó chạy thật và phát hiện đã được ghi vào [docs/REUSE-PROOFS.md](docs/REUSE-PROOFS.md).
@@ -117,7 +117,7 @@ Mỗi module chỉ được gắn nhãn **Stable** khi đạt Module DoD ([REQUI
 
 ## V1.x — Tuỳ chọn 🟨
 
-### Blog ✅ (chờ review)
+### Blog ✅
 - [x] ADR-0007: bài viết là file MDX trong `content/blog/<locale>/`, frontmatter kiểm tra bằng zod (sai → build lỗi).
 - [x] Trang danh sách (phân trang), bài viết, tag; tất cả prerender tĩnh, slug lạ → 404.
 - [x] SEO: metadata + OpenGraph article, JSON-LD BlogPosting, hreflang theo `translationKey`, sitemap, RSS mỗi ngôn ngữ.
