@@ -1,4 +1,5 @@
-import { and, eq, gt, inArray, lt, or, sql } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, lt, or, sql } from "drizzle-orm";
+import { users } from "@/core/users/schema";
 import { AppError } from "@/core/errors";
 import type { Logger } from "@/core/logger";
 import type { Db } from "@/db/client";
@@ -49,6 +50,16 @@ export interface BillingModule {
   revokeSubscriptionsForUser(userId: string): Promise<number>;
   /** Account export: the user's orders and subscriptions (no provider payloads). */
   exportForUser(userId: string): Promise<{ orders: unknown[]; subscriptions: unknown[] }>;
+  /** Admin: recent subscriptions and orders, and webhook events that need attention (no provider payloads). */
+  adminOverview(limit?: number): Promise<BillingAdminOverview>;
+  /** Admin: give a dead or failed webhook event a fresh attempt budget and queue it. False if not retryable. */
+  retryWebhookEvent(eventRowId: string): Promise<boolean>;
+}
+
+export interface BillingAdminOverview {
+  subscriptions: { id: string; ownerEmail: string | null; plan: string; status: string; currentPeriodEnd: Date | null; cancelAtPeriodEnd: boolean }[];
+  orders: { id: string; ownerEmail: string | null; plan: string; interval: string; amount: number; currency: string; status: string; createdAt: Date }[];
+  problemEvents: { id: string; provider: string; type: string; status: string; attempts: number; lastError: string | null; receivedAt: Date }[];
 }
 
 // Polar statuses that currently entitle the user (paid through current_period_end).
@@ -350,6 +361,63 @@ export function createBillingModule(deps: BillingDeps): BillingModule {
         .from(subscriptions)
         .where(eq(subscriptions.ownerId, userId));
       return { orders, subscriptions: subs };
+    },
+
+    async adminOverview(limit = 50) {
+      const subs = await db
+        .select({
+          id: subscriptions.id,
+          ownerEmail: users.email,
+          plan: subscriptions.plan,
+          status: subscriptions.status,
+          currentPeriodEnd: subscriptions.currentPeriodEnd,
+          cancelAtPeriodEnd: subscriptions.cancelAtPeriodEnd,
+        })
+        .from(subscriptions)
+        .leftJoin(users, eq(users.id, subscriptions.ownerId))
+        .orderBy(desc(subscriptions.updatedAt))
+        .limit(limit);
+      const orders = await db
+        .select({
+          id: billingOrders.id,
+          ownerEmail: users.email,
+          plan: billingOrders.plan,
+          interval: billingOrders.interval,
+          amount: billingOrders.amount,
+          currency: billingOrders.currency,
+          status: billingOrders.status,
+          createdAt: billingOrders.createdAt,
+        })
+        .from(billingOrders)
+        .leftJoin(users, eq(users.id, billingOrders.ownerId))
+        .orderBy(desc(billingOrders.createdAt))
+        .limit(limit);
+      const problemEvents = await db
+        .select({
+          id: webhookEvents.id,
+          provider: webhookEvents.provider,
+          type: webhookEvents.type,
+          status: webhookEvents.status,
+          attempts: webhookEvents.attempts,
+          lastError: webhookEvents.lastError,
+          receivedAt: webhookEvents.receivedAt,
+        })
+        .from(webhookEvents)
+        .where(inArray(webhookEvents.status, ["failed", "dead"]))
+        .orderBy(desc(webhookEvents.receivedAt))
+        .limit(limit);
+      return { subscriptions: subs, orders, problemEvents };
+    },
+
+    async retryWebhookEvent(eventRowId) {
+      const [event] = await db
+        .update(webhookEvents)
+        .set({ status: "received", attempts: 0, lockedUntil: null })
+        .where(and(eq(webhookEvents.id, eventRowId), inArray(webhookEvents.status, ["failed", "dead"])))
+        .returning({ id: webhookEvents.id });
+      if (!event) return false;
+      await deps.jobs.enqueue(PROCESS_WEBHOOK_JOB, { eventRowId: event.id }, { dedupeKey: `webhook:${event.id}`, maxAttempts: MAX_EVENT_ATTEMPTS });
+      return true;
     },
 
     async vnpayReturnStatus(params) {

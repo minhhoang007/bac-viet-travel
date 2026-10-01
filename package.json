@@ -20,9 +20,13 @@
     "test:int": "vitest run --config vitest.integration.config.ts",
     "init:project": "node scripts/init-project.ts",
     "verify:init": "bash scripts/verify-init.sh",
-    "test:e2e:app": "bash scripts/e2e-app.sh"
+    "test:e2e:app": "bash scripts/e2e-app.sh",
+    "admin:grant": "node --env-file-if-exists=.env.local scripts/admin-grant.ts",
+    "storage:up": "docker compose up -d storage"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1143.0",
+    "@aws-sdk/s3-request-presigner": "^3.1143.0",
     "@polar-sh/sdk": "^1.0.0",
     "better-auth": "^1.7.6",
     "clsx": "^2.1.1",

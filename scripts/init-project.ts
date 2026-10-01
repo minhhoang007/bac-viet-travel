@@ -10,7 +10,7 @@ import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 
 const MODULES = ["email", "jobs", "entitlements", "billing", "usage", "storage", "analytics", "admin", "ai", "blog"];
-const AVAILABLE = ["email", "jobs", "entitlements", "billing"]; // modules implemented in this starter version
+const AVAILABLE = ["email", "jobs", "entitlements", "billing", "admin", "analytics", "storage"]; // modules implemented in this starter version
 
 const { values } = parseArgs({
   options: {
@@ -38,7 +38,7 @@ for (const m of modules) {
   if (!MODULES.includes(m)) fail(`unknown module "${m}". Known: ${MODULES.join(", ")}`);
   if (!AVAILABLE.includes(m)) fail(`module "${m}" is not implemented in this starter version yet`);
 }
-const APP_ONLY = ["jobs", "entitlements", "billing"];
+const APP_ONLY = ["jobs", "entitlements", "billing", "admin", "storage"];
 for (const m of modules) {
   if (profile === "site" && APP_ONLY.includes(m)) fail(`module "${m}" needs --profile app`);
 }
@@ -179,7 +179,10 @@ for (const a of actions) console.log(`  ${a}`);
 const env = ["NEXT_PUBLIC_SITE_URL"];
 if (modules.has("email")) env.push("EMAIL_PROVIDER / EMAIL_API_KEY", "EMAIL_FROM", "CONTACT_TO_EMAIL");
 if (profile === "app") env.push("DATABASE_URL", "BETTER_AUTH_SECRET", "(optional) GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET");
+if (profile === "site" && modules.has("analytics")) env.push("DATABASE_URL (analytics events)");
 if (modules.has("jobs")) env.push("CRON_SECRET");
+if (modules.has("analytics")) env.push("ANALYTICS_SECRET");
+if (modules.has("storage")) env.push("STORAGE_ENDPOINT / STORAGE_BUCKET / STORAGE_ACCESS_KEY_ID / STORAGE_SECRET_ACCESS_KEY");
 if (modules.has("billing")) {
   env.push(
     "POLAR_ACCESS_TOKEN / POLAR_WEBHOOK_SECRET / POLAR_SERVER / POLAR_PRODUCT_PRO_MONTHLY / POLAR_PRODUCT_PRO_YEARLY",
@@ -191,5 +194,5 @@ console.log(`\nNext steps:
   2. Edit content/ (texts), config/brand.ts (colors), content/legal.ts (legal text)${
     profile === "app" ? "\n  3. pnpm db:up && pnpm db:generate:product (when you add tables) && pnpm db:migrate" : ""
   }
-  ${profile === "app" ? 4 : 3}. pnpm check && pnpm dev
+  ${profile === "app" ? 4 : 3}. pnpm check && pnpm dev${modules.has("admin") ? "\n  then: sign in once and run pnpm admin:grant <your email>" : ""}
 `);

@@ -7,20 +7,25 @@ import type { Features } from "@/core/module";
 import { noopMail, type MailMessage, type MailPort } from "@/core/ports/mail";
 import { createMemoryRateLimiter, withFallback, type RateLimiter, type RateLimitRule } from "@/core/security/rate-limit";
 import { createDb, type Db } from "@/db/client";
+import { createAdminModule, type AdminModule } from "@/modules/admin";
+import { createAnalyticsModule, type AnalyticsModule } from "@/modules/analytics";
 import { createBillingModule, PROCESS_WEBHOOK_JOB, type BillingModule, type OneTimePaymentProvider, type SubscriptionProvider } from "@/modules/billing";
 import { createEmailModule, SEND_EMAIL_JOB, type EmailProvider } from "@/modules/email";
 import { createEntitlementsModule, type EntitlementsModule } from "@/modules/entitlements";
 import { createJobsModule, type JobHandler, type JobsModule } from "@/modules/jobs";
+import { createStorageModule, type ObjectStorage, type StorageModule } from "@/modules/storage";
 import { polarProvider } from "@/providers/billing/polar";
 import { vnpayProvider } from "@/providers/billing/vnpay";
 import { consoleEmailProvider } from "@/providers/email/console";
 import { resendProvider } from "@/providers/email/resend";
 import { upstashRateLimiter } from "@/providers/rate-limit/upstash";
+import { s3Storage } from "@/providers/storage/s3";
 import { createProduct, type Product } from "@/product/manifest";
 import { appConfig } from "@/config/app";
 import { authConfig } from "@/config/auth";
 import { billingConfig } from "@/config/billing";
 import { features } from "@/config/features";
+import { storageConfig } from "@/config/storage";
 import { getEnv, type Env } from "./env";
 
 /** Services available only in profile "app". */
@@ -41,6 +46,9 @@ export interface Container {
   jobs?: JobsModule;
   entitlements?: EntitlementsModule;
   billing?: BillingModule;
+  admin?: AdminModule;
+  analytics?: AnalyticsModule;
+  storage?: StorageModule;
 }
 
 export interface ContainerOverrides {
@@ -51,6 +59,7 @@ export interface ContainerOverrides {
   db?: Db;
   billingProviders?: { polar?: SubscriptionProvider; vnpay?: OneTimePaymentProvider };
   now?: () => Date;
+  objectStorage?: ObjectStorage;
 }
 
 const CONTACT_LIMIT: RateLimitRule = { max: 5, windowMs: 10 * 60_000 };
@@ -66,7 +75,9 @@ export function getContainer(): Container {
 
 export function buildContainer(features: Features, env: Env, overrides: ContainerOverrides = {}): Container {
   const logger = createLogger({ level: env.LOG_LEVEL });
-  const db = features.profile === "app" ? (overrides.db ?? createDb(env.extra.DATABASE_URL!).db) : undefined;
+  // Profile "site" has a database only for analytics events.
+  const needsDb = features.profile === "app" || features.analytics;
+  const db = needsDb ? (overrides.db ?? createDb(env.extra.DATABASE_URL!).db) : undefined;
 
   // Jobs: handlers/periodic tasks are registered below by the modules that own them.
   const handlers: Record<string, JobHandler> = {};
@@ -106,9 +117,36 @@ export function buildContainer(features: Features, env: Env, overrides: Containe
     periodic["billing.reconcile"] = async () => void (await billing.reconcileSubscriptions());
   }
 
-  const app = features.profile === "app" && db ? buildApp(env, mail, logger, overrides, db, billing) : undefined;
+  const analytics = features.analytics && db ? createAnalyticsModule({ db, secret: env.extra.ANALYTICS_SECRET!, now: overrides.now }) : undefined;
+  if (analytics) periodic["analytics.purge"] = async () => void (await analytics.purge());
 
-  return { features, logger, mail, contact, app, jobs, entitlements, billing };
+  const storage =
+    features.storage && db
+      ? createStorageModule({
+          db,
+          logger,
+          objects:
+            overrides.objectStorage ??
+            s3Storage({
+              endpoint: env.extra.STORAGE_ENDPOINT!,
+              bucket: env.extra.STORAGE_BUCKET!,
+              accessKeyId: env.extra.STORAGE_ACCESS_KEY_ID!,
+              secretAccessKey: env.extra.STORAGE_SECRET_ACCESS_KEY!,
+              region: env.STORAGE_REGION,
+            }),
+          config: storageConfig,
+          quotaFor: entitlements
+            ? (userId) => entitlements.getLimit(userId, "storage.max_bytes")
+            : async () => billingConfig.plans.free.entitlements["storage.max_bytes"],
+        })
+      : undefined;
+  if (storage) periodic["storage.purge_pending"] = async () => void (await storage.purgePending());
+
+  const admin = features.admin && db ? createAdminModule({ db, logger }) : undefined;
+
+  const app = features.profile === "app" && db ? buildApp(env, mail, logger, overrides, db, { billing, analytics, storage }) : undefined;
+
+  return { features, logger, mail, contact, app, jobs, entitlements, billing, admin, analytics, storage };
 }
 
 function buildBilling(
@@ -142,7 +180,14 @@ function buildBilling(
   });
 }
 
-function buildApp(env: Env, mail: MailPort, logger: Logger, overrides: ContainerOverrides, db: Db, billing?: BillingModule): AppServices {
+function buildApp(
+  env: Env,
+  mail: MailPort,
+  logger: Logger,
+  overrides: ContainerOverrides,
+  db: Db,
+  { billing, analytics, storage }: { billing?: BillingModule; analytics?: AnalyticsModule; storage?: StorageModule },
+): AppServices {
   const google =
     env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
       ? { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET }
@@ -169,9 +214,18 @@ function buildApp(env: Env, mail: MailPort, logger: Logger, overrides: Container
   const product = createProduct(db);
   const account = createAccountService(
     db,
-    [...product.exporters, ...(billing ? [{ name: "billing", export: (userId: string) => billing.exportForUser(userId) }] : [])],
-    // Never delete an account that would keep being charged.
-    billing ? [async (userId: string) => void (await billing.revokeSubscriptionsForUser(userId))] : [],
+    [
+      ...product.exporters,
+      ...(billing ? [{ name: "billing", export: (userId: string) => billing.exportForUser(userId) }] : []),
+      ...(storage ? [{ name: "files", export: (userId: string) => storage.exportForUser(userId) }] : []),
+      ...(analytics ? [{ name: "analytics", export: (userId: string) => analytics.exportForUser(userId) }] : []),
+    ],
+    [
+      // Never delete an account that would keep being charged.
+      ...(billing ? [async (userId: string) => void (await billing.revokeSubscriptionsForUser(userId))] : []),
+      // Objects first: a failed storage delete aborts the deletion instead of leaving orphaned files.
+      ...(storage ? [async (userId: string) => void (await storage.deleteAllForUser(userId))] : []),
+    ],
   );
   return { db, auth, account, product: product.services };
 }

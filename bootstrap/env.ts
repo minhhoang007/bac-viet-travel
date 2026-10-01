@@ -65,6 +65,9 @@ export function validateEnv(
         problems.push('POLAR_SERVER: "sandbox" in production — set POLAR_SERVER=production');
       }
     }
+    if (extra.ANALYTICS_SECRET && extra.ANALYTICS_SECRET.length < 32) {
+      problems.push("ANALYTICS_SECRET: must be at least 32 characters (openssl rand -base64 32)");
+    }
     if (extra.BETTER_AUTH_SECRET && extra.BETTER_AUTH_SECRET.length < 32) {
       problems.push("BETTER_AUTH_SECRET: must be at least 32 characters (openssl rand -base64 32)");
     }

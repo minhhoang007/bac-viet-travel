@@ -10,6 +10,9 @@ import { getAppContent, getMarketingContent } from "@/content";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { themeCss } from "@/components/ui/theme";
+import { AnalyticsTracker } from "@/components/analytics/tracker";
+import { ConsentBanner } from "@/components/analytics/consent-banner";
+import { features } from "@/config/features";
 import "../globals.css";
 
 export function generateStaticParams() {
@@ -28,7 +31,7 @@ export default async function LocaleLayout({
   setRequestLocale(locale);
 
   const c = getMarketingContent(locale as Locale);
-  const legal = getAppContent(locale as Locale).legal;
+  const { legal, consent } = getAppContent(locale as Locale);
   const other = appConfig.locales.find((l) => l !== locale) ?? appConfig.defaultLocale;
   const home = localePath(locale);
 
@@ -56,6 +59,18 @@ export default async function LocaleLayout({
               { label: legal.privacy, href: localePath(locale, "/privacy") },
             ]}
           />
+          {features.analytics && (
+            <>
+              <AnalyticsTracker />
+              <ConsentBanner
+                text={consent.text}
+                accept={consent.accept}
+                decline={consent.decline}
+                privacyLabel={consent.privacyLink}
+                privacyHref={localePath(locale, "/privacy")}
+              />
+            </>
+          )}
         </NextIntlClientProvider>
       </body>
     </html>

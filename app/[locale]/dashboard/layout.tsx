@@ -7,6 +7,7 @@ import { localePath } from "@/core/i18n/routing";
 import { appConfig, type Locale } from "@/config/app";
 import { getAppContent } from "@/content";
 import { productNav } from "@/product/manifest";
+import { getContainer } from "@/bootstrap/container";
 import { getModuleNavigation } from "@/bootstrap/navigation";
 
 export const metadata: Metadata = { robots: { index: false } };
@@ -30,6 +31,8 @@ export default async function DashboardLayout({
       href: localePath(locale, item.href),
     })),
     { label: c.nav.account, href: localePath(locale, "/dashboard/account") },
+    // Admin link for admins only (the admin pages themselves 404 for everyone else).
+    ...(user.role === "admin" && getContainer().admin ? [{ label: c.nav.admin, href: localePath(locale, "/admin") }] : []),
   ];
 
   return (

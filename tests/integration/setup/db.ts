@@ -10,5 +10,5 @@ export function testDb() {
 
 /** Empties every app table (keeps migration journals). CASCADE also clears product tables referencing users. */
 export async function resetDb(db: ReturnType<typeof testDb>["db"]) {
-  await db.execute(sql`TRUNCATE users, sessions, accounts, verifications, jobs, webhook_events RESTART IDENTITY CASCADE`);
+  await db.execute(sql`TRUNCATE users, sessions, accounts, verifications, jobs, webhook_events, audit_logs, analytics_events, files RESTART IDENTITY CASCADE`);
 }

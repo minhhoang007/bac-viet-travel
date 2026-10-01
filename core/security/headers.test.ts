@@ -18,4 +18,10 @@ describe("security headers", () => {
     expect(asMap(false)["Content-Security-Policy"]).not.toContain("unsafe-eval");
     expect(asMap(true)["Content-Security-Policy"]).toContain("unsafe-eval");
   });
+
+  it("adds extra connect-src origins (object storage for direct uploads)", () => {
+    const csp = Object.fromEntries(securityHeaders({ isDev: false, connectSrc: ["https://acc.r2.cloudflarestorage.com"] }).map((h) => [h.key, h.value]))["Content-Security-Policy"];
+    expect(csp).toContain("connect-src 'self' https://acc.r2.cloudflarestorage.com;");
+    expect(asMap(false)["Content-Security-Policy"]).toContain("connect-src 'self';");
+  });
 });

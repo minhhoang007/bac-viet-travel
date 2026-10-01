@@ -5,7 +5,9 @@ import { featureDefaults } from "@/config/features.defaults";
 import type { MailMessage, MailPort } from "@/core/ports/mail";
 import { createMemoryRateLimiter } from "@/core/security/rate-limit";
 import type { Db } from "@/db/client";
+import type { ModuleName } from "@/core/module";
 import { TEST_DATABASE_URL } from "./db";
+import { TEST_STORAGE } from "./storage";
 
 export const BASE_URL = "http://localhost:3000";
 
@@ -15,12 +17,19 @@ export const BASE_URL = "http://localhost:3000";
  */
 export function testApp(
   db: Db,
-  options: { realRateLimits?: boolean; saas?: boolean; env?: Record<string, string>; overrides?: Omit<ContainerOverrides, "db" | "mail" | "authRateLimits"> } = {},
+  options: {
+    realRateLimits?: boolean;
+    saas?: boolean;
+    /** Extra modules to enable, e.g. { admin: true }. */
+    modules?: Partial<Record<ModuleName, boolean>>;
+    env?: Record<string, string>;
+    overrides?: Omit<ContainerOverrides, "db" | "mail" | "authRateLimits">;
+  } = {},
 ) {
   const sent: MailMessage[] = [];
   const mail: MailPort = { send: async (m) => void sent.push(m) };
   const saas = options.saas ? { jobs: true, entitlements: true, billing: true } : {};
-  const features = { ...featureDefaults, profile: "app" as const, email: true, ...saas };
+  const features = { ...featureDefaults, profile: "app" as const, email: true, ...saas, ...options.modules };
   const env = validateEnv(
     {
       NODE_ENV: "test",
@@ -32,6 +41,11 @@ export function testApp(
       EMAIL_FROM: "noreply@example.com",
       CONTACT_TO_EMAIL: "owner@example.com",
       CRON_SECRET: "test-cron-secret",
+      ANALYTICS_SECRET: "test-analytics-secret-at-least-32-chars",
+      STORAGE_ENDPOINT: TEST_STORAGE.endpoint,
+      STORAGE_BUCKET: TEST_STORAGE.bucket,
+      STORAGE_ACCESS_KEY_ID: TEST_STORAGE.accessKeyId,
+      STORAGE_SECRET_ACCESS_KEY: TEST_STORAGE.secretAccessKey,
       ...options.env,
     },
     features,
