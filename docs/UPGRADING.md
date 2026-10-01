@@ -37,7 +37,7 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
-### Next release (production hardening, unreleased)
+### v1.0.0-rc.8 (2026-10-01) — production hardening
 - **Content (add fields):** `error` section in `content/*/marketing.ts` (error page texts).
 - **Config:** `seo.defaultOgImage` now defaults to `/api/og`; projects that set their own image keep it. New `seo.dynamicOgImage` (default `true`).
 - **Projects with their own rate limiter** (e.g. a booking form using `createMemoryRateLimiter`): switch to

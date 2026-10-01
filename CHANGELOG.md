@@ -4,6 +4,8 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.0.0-rc.8] - 2026-10-01
+
 ### Added — production hardening
 - Error pages: `app/[locale]/error.tsx` (localized, shows a reference digest) and `app/global-error.tsx`; `instrumentation.ts` logs every server request error as one structured line (path without query).
 - `/api/health` (200 / 503, `no-store`): database check and deployed commit; `container.health()`.
