@@ -17,6 +17,14 @@ export interface ProductContext {
   payments: Payments;
   /** Background jobs, when the jobs module is on. Register handlers in `ProductJobs`, enqueue here. */
   jobs?: { enqueue(name: string, payload: Record<string, unknown>, options?: { runAt?: Date; maxAttempts?: number; dedupeKey?: string }): Promise<void> };
+  /** Admin audit log, when the admin module is on: records the entry only if the action succeeds and returns true. */
+  audit?: {
+    audited(
+      actor: { id: string; email: string },
+      entry: { action: string; targetType: string; targetId: string; metadata?: Record<string, unknown> },
+      action: () => Promise<boolean>,
+    ): Promise<boolean>;
+  };
   now: () => Date;
 }
 

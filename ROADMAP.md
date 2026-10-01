@@ -69,7 +69,7 @@ Trạng thái: ⬜ chưa làm · 🟨 đang làm · ✅ xong
 
 ---
 
-## V1.0 — Release 🟨 (`v1.0.0-rc.10`; deploy thật ✅ 2026-10-01; chờ project app thật của chủ repo)
+## V1.0 — Release 🟨 (`v1.0.0-rc.11`; deploy thật ✅ 2026-10-01; chờ project app thật của chủ repo)
 
 > Quyết định 2026-09-30: project B (app) là **project thật** của chủ repo, không dựng project thử nghiệm.
 > V1.0 được tag khi project đó chạy thật và phát hiện đã được ghi vào [docs/REUSE-PROOFS.md](docs/REUSE-PROOFS.md).
@@ -138,6 +138,10 @@ Mỗi module chỉ được gắn nhãn **Stable** khi đạt Module DoD ([REQUI
 - [x] `createProduct(db, ctx)`: logger, mail, rate limiter, payments, jobs, clock (G7).
 - [x] Product đăng ký job handler / việc định kỳ (G7).
 - [x] `container.payments.vnpay` không cần module billing, có cờ sandbox (G8).
+
+### rc.11 — Admin cho product ✅
+- [x] `productAdminNav`: trang admin của dự án có trong menu /admin (G9).
+- [x] `ctx.audit`: thao tác admin của dự án ghi chung nhật ký audit (G9).
 
 ### Còn lại ⬜
 `ai` (+ `usage`), CLI `create-minh-app`.

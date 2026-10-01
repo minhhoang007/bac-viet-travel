@@ -37,6 +37,11 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
+### v1.0.0-rc.11 (2026-10-01) — product admin pages
+- **Optional:** export `productAdminNav: ProductNavItem[]` from `product/manifest.ts` to add product pages to the admin menu.
+  Guard product admin pages/actions with `requireAdmin()` (`app/_lib/admin.ts`) and record changes with `ctx.audit.audited(...)`.
+- No migration.
+
 ### v1.0.0-rc.10 (2026-10-01) — product context, payments
 - **Optional, recommended:** change `product/manifest.ts` to `createProduct(db: Db, ctx: ProductContext)` and build services from
   `ctx` (logger, mail, rate limiter, payments, jobs) instead of calling `getContainer()` in `app/_lib`. The old

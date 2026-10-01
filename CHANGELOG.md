@@ -4,6 +4,12 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.0.0-rc.11] - 2026-10-01
+
+### Added — admin pages for product features (reuse finding G9)
+- `productAdminNav` in `product/manifest.ts`: product pages appear in the `/admin` menu (optional export; older manifests keep working).
+- `ProductContext.audit` (admin module on): product admin actions write to the same audit log as user management.
+
 ## [1.0.0-rc.10] - 2026-10-01
 
 ### Added — found while building a real app project (reuse findings G7, G8)

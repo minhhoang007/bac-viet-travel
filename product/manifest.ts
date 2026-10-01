@@ -31,6 +31,9 @@ export const productNav: ProductNavItem[] = [
   { href: "/dashboard/product/notes", label: { vi: "Ghi chú", en: "Notes" } },
 ];
 
+/** Admin menu entries for product pages (e.g. "/admin/orders"); shown when the admin module is on. */
+export const productAdminNav: ProductNavItem[] = [];
+
 export type Product = ReturnType<typeof createProduct>;
 
 /** Public product pages for sitemap.xml (paths without locale prefix). The notes example is private: none. */
