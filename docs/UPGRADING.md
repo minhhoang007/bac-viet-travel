@@ -37,6 +37,9 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
+### v1.0.0-rc.12 (2026-10-01) — content in serverless functions
+- No action needed (`next.config.ts` is starter-owned). Keep runtime-read files under `content/`, or add your folder to `outputFileTracingIncludes`.
+
 ### v1.0.0-rc.11 (2026-10-01) — product admin pages
 - **Optional:** export `productAdminNav: ProductNavItem[]` from `product/manifest.ts` to add product pages to the admin menu.
   Guard product admin pages/actions with `requireAdmin()` (`app/_lib/admin.ts`) and record changes with `ctx.audit.audited(...)`.
