@@ -8,8 +8,10 @@ const sql = postgres(process.env.E2E_DATABASE_URL!, { max: 1, onnotice: () => {}
 test.afterAll(() => sql.end());
 
 let ipSeq = 150;
+// Headless Chromium says "HeadlessChrome", which the analytics bot filter drops (as it should).
+const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0 Safari/537.36";
 const newPage = async (browser: Browser, consent?: "granted" | "denied") => {
-  const context = await browser.newContext({ extraHTTPHeaders: { "x-forwarded-for": `203.0.113.${ipSeq++}` } });
+  const context = await browser.newContext({ userAgent, extraHTTPHeaders: { "x-forwarded-for": `203.0.113.${ipSeq++}` } });
   if (consent) await context.addCookies([{ name: "analytics_consent", value: consent, url: "http://localhost:3200" }]);
   return context.newPage();
 };
@@ -103,7 +105,7 @@ test.describe("storage", () => {
     await owner.locator("input[type=file]").setInputFiles({ name: "ghi chú.txt", mimeType: "text/plain", buffer: Buffer.from("xin chào") });
     const item = owner.getByTestId("file-list").getByRole("listitem").filter({ hasText: "ghi chú.txt" });
     await expect(item).toBeVisible();
-    await expect(owner.getByTestId("storage-usage")).toContainText("8 B");
+    await expect(owner.getByTestId("storage-usage")).toContainText("9 B") // "xin chào" is 9 bytes in UTF-8;
 
     const href = (await item.getByRole("link", { name: "Tải xuống" }).getAttribute("href"))!;
     const download = await owner.request.get(href);
