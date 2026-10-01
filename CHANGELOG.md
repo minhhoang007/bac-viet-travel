@@ -4,6 +4,11 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.0.0-rc.12] - 2026-10-01
+
+### Fixed (found on a real deployment, reuse finding G10)
+- Dynamic pages that read `content/` from disk (e.g. a booking page listing tours from MDX) returned 404 on Vercel: the files were not bundled with the serverless function. `next.config.ts` now traces `content/**` into every function.
+
 ## [1.0.0-rc.11] - 2026-10-01
 
 ### Added — admin pages for product features (reuse finding G9)
