@@ -4,6 +4,8 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.0.0-rc.4] - 2026-10-01
+
 ### Added — V1.1 SaaS (ADR-0002, ADR-0005)
 - `jobs` module: Postgres job queue (SKIP LOCKED claim, lease, backoff, dead, dedupe, purge), `/api/jobs/run`, Vercel Cron (`vercel.json`).
 - `entitlements` module: time-bounded access grants, stacked periods, typed `can` / `getLimit`.

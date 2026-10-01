@@ -37,7 +37,7 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
-### Next release (V1.1 SaaS, unreleased)
+### v1.0.0-rc.4 (2026-10-01) — V1.1 SaaS
 - **Migration:** starter `0001` creates jobs, access_grants, webhook_events, subscriptions, billing_orders. Run `pnpm db:migrate` on a DB copy first.
 - **Content (add fields):** `billing` section in `content/*/app.ts` (see starter's `content/vi/app.ts`).
 - **New config:** `config/billing.ts` (project-owned): plans, prices, providers. Modules stay off until enabled in `config/features.ts`.
