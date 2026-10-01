@@ -6,6 +6,11 @@ import { DashboardShell } from "@/components/dashboard/shell";
 import { localePath } from "@/core/i18n/routing";
 import type { Locale } from "@/config/app";
 import { getAppContent } from "@/content";
+import * as manifest from "@/product/manifest";
+import type { ProductNavItem } from "@/product/manifest";
+
+// Projects created before rc.11 have no productAdminNav export.
+const productAdminNav = (manifest as { productAdminNav?: ProductNavItem[] }).productAdminNav ?? [];
 
 export const metadata: Metadata = { robots: { index: false } };
 
@@ -22,6 +27,7 @@ export default async function AdminLayout({ children, params }: { children: Reac
     { label: c.nav.users, href: href("/admin/users") },
     ...(container.jobs ? [{ label: c.nav.jobs, href: href("/admin/jobs") }] : []),
     ...(container.billing ? [{ label: c.nav.billing, href: href("/admin/billing") }] : []),
+    ...productAdminNav.map((item) => ({ label: item.label[locale as Locale], href: href(item.href) })),
     { label: c.nav.audit, href: href("/admin/audit") },
     { label: c.backToApp, href: href("/dashboard") },
   ];

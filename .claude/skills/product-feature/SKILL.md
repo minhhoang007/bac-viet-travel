@@ -16,7 +16,7 @@ Use `product/_example-notes/` as the reference implementation.
 | Business logic + DB | `product/services/<feature>.ts` (Drizzle allowed here) |
 | Server actions | `product/actions/<feature>.ts` — thin: `auth.requireUser()` → validate → service |
 | UI | `product/components/**`, routes in `app/dashboard/product/**` or `app/(product)/**` |
-| Menu / job handlers / periodic tasks | `product/manifest.ts` — `createProduct(db, ctx)`: build services from `ctx` (logger, mail, `rateLimiter`, `payments`, `jobs`); return `jobs: { handlers, periodic }` |
+| Menu / job handlers / periodic tasks | `product/manifest.ts` — `createProduct(db, ctx)`: build services from `ctx` (logger, mail, `rateLimiter`, `payments`, `jobs`); return `jobs: { handlers, periodic }`; admin pages: `productAdminNav` + `requireAdmin()` + `ctx.audit` |
 | Strings | `content/` |
 | Tests | `product/tests/` |
 

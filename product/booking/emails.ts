@@ -107,3 +107,45 @@ export function depositEmails(input: {
   }
   return messages;
 }
+
+/** Guest email when staff confirm or cancel a booking. */
+export function bookingStatusEmail(input: { booking: Booking; departure: Departure; title: string; kind: "confirmed" | "cancelled" }): MailMessage {
+  const { booking: b, departure: d, title, kind } = input;
+  const vi = b.locale !== "en";
+  const day = formatDay(d.date, vi ? "vi" : "en");
+  const refund = b.refundDueVnd > 0 && !b.refundedAt ? formatVnd(b.refundDueVnd, vi ? "vi" : "en") : null;
+  if (kind === "confirmed") {
+    return {
+      kind: "booking_confirmed",
+      to: b.email,
+      subject: vi ? `Đơn ${b.code} đã được xác nhận – ${title}` : `Booking ${b.code} confirmed – ${title}`,
+      text: vi
+        ? [`Chào ${b.name},`, ``, `Bắc Việt Travel xác nhận đơn ${b.code}: ${title}, khởi hành ${day}.`, `Số tiền còn lại: ${formatVnd(b.totalVnd - b.depositVnd, "vi")}, thanh toán trước ngày đi.`, `Chúng tôi sẽ gửi giờ và điểm đón trước chuyến đi.`].join("\n")
+        : [`Hello ${b.name},`, ``, `Your booking ${b.code} is confirmed: ${title}, departing ${day}.`, `Balance due: ${formatVnd(b.totalVnd - b.depositVnd, "en")}, payable before departure.`, `We will send pick-up details before the trip.`].join("\n"),
+    };
+  }
+  return {
+    kind: "booking_cancelled",
+    to: b.email,
+    subject: vi ? `Đơn ${b.code} đã bị huỷ` : `Booking ${b.code} cancelled`,
+    text: vi
+      ? [`Chào ${b.name},`, ``, `Đơn ${b.code} (${title}, ${day}) đã được huỷ.`, `Lý do: ${b.cancelReason ?? ""}`, refund ? `Chúng tôi sẽ hoàn lại ${refund} cho bạn.` : ``, `Mọi thắc mắc vui lòng liên hệ Zalo / hotline.`].join("\n")
+      : [`Hello ${b.name},`, ``, `Booking ${b.code} (${title}, ${day}) has been cancelled.`, `Reason: ${b.cancelReason ?? ""}`, refund ? `We will refund ${refund} to you.` : ``, `Questions? Contact us on WhatsApp.`].join("\n"),
+  };
+}
+
+/** Reminder a few days before departure. */
+export function reminderEmail(input: { booking: Booking; departure: Departure; title: string }): MailMessage {
+  const { booking: b, departure: d, title } = input;
+  const vi = b.locale !== "en";
+  const day = formatDay(d.date, vi ? "vi" : "en");
+  const rest = formatVnd(b.totalVnd - b.depositVnd, vi ? "vi" : "en");
+  return {
+    kind: "booking_reminder",
+    to: b.email,
+    subject: vi ? `Sắp khởi hành: ${title} (${day})` : `Coming up: ${title} (${day})`,
+    text: vi
+      ? [`Chào ${b.name},`, ``, `Chuyến ${title} của bạn khởi hành ${day} (đơn ${b.code}, ${b.seats} khách).`, `Xe đón tại khách sạn khu Phố Cổ Hà Nội từ 7:30–8:00. Hướng dẫn viên sẽ gọi xác nhận trước 1 ngày.`, `Số tiền còn lại: ${rest}.`, `Mang theo: giấy tờ tuỳ thân, giày thoải mái, áo khoác mỏng.`].join("\n")
+      : [`Hello ${b.name},`, ``, `Your trip ${title} departs ${day} (booking ${b.code}, ${b.seats} guests).`, `Hotel pick-up in Hanoi Old Quarter from 7:30–8:00. Your guide will call to confirm the day before.`, `Balance due: ${rest}.`, `Bring: ID/passport, comfortable shoes, a light jacket.`].join("\n"),
+  };
+}

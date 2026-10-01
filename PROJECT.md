@@ -1,7 +1,7 @@
 # Bắc Việt Travel (demo)
 
 Website công ty du lịch: tour Hạ Long, Ninh Bình, Sapa khởi hành từ Hà Nội, **đặt tour online**.
-Dựng từ Minh Starter `v1.0.0-rc.10` (profile `app`, modules `email`, `blog`).
+Dựng từ Minh Starter `v1.0.0-rc.11` (profile `app`, modules `email`, `blog`, `jobs`, `admin`).
 
 ## Phần riêng của dự án
 | Đường dẫn | Nội dung |
@@ -16,6 +16,7 @@ Dựng từ Minh Starter `v1.0.0-rc.10` (profile `app`, modules `email`, `blog`)
 | `app/[locale]/tours`, `app/[locale]/credits` | Trang tour, trang nguồn ảnh |
 | `app/[locale]/tours/[slug]/book`, `app/[locale]/booking/[code]` | Trang đặt tour, trang đơn của khách (link bí mật) |
 | `app/[locale]/booking/return`, `app/api/booking/vnpay/ipn` | VNPay quay về (chỉ hiển thị), IPN (nơi duy nhất chốt tiền cọc) |
+| `app/[locale]/admin/bookings`, `app/[locale]/admin/departures` | Quản trị đơn (xác nhận, huỷ, hoàn tiền, ghi chú) và lịch khởi hành |
 | `scripts/seed-departures.ts` | Tạo lịch khởi hành demo 8 tuần (`--demo-full`: thêm ngày gần đầy / hết chỗ) |
 | `public/tours/` | Ảnh Unsplash (Unsplash License), ghi nguồn tại `/credits` |
 
@@ -31,7 +32,11 @@ Dựng từ Minh Starter `v1.0.0-rc.10` (profile `app`, modules `email`, `blog`)
   Mã link chỉ lưu tạm trên lượt thanh toán đến khi IPN gửi email, rồi xoá.
 - Đang dùng **VNPay sandbox** (biểu ngữ "Chế độ thử nghiệm" + thẻ test NCB). IPN URL đăng ký với VNPay:
   `https://<domain>/api/booking/vnpay/ipn`.
-- Lộ trình: Phase 1 ✅ lịch + giữ chỗ · Phase 2 ✅ đặt cọc VNPay sandbox + email · Phase 3 trang quản trị · Phase 4 deploy.
+- **Quản trị** (`/admin`, chỉ tài khoản admin; người khác thấy 404): đơn cần xử lý, xác nhận / huỷ (nhả chỗ, chọn hoàn cọc) /
+  đánh dấu đã hoàn tiền, ghi chú nội bộ, lịch sử thanh toán, nhật ký thao tác (audit). Lịch khởi hành: thêm ngày (lặp theo thứ),
+  đổi số chỗ (không thấp hơn số đã bán/giữ), đổi giá, đóng/mở. Cấp quyền: đăng nhập 1 lần ở `/login`, rồi `pnpm admin:grant <email>`.
+- **Việc định kỳ** (Vercel Cron → `/api/jobs/run`, mỗi ngày): email nhắc khách 3 ngày trước khi đi (mỗi đơn 1 lần), dọn giữ chỗ hết hạn.
+- Lộ trình: Phase 1 ✅ lịch + giữ chỗ · Phase 2 ✅ đặt cọc VNPay sandbox + email · Phase 3 ✅ quản trị + nhắc lịch · Phase 4 deploy.
 
 ## Chạy local
 ```
@@ -49,12 +54,13 @@ pnpm dev
 - Thay đánh giá mẫu trong `product/content.ts` bằng đánh giá thật.
 - Sửa `content/legal.ts` (điều khoản đặt tour, chính sách huỷ, bảo mật).
 - Env: `NEXT_PUBLIC_SITE_URL`, `DATABASE_URL`, `BETTER_AUTH_SECRET`, `EMAIL_PROVIDER=resend`, `EMAIL_API_KEY`,
-  `EMAIL_FROM`, `CONTACT_TO_EMAIL`, `VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET`, `VNPAY_PAYMENT_URL` (mẫu: `.env.vercel`, không commit).
+  `EMAIL_FROM`, `CONTACT_TO_EMAIL`, `CRON_SECRET`, `VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET`, `VNPAY_PAYMENT_URL` (mẫu: `.env.vercel`, không commit).
 - Khi có giấy phép: đổi sang tài khoản VNPay thật (`VNPAY_PAYMENT_URL=https://pay.vnpay.vn/vpcpay.html`), biểu ngữ tự tắt.
 
 ## Ghi chú cho starter (phát hiện khi làm dự án)
 - **G7** ✅ (rc.10): `createProduct(db, ctx)` nhận logger, mail, rate limiter, payments, jobs.
 - **G8** ✅ (rc.10): VNPay dùng được không cần module billing (`ctx.payments.vnpay`).
+- **G9** ✅ (rc.11): `productAdminNav` + `ctx.audit` cho trang admin của dự án.
 
 ## Nâng cấp starter
 `git fetch starter --tags && git merge v1.0.0-rc.N` (xem docs/UPGRADING.md).

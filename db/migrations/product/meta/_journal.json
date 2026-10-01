@@ -15,6 +15,13 @@
       "when": 1790846237728,
       "tag": "0001_right_magik",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790847385059,
+      "tag": "0002_mysterious_mulholland_black",
+      "breakpoints": true
     }
   ]
 }

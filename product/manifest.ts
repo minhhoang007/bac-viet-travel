@@ -2,6 +2,7 @@ import type { AccountDataExporter } from "@/core/account";
 import type { Locale } from "@/config/app";
 import type { ProductContext, ProductJobs } from "@/core/product/context";
 import type { Db } from "@/db/client";
+import { createBookingAdmin } from "./booking/admin";
 import { createDepositService } from "./booking/deposits";
 import { createBookingService } from "./booking/service";
 import { getTourCatalog } from "./tours/catalog";
@@ -26,11 +27,27 @@ export function createProduct(db: Db, ctx: ProductContext) {
     now: ctx.now,
   });
 
+  const bookingAdmin = createBookingAdmin({
+    db,
+    logger: ctx.logger,
+    mail: ctx.mail,
+    audit: ctx.audit,
+    tourTitle: (slug, locale) => catalog.get(locale, slug)?.title ?? catalog.get("vi", slug)?.title ?? slug,
+    tourExists: (slug) => catalog.get("vi", slug) !== null,
+    now: ctx.now,
+  });
+
   // Guests have no account: bookings are not part of a user's data export.
   const exporters: AccountDataExporter[] = [];
-  const jobs: ProductJobs = {};
+  // Run on every jobs tick (Vercel Cron, daily): reminder emails, tidy expired holds.
+  const jobs: ProductJobs = {
+    periodic: {
+      "booking.reminders": async () => void (await bookingAdmin.sendReminders()),
+      "booking.expire_holds": async () => void (await booking.expireStale()),
+    },
+  };
 
-  return { services: { booking, deposits, paymentsSandbox: ctx.payments.vnpay?.sandbox ?? false }, exporters, jobs };
+  return { services: { booking, deposits, bookingAdmin, paymentsSandbox: ctx.payments.vnpay?.sandbox ?? false }, exporters, jobs };
 }
 
 export interface ProductNavItem {
@@ -43,5 +60,11 @@ export const productNav: ProductNavItem[] = [];
 
 /** Public product pages for sitemap.xml (paths without locale prefix). */
 export const sitemapPaths: string[] = ["/tours", ...getTourCatalog().slugs().map((slug) => `/tours/${slug}`)];
+
+/** Admin menu entries (starter rc.11). */
+export const productAdminNav: ProductNavItem[] = [
+  { href: "/admin/bookings", label: { vi: "Đơn đặt tour", en: "Bookings" } },
+  { href: "/admin/departures", label: { vi: "Lịch khởi hành", en: "Departures" } },
+];
 
 export type Product = ReturnType<typeof createProduct>;

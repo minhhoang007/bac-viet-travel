@@ -168,7 +168,7 @@ export function buildContainer(features: Features, env: Env, overrides: Containe
   const admin = features.admin && db ? createAdminModule({ db, logger }) : undefined;
 
   const productContext: ProductContext | undefined = db
-    ? { db, logger, mail, rateLimiter, payments, jobs, now: overrides.now ?? (() => new Date()) }
+    ? { db, logger, mail, rateLimiter, payments, jobs, audit: admin, now: overrides.now ?? (() => new Date()) }
     : undefined;
   const app =
     features.profile === "app" && productContext

@@ -1,0 +1,187 @@
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { setRequestLocale } from "next-intl/server";
+import { requireAdmin } from "@/app/_lib/admin";
+import { cancelBooking, confirmBooking, markBookingRefunded, saveStaffNote } from "@/app/actions/booking-admin";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { localePath } from "@/core/i18n/routing";
+import type { Locale } from "@/config/app";
+import { getBookingAdminContent } from "@/product/booking/admin-content";
+import { formatDay, formatVnd, getBookingContent } from "@/product/booking/content";
+import { ConfirmButton } from "@/product/components/confirm-button";
+import { getTourCatalog } from "@/product/tours/catalog";
+
+type Props = { params: Promise<{ locale: Locale; code: string }>; searchParams: Promise<{ result?: string }> };
+
+export async function generateMetadata({ params }: { params: Promise<{ code: string }> }): Promise<Metadata> {
+  return { title: (await params).code };
+}
+
+export default async function AdminBookingPage({ params, searchParams }: Props) {
+  const { locale, code } = await params;
+  setRequestLocale(locale);
+  const { admin, container } = await requireAdmin();
+  const found = await container.app!.product.bookingAdmin.get(code);
+  if (!found) notFound();
+  const { booking: b, departure: d, payments } = found;
+  const { rows: history } = await admin.listAudit({ targetId: b.code, pageSize: 50 });
+  const c = getBookingAdminContent(locale);
+  const g = getBookingContent(locale);
+  const { result } = await searchParams;
+  const title = getTourCatalog().get(locale, d.tourSlug)?.title ?? d.tourSlug;
+  const time = (t: Date | null) => (t ? t.toLocaleString(locale === "vi" ? "vi-VN" : "en-GB", { timeZone: "Asia/Ho_Chi_Minh" }) : "—");
+  const refundOwed = b.refundDueVnd > 0 && !b.refundedAt;
+  const hidden = (
+    <>
+      <input type="hidden" name="locale" value={locale} />
+      <input type="hidden" name="code" value={b.code} />
+    </>
+  );
+  const row = (label: string, value: React.ReactNode) => (
+    <>
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd>{value}</dd>
+    </>
+  );
+
+  return (
+    <div className="grid gap-6">
+      <a href={localePath(locale, "/admin/bookings")} className="text-sm text-muted-foreground hover:underline">
+        {c.detail.back}
+      </a>
+      <h1 className="text-2xl font-bold">
+        <span className="font-mono">{b.code}</span> · <span data-admin-status={b.status}>{c.filters[b.status]}</span>
+      </h1>
+      {result && (
+        <p role="status" className={`rounded-md border p-3 text-sm ${result === "done" ? "border-green-300 bg-green-50 text-green-900" : "border-red-300 bg-red-50 text-red-900"}`}>
+          {result === "done" ? c.result.done : c.result.failed}
+        </p>
+      )}
+
+      <div className="grid gap-6 lg:grid-cols-3">
+        <section className="rounded-lg border border-border p-4">
+          <h2 className="font-semibold">{c.detail.guest}</h2>
+          <dl className="mt-2 grid grid-cols-[110px_1fr] gap-1 text-sm">
+            {row(g.name, b.name)}
+            {row(g.email, <a href={`mailto:${b.email}`} className="underline">{b.email}</a>)}
+            {row(g.phone, b.phone)}
+            {row("Locale", b.locale)}
+          </dl>
+        </section>
+        <section className="rounded-lg border border-border p-4">
+          <h2 className="font-semibold">{c.detail.trip}</h2>
+          <dl className="mt-2 grid grid-cols-[110px_1fr] gap-1 text-sm">
+            {row(c.tour, title)}
+            {row(c.columns.date, <span className="capitalize">{formatDay(d.date, locale)}</span>)}
+            {row(g.adults, b.adults)}
+            {row(g.children, b.children)}
+            {row(g.infants, b.infants)}
+          </dl>
+        </section>
+        <section className="rounded-lg border border-border p-4">
+          <h2 className="font-semibold">{c.detail.money}</h2>
+          <dl className="mt-2 grid grid-cols-[110px_1fr] gap-1 text-sm">
+            {row(c.detail.total, formatVnd(b.totalVnd, locale))}
+            {row(c.detail.deposit, formatVnd(b.depositVnd, locale))}
+            {row(c.detail.paidAt, time(b.depositPaidAt))}
+            {row(c.detail.rest, formatVnd(b.totalVnd - b.depositVnd, locale))}
+            {b.refundDueVnd > 0 && row(c.detail.refundDue, <strong className={refundOwed ? "text-red-700" : ""}>{formatVnd(b.refundDueVnd, locale)}</strong>)}
+            {b.refundedAt && row(c.detail.refundedAt, `${time(b.refundedAt)} · ${b.refundNote ?? ""}`)}
+          </dl>
+        </section>
+      </div>
+
+      {(b.note || b.cancelReason) && (
+        <section className="grid gap-2 text-sm">
+          {b.note && <p><span className="text-muted-foreground">{c.detail.guestNote}:</span> {b.note}</p>}
+          {b.cancelReason && <p><span className="text-muted-foreground">{c.detail.cancelledReason}:</span> {b.cancelReason}</p>}
+        </section>
+      )}
+
+      <section className="grid gap-4 rounded-lg border border-border p-4">
+        <h2 className="font-semibold">{c.detail.actions}</h2>
+        <div className="flex flex-wrap gap-3">
+          {b.status === "deposit_paid" && (
+            <form action={confirmBooking}>
+              {hidden}
+              <ConfirmButton question={c.detail.confirmAsk} data-testid="admin-confirm">{c.detail.confirm}</ConfirmButton>
+            </form>
+          )}
+        </div>
+        {["held", "deposit_paid", "confirmed"].includes(b.status) && (
+          <form action={cancelBooking} className="grid max-w-lg gap-2">
+            {hidden}
+            <label htmlFor="cancel-reason" className="text-sm font-medium">{c.detail.cancelReason}</label>
+            <Textarea id="cancel-reason" name="reason" rows={2} required maxLength={500} />
+            {b.status !== "held" && (
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" name="refund" defaultChecked /> {c.detail.cancelRefund}
+              </label>
+            )}
+            <ConfirmButton question={c.detail.cancelAsk} variant="destructive" className="w-fit" data-testid="admin-cancel">{c.detail.cancel}</ConfirmButton>
+          </form>
+        )}
+        {refundOwed && (
+          <form action={markBookingRefunded} className="grid max-w-lg gap-2">
+            {hidden}
+            <label htmlFor="refund-note" className="text-sm font-medium">{c.detail.refundNote}</label>
+            <Textarea id="refund-note" name="note" rows={2} maxLength={500} />
+            <ConfirmButton question={c.detail.refundedAsk} variant="outline" className="w-fit" data-testid="admin-refunded">{c.detail.refunded}</ConfirmButton>
+          </form>
+        )}
+        <form action={saveStaffNote} className="grid max-w-lg gap-2">
+          {hidden}
+          <label htmlFor="staff-note" className="text-sm font-medium">{c.detail.staffNote}</label>
+          <Textarea id="staff-note" name="note" rows={3} defaultValue={b.staffNote} maxLength={2000} />
+          <Button type="submit" variant="outline" className="w-fit">{c.detail.saveNote}</Button>
+        </form>
+      </section>
+
+      <section>
+        <h2 className="font-semibold">{c.detail.payments}</h2>
+        {payments.length === 0 ? (
+          <p className="mt-1 text-sm text-muted-foreground">{c.detail.noPayments}</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="mt-2 w-full text-left text-sm">
+              <thead className="text-muted-foreground">
+                <tr>
+                  {Object.values(c.detail.paymentCols).map((h) => (
+                    <th key={h} className="py-2 pr-4 font-medium">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {payments.map((p) => (
+                  <tr key={p.id} className="border-t border-border">
+                    <td className="py-2 pr-4 font-mono text-xs">{p.txnRef}{p.providerTxnNo && <span className="block">VNPay {p.providerTxnNo}</span>}</td>
+                    <td className="py-2 pr-4">{formatVnd(p.amountVnd, locale)}</td>
+                    <td className="py-2 pr-4">{p.status}{p.responseCode && ` (${p.responseCode})`}</td>
+                    <td className="py-2 pr-4">{p.bankCode ?? "—"}</td>
+                    <td className="py-2">{time(p.paidAt ?? p.createdAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section>
+        <h2 className="font-semibold">{c.detail.history}</h2>
+        {history.length === 0 ? (
+          <p className="mt-1 text-sm text-muted-foreground">{c.detail.noHistory}</p>
+        ) : (
+          <ul className="mt-2 grid gap-1 text-sm" data-testid="admin-history">
+            {history.map((h) => (
+              <li key={h.id}>
+                <span className="text-muted-foreground">{time(h.createdAt)}</span> · {h.actorEmail} · <span className="font-mono">{h.action}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
+  );
+}

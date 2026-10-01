@@ -3,6 +3,7 @@ import { validateEnv } from "@/bootstrap/env";
 import { moduleManifests } from "@/bootstrap/modules";
 import { featureDefaults } from "@/config/features.defaults";
 import type { ProductContext } from "@/core/product/context";
+import { users } from "@/core/users/schema";
 import { resetDb, testDb } from "./setup/db";
 import { testApp } from "./setup/app";
 
@@ -77,5 +78,19 @@ describe("product context (rc.10)", () => {
     await container.jobs!.tick();
     expect(seen.ticks).toBe(1);
     expect(seen.handled).toEqual([{ id: 7 }]);
+  });
+
+  it("gives product code the admin audit log when the admin module is on (rc.11)", async () => {
+    const { container } = testApp(db, { modules: { admin: true } });
+    const audit = seen.ctx!.audit!;
+    const [staff] = await db.insert(users).values({ email: "staff@example.com", role: "admin" }).returning();
+    const actor = { id: staff!.id, email: staff!.email };
+    expect(await audit.audited(actor, { action: "order.confirm", targetType: "order", targetId: "A1" }, async () => true)).toBe(true);
+    expect(await audit.audited(actor, { action: "order.noop", targetType: "order", targetId: "A1" }, async () => false)).toBe(false);
+    const { rows } = await container.admin!.listAudit({ targetId: "A1" });
+    expect(rows.map((r) => [r.action, r.actorEmail])).toEqual([["order.confirm", "staff@example.com"]]);
+
+    testApp(db);
+    expect(seen.ctx!.audit).toBeUndefined();
   });
 });
