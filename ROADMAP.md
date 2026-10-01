@@ -12,7 +12,7 @@ Trạng thái: ⬜ chưa làm · 🟨 đang làm · ✅ xong
 - [x] Viết bộ docs, ADR và skill cho agent.
 - [x] ADR 0001, 0003, 0004 Accepted (2026-09-30). ADR-0002 để đến trước V1.1.
 - [x] i18n: có — next-intl, `vi` (mặc định) + `en`.
-- [x] `git init` (local). Còn lại khi có remote: push, branch protection, thay `@OWNER` trong `.github/CODEOWNERS`.
+- [x] `git init`; push lên GitHub private `minhhoang007/minh-starter` (2026-10-01); CODEOWNERS = `@minhhoang007`.
 
 **Exit:** mọi ADR cần cho V0.x đã *Accepted*.
 
