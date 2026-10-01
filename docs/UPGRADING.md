@@ -37,6 +37,13 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
+### Next release (production hardening, unreleased)
+- **Content (add fields):** `error` section in `content/*/marketing.ts` (error page texts).
+- **Config:** `seo.defaultOgImage` now defaults to `/api/og`; projects that set their own image keep it. New `seo.dynamicOgImage` (default `true`).
+- **Projects with their own rate limiter** (e.g. a booking form using `createMemoryRateLimiter`): switch to
+  `getContainer().rateLimiter("<name>", rule)` to use Upstash in production.
+- No migration.
+
 ### v1.0.0-rc.7 (2026-10-01) — UI kit
 - **Content (add fields):** `nav.menu`, `nav.close` in `content/*/marketing.ts` (mobile menu labels).
 - **New project-owned file:** `product/layout.tsx` (`ProductLayoutExtras`). If you already render site-wide UI by editing

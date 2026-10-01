@@ -128,6 +128,12 @@ Mỗi module chỉ được gắn nhãn **Stable** khi đạt Module DoD ([REQUI
 - [x] Menu mobile (G3), FAQ accordion, Hero có ảnh (G4), slot `ProductLayoutExtras` (G1), DatePicker tiếng Việt, Toaster.
 - [x] Kiểm tra a11y bằng axe trong E2E; skill `ui-components`.
 
+### Production hardening (rc.8) ✅ (chờ review)
+- [x] Trang lỗi đa ngôn ngữ + log lỗi server (`instrumentation.ts`), `/api/health`.
+- [x] Email HTML tự sinh; ảnh chia sẻ `/api/og` theo tiêu đề trang.
+- [x] `container.rateLimiter` (G2); Dependabot; nâng GitHub Actions.
+- [x] README, security review rc.8, DoD có bằng chứng.
+
 ### Còn lại ⬜
 `ai` (+ `usage`), CLI `create-minh-app`.
 

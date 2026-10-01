@@ -102,3 +102,8 @@ export function getPublicEnv(): PublicEnv {
   if (!url.success) throw new AppError("INTERNAL_ERROR", "Invalid configuration:\n  - NEXT_PUBLIC_SITE_URL: invalid URL");
   return { NEXT_PUBLIC_SITE_URL: url.data };
 }
+
+/** Build identity for /api/health: the deployed commit on Vercel, "dev" locally. */
+export function getBuildInfo(): { commit: string } {
+  return { commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? "dev" };
+}

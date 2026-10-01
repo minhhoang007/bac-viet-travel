@@ -4,6 +4,20 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+### Added — production hardening
+- Error pages: `app/[locale]/error.tsx` (localized, shows a reference digest) and `app/global-error.tsx`; `instrumentation.ts` logs every server request error as one structured line (path without query).
+- `/api/health` (200 / 503, `no-store`): database check and deployed commit; `container.health()`.
+- `container.rateLimiter(name, rule)`: shared limiter for project features (Upstash when configured) — reuse finding G2.
+- HTML version for plain-text emails (escaped, branded), applied automatically by the email module.
+- Generated share images `/api/og` (title, brand colors, Vietnamese diacritics); `createMetadata` uses them for pages without an image (`seo.dynamicOgImage`).
+- `.github/dependabot.yml` (weekly npm, monthly actions; TypeScript and ESLint majors pinned).
+
+### Changed
+- CI actions upgraded (checkout v7, setup-node v7, pnpm/action-setup v6; Node 24 runtime).
+- `seo.defaultOgImage` defaults to the generated `/api/og` (the old `/og.png` never existed in the repo).
+- Content: `error` section in `content/*/marketing.ts` (add it in projects).
+- README, security review (rc.8 re-review) and REQUIREMENTS DoD updated with evidence.
+
 ## [1.0.0-rc.7] - 2026-10-01
 
 ### Added — UI kit (shadcn/ui) and reuse findings G1–G4
