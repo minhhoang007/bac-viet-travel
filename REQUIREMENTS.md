@@ -38,9 +38,9 @@ Kubernetes, event bus, CRM, complex CMS, password auth, credit ledger, multiple 
 - **entitlements** (✅): subscription update/cancel reflected; wrong key is a type error.
 - **usage:** reserve/commit/release; parallel reserve never exceeds limit; duplicate idempotencyKey does not double count; crash after reserve handled; streaming disconnect commits used part.
 - **email:** real send in test env; magic link works; retry with jobs.
-- **storage:** upload/download/delete, expiring signed URL, MIME + size + `ownerId` + quota checks.
-- **analytics:** standard events; consent respected.
-- **admin:** pages only for enabled modules; actions audit-logged.
+- **storage** (✅ on S3-compatible server; ⏳ real R2): upload/download/delete, expiring signed URL, MIME + size + `ownerId` + quota checks.
+- **analytics** (✅): standard events; consent respected.
+- **admin** (✅): pages only for enabled modules; actions audit-logged.
 - **ai / blog:** Beta until they have their own DoD.
 
 ## 5. Open questions

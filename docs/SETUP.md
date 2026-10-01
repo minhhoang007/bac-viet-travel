@@ -30,6 +30,7 @@ pnpm dev
 
 ```bash
 pnpm db:up               # Postgres 18 trong Docker, cổng 54329 (tránh đụng Postgres cài sẵn trên máy)
+pnpm storage:up          # Kho file S3 (SeaweedFS) cổng 58333 — cho module storage và integration test
 pnpm db:migrate          # starter trước, product sau (ADR-0004); đọc DATABASE_URL từ .env.local
 pnpm test:int            # integration test trên DB minh_test
 ```

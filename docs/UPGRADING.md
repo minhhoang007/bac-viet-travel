@@ -37,6 +37,14 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
+### Next release (V1.2 ops, unreleased)
+- **Migration:** starter `0002` creates audit_logs, analytics_events, files. Run `pnpm db:migrate` on a DB copy first.
+- **Content (add fields):** `files`, `consent`, `admin` sections and `dashboard.nav.admin` in `content/*/app.ts`.
+- **Config:** if your `config/billing.ts` defines its own plans, add `"storage.max_bytes"` to each plan's entitlements.
+  New `config/storage.ts` (project-owned): allowed types, max file size.
+- **docker-compose.yml:** new `storage` service; integration tests now need it (`pnpm storage:up`).
+- Modules stay off until enabled in `config/features.ts`.
+
 ### v1.0.0-rc.4 (2026-10-01) — V1.1 SaaS
 - **Migration:** starter `0001` creates jobs, access_grants, webhook_events, subscriptions, billing_orders. Run `pnpm db:migrate` on a DB copy first.
 - **Content (add fields):** `billing` section in `content/*/app.ts` (see starter's `content/vi/app.ts`).

@@ -106,8 +106,14 @@ Thêm `check-module-deps.ts` và fixture đầy đủ ở phase này (khi đã c
 Mỗi module chỉ được gắn nhãn **Stable** khi đạt Module DoD ([REQUIREMENTS.md](REQUIREMENTS.md) §4).
 </details>
 
-## V1.2 — Vận hành ⬜
-`admin` (audit log), `analytics` (consent), `storage`.
+## V1.2 — Vận hành ✅ (chờ review)
+
+- [x] ADR-0006 (admin, analytics tự lưu Postgres, lưu file trên Cloudflare R2).
+- [x] `admin`: `/admin` 404 với người không phải admin; người dùng (tìm, khoá/mở, đổi vai trò), job lỗi (chạy lại), thanh toán (webhook lỗi, xử lý lại), nhật ký; mọi thao tác ghi `audit_logs`; `pnpm admin:grant`.
+- [x] `analytics`: beacon theo trang, chỉ lưu path + host nguồn; không lưu IP/UA; đồng ý cookie mới có visitor hash theo ngày; trang thống kê trong admin; xoá sau 13 tháng.
+- [x] `storage`: upload thẳng lên R2 bằng URL ký (kiểm loại, kích thước, hạn mức theo gói, khoá theo user), xác nhận sau upload, tải bằng URL hết hạn, xoá tài khoản xoá file trước.
+- [x] Dev/CI: SeaweedFS (S3) trong docker compose.
+- [ ] Chạy thật trên R2 (cần tài khoản Cloudflare của chủ repo).
 
 ## V1.x — Tuỳ chọn ⬜
 `ai`, `blog`, CLI `create-minh-app`.

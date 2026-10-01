@@ -38,6 +38,22 @@ The first version of this report missed the findings below; an independent revie
 | Personal data at rest in jobs | ok with note | queued emails live in `jobs.payload` until purged (7 days succeeded, 30 days dead) |
 | Real-money flows | ⏳ | sandbox purchase per provider required before go-live (DEPLOY.md) |
 
+## V1.2 ops addendum (2026-10-01)
+
+| Check | Status | Evidence |
+|---|---|---|
+| Admin area hidden and guarded server-side | ok | `requireAdmin()` on every page/action → 404; E2E: signed out / non-admin get 404 |
+| Admin actions audited, no self lock-out | ok | `tests/integration/admin.int.test.ts` |
+| Disabled user loses access immediately | ok | sessions deleted + `getUser` rejects disabled; E2E |
+| Analytics stores no IP / user agent / query strings | ok | `modules/analytics/tests/analytics.int.test.ts`; E2E strips `?token=` |
+| Analytics consent | ok | no visitor hash or user id without the consent cookie (int + E2E) |
+| Collect endpoint abuse | ok with note | origin check, 2 KB body limit, 60/min per IP (per instance) |
+| Upload type / size / quota, parallel quota race | ok | advisory lock; 15 parallel requests → exactly 10 fit (`tests/integration/storage.int.test.ts`) |
+| Upload signature covers type and length | ok | `providers/storage/s3.int.test.ts` (wrong type / longer body rejected) |
+| Download IDOR, expiring URLs | ok | int + E2E (other user → 404; expired URL → 403) |
+| Stored XSS via uploads | ok with note | no HTML/SVG/JS allowed, forced `attachment`; no magic-byte check (server never sees bytes) |
+| Personal files on account deletion | ok | objects deleted first; storage failure aborts deletion |
+
 ## Checklist result
 
 | # | Item | Status | Evidence / note |
