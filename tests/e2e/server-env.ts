@@ -17,6 +17,8 @@ if (!process.env.TEST_WORKER_INDEX) {
 export const E2E_VNPAY = { tmnCode: "BVE2E001", hashSecret: "e2e-vnpay-hash-secret" };
 
 export const e2eServerEnv: Record<string, string> = {
+  // Auth callbacks and links must point at the Playwright server, not the dev URL in .env.local.
+  NEXT_PUBLIC_SITE_URL: "http://localhost:3100",
   VNPAY_TMN_CODE: E2E_VNPAY.tmnCode,
   VNPAY_HASH_SECRET: E2E_VNPAY.hashSecret,
   DATABASE_URL,

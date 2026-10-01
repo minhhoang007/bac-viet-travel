@@ -7,4 +7,6 @@ export const features: Features = {
   profile: "app",
   email: true,
   blog: true,
+  jobs: true,
+  admin: true,
 };

@@ -118,7 +118,7 @@ export function createDepositService(deps: {
           }
           const [updated] = await tx
             .update(bookings)
-            .set(status === "deposit_paid" ? { status, depositPaidAt: at } : booking!.status === "held" || booking!.status === "expired" ? { status } : {})
+            .set(status === "deposit_paid" ? { status, depositPaidAt: at } : { ...(booking!.status === "held" || booking!.status === "expired" ? { status } : {}), refundDueVnd: sql`${bookings.refundDueVnd} + ${payment.amountVnd}` })
             .where(eq(bookings.id, booking!.id))
             .returning();
           return { kind: status, booking: updated ?? booking!, departure: departure!, token: payment.linkToken };

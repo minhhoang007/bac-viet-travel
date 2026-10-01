@@ -51,6 +51,16 @@ export const bookings = pgTable(
     totalVnd: integer("total_vnd").notNull(),
     depositVnd: integer("deposit_vnd").notNull(),
     depositPaidAt: timestamp("deposit_paid_at", { withTimezone: true }),
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    cancelReason: text("cancel_reason"),
+    /** Money owed back to the guest (late deposit, cancellation with refund). 0 = nothing owed. */
+    refundDueVnd: integer("refund_due_vnd").notNull().default(0),
+    refundedAt: timestamp("refunded_at", { withTimezone: true }),
+    refundNote: text("refund_note"),
+    /** Staff-only note (never shown to the guest). */
+    staffNote: text("staff_note").notNull().default(""),
+    reminderSentAt: timestamp("reminder_sent_at", { withTimezone: true }),
     ...timestamps(),
   },
   (t) => [
