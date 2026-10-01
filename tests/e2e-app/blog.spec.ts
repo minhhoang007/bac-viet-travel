@@ -31,7 +31,7 @@ test("index → post → translation, with SEO tags and rendered MDX", async ({ 
 test("tags, RSS, sitemap and 404s", async ({ page, request }) => {
   await page.goto("/blog/tag/huong-dan");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Bài viết về #huong-dan");
-  await expect(page.getByTestId("post-list").getByRole("listitem")).toHaveCount(1);
+  await expect(page.getByTestId("post-list").locator("article")).toHaveCount(1); // tag chips are list items too
 
   const rss = await request.get("/en/blog/rss.xml");
   expect(rss.headers()["content-type"]).toContain("application/rss+xml");
