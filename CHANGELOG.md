@@ -4,6 +4,12 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.0.0-rc.9] - 2026-10-01
+
+### Fixed (found on the first real Vercel deployment)
+- Without `NEXT_PUBLIC_SITE_URL`, canonical URLs, sitemap and share images pointed to `http://localhost:3000`. On Vercel the production domain (`VERCEL_PROJECT_PRODUCTION_URL`) is now used as fallback, and a Vercel production deployment with a missing or localhost URL fails with a clear error.
+- Profile site: `/dashboard` redirected to a login page that does not exist; it is now a plain 404.
+
 ## [1.0.0-rc.8] - 2026-10-01
 
 ### Added — production hardening

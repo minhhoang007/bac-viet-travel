@@ -6,7 +6,7 @@ Default target: **Vercel** (ADR-0001). Any Node host works; see "Other hosts".
 
 1. Import the repository in Vercel (framework: Next.js; install `pnpm install --frozen-lockfile`).
 2. Environment variables (Production and Preview separately — never share secrets):
-   - `NEXT_PUBLIC_SITE_URL` = `https://your-domain` (https is required in production)
+   - `NEXT_PUBLIC_SITE_URL` = `https://your-domain` (https is required in production). Without it, Vercel deployments use the project production domain (`*.vercel.app`); a production deployment with no URL or localhost refuses to start.
    - Email module on: `EMAIL_PROVIDER=resend`, `EMAIL_API_KEY`, `EMAIL_FROM` (a verified Resend domain), `CONTACT_TO_EMAIL`
    - Optional: `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` (shared rate limit across instances)
 3. Deploy. The build needs no secrets; missing runtime variables fail fast with a list of problems.
