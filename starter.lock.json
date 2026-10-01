@@ -1,0 +1,10 @@
+{
+  "starterVersion": "1.0.0-rc.6",
+  "initializedAt": "2026-10-01",
+  "profile": "site",
+  "modules": [
+    "email",
+    "blog"
+  ],
+  "example": false
+}

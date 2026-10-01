@@ -1,6 +1,6 @@
 {
-  "name": "minh-web-app-starter",
-  "version": "0.0.0",
+  "name": "bac-viet-travel",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {

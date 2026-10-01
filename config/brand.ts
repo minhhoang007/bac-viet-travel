@@ -1,5 +1,4 @@
-// Project-owned. Override colors per token, e.g.:
-//   colors: { ...brandDefaults.colors, light: { ...brandDefaults.colors.light, primary: "#e11d48" } }
+// Project-owned.
 import { brandDefaults } from "./brand.defaults";
 
-export const brand = { ...brandDefaults };
+export const brand = { ...brandDefaults, logoText: "Bắc Việt Travel" };
