@@ -121,13 +121,20 @@ if (!values["keep-example"]) {
     "product/manifest.ts",
     `import type { AccountDataExporter } from "@/core/account";
 import type { Locale } from "@/config/app";
+import type { ProductContext, ProductJobs } from "@/core/product/context";
 import type { Db } from "@/db/client";
 
-/** The only file bootstrap/ imports from product/. Declares product services, menu and account-data exporters. */
-export function createProduct(db: Db) {
-  void db; // pass it to your product services
+/**
+ * The only file bootstrap/ imports from product/. Declares product services, menu, account-data exporters and jobs.
+ * \`ctx\` gives services the database, logger, mail, rate limiter, payments and jobs (core/product/context.ts).
+ */
+export function createProduct(db: Db, ctx: ProductContext) {
+  void db; // pass db / ctx to your product services
+  void ctx;
   const exporters: AccountDataExporter[] = [];
-  return { services: {}, exporters };
+  // Background work (needs the jobs module): { handlers: { "booking.x": fn }, periodic: { "booking.sweep": fn } }.
+  const jobs: ProductJobs = {};
+  return { services: {}, exporters, jobs };
 }
 
 export interface ProductNavItem {

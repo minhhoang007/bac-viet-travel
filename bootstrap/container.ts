@@ -6,6 +6,8 @@ import { createContactService, type ContactService } from "@/core/contact";
 import { createLogger, type Logger } from "@/core/logger";
 import type { Features } from "@/core/module";
 import { noopMail, type MailMessage, type MailPort } from "@/core/ports/mail";
+import type { Payments } from "@/core/ports/payments";
+import type { ProductContext, ProductJobs } from "@/core/product/context";
 import { createMemoryRateLimiter, withFallback, type RateLimiter, type RateLimitRule } from "@/core/security/rate-limit";
 import { createDb, type Db } from "@/db/client";
 import { createAdminModule, type AdminModule } from "@/modules/admin";
@@ -16,7 +18,7 @@ import { createEntitlementsModule, type EntitlementsModule } from "@/modules/ent
 import { createJobsModule, type JobHandler, type JobsModule } from "@/modules/jobs";
 import { createStorageModule, type ObjectStorage, type StorageModule } from "@/modules/storage";
 import { polarProvider } from "@/providers/billing/polar";
-import { vnpayProvider } from "@/providers/billing/vnpay";
+import { VNPAY_SANDBOX_URL, vnpayProvider } from "@/providers/billing/vnpay";
 import { consoleEmailProvider } from "@/providers/email/console";
 import { resendProvider } from "@/providers/email/resend";
 import { upstashRateLimiter } from "@/providers/rate-limit/upstash";
@@ -48,6 +50,8 @@ export interface Container {
    * Memoized per name, so call it on every request and get the same limiter.
    */
   rateLimiter(name: string, rule: RateLimitRule): RateLimiter;
+  /** One-time payment providers configured by env (independent of the billing module). */
+  payments: Payments;
   logger: Logger;
   mail: MailPort;
   contact?: ContactService;
@@ -115,11 +119,20 @@ export function buildContainer(features: Features, env: Env, overrides: Containe
       })
     : undefined;
 
+  const payments = buildPayments(env, overrides);
+
+  const limiters = new Map<string, RateLimiter>();
+  const rateLimiter = (name: string, rule: RateLimitRule) => {
+    let limiter = limiters.get(name);
+    if (!limiter) limiters.set(name, (limiter = overrides.rateLimiter ?? rateLimiterFor(env, rule, logger)));
+    return limiter;
+  };
+
   const entitlements = features.entitlements && db ? createEntitlementsModule(db, billingConfig.plans, overrides.now) : undefined;
 
   const billing =
     features.billing && db && jobs && entitlements
-      ? buildBilling(env, { db, logger, jobs, entitlements, overrides })
+      ? buildBilling(env, { db, logger, jobs, entitlements, overrides, vnpay: payments.vnpay })
       : undefined;
   if (billing) {
     handlers[PROCESS_WEBHOOK_JOB] = (payload) => billing.processWebhookEvent(String(payload.eventRowId));
@@ -154,14 +167,14 @@ export function buildContainer(features: Features, env: Env, overrides: Containe
 
   const admin = features.admin && db ? createAdminModule({ db, logger }) : undefined;
 
-  const app = features.profile === "app" && db ? buildApp(env, mail, logger, overrides, db, { billing, analytics, storage }) : undefined;
+  const productContext: ProductContext | undefined = db
+    ? { db, logger, mail, rateLimiter, payments, jobs, now: overrides.now ?? (() => new Date()) }
+    : undefined;
+  const app =
+    features.profile === "app" && productContext
+      ? buildApp(env, mail, logger, overrides, productContext, { billing, analytics, storage, handlers: jobs ? handlers : undefined, periodic })
+      : undefined;
 
-  const limiters = new Map<string, RateLimiter>();
-  const rateLimiter = (name: string, rule: RateLimitRule) => {
-    let limiter = limiters.get(name);
-    if (!limiter) limiters.set(name, (limiter = overrides.rateLimiter ?? rateLimiterFor(env, rule, logger)));
-    return limiter;
-  };
 
   const health = async () => {
     if (!db) return { db: "skipped" as const };
@@ -174,22 +187,19 @@ export function buildContainer(features: Features, env: Env, overrides: Containe
     }
   };
 
-  return { features, logger, mail, health, rateLimiter, contact, app, jobs, entitlements, billing, admin, analytics, storage };
+  return { features, logger, mail, health, rateLimiter, payments, contact, app, jobs, entitlements, billing, admin, analytics, storage };
 }
 
 function buildBilling(
   env: Env,
-  ctx: { db: Db; logger: Logger; jobs: JobsModule; entitlements: EntitlementsModule; overrides: ContainerOverrides },
+  ctx: { db: Db; logger: Logger; jobs: JobsModule; entitlements: EntitlementsModule; overrides: ContainerOverrides; vnpay?: OneTimePaymentProvider },
 ): BillingModule {
   const enabled = billingConfig.providers;
   const polar = enabled.includes("polar")
     ? (ctx.overrides.billingProviders?.polar ??
       polarProvider({ accessToken: env.POLAR_ACCESS_TOKEN!, webhookSecret: env.POLAR_WEBHOOK_SECRET!, server: env.POLAR_SERVER }))
     : undefined;
-  const vnpay = enabled.includes("vnpay")
-    ? (ctx.overrides.billingProviders?.vnpay ??
-      vnpayProvider({ tmnCode: env.VNPAY_TMN_CODE!, hashSecret: env.VNPAY_HASH_SECRET!, paymentUrl: env.VNPAY_PAYMENT_URL }))
-    : undefined;
+  const vnpay = enabled.includes("vnpay") ? ctx.vnpay : undefined;
 
   return createBillingModule({
     db: ctx.db,
@@ -208,14 +218,41 @@ function buildBilling(
   });
 }
 
+/** VNPay is configured by env alone, so product code can take one-time payments without the billing module. */
+function buildPayments(env: Env, overrides: ContainerOverrides): Payments {
+  const sandbox = (env.VNPAY_PAYMENT_URL ?? VNPAY_SANDBOX_URL) === VNPAY_SANDBOX_URL;
+  const vnpay =
+    overrides.billingProviders?.vnpay ??
+    (env.VNPAY_TMN_CODE && env.VNPAY_HASH_SECRET
+      ? vnpayProvider({ tmnCode: env.VNPAY_TMN_CODE, hashSecret: env.VNPAY_HASH_SECRET, paymentUrl: env.VNPAY_PAYMENT_URL })
+      : undefined);
+  return vnpay ? { vnpay: { ...vnpay, sandbox } } : {};
+}
+
+// Projects created before rc.10 declare createProduct(db): calling it with the extra context is harmless.
+const createProductWith: (db: Db, ctx: ProductContext) => Product & { jobs?: ProductJobs } = createProduct;
+
 function buildApp(
   env: Env,
   mail: MailPort,
   logger: Logger,
   overrides: ContainerOverrides,
-  db: Db,
-  { billing, analytics, storage }: { billing?: BillingModule; analytics?: AnalyticsModule; storage?: StorageModule },
+  ctx: ProductContext,
+  {
+    billing,
+    analytics,
+    storage,
+    handlers,
+    periodic,
+  }: {
+    billing?: BillingModule;
+    analytics?: AnalyticsModule;
+    storage?: StorageModule;
+    handlers?: Record<string, JobHandler>;
+    periodic: Record<string, () => Promise<void>>;
+  },
 ): AppServices {
+  const { db } = ctx;
   const google =
     env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
       ? { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET }
@@ -239,7 +276,14 @@ function buildApp(
       perRecipient: rateLimiterFor(env, MAGIC_LINK_PER_RECIPIENT, logger),
     },
   );
-  const product = createProduct(db);
+  const product = createProductWith(db, ctx);
+  if (product.jobs) {
+    if (!handlers) logger.warn("product.jobs_ignored", { reason: "jobs module is off" });
+    else {
+      Object.assign(handlers, product.jobs.handlers);
+      for (const [name, task] of Object.entries(product.jobs.periodic ?? {})) periodic[`product.${name}`] = task;
+    }
+  }
   const account = createAccountService(
     db,
     [

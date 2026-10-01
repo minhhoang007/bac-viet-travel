@@ -37,6 +37,13 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
+### v1.0.0-rc.10 (2026-10-01) — product context, payments
+- **Optional, recommended:** change `product/manifest.ts` to `createProduct(db: Db, ctx: ProductContext)` and build services from
+  `ctx` (logger, mail, rate limiter, payments, jobs) instead of calling `getContainer()` in `app/_lib`. The old
+  `createProduct(db)` keeps working.
+- To run background work, return `jobs: { handlers, periodic }` from `createProduct` and enable the jobs module.
+- No migration.
+
 ### v1.0.0-rc.9 (2026-10-01) — deployment fixes
 - No action needed. On Vercel, setting `NEXT_PUBLIC_SITE_URL` is still recommended (custom domain); without it the production `*.vercel.app` domain is used.
 

@@ -93,6 +93,10 @@ export function validateEnv(
         problems.push('POLAR_SERVER: "sandbox" in production — set POLAR_SERVER=production');
       }
     }
+    // VNPay also works without the billing module (product payments): a half-configured pair is a mistake.
+    if (Boolean(base.data.VNPAY_TMN_CODE) !== Boolean(base.data.VNPAY_HASH_SECRET)) {
+      problems.push("VNPAY_TMN_CODE / VNPAY_HASH_SECRET: set both or neither");
+    }
     if (extra.ANALYTICS_SECRET && extra.ANALYTICS_SECRET.length < 32) {
       problems.push("ANALYTICS_SECRET: must be at least 32 characters (openssl rand -base64 32)");
     }
