@@ -23,6 +23,11 @@ V1.0 is only tagged when all three are done. Until then, projects use `v1.0.0-rc
 | Init command | `pnpm init:project --name "…" --profile site --modules email` | `pnpm init:project --name "…" --profile app` |
 | Deployed URL | not deployed yet | |
 
+**Project A2 (site, owner's travel agency — demo stage):** Bắc Việt Travel — `D:\dev\bac-viet-travel` (local), from
+`v1.0.0-rc.6`, `--profile site --modules email,blog`. Tours (Hạ Long, Ninh Bình, Sapa) as validated MDX content, booking
+inquiry form (team email + visitor confirmation), Zalo / WhatsApp / hotline buttons, 6 blog posts, Unsplash photos.
+Result: **2 lines changed in starter-owned files** (`app/[locale]/layout.tsx`); `pnpm check` 101 tests, site E2E 18.
+
 **Every edit to Core/Modules/bootstrap/components (the protected paths) needed by the project:**
 
 | Project | File | Why | Belongs in starter? |
@@ -34,6 +39,15 @@ V1.0 is only tagged when all three are done. Until then, projects use `v1.0.0-rc
 | A | `app/sitemap.ts` | F5: sitemap paths hard-coded; tour pages missing | Yes → `sitemapPaths` in `product/manifest.ts` (rc.2) |
 | A | `app/[locale]/page.tsx` | F6: hero buttons hard-coded to `#contact` / `#features`; needed `/tours` | Yes → `hero.primaryHref` / `secondaryHref` in content (rc.2) |
 | A | `playwright.config.ts` | F7: E2E server env (email module on) not configurable | Yes → project-owned `tests/e2e/server-env.ts` (rc.2) |
+| A2 | `app/[locale]/layout.tsx` | G1: no slot for site-wide product UI (floating Zalo/WhatsApp buttons, licence line under the footer); added 2 lines | Yes → `ProductLayoutExtras` slot in `product/layout.tsx` (like `ProductHomeSections`) |
+| A2 | (product action) | G2: profile site has no way to wire product services; the inquiry action builds its service from `getContainer().mail` and a **per-instance memory** rate limiter (no Upstash) | Yes → expose `rateLimiterFor(rule)` (or product services for profile site) from the container |
+| A2 | `components/layout/site-header.tsx` (not edited) | G3: header links are hidden below `sm` and there is no mobile menu: on phones visitors only reach tours via the hero button | Yes → mobile menu (disclosure) in the starter header |
+| A2 | `components/marketing/hero.tsx` (not edited) | G4: hero has no background image; a travel site wants a photo hero (worked around with image cards below) | Yes → optional `image` prop |
+| A2 | (product code) | G5: tours copy the blog's frontmatter/zod/MDX pattern (~60 lines) | Maybe → generic "content collection" helper (schema + folder + locales) shared by blog and products |
+| A2 | `tests/e2e/server-env.ts` | G6: with the email module on, the production E2E server cannot send (console provider is dev-only), so successful form submissions are only covered by unit tests | Maybe → a test-only mail sink allowed when `E2E=1` |
+
+Lesson from A2: the rc.2 extension points (navigation, home sections, sitemap paths, form defaults, JSON-LD, server env)
+removed all of A's edits; the remaining gaps are a **layout slot**, **mobile navigation** and **site-profile services**.
 
 Lesson from A: every finding was a **hard-coded value in a protected file** that a project reasonably wants to change. rc.2 moves each to a project-owned extension point; nothing required changing Core logic or modules.
 
