@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import type { OneTimePaymentProvider } from "@/modules/billing";
+import type { OneTimePaymentProvider } from "@/core/ports/payments";
 
 /** VNPay 2.1.0 adapter (https://sandbox.vnpayment.vn/apis/docs/thanh-toan-pay/pay.html). No SDK exists. */
 export const VNPAY_SANDBOX_URL = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";

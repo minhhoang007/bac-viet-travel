@@ -24,7 +24,7 @@ Kubernetes, event bus, CRM, complex CMS, password auth, credit ledger, multiple 
 - [x] Migrations run on an empty DB (`app`). *(integration global setup, e2e-app reset + migrate)*
 - [x] Arch lint in CI; fixture test proves each rule catches its sample violation. *(tests/arch)*
 - [x] Login/logout, protected route, dashboard tested; IDOR test (A cannot access B). *(auth/account int, e2e-app)*
-- [ ] Vertical slice works on a real deployment. *(⏳ needs Vercel/Neon/Resend accounts)*
+- [x] Vertical slice works on a real deployment. *(2026-10-01: https://minh-starter-demo.vercel.app — Vercel + Neon + Resend, starter rc.9; magic link → notes CRUD → guarded routes → export → delete account, browser smoke test)*
 - [x] Input validation, rate limiting, logging, security headers have automated checks.
 - [x] Production build + unit, integration, critical E2E pass. *(CI)*
 - [x] README, ARCHITECTURE, AGENTS, SECURITY, UPGRADING complete.

@@ -1,13 +1,17 @@
 "use server";
 
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { clientKeyFrom } from "@/app/_lib/client-ip";
-import { getBooking } from "@/app/_lib/booking";
+import { BOOKING_COOKIE, getBooking, getDeposits } from "@/app/_lib/booking";
+import { getPublicEnv } from "@/bootstrap/env";
 import { localePath } from "@/core/i18n/routing";
 import type { HoldResult } from "@/product/booking/service";
 
 export type HoldFormState = Exclude<HoldResult, { status: "held" }> | { status: "error" } | null;
+export type DepositFormState = { status: "not_payable" | "error" } | null;
+
+const localeOf = (formData: FormData) => (formData.get("locale") === "en" ? "en" : "vi");
 
 /** Thin action: client key → booking service; on success go to the guest's private booking page. */
 export async function holdSeats(_prev: HoldFormState, formData: FormData): Promise<HoldFormState> {
@@ -19,6 +23,27 @@ export async function holdSeats(_prev: HoldFormState, formData: FormData): Promi
     return { status: "error" };
   }
   if (result.status !== "held") return result;
-  const locale = raw.locale === "en" ? "en" : "vi";
-  redirect(localePath(locale, `/booking/${result.code}?t=${result.token}`));
+  redirect(localePath(localeOf(formData), `/booking/${result.code}?t=${result.token}`));
+}
+
+/** Starts a VNPay deposit for a held booking and sends the guest to VNPay. */
+export async function startDeposit(_prev: DepositFormState, formData: FormData): Promise<DepositFormState> {
+  const code = String(formData.get("code") ?? "");
+  const token = String(formData.get("token") ?? "");
+  const locale = localeOf(formData);
+  let url: string;
+  try {
+    const result = await getDeposits().start({
+      code,
+      token,
+      ipAddr: clientKeyFrom(await headers()),
+      returnUrl: `${getPublicEnv().NEXT_PUBLIC_SITE_URL}${localePath(locale, "/booking/return")}`,
+    });
+    if (result.status !== "redirect") return { status: "not_payable" };
+    url = result.url;
+  } catch {
+    return { status: "error" };
+  }
+  (await cookies()).set(BOOKING_COOKIE(code), token, { httpOnly: true, secure: true, sameSite: "lax", path: "/", maxAge: 60 * 60 });
+  redirect(url);
 }
