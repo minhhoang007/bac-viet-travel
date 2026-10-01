@@ -69,7 +69,7 @@ Trạng thái: ⬜ chưa làm · 🟨 đang làm · ✅ xong
 
 ---
 
-## V1.0 — Release 🟨 (`v1.0.0-rc.6`, chờ project app thật của chủ repo)
+## V1.0 — Release 🟨 (`v1.0.0-rc.7`, chờ project app thật của chủ repo)
 
 > Quyết định 2026-09-30: project B (app) là **project thật** của chủ repo, không dựng project thử nghiệm.
 > V1.0 được tag khi project đó chạy thật và phát hiện đã được ghi vào [docs/REUSE-PROOFS.md](docs/REUSE-PROOFS.md).
@@ -122,6 +122,11 @@ Mỗi module chỉ được gắn nhãn **Stable** khi đạt Module DoD ([REQUI
 - [x] Trang danh sách (phân trang), bài viết, tag; tất cả prerender tĩnh, slug lạ → 404.
 - [x] SEO: metadata + OpenGraph article, JSON-LD BlogPosting, hreflang theo `translationKey`, sitemap, RSS mỗi ngôn ngữ.
 - [x] Bài nháp chỉ hiện khi dev; link "Blog" trong header khi bật module; 2 bài mẫu (xoá khi `init:project` trừ `--keep-example`).
+
+### UI kit ✅
+- [x] shadcn/ui trong `components/ui/`, theme lấy từ `config/brand.ts`, icon `lucide-react`.
+- [x] Menu mobile (G3), FAQ accordion, Hero có ảnh (G4), slot `ProductLayoutExtras` (G1), DatePicker tiếng Việt, Toaster.
+- [x] Kiểm tra a11y bằng axe trong E2E; skill `ui-components`.
 
 ### Còn lại ⬜
 `ai` (+ `usage`), CLI `create-minh-app`.

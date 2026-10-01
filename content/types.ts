@@ -1,6 +1,6 @@
 export interface MarketingContent {
   meta: { title: string; description: string };
-  nav: { switchLocale: string };
+  nav: { switchLocale: string; menu: string; close: string };
   hero: {
     eyebrow: string;
     title: string;
@@ -10,6 +10,8 @@ export interface MarketingContent {
     primaryHref: string;
     secondaryCta: string;
     secondaryHref: string;
+    /** Optional background photo (path under public/). */
+    image?: { src: string; alt: string };
   };
   features: { title: string; items: { title: string; description: string }[] };
   faq: { title: string; items: { question: string; answer: string }[] };

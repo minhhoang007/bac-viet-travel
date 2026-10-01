@@ -5,7 +5,7 @@ export const marketing: MarketingContent = {
     title: "Nền tảng khởi đầu cho website và web app",
     description: "Minh Starter giúp dựng website dịch vụ và web app nhanh, ổn định, dễ bảo trì.",
   },
-  nav: { switchLocale: "English" },
+  nav: { switchLocale: "English", menu: "Mở menu", close: "Đóng" },
   hero: {
     eyebrow: "Minh Web App Starter",
     title: "Xây sản phẩm, không dựng lại hạ tầng",
