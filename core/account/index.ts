@@ -1,1 +1,1 @@
-export { createAccountService, type AccountService, type AccountDataExporter } from "./service";
+export { createAccountService, type AccountService, type AccountDataExporter, type BeforeAccountDelete } from "./service";

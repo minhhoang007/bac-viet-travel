@@ -18,6 +18,15 @@ export const baseEnvSchema = z
     // Optional Google sign-in (profile "app").
     GOOGLE_CLIENT_ID: z.string().min(1).optional(),
     GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
+    // Billing providers (required per enabled provider, checked in bootstrap/env.ts).
+    POLAR_ACCESS_TOKEN: z.string().min(1).optional(),
+    POLAR_WEBHOOK_SECRET: z.string().min(1).optional(),
+    POLAR_SERVER: z.enum(["sandbox", "production"]).default("sandbox"),
+    POLAR_PRODUCT_PRO_MONTHLY: z.string().min(1).optional(),
+    POLAR_PRODUCT_PRO_YEARLY: z.string().min(1).optional(),
+    VNPAY_TMN_CODE: z.string().min(1).optional(),
+    VNPAY_HASH_SECRET: z.string().min(1).optional(),
+    VNPAY_PAYMENT_URL: z.url().optional(),
   })
   .refine((e) => bothOrNeither(e.UPSTASH_REDIS_REST_URL, e.UPSTASH_REDIS_REST_TOKEN), {
     message: "set both UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN, or neither",

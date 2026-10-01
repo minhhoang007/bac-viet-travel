@@ -25,7 +25,10 @@ export default async function DashboardLayout({
   const nav = [
     { label: c.nav.overview, href: localePath(locale, "/dashboard") },
     ...productNav.map((item) => ({ label: item.label[locale as Locale], href: localePath(locale, item.href) })),
-    ...getModuleNavigation().map((item) => ({ label: item.label, href: localePath(locale, item.href) })),
+    ...getModuleNavigation().map((item) => ({
+      label: typeof item.label === "string" ? item.label : (item.label[locale] ?? Object.values(item.label)[0] ?? ""),
+      href: localePath(locale, item.href),
+    })),
     { label: c.nav.account, href: localePath(locale, "/dashboard/account") },
   ];
 

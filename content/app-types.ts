@@ -28,4 +28,29 @@ export interface AppContent {
     deleteButton: string;
   };
   legal: { terms: string; privacy: string; lastUpdated: string; templateNotice: string };
+  billing: {
+    title: string;
+    currentPlan: string;
+    activeUntil: string;
+    renewsAutomatically: string;
+    upgradeTitle: string;
+    monthly: string;
+    yearly: string;
+    payInternational: string;
+    payVietnam: string;
+    vietnamNote: string;
+    manage: string;
+    pricingTitle: string;
+    pricingSubtitle: string;
+    perMonth: string;
+    perYear: string;
+    choosePlan: string;
+    returnPaid: string;
+    returnPending: string;
+    returnFailed: string;
+    returnInvalid: string;
+    backToBilling: string;
+    checkoutSuccess: string;
+    error: string;
+  };
 }

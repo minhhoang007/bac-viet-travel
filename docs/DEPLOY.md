@@ -25,6 +25,18 @@ Everything above, plus:
    Run from CI or locally against production; always test on a copy first (docs/UPGRADING.md).
 5. Preview deployments need their own database (or a Neon branch) — never point previews at production data.
 
+## Billing (jobs + entitlements + billing modules)
+
+1. **Cron:** `vercel.json` schedules `/api/jobs/run` daily. Set `CRON_SECRET` (Vercel sends it as a Bearer token).
+   Need more frequent runs? Vercel Pro or QStash calling the same URL (ADR-0002).
+2. **Polar:** create products (Pro monthly/yearly) → set `POLAR_PRODUCT_PRO_MONTHLY/YEARLY`; create an organization
+   access token → `POLAR_ACCESS_TOKEN`; add a webhook endpoint `https://<domain>/api/billing/webhooks/polar`
+   (subscription.* events) → `POLAR_WEBHOOK_SECRET`. `POLAR_SERVER=production` in production.
+3. **VNPay:** `VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET`; register the IPN URL `https://<domain>/api/billing/vnpay/ipn`
+   with VNPay; production `VNPAY_PAYMENT_URL=https://pay.vnpay.vn/vpcpay.html` (confirm with VNPay).
+4. **Before going live:** one sandbox purchase per provider end to end (checkout → webhook/IPN → Pro shown on
+   /dashboard/billing → Polar portal cancel → access until period end). Tests only simulate provider traffic.
+
 ## Verify after deploy
 
 - `/` and `/en` render; `/robots.txt`, `/sitemap.xml` list the real domain.

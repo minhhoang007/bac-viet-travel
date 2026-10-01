@@ -94,6 +94,7 @@ docs/           adr UPGRADING.md SETUP.md
 | Product entry point | `product/manifest.ts` | `createProduct(db)` → services, exporters; `productNav` |
 | Static pages | `getPublicEnv()` | reads only public values, so marketing pages prerender without secrets |
 | Theme | `config/brand.ts` → `components/ui/theme.ts` | CSS variables (light/dark) rendered in the root layout; `globals.css` holds no color values |
+| Jobs / billing | `modules/jobs`, `modules/entitlements`, `modules/billing` | wired in `buildContainer`; job handlers + periodic tasks registered there; ADR-0002, ADR-0005 |
 | Rate limits | `core/security/rate-limit.ts` | `withFallback(upstash, memory)`; magic links limited per client + recipient in `AuthService` |
 
 ## 7. Module lifecycle ("really off")

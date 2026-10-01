@@ -10,7 +10,7 @@ import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 
 const MODULES = ["email", "jobs", "entitlements", "billing", "usage", "storage", "analytics", "admin", "ai", "blog"];
-const AVAILABLE = ["email"]; // modules implemented in this starter version
+const AVAILABLE = ["email", "jobs", "entitlements", "billing"]; // modules implemented in this starter version
 
 const { values } = parseArgs({
   options: {
@@ -37,6 +37,19 @@ const modules = new Set(values.modules.split(",").map((m) => m.trim()).filter(Bo
 for (const m of modules) {
   if (!MODULES.includes(m)) fail(`unknown module "${m}". Known: ${MODULES.join(", ")}`);
   if (!AVAILABLE.includes(m)) fail(`module "${m}" is not implemented in this starter version yet`);
+}
+const APP_ONLY = ["jobs", "entitlements", "billing"];
+for (const m of modules) {
+  if (profile === "site" && APP_ONLY.includes(m)) fail(`module "${m}" needs --profile app`);
+}
+// Dependencies (mirrors `requires` in modules/*/module.ts).
+if (modules.has("billing")) {
+  for (const dep of ["entitlements", "jobs"]) {
+    if (!modules.has(dep)) {
+      modules.add(dep);
+      console.log(`note: "billing" requires "${dep}", enabled`);
+    }
+  }
 }
 if (profile === "app" && !modules.has("email")) {
   modules.add("email");
@@ -166,6 +179,13 @@ for (const a of actions) console.log(`  ${a}`);
 const env = ["NEXT_PUBLIC_SITE_URL"];
 if (modules.has("email")) env.push("EMAIL_PROVIDER / EMAIL_API_KEY", "EMAIL_FROM", "CONTACT_TO_EMAIL");
 if (profile === "app") env.push("DATABASE_URL", "BETTER_AUTH_SECRET", "(optional) GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET");
+if (modules.has("jobs")) env.push("CRON_SECRET");
+if (modules.has("billing")) {
+  env.push(
+    "POLAR_ACCESS_TOKEN / POLAR_WEBHOOK_SECRET / POLAR_SERVER / POLAR_PRODUCT_PRO_MONTHLY / POLAR_PRODUCT_PRO_YEARLY",
+    "VNPAY_TMN_CODE / VNPAY_HASH_SECRET (providers: config/billing.ts)",
+  );
+}
 console.log(`\nNext steps:
   1. cp .env.example .env.local and set: ${env.join(", ")}
   2. Edit content/ (texts), config/brand.ts (colors), content/legal.ts (legal text)${

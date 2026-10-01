@@ -1,1 +1,2 @@
 CREATE DATABASE minh_test;
+CREATE DATABASE minh_e2e;

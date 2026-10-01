@@ -1,4 +1,4 @@
-import { buildContainer } from "@/bootstrap/container";
+import { buildContainer, type ContainerOverrides } from "@/bootstrap/container";
 import { validateEnv } from "@/bootstrap/env";
 import { moduleManifests } from "@/bootstrap/modules";
 import { featureDefaults } from "@/config/features.defaults";
@@ -13,10 +13,14 @@ export const BASE_URL = "http://localhost:3000";
  * Container in profile "app" against the test DB, with a mail port that records messages.
  * Rate limits are relaxed unless `realRateLimits` is set (auth tests exercise the production limits).
  */
-export function testApp(db: Db, options: { realRateLimits?: boolean } = {}) {
+export function testApp(
+  db: Db,
+  options: { realRateLimits?: boolean; saas?: boolean; env?: Record<string, string>; overrides?: Omit<ContainerOverrides, "db" | "mail" | "authRateLimits"> } = {},
+) {
   const sent: MailMessage[] = [];
   const mail: MailPort = { send: async (m) => void sent.push(m) };
-  const features = { ...featureDefaults, profile: "app" as const, email: true };
+  const saas = options.saas ? { jobs: true, entitlements: true, billing: true } : {};
+  const features = { ...featureDefaults, profile: "app" as const, email: true, ...saas };
   const env = validateEnv(
     {
       NODE_ENV: "test",
@@ -27,13 +31,15 @@ export function testApp(db: Db, options: { realRateLimits?: boolean } = {}) {
       EMAIL_PROVIDER: "console",
       EMAIL_FROM: "noreply@example.com",
       CONTACT_TO_EMAIL: "owner@example.com",
+      CRON_SECRET: "test-cron-secret",
+      ...options.env,
     },
     features,
     moduleManifests,
   );
   const unlimited = createMemoryRateLimiter({ max: Number.MAX_SAFE_INTEGER, windowMs: 60_000 });
   const authRateLimits = options.realRateLimits ? undefined : { perClient: unlimited, perRecipient: unlimited };
-  const container = buildContainer(features, env, { mail, db, authRateLimits });
+  const container = buildContainer(features, env, { mail, db, authRateLimits, ...options.overrides });
   return { container, app: container.app!, sent };
 }
 

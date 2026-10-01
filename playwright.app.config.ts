@@ -1,9 +1,10 @@
 import { defineConfig } from "@playwright/test";
+import { E2E_BILLING } from "./tests/e2e-app/billing-secrets";
 
 // Profile "app" browser tests. Run through `pnpm test:e2e:app` (scripts/e2e-app.sh), which prepares an
 // app-profile project in a temporary clone. EMAIL_PROVIDER=console is development-only, hence `next dev`.
 const PORT = 3200;
-const DATABASE_URL = process.env.E2E_DATABASE_URL ?? "postgres://postgres:postgres@localhost:54329/minh_test";
+const DATABASE_URL = process.env.E2E_DATABASE_URL ?? "postgres://postgres:postgres@localhost:54329/minh_e2e";
 process.env.E2E_DATABASE_URL = DATABASE_URL;
 
 export default defineConfig({
@@ -24,6 +25,15 @@ export default defineConfig({
       EMAIL_FROM: "noreply@example.com",
       CONTACT_TO_EMAIL: "owner@example.com",
       LOG_LEVEL: "warn",
+      // Billing in test mode: fake-but-well-formed credentials; tests sign webhooks/IPNs with these secrets.
+      CRON_SECRET: E2E_BILLING.cronSecret,
+      POLAR_ACCESS_TOKEN: "polar_oat_e2e",
+      POLAR_WEBHOOK_SECRET: E2E_BILLING.polarWebhookSecret,
+      POLAR_SERVER: "sandbox",
+      POLAR_PRODUCT_PRO_MONTHLY: E2E_BILLING.polarProductMonthly,
+      POLAR_PRODUCT_PRO_YEARLY: "prod_e2e_pro_year",
+      VNPAY_TMN_CODE: E2E_BILLING.vnpayTmnCode,
+      VNPAY_HASH_SECRET: E2E_BILLING.vnpayHashSecret,
     },
   },
 });
