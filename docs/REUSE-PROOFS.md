@@ -23,6 +23,13 @@ V1.0 is only tagged when all three are done. Until then, projects use `v1.0.0-rc
 | Init command | `pnpm init:project --name "…" --profile site --modules email` | `pnpm init:project --name "…" --profile app` |
 | Deployed URL | not deployed yet | |
 
+**Real deployment proof (2026-10-01):** demo app `minhhoang007/minh-starter-demo` (profile app, example slice, from rc.9) on
+https://minh-starter-demo.vercel.app with Neon (pooled) and Resend. Migrations run with `pnpm db:migrate`; `/api/health`
+`db: ok`; browser smoke test passed (magic link sign-in, notes create/edit, signed-out note page → login, export 401
+anonymous / 200 with the note, account deletion cascades). Found and fixed on the way: site URL fell back to localhost on
+Vercel (rc.9). Note: Vercel env vars must be added to the project and the deployment redeployed; until then app routes
+fail fast with "Invalid configuration" (logged with a digest).
+
 **Project A2 (site, owner's travel agency — demo stage):** Bắc Việt Travel — `D:\dev\bac-viet-travel` (local), from
 `v1.0.0-rc.6`, `--profile site --modules email,blog`. Tours (Hạ Long, Ninh Bình, Sapa) as validated MDX content, booking
 inquiry form (team email + visitor confirmation), Zalo / WhatsApp / hotline buttons, 6 blog posts, Unsplash photos.
