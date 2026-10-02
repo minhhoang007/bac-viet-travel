@@ -11,7 +11,11 @@ import { productNav } from "@/product/manifest";
 import { getContainer } from "@/bootstrap/container";
 import { getModuleNavigation } from "@/bootstrap/navigation";
 
-export const metadata: Metadata = { robots: { index: false } };
+// Default title for pages without their own (documents need a <title>, WCAG 2.4.2).
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  return { title: getAppContent(locale as Locale).dashboard.nav.overview, robots: { index: false } };
+}
 
 export default async function DashboardLayout({
   children,

@@ -13,7 +13,11 @@ import type { ProductNavItem } from "@/product/manifest";
 // Projects created before rc.11 have no productAdminNav export.
 const productAdminNav = (manifest as { productAdminNav?: ProductNavItem[] }).productAdminNav ?? [];
 
-export const metadata: Metadata = { robots: { index: false } };
+// Default title for pages without their own (documents need a <title>, WCAG 2.4.2).
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  return { title: getAppContent(locale as Locale).admin.title, robots: { index: false } };
+}
 
 export default async function AdminLayout({ children, params }: { children: ReactNode; params: Promise<{ locale: string }> }) {
   const { locale } = await params;
