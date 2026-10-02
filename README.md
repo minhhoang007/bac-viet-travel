@@ -3,8 +3,10 @@
 Reusable Next.js starter for content/service websites (profile `site`) and logged-in web apps (profile `app`).
 Small, boring, tested: architecture rules are enforced by tooling, and every optional module is *really off* when disabled.
 
-**Status:** `v1.0.0-rc.12` — site + app profiles, 9 optional modules, UI kit, production hardening, product context (jobs, payments).
+**Status:** `v1.0.0-rc.14` — site + app profiles, 9 optional modules, UI kit + dashboard kit, landing blocks, setup/launch checks, production hardening, product context (jobs, payments).
 V1.0 final waits for a real deployment and a real app project ([docs/REUSE-PROOFS.md](docs/REUSE-PROOFS.md), [ROADMAP.md](ROADMAP.md)).
+
+**New project? Start with [docs/QUICKSTART.md](docs/QUICKSTART.md)** — clone to live site on one page.
 
 ## What you get
 
@@ -14,6 +16,9 @@ V1.0 final waits for a real deployment and a real app project ([docs/REUSE-PROOF
 | i18n (vi default at `/`, en at `/en`), SEO (metadata, hreflang, sitemap, robots, JSON-LD, generated share images) | ✓ | ✓ |
 | Env validation per profile/module, safe errors + error pages, redacting JSON logger, request-error logging, security headers, `/api/health` | ✓ | ✓ |
 | Mobile menu, accessible FAQ, hero with photo, axe accessibility checks in E2E | ✓ | ✓ |
+| Landing blocks from `content/`: pricing, steps, before/after, testimonials, logos | ✓ | ✓ |
+| `pnpm setup:check` (what is missing locally) and `pnpm launch:check <url>` (is the live site ready) | ✓ | ✓ |
+| App shell (collapsible sidebar, mobile sheet), page header, form kit, empty/error states, confirm dialog | | ✓ |
 | `email`: contact form (validation, honeypot, rate limit), HTML emails | optional | optional |
 | `blog`: MDX posts, tags, RSS, translations | optional | optional |
 | `analytics`: first-party page views with consent (no third-party scripts) | optional (needs a DB) | optional |
@@ -55,6 +60,8 @@ Details: [docs/SETUP.md](docs/SETUP.md).
 |---|---|
 | `pnpm dev` / `pnpm build` / `pnpm start` | Next.js |
 | `pnpm check` | lint (0 warnings) + typecheck + architecture lint + unit tests (incl. lint-rule fixtures) |
+| `pnpm setup:check` | Node version, env missing for the profile/modules, database reachable (names only, never values) |
+| `pnpm launch:check <url>` | live-site check: HTTPS, title/description/canonical, share image, headers, robots, sitemap, health, legal pages |
 | `pnpm test:int` | integration tests on real Postgres (`minh_test`) |
 | `pnpm test:e2e` | Playwright against a production build (`pnpm build` first), profile site |
 | `pnpm test:e2e:app` | browser E2E for profile app on a fresh app-profile clone (needs Postgres) |
@@ -73,6 +80,8 @@ Vercel + Postgres (Neon) + Resend. See [docs/DEPLOY.md](docs/DEPLOY.md).
 
 | File | Purpose |
 |---|---|
+| [docs/QUICKSTART.md](docs/QUICKSTART.md) | Clone → configure → deploy → check, on one page |
+| [docs/LAUNCH.md](docs/LAUNCH.md) | Launch checklist: domain, email DNS (SPF/DKIM/DMARC), payments, legal pages, monitoring |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Layers, dependency rules, folder map, wiring |
 | [AGENTS.md](AGENTS.md) / [CLAUDE.md](CLAUDE.md) | Rules for AI coding agents |
 | [ROADMAP.md](ROADMAP.md) / [REQUIREMENTS.md](REQUIREMENTS.md) | Phases, scope, definitions of done |

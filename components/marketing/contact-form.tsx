@@ -2,6 +2,9 @@
 
 import { useActionState } from "react";
 import type { ContactResult } from "@/core/contact";
+import { FormError } from "@/components/forms/form-error";
+import { FormField } from "@/components/forms/form-field";
+import { SubmitButton } from "@/components/forms/submit-button";
 
 type Field = "name" | "email" | "message";
 
@@ -22,11 +25,8 @@ export interface ContactFormProps {
   defaults?: Partial<Record<Field, string>>;
 }
 
-const inputClass =
-  "mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-primary";
-
 export function ContactForm({ action, labels, defaults }: ContactFormProps) {
-  const [state, formAction, pending] = useActionState(action, null);
+  const [state, formAction] = useActionState(action, null);
 
   if (state?.status === "success") {
     return (
@@ -51,42 +51,21 @@ export function ContactForm({ action, labels, defaults }: ContactFormProps) {
 
   return (
     <form action={formAction} className="mx-auto grid max-w-lg gap-4 text-left" noValidate>
-      {fields.map((f) => {
-        const error = fieldError(f.name);
-        const common = {
-          id: `contact-${f.name}`,
-          name: f.name,
-          defaultValue: defaults?.[f.name],
-          className: inputClass,
-          "aria-invalid": error ? true : undefined,
-          "aria-describedby": error ? `contact-${f.name}-error` : undefined,
-        };
-        return (
-          <label key={f.name} htmlFor={common.id} className="text-sm font-medium">
-            {f.label}
-            {f.multiline ? <textarea rows={5} {...common} /> : <input type={f.type ?? "text"} {...common} />}
-            {error && (
-              <span id={`contact-${f.name}-error`} className="mt-1 block text-sm text-red-600">
-                {error}
-              </span>
-            )}
-          </label>
-        );
-      })}
+      {fields.map((f) => (
+        <FormField
+          key={f.name}
+          id={`contact-${f.name}`}
+          name={f.name}
+          label={f.label}
+          defaultValue={defaults?.[f.name]}
+          error={fieldError(f.name)}
+          {...(f.multiline ? { multiline: true, rows: 5 } : { type: f.type ?? "text" })}
+        />
+      ))}
       {/* Honeypot, hidden from humans and assistive tech */}
       <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" className="hidden" />
-      {formError && (
-        <p role="alert" className="text-sm text-red-600">
-          {formError}
-        </p>
-      )}
-      <button
-        type="submit"
-        disabled={pending}
-        className="inline-flex h-11 items-center justify-center rounded-md bg-primary px-5 text-sm font-medium text-primary-foreground disabled:opacity-60"
-      >
-        {pending ? labels.sending : labels.submit}
-      </button>
+      <FormError message={formError} />
+      <SubmitButton label={labels.submit} pendingLabel={labels.sending} className="justify-self-stretch sm:justify-self-start" />
     </form>
   );
 }

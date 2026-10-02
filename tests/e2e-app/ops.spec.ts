@@ -56,6 +56,7 @@ test.describe("admin", () => {
     await adminPage.getByRole("button", { name: "Tìm theo email" }).click();
     await adminPage.getByRole("link", { name: userEmail }).click();
     await adminPage.getByRole("button", { name: "Khoá tài khoản" }).click();
+    await adminPage.getByRole("dialog").getByRole("button", { name: "Khoá tài khoản" }).click();
     await expect(adminPage.locator("[data-result=done]")).toBeVisible();
     await expect(adminPage.getByTestId("user-status")).toHaveText("disabled");
 

@@ -69,7 +69,7 @@ Trạng thái: ⬜ chưa làm · 🟨 đang làm · ✅ xong
 
 ---
 
-## V1.0 — Release 🟨 (`v1.0.0-rc.12`; deploy thật ✅ 2026-10-01; chờ project app thật của chủ repo)
+## V1.0 — Release 🟨 (`v1.0.0-rc.14`; deploy thật ✅ 2026-10-01; chờ project app thật của chủ repo)
 
 > Quyết định 2026-09-30: project B (app) là **project thật** của chủ repo, không dựng project thử nghiệm.
 > V1.0 được tag khi project đó chạy thật và phát hiện đã được ghi vào [docs/REUSE-PROOFS.md](docs/REUSE-PROOFS.md).
@@ -143,8 +143,38 @@ Mỗi module chỉ được gắn nhãn **Stable** khi đạt Module DoD ([REQUI
 - [x] `productAdminNav`: trang admin của dự án có trong menu /admin (G9).
 - [x] `ctx.audit`: thao tác admin của dự án ghi chung nhật ký audit (G9).
 
+### rc.13 — Dashboard kit: shell, page, feedback, form ✅ (chờ review)
+> Quyết định 2026-10-02: lấy pattern UI từ shadcn-admin, **không fork, không đổi cấu trúc thư mục**, không thêm
+> TanStack Query/Zustand/RHF. Form mặc định = server action + `useActionState` + zod.
+
+| # | Task | Kiểm chứng |
+|---|---|---|
+| ✅ 1 | `components/app-shell/`: `AppShell` (shadcn `sidebar`: thu gọn, nhớ trạng thái bằng cookie, Sheet trên mobile, skip-to-content), nav nhận từ props. Dashboard + admin dùng chung; xoá `components/dashboard/shell.tsx` | E2E 390px + desktop, axe sạch; `pnpm arch` xanh |
+| ✅ 2 | `PageHeader` (title, description, actions, breadcrumb) dùng ở các trang dashboard/admin | Trang có đúng một `h1`; E2E |
+| ✅ 3 | `components/feedback/`: `EmptyState`, `ErrorState`, `ConfirmDialog` | E2E admin khoá user qua dialog (repo chưa có môi trường test component) |
+| ✅ 4 | `components/forms/`: `FormState<F>` + `toFormState`, `FormField`, `FormError`, `SubmitButton`; chuyển contact, login, note form | Test map lỗi zod/AppError; không còn `inputClass` lặp; E2E form cũ xanh |
+| ✅ 5 | Luật: phân vai component, "xem cái có sẵn trước", quy ước state, quy ước form → AGENTS.md + skill `ui-components` | Review docs |
+
+### rc.14 — Ship fast (học trải nghiệm ShipFast) ✅ (chờ review)
+> Quyết định 2026-10-02: lấy trải nghiệm "lên mạng nhanh" của ShipFast, giữ kiến trúc + test. Làm trước DataTable.
+
+| # | Task | Kiểm chứng |
+|---|---|---|
+| ✅ 1 | `docs/QUICKSTART.md`: clone → deploy → check trên một trang; README trỏ vào | Clean clone đo thời gian phần local |
+| ✅ 2 | `pnpm setup:check`: Node, env thiếu theo profile/module (dùng chung luật `envProblems` với runtime), DB | Unit test; chạy thật với cấu hình sai → exit 1 |
+| ✅ 3 | Block landing: `Pricing` (content-driven, dùng lại ở /pricing), `Steps`, `ProblemSolution`, `Testimonials`, `LogoCloud` | Render test; E2E trang chủ + axe + 390px |
+| ✅ 4 | `pnpm launch:check <url>` | Unit test (fetch giả); chạy thật trên bac-viet-travel.vercel.app: 12/12 ✔ |
+| ✅ 5 | `docs/LAUNCH.md`: domain, DNS email (SPF/DKIM/DMARC), thanh toán, prompt soạn điều khoản, vận hành | Review |
+
+### rc.15 — DataTable kit ⬜ (làm khi một project cần bảng quản lý)
+| # | Task | Kiểm chứng |
+|---|---|---|
+| 1 | `components/data-table/`: bảng server-side, trạng thái (trang, sắp xếp, lọc, tìm) nằm trên `searchParams`; khai báo cột có kiểu | Unit test parse/serialize URL state |
+| 2 | Chuyển 4 bảng admin (users, audit, billing, jobs) sang kit | E2E phân trang/tìm kiếm; axe |
+| 3 | Mẫu dùng trong `_example-notes` + skill `product-feature` | Review docs |
+
 ### Còn lại ⬜
-`ai` (+ `usage`), CLI `create-minh-app`.
+`ai` (+ `usage`), CLI `create-minh-app`, command menu ⌘K.
 
 ---
 

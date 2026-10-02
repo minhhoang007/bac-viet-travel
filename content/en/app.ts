@@ -19,6 +19,7 @@ export const app: AppContent = {
   },
   dashboard: {
     nav: { overview: "Overview", account: "Account", admin: "Admin" },
+    shell: { menu: "Menu", toggle: "Toggle menu", skip: "Skip to main content", breadcrumb: "Breadcrumb" },
     signOut: "Sign out",
     welcome: "Welcome",
     overviewText: "This is the sample dashboard. The product area lives under Notes.",
@@ -122,6 +123,8 @@ export const app: AppContent = {
       previous: "Previous",
       next: "Next",
       selfNote: "You cannot disable or demote yourself.",
+      confirmDisable: "The user will be signed out and cannot sign in again until re-enabled.",
+      confirmRole: "This changes the user's access to the admin area.",
     },
     jobs: { title: "Failed jobs", name: "Name", attempts: "Attempts", lastError: "Last error", retry: "Retry", empty: "No failed jobs." },
     billing: {
@@ -134,6 +137,8 @@ export const app: AppContent = {
     audit: { title: "Audit log", time: "Time", actor: "Actor", action: "Action", target: "Target", empty: "No admin actions yet." },
     done: "Done.",
     failed: "Could not complete the action.",
+    confirmTitle: "Confirm action",
+    cancel: "Cancel",
   },
   blog: {
     nav: "Blog",

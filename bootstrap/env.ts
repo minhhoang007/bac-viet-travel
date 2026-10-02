@@ -50,6 +50,16 @@ export function requiredEnvKeys(features: Features, manifests: readonly ModuleMa
   return [...keys];
 }
 
+/** Every configuration problem, as "KEY: what is wrong" lines (names only, never values). Used by `pnpm setup:check`. */
+export function envProblems(
+  source: EnvSource,
+  features: Features,
+  manifests: readonly ModuleManifest[],
+  options: ValidateOptions = {},
+): string[] {
+  return check(source, features, manifests, options).problems;
+}
+
 /** Pure validation — throws one error listing every problem. */
 export function validateEnv(
   source: EnvSource,
@@ -57,6 +67,14 @@ export function validateEnv(
   manifests: readonly ModuleManifest[],
   options: ValidateOptions = {},
 ): Env {
+  const { problems, base, extra } = check(source, features, manifests, options);
+  if (problems.length > 0 || !base.success) {
+    throw new AppError("INTERNAL_ERROR", `Invalid configuration:\n  - ${problems.join("\n  - ")}`);
+  }
+  return { ...base.data, extra };
+}
+
+function check(source: EnvSource, features: Features, manifests: readonly ModuleManifest[], options: ValidateOptions) {
   const problems = validateModules(features, manifests);
 
   const siteUrl = resolveSiteUrl(source);
@@ -105,10 +123,7 @@ export function validateEnv(
     }
   }
 
-  if (problems.length > 0 || !base.success) {
-    throw new AppError("INTERNAL_ERROR", `Invalid configuration:\n  - ${problems.join("\n  - ")}`);
-  }
-  return { ...base.data, extra };
+  return { problems, base, extra };
 }
 
 let cached: Env | undefined;

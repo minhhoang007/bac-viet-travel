@@ -11,6 +11,11 @@ import { Features } from "@/components/marketing/features";
 import { Faq } from "@/components/marketing/faq";
 import { Cta } from "@/components/marketing/cta";
 import { ContactForm } from "@/components/marketing/contact-form";
+import { LogoCloud } from "@/components/marketing/logo-cloud";
+import { ProblemSolution } from "@/components/marketing/problem-solution";
+import { Steps } from "@/components/marketing/steps";
+import { Testimonials } from "@/components/marketing/testimonials";
+import { Pricing } from "@/components/marketing/pricing";
 import { features } from "@/config/features";
 import { submitContact } from "@/app/actions/contact";
 import { ProductHomeSections } from "@/product/home";
@@ -46,8 +51,20 @@ export default async function HomePage({ params }: Props) {
         secondary={{ label: c.hero.secondaryCta, href: heroHref(locale, c.hero.secondaryHref) }}
         image={c.hero.image}
       />
+      {c.logos && <LogoCloud title={c.logos.title} items={c.logos.items} />}
+      {c.problemSolution && <ProblemSolution id="why" {...c.problemSolution} />}
       <Features id="features" title={c.features.title} items={c.features.items} />
+      {c.steps && <Steps id="how-it-works" title={c.steps.title} items={c.steps.items} />}
       <ProductHomeSections locale={locale} />
+      {c.testimonials && <Testimonials id="testimonials" title={c.testimonials.title} items={c.testimonials.items} />}
+      {c.pricing && (
+        <Pricing
+          id="pricing"
+          title={c.pricing.title}
+          subtitle={c.pricing.subtitle}
+          plans={c.pricing.plans.map((plan) => ({ ...plan, cta: { ...plan.cta, href: heroHref(locale, plan.cta.href) } }))}
+        />
+      )}
       <Faq id="faq" title={c.faq.title} items={c.faq.items} />
       <Cta id="contact" title={c.cta.title} subtitle={c.cta.subtitle} button={{ label: c.cta.button, href: "#contact" }}>
         {features.email ? <ContactForm action={submitContact} labels={c.contact} /> : null}

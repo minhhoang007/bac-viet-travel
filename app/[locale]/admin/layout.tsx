@@ -2,7 +2,8 @@ import type { ReactNode } from "react";
 import type { Metadata } from "next";
 import { requireAdmin } from "@/app/_lib/admin";
 import { signOut } from "@/app/actions/auth";
-import { DashboardShell } from "@/components/dashboard/shell";
+import { AppShell } from "@/components/app-shell/app-shell";
+import { sidebarDefaultOpen } from "@/app/_lib/sidebar";
 import { localePath } from "@/core/i18n/routing";
 import type { Locale } from "@/config/app";
 import { getAppContent } from "@/content";
@@ -12,7 +13,11 @@ import type { ProductNavItem } from "@/product/manifest";
 // Projects created before rc.11 have no productAdminNav export.
 const productAdminNav = (manifest as { productAdminNav?: ProductNavItem[] }).productAdminNav ?? [];
 
-export const metadata: Metadata = { robots: { index: false } };
+// Default title for pages without their own (documents need a <title>, WCAG 2.4.2).
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  return { title: getAppContent(locale as Locale).admin.title, robots: { index: false } };
+}
 
 export default async function AdminLayout({ children, params }: { children: ReactNode; params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -33,10 +38,12 @@ export default async function AdminLayout({ children, params }: { children: Reac
   ];
 
   return (
-    <DashboardShell
+    <AppShell
       brand={{ label: c.title, href: href("/admin") }}
       nav={nav}
       user={user}
+      labels={content.dashboard.shell}
+      defaultOpen={await sidebarDefaultOpen()}
       signOut={
         <form action={signOut}>
           <input type="hidden" name="locale" value={locale} />
@@ -47,6 +54,6 @@ export default async function AdminLayout({ children, params }: { children: Reac
       }
     >
       {children}
-    </DashboardShell>
+    </AppShell>
   );
 }
