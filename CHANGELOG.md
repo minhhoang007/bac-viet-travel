@@ -4,6 +4,13 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+### Added — ship fast (lessons from ShipFast, keeping the architecture and tests)
+- `docs/QUICKSTART.md` (clone → configure → deploy → check on one page) and `docs/LAUNCH.md` (domain, email DNS SPF/DKIM/DMARC, payments, legal-page prompt, monitoring).
+- `pnpm setup:check`: Node version, env missing for the profile and enabled modules, database reachable. Prints names only. Uses the same rules as runtime (`envProblems()` in `bootstrap/env.ts`).
+- `pnpm launch:check <url>`: HTTPS, title/description/canonical, share image, security headers, robots.txt, sitemap, `/api/health`, legal pages of a deployed site.
+- Landing blocks in `components/marketing/`: `Pricing`, `Steps`, `ProblemSolution`, `Testimonials`, `LogoCloud`. The home page renders each one when its optional key is set in `content/<locale>/marketing.ts`; the billing `/pricing` page now uses `Pricing` too.
+- `scripts/ts-alias.mjs`: lets `node` run scripts that import project code (`@/…`).
+
 ### Added — dashboard kit (patterns from shadcn-admin, no fork)
 - `components/app-shell/`: `AppShell` for dashboard and admin — shadcn `sidebar` (collapsible, state kept in the `sidebar_state` cookie, sheet on mobile, current page from the URL), skip link; `PageHeader` (breadcrumb, the page's only `h1`, description, actions).
 - `components/feedback/`: `EmptyState`, `ErrorState`, `ConfirmDialog` (admin "disable user" / role changes now ask first).

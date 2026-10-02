@@ -8,7 +8,9 @@ description: Rules for building UI in this starter with shadcn/ui (components/ui
 ## 1. Use what exists first
 - Primitives live in `components/ui/` (shadcn/ui, Radix-based, new-york style): `Button`/`ButtonLink`, `Input`, `Textarea`,
   `Label`, `Select`, `Popover`, `Calendar`, `DatePicker`, `Dialog`, `Sheet`, `Accordion`, `Carousel`, `Separator`, `Toaster`.
-- Blocks: `components/marketing/` (Hero with optional `image`, Features, Faq, Cta, ContactForm), `components/layout/`.
+- Blocks: `components/marketing/` (Hero with optional `image`, Features, Faq, Cta, ContactForm, Pricing, Steps,
+  ProblemSolution, Testimonials, LogoCloud), `components/layout/`. The home page shows the optional ones when their
+  key is set in `content/<locale>/marketing.ts`. Testimonials and logos must be real customers, with permission.
 - Signed-in pages: `components/app-shell/` — `AppShell` (dashboard/admin layouts; menus come from `nav`), `PageHeader`
   (every dashboard/admin page starts with it: the page's only `h1`, optional `description`, `actions`, `breadcrumb`).
 - Feedback: `components/feedback/` — `EmptyState` (list with no rows), `ErrorState` (a part that failed; safe message

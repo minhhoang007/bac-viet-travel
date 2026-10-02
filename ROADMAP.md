@@ -155,7 +155,18 @@ Mỗi module chỉ được gắn nhãn **Stable** khi đạt Module DoD ([REQUI
 | ✅ 4 | `components/forms/`: `FormState<F>` + `toFormState`, `FormField`, `FormError`, `SubmitButton`; chuyển contact, login, note form | Test map lỗi zod/AppError; không còn `inputClass` lặp; E2E form cũ xanh |
 | ✅ 5 | Luật: phân vai component, "xem cái có sẵn trước", quy ước state, quy ước form → AGENTS.md + skill `ui-components` | Review docs |
 
-### rc.14 — DataTable kit ⬜
+### rc.14 — Ship fast (học trải nghiệm ShipFast) ✅ (chờ review)
+> Quyết định 2026-10-02: lấy trải nghiệm "lên mạng nhanh" của ShipFast, giữ kiến trúc + test. Làm trước DataTable.
+
+| # | Task | Kiểm chứng |
+|---|---|---|
+| ✅ 1 | `docs/QUICKSTART.md`: clone → deploy → check trên một trang; README trỏ vào | Clean clone đo thời gian phần local |
+| ✅ 2 | `pnpm setup:check`: Node, env thiếu theo profile/module (dùng chung luật `envProblems` với runtime), DB | Unit test; chạy thật với cấu hình sai → exit 1 |
+| ✅ 3 | Block landing: `Pricing` (content-driven, dùng lại ở /pricing), `Steps`, `ProblemSolution`, `Testimonials`, `LogoCloud` | Render test; E2E trang chủ + axe + 390px |
+| ✅ 4 | `pnpm launch:check <url>` | Unit test (fetch giả); chạy thật trên bac-viet-travel.vercel.app: 12/12 ✔ |
+| ✅ 5 | `docs/LAUNCH.md`: domain, DNS email (SPF/DKIM/DMARC), thanh toán, prompt soạn điều khoản, vận hành | Review |
+
+### rc.15 — DataTable kit ⬜ (làm khi một project cần bảng quản lý)
 | # | Task | Kiểm chứng |
 |---|---|---|
 | 1 | `components/data-table/`: bảng server-side, trạng thái (trang, sắp xếp, lọc, tìm) nằm trên `searchParams`; khai báo cột có kiểu | Unit test parse/serialize URL state |

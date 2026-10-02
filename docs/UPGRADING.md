@@ -37,6 +37,13 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
+### rc.14 (unreleased) — ship fast
+- New optional marketing content keys (`logos`, `problemSolution`, `steps`, `testimonials`, `pricing`). The starter's
+  sample content sets `problemSolution`, `steps` and `pricing`: if your project overrides `content/`, nothing changes;
+  if it uses the starter files, edit or delete those keys.
+- New scripts `setup:check`, `launch:check` (package.json is merged on upgrade: keep both script lines).
+- No migration.
+
 ### v1.0.0-rc.13 (unreleased) — dashboard kit
 - **Breaking (only if project code imports it):** `components/dashboard/shell.tsx` is gone. Use `AppShell` from
   `@/components/app-shell/app-shell`: same props plus `labels` (`getAppContent(locale).dashboard.shell`) and
