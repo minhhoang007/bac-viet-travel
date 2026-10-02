@@ -5,9 +5,10 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { currentUser } from "@/app/_lib/session";
 import { isAppError } from "@/core/errors";
+import { toFormState, type FormState } from "@/components/forms/form-state";
 import { localePath } from "@/core/i18n/routing";
 
-export type NoteFormState = { status: "error"; field?: "title" | "body"; code: "required" | "too_long" | "error" } | null;
+export type NoteFormState = FormState<"title" | "body">;
 
 const localeSchema = z.enum(["vi", "en"]).catch("vi");
 const NOTES_PATH = "/dashboard/product/notes";
@@ -20,13 +21,8 @@ async function run(formData: FormData, work: (userId: string) => Promise<unknown
   try {
     await work(user.id);
   } catch (error) {
-    if (isAppError(error) && error.code === "VALIDATION_ERROR") {
-      const issue = (error.details?.issues as { path: string; code: string }[] | undefined)?.[0];
-      const code = issue?.code === "too_long" ? "too_long" : "required";
-      return { status: "error", field: issue?.path === "body" ? "body" : "title", code };
-    }
     if (isAppError(error) && error.code === "NOT_FOUND") redirect(localePath(locale, NOTES_PATH));
-    return { status: "error", code: "error" };
+    return toFormState(error, ["title", "body"]);
   }
   revalidatePath("/[locale]/dashboard/product/notes", "page");
   redirect(localePath(locale, NOTES_PATH));

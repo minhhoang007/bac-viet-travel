@@ -5,6 +5,7 @@ import type { Locale } from "@/config/app";
 import { getNotesContent } from "@/product/_example-notes/content";
 import { createNote } from "@/product/_example-notes/actions";
 import { NoteForm } from "@/product/_example-notes/components/note-form";
+import { PageHeader } from "@/components/app-shell/page-header";
 
 export default async function NotesPage({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params;
@@ -15,7 +16,7 @@ export default async function NotesPage({ params }: { params: Promise<{ locale: 
 
   return (
     <div className="grid gap-8">
-      <h1 className="text-2xl font-bold">{c.title}</h1>
+      <PageHeader title={c.title} />
       <NoteForm locale={locale} action={createNote} labels={{ ...c, submit: c.create }} />
       {notes.length === 0 ? (
         <p className="text-muted-foreground">{c.empty}</p>

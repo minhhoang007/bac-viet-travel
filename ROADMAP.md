@@ -143,8 +143,27 @@ Mỗi module chỉ được gắn nhãn **Stable** khi đạt Module DoD ([REQUI
 - [x] `productAdminNav`: trang admin của dự án có trong menu /admin (G9).
 - [x] `ctx.audit`: thao tác admin của dự án ghi chung nhật ký audit (G9).
 
+### rc.13 — Dashboard kit: shell, page, feedback, form ⬜
+> Quyết định 2026-10-02: lấy pattern UI từ shadcn-admin, **không fork, không đổi cấu trúc thư mục**, không thêm
+> TanStack Query/Zustand/RHF. Form mặc định = server action + `useActionState` + zod.
+
+| # | Task | Kiểm chứng |
+|---|---|---|
+| 1 | `components/app-shell/`: `AppShell` (shadcn `sidebar`: thu gọn, nhớ trạng thái bằng cookie, Sheet trên mobile, skip-to-content), nav nhận từ props. Dashboard + admin dùng chung; xoá `components/dashboard/shell.tsx` | E2E 390px + desktop, axe sạch; `pnpm arch` xanh |
+| 2 | `PageHeader` (title, description, actions, breadcrumb) dùng ở các trang dashboard/admin | Trang có đúng một `h1`; E2E |
+| 3 | `components/feedback/`: `EmptyState`, `ErrorState`, `ConfirmDialog` | Unit test `ConfirmDialog` (huỷ/xác nhận) |
+| 4 | `components/forms/`: `FormResult<F>` + `toFormResult`, `FormField`, `FormError`, `SubmitButton`; chuyển contact, login, note form | Test map lỗi zod/AppError; không còn `inputClass` lặp; E2E form cũ xanh |
+| 5 | Luật: phân vai component, "xem cái có sẵn trước", quy ước state, quy ước form → AGENTS.md + skill `ui-components` | Review docs |
+
+### rc.14 — DataTable kit ⬜
+| # | Task | Kiểm chứng |
+|---|---|---|
+| 1 | `components/data-table/`: bảng server-side, trạng thái (trang, sắp xếp, lọc, tìm) nằm trên `searchParams`; khai báo cột có kiểu | Unit test parse/serialize URL state |
+| 2 | Chuyển 4 bảng admin (users, audit, billing, jobs) sang kit | E2E phân trang/tìm kiếm; axe |
+| 3 | Mẫu dùng trong `_example-notes` + skill `product-feature` | Review docs |
+
 ### Còn lại ⬜
-`ai` (+ `usage`), CLI `create-minh-app`.
+`ai` (+ `usage`), CLI `create-minh-app`, command menu ⌘K.
 
 ---
 

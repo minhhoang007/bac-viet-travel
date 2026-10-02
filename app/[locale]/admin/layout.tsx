@@ -2,7 +2,8 @@ import type { ReactNode } from "react";
 import type { Metadata } from "next";
 import { requireAdmin } from "@/app/_lib/admin";
 import { signOut } from "@/app/actions/auth";
-import { DashboardShell } from "@/components/dashboard/shell";
+import { AppShell } from "@/components/app-shell/app-shell";
+import { sidebarDefaultOpen } from "@/app/_lib/sidebar";
 import { localePath } from "@/core/i18n/routing";
 import type { Locale } from "@/config/app";
 import { getAppContent } from "@/content";
@@ -33,10 +34,12 @@ export default async function AdminLayout({ children, params }: { children: Reac
   ];
 
   return (
-    <DashboardShell
+    <AppShell
       brand={{ label: c.title, href: href("/admin") }}
       nav={nav}
       user={user}
+      labels={content.dashboard.shell}
+      defaultOpen={await sidebarDefaultOpen()}
       signOut={
         <form action={signOut}>
           <input type="hidden" name="locale" value={locale} />
@@ -47,6 +50,6 @@ export default async function AdminLayout({ children, params }: { children: Reac
       }
     >
       {children}
-    </DashboardShell>
+    </AppShell>
   );
 }

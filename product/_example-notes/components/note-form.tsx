@@ -1,6 +1,9 @@
 "use client";
 
 import { useActionState } from "react";
+import { FormError } from "@/components/forms/form-error";
+import { FormField } from "@/components/forms/form-field";
+import { SubmitButton } from "@/components/forms/submit-button";
 import type { NoteFormState } from "../actions";
 
 export interface NoteFormProps {
@@ -10,36 +13,20 @@ export interface NoteFormProps {
   labels: { titleLabel: string; bodyLabel: string; submit: string; errors: { required: string; too_long: string; error: string } };
 }
 
-const inputClass = "mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm";
-
 export function NoteForm({ locale, action, note, labels }: NoteFormProps) {
-  const [state, formAction, pending] = useActionState(action, null);
-  const message = state ? labels.errors[state.code] : undefined;
+  const [state, formAction] = useActionState(action, null);
+  // Message keys come from the zod schema (validations.ts); anything else shows the generic error.
+  const message = (code?: string) => (code ? (labels.errors[code as keyof typeof labels.errors] ?? labels.errors.error) : undefined);
+  const fieldErrors = state?.status === "invalid" ? state.fieldErrors : {};
 
   return (
-    <form action={formAction} className="grid max-w-xl gap-3">
+    <form action={formAction} className="grid max-w-xl gap-4" noValidate>
       <input type="hidden" name="locale" value={locale} />
       {note && <input type="hidden" name="id" value={note.id} />}
-      <label htmlFor="note-title" className="text-sm font-medium">
-        {labels.titleLabel}
-        <input id="note-title" name="title" defaultValue={note?.title} maxLength={200} className={inputClass} />
-      </label>
-      <label htmlFor="note-body" className="text-sm font-medium">
-        {labels.bodyLabel}
-        <textarea id="note-body" name="body" rows={4} defaultValue={note?.body} className={inputClass} />
-      </label>
-      {message && (
-        <p role="alert" className="text-sm text-red-600">
-          {message}
-        </p>
-      )}
-      <button
-        type="submit"
-        disabled={pending}
-        className="h-10 justify-self-start rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-60"
-      >
-        {labels.submit}
-      </button>
+      <FormField id="note-title" name="title" label={labels.titleLabel} defaultValue={note?.title} maxLength={200} error={message(fieldErrors.title)} />
+      <FormField id="note-body" name="body" label={labels.bodyLabel} defaultValue={note?.body} multiline error={message(fieldErrors.body)} />
+      <FormError message={state?.status === "error" ? labels.errors.error : undefined} />
+      <SubmitButton label={labels.submit} />
     </form>
   );
 }

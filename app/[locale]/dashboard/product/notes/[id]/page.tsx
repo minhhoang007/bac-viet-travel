@@ -3,6 +3,8 @@ import { setRequestLocale } from "next-intl/server";
 import { requirePageUser } from "@/app/_lib/session";
 import { isAppError } from "@/core/errors";
 import { localePath } from "@/core/i18n/routing";
+import { PageHeader } from "@/components/app-shell/page-header";
+import { getAppContent } from "@/content";
 import type { Locale } from "@/config/app";
 import { getNotesContent } from "@/product/_example-notes/content";
 import { deleteNote, updateNote } from "@/product/_example-notes/actions";
@@ -22,9 +24,13 @@ export default async function NotePage({ params }: { params: Promise<{ locale: L
 
   return (
     <div className="grid gap-6">
-      <a href={localePath(locale, "/dashboard/product/notes")} className="text-sm text-primary underline">
-        {c.back}
-      </a>
+      <PageHeader
+        title={note.title}
+        breadcrumb={{
+          label: getAppContent(locale).dashboard.shell.breadcrumb,
+          items: [{ label: c.title, href: localePath(locale, "/dashboard/product/notes") }, { label: note.title }],
+        }}
+      />
       <NoteForm locale={locale} action={updateNote} note={note} labels={{ ...c, submit: c.save }} />
       <form action={deleteNote}>
         <input type="hidden" name="locale" value={locale} />

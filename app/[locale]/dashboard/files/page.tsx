@@ -7,6 +7,7 @@ import { Uploader } from "@/components/storage/uploader";
 import { formatBytes } from "@/components/ui/format-bytes";
 import type { Locale } from "@/config/app";
 import { getAppContent } from "@/content";
+import { PageHeader } from "@/components/app-shell/page-header";
 
 export default async function FilesPage({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params;
@@ -19,7 +20,7 @@ export default async function FilesPage({ params }: { params: Promise<{ locale: 
 
   return (
     <div className="grid max-w-2xl gap-6">
-      <h1 className="text-2xl font-bold">{c.title}</h1>
+      <PageHeader title={c.title} />
       <p className="text-sm text-muted-foreground" data-testid="storage-usage">
         {c.usage}: {formatBytes(usage.usedBytes)} / {formatBytes(usage.quotaBytes)}
       </p>

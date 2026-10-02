@@ -3,6 +3,7 @@ import { requireAdmin } from "@/app/_lib/admin";
 import { localePath } from "@/core/i18n/routing";
 import type { Locale } from "@/config/app";
 import { getAppContent } from "@/content";
+import { PageHeader } from "@/components/app-shell/page-header";
 
 const PAGE_SIZE = 50;
 
@@ -20,7 +21,7 @@ export default async function AdminAuditPage({ params, searchParams }: Props) {
 
   return (
     <div className="grid gap-6">
-      <h1 className="text-2xl font-bold">{c.audit.title}</h1>
+      <PageHeader title={c.audit.title} />
       {rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">{c.audit.empty}</p>
       ) : (

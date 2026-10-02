@@ -46,7 +46,7 @@ test("sign in, CRUD own notes, IDOR blocked, export, delete account", async ({ b
   await expect(a.getByRole("heading", { level: 1 })).toContainText(emailA);
   await a.goto("/dashboard/product/notes");
   await a.getByRole("button", { name: "Thêm ghi chú" }).click();
-  await expect(a.locator("form [role=alert]")).toHaveText("Vui lòng nhập tiêu đề.");
+  await expect(a.locator("#note-title-error")).toHaveText("Vui lòng nhập tiêu đề.");
   await a.fill("#note-title", "Ghi chú bí mật");
   await a.fill("#note-body", "chỉ A thấy");
   await a.getByRole("button", { name: "Thêm ghi chú" }).click();
