@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
 import { getPublicEnv } from "@/bootstrap/env";
-import { Container } from "@/components/ui/container";
+import { Pricing } from "@/components/marketing/pricing";
 import { localePath } from "@/core/i18n/routing";
 import { createMetadata } from "@/core/seo";
 import { seoSite } from "@/core/seo/site";
@@ -30,33 +30,19 @@ export default async function PricingPage({ params }: Props) {
   const usd = (cents: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
 
   return (
-    <Container className="py-16">
-      <h1 className="text-center text-3xl font-bold">{c.pricingTitle}</h1>
-      <p className="mt-2 text-center text-muted-foreground">{c.pricingSubtitle}</p>
-      <div className="mx-auto mt-10 grid max-w-3xl gap-6 sm:grid-cols-2">
-        {(Object.keys(billingConfig.plans) as PlanId[]).map((id) => {
-          const plan = billingConfig.plans[id];
-          return (
-            <article key={id} className="flex flex-col rounded-lg border border-border p-6">
-              <h2 className="text-xl font-semibold">{plan.name[locale]}</h2>
-              {plan.prices ? (
-                <p className="mt-3 text-2xl font-bold">
-                  {locale === "vi" ? vnd(plan.prices.vnd.month) : usd(plan.prices.usd.month)}
-                  <span className="text-sm font-normal text-muted-foreground"> {c.perMonth}</span>
-                </p>
-              ) : (
-                <p className="mt-3 text-2xl font-bold">0</p>
-              )}
-              <a
-                href={localePath(locale, "/dashboard/billing")}
-                className="mt-6 inline-flex h-10 items-center justify-center rounded-md bg-primary text-sm font-medium text-primary-foreground"
-              >
-                {c.choosePlan}
-              </a>
-            </article>
-          );
-        })}
-      </div>
-    </Container>
+    <Pricing
+      as="h1"
+      title={c.pricingTitle}
+      subtitle={c.pricingSubtitle}
+      plans={(Object.keys(billingConfig.plans) as PlanId[]).map((id) => {
+        const plan = billingConfig.plans[id];
+        return {
+          name: plan.name[locale],
+          price: plan.prices ? (locale === "vi" ? vnd(plan.prices.vnd.month) : usd(plan.prices.usd.month)) : "0",
+          period: plan.prices ? c.perMonth : undefined,
+          cta: { label: c.choosePlan, href: localePath(locale, "/dashboard/billing") },
+        };
+      })}
+    />
   );
 }

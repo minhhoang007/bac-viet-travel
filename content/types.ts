@@ -14,6 +14,29 @@ export interface MarketingContent {
     image?: { src: string; alt: string };
   };
   features: { title: string; items: { title: string; description: string }[] };
+  /*
+   * Optional landing blocks: a section shows only when its content is set.
+   * Testimonials and logos must be real (with permission) — the starter ships none.
+   */
+  logos?: { title: string; items: { name: string; src: string; href?: string }[] };
+  problemSolution?: { title: string; before: { title: string; items: string[] }; after: { title: string; items: string[] } };
+  steps?: { title: string; items: { title: string; description: string }[] };
+  testimonials?: { title: string; items: { quote: string; name: string; role?: string; avatar?: string }[] };
+  pricing?: {
+    title: string;
+    subtitle?: string;
+    plans: {
+      name: string;
+      price: string;
+      period?: string;
+      description?: string;
+      features?: string[];
+      /** `href`: anchor ("#contact") or path without locale prefix. */
+      cta: { label: string; href: string };
+      highlighted?: boolean;
+      badge?: string;
+    }[];
+  };
   faq: { title: string; items: { question: string; answer: string }[] };
   cta: { title: string; subtitle: string; button: string };
   contact: {

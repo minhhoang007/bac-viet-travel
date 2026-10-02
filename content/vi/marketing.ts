@@ -23,6 +23,55 @@ export const marketing: MarketingContent = {
       { title: "Kiến trúc có kiểm chứng", description: "Luật phân tầng được kiểm tra tự động trong CI." },
     ],
   },
+  problemSolution: {
+    title: "Bớt việc lặp lại ở mỗi dự án",
+    before: {
+      title: "Tự dựng từ đầu",
+      items: [
+        "Mất vài tuần cho đăng nhập, email, SEO trước khi viết dòng code sản phẩm đầu tiên",
+        "Mỗi dự án một cách tổ chức code, khó bảo trì",
+        "Lỗi bảo mật chỉ lộ ra khi đã chạy thật",
+      ],
+    },
+    after: {
+      title: "Dùng Minh Starter",
+      items: [
+        "Bật module cần dùng, bắt đầu từ phần sản phẩm ngay ngày đầu",
+        "Một kiến trúc cho mọi dự án, được kiểm tra tự động",
+        "Phân quyền, webhook, giới hạn tần suất đã có test",
+      ],
+    },
+  },
+  steps: {
+    title: "Bắt đầu trong 3 bước",
+    items: [
+      { title: "Khởi tạo", description: "Chạy pnpm init:project: đặt tên, chọn profile và module." },
+      { title: "Xây sản phẩm", description: "Viết phần riêng của bạn trong product/ theo feature mẫu." },
+      { title: "Ra mắt", description: "Deploy lên Vercel, chạy pnpm launch:check rồi đón khách." },
+    ],
+  },
+  pricing: {
+    title: "Chọn gói phù hợp",
+    subtitle: "Ví dụ khối bảng giá: sửa trong content/ hoặc xoá đi nếu không cần.",
+    plans: [
+      {
+        name: "Website",
+        price: "Liên hệ",
+        description: "Trang giới thiệu dịch vụ, SEO, form liên hệ.",
+        features: ["Đa ngôn ngữ", "Blog", "Form liên hệ qua email"],
+        cta: { label: "Liên hệ", href: "#contact" },
+      },
+      {
+        name: "Web app",
+        price: "Liên hệ",
+        description: "Đăng nhập, dashboard, thanh toán.",
+        features: ["Mọi thứ của Website", "Đăng nhập không mật khẩu", "Thanh toán VNPay / Polar", "Trang quản trị"],
+        cta: { label: "Liên hệ", href: "#contact" },
+        highlighted: true,
+        badge: "Phổ biến",
+      },
+    ],
+  },
   faq: {
     title: "Câu hỏi thường gặp",
     items: [
