@@ -55,7 +55,7 @@ test("sign in, CRUD own notes, IDOR blocked, export, delete account", async ({ b
   const noteUrl = a.url();
   await a.fill("#note-title", "Ghi chú đã sửa");
   await a.getByRole("button", { name: "Lưu" }).click();
-  await expect(a.locator("li")).toHaveText(["Ghi chú đã sửachỉ A thấy"]);
+  await expect(a.locator("#app-content li")).toHaveText(["Ghi chú đã sửachỉ A thấy"]);
 
   // B cannot see or open A's note
   await signIn(b, emailB);
@@ -63,7 +63,7 @@ test("sign in, CRUD own notes, IDOR blocked, export, delete account", async ({ b
   expect(res?.status()).toBe(404);
   expect(await b.content()).not.toContain("Ghi chú đã sửa");
   await b.goto("/dashboard/product/notes");
-  await expect(b.locator("li")).toHaveCount(0);
+  await expect(b.locator("#app-content li")).toHaveCount(0);
 
   // Export contains only B's data; anonymous export is refused
   const exported = await (await b.context().request.get("/api/account/export")).json();

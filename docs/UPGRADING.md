@@ -37,6 +37,15 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
+### v1.0.0-rc.13 (unreleased) — dashboard kit
+- **Breaking (only if project code imports it):** `components/dashboard/shell.tsx` is gone. Use `AppShell` from
+  `@/components/app-shell/app-shell`: same props plus `labels` (`getAppContent(locale).dashboard.shell`) and
+  `defaultOpen` (`await sidebarDefaultOpen()` from `@/app/_lib/sidebar`).
+- New content keys: `dashboard.shell`, `admin.confirmTitle`, `admin.cancel`, `admin.users.confirmDisable|confirmRole`
+  (projects overriding `content/` must add them; `content.test.ts` fails otherwise).
+- Optional: move product pages to `PageHeader`, `EmptyState` and the `components/forms` kit (see the notes example).
+- No migration.
+
 ### v1.0.0-rc.12 (2026-10-01) — content in serverless functions
 - No action needed (`next.config.ts` is starter-owned). Keep runtime-read files under `content/`, or add your folder to `outputFileTracingIncludes`.
 

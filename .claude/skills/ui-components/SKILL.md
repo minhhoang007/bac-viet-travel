@@ -9,6 +9,11 @@ description: Rules for building UI in this starter with shadcn/ui (components/ui
 - Primitives live in `components/ui/` (shadcn/ui, Radix-based, new-york style): `Button`/`ButtonLink`, `Input`, `Textarea`,
   `Label`, `Select`, `Popover`, `Calendar`, `DatePicker`, `Dialog`, `Sheet`, `Accordion`, `Carousel`, `Separator`, `Toaster`.
 - Blocks: `components/marketing/` (Hero with optional `image`, Features, Faq, Cta, ContactForm), `components/layout/`.
+- Signed-in pages: `components/app-shell/` — `AppShell` (dashboard/admin layouts; menus come from `nav`), `PageHeader`
+  (every dashboard/admin page starts with it: the page's only `h1`, optional `description`, `actions`, `breadcrumb`).
+- Feedback: `components/feedback/` — `EmptyState` (list with no rows), `ErrorState` (a part that failed; safe message
+  only), `ConfirmDialog` (wraps a server action that is hard to undo; hidden inputs as children).
+- Forms: `components/forms/` — `FormField`, `FormError`, `SubmitButton`, `FormState` + `toFormState` (see §5).
 - Icons: `lucide-react` only. No emoji or text glyphs as icons.
 - Need another shadcn component? `pnpm dlx shadcn@latest add <name>`, then **fix imports**: utils must be
   `@/components/ui/cn` (the CLI may write `"cn"`), and remove any `next-themes` usage (theme follows prefers-color-scheme).
@@ -32,6 +37,10 @@ description: Rules for building UI in this starter with shadcn/ui (components/ui
 ## 5. Server first
 - Pages and blocks are Server Components. Add `"use client"` only to the smallest interactive leaf (menu, picker, form).
 - Forms post to Server Actions; client pickers submit through hidden inputs (see `DatePicker`).
+- Form pattern (copy `product/_example-notes`): zod schema in the service → action catches and returns
+  `toFormState(error, fields)` (or redirects on success) → client form with `useActionState`, one `FormField` per
+  field, `FormError` for `status: "error"`, `SubmitButton`. Map message keys to labels from content; never show
+  raw error text. React Hook Form only in `product/` for field arrays, multi-step forms or live validation.
 - Content that search engines must see stays in the HTML (FAQ uses `forceMount`; don't lazy-render SEO text).
 
 ## 6. Accessibility (checked in CI)

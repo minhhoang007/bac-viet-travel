@@ -4,6 +4,18 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+### Added — dashboard kit (patterns from shadcn-admin, no fork)
+- `components/app-shell/`: `AppShell` for dashboard and admin — shadcn `sidebar` (collapsible, state kept in the `sidebar_state` cookie, sheet on mobile, current page from the URL), skip link; `PageHeader` (breadcrumb, the page's only `h1`, description, actions).
+- `components/feedback/`: `EmptyState`, `ErrorState`, `ConfirmDialog` (admin "disable user" / role changes now ask first).
+- `components/forms/`: `FormField` (label + input + error with aria wired), `FormError`, `SubmitButton` (`useFormStatus`), `FormState<F>` + `toFormState(error, fields)` mapping zod / `AppError` to field or form errors. Contact, login and the notes example use them.
+- shadcn `sidebar`, `tooltip`, `skeleton` in `components/ui/`; sidebar colors derive from the brand tokens.
+
+### Changed
+- Notes example: field errors show under the field (`#note-title-error`) instead of one message for the form.
+
+### Removed
+- `components/dashboard/shell.tsx` (`DashboardShell`) — use `AppShell` (see UPGRADING).
+
 ## [1.0.0-rc.12] - 2026-10-01
 
 ### Fixed (found on a real deployment, reuse finding G10)
