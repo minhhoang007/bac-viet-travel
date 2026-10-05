@@ -37,7 +37,7 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
-### Unreleased (rc.15) — shared VNPay IPN, checkout limits
+### v1.0.0-rc.15 (2026-10-05) — shared VNPay IPN, checkout limits
 - **Product VNPay payments:** return `vnpayIpn` from `createProduct` (type `VnpayIpnHandler`, `@/core/payments/vnpay-ipn`).
   The endpoint `/api/billing/vnpay/ipn` now exists whenever `VNPAY_TMN_CODE` + `VNPAY_HASH_SECRET` are set (billing
   module or not), verifies the signature once, then offers each IPN to the product handler, then to billing. Your

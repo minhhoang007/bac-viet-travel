@@ -4,6 +4,8 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.0.0-rc.15] - 2026-10-05
+
 ### Added — agent skills (ideas from obra/superpowers, adapted; plugin not installed)
 - Skill `systematic-debugging`: root cause before any fix; stop after 3 failed fixes.
 - Skill `receiving-code-review`: verify each review finding against the code and repo rules before changing it.
