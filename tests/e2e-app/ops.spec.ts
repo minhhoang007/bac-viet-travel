@@ -55,8 +55,13 @@ test.describe("admin", () => {
     await adminPage.getByLabel("Tìm theo email").fill(userEmail);
     await adminPage.getByRole("button", { name: "Tìm theo email" }).click();
     await adminPage.getByRole("link", { name: userEmail }).click();
-    await adminPage.getByRole("button", { name: "Khoá tài khoản" }).click();
-    await adminPage.getByRole("dialog").getByRole("button", { name: "Khoá tài khoản" }).click();
+    // The trigger is a client component: a click before hydration is lost (seen on CI), so click until the dialog opens.
+    const dialog = adminPage.getByRole("dialog");
+    await expect(async () => {
+      if (!(await dialog.isVisible())) await adminPage.getByRole("button", { name: "Khoá tài khoản" }).click();
+      await expect(dialog).toBeVisible({ timeout: 1_000 });
+    }).toPass();
+    await dialog.getByRole("button", { name: "Khoá tài khoản" }).click();
     await expect(adminPage.locator("[data-result=done]")).toBeVisible();
     await expect(adminPage.getByTestId("user-status")).toHaveText("disabled");
 
