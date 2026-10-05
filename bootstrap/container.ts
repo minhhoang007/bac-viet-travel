@@ -3,12 +3,13 @@ import { createAccountService, type AccountService } from "@/core/account";
 import { createAuthService, type AuthRateLimits, type AuthService } from "@/core/auth";
 import { createBetterAuth } from "@/core/auth/adapters/better-auth";
 import { createContactService, type ContactService } from "@/core/contact";
+import { localePath } from "@/core/i18n/routing";
 import { createLogger, type Logger } from "@/core/logger";
 import type { Features } from "@/core/module";
 import { noopMail, type MailMessage, type MailPort } from "@/core/ports/mail";
 import { createVnpayIpn, type VnpayIpnHandler, type VnpayIpnResult } from "@/core/payments/vnpay-ipn";
 import type { Payments } from "@/core/ports/payments";
-import type { ProductContext, ProductJobs } from "@/core/product/context";
+import type { ContentTypeDefinition, ProductContext, ProductJobs } from "@/core/product/context";
 import { createMemoryRateLimiter, withFallback, type RateLimiter, type RateLimitRule } from "@/core/security/rate-limit";
 import { createDb, type Db } from "@/db/client";
 import { createAdminModule, type AdminModule } from "@/modules/admin";
@@ -17,6 +18,7 @@ import { createBillingModule, PROCESS_WEBHOOK_JOB, type BillingModule, type OneT
 import { createEmailModule, SEND_EMAIL_JOB, type EmailProvider } from "@/modules/email";
 import { createEntitlementsModule, type EntitlementsModule } from "@/modules/entitlements";
 import { createJobsModule, type JobHandler, type JobsModule } from "@/modules/jobs";
+import { createContentModule, type ContentModule } from "@/modules/content";
 import { createMediaModule, type MediaModule, type MediaProvider } from "@/modules/media";
 import { createStorageModule, type ObjectStorage, type StorageModule } from "@/modules/storage";
 import { polarProvider } from "@/providers/billing/polar";
@@ -76,6 +78,8 @@ export interface Container {
   storage?: StorageModule;
   /** Public images for staff-edited content (ADR-0008). */
   media?: MediaModule;
+  /** Editorial workflow for project content types (ADR-0009). */
+  content?: ContentModule;
 }
 
 export interface ContainerOverrides {
@@ -204,6 +208,21 @@ export function buildContainer(features: Features, env: Env, overrides: Containe
 
   const admin = features.admin && db ? createAdminModule({ db, logger }) : undefined;
 
+  const contentTypes = productContentTypes();
+  const content =
+    features.content && db
+      ? createContentModule({
+          db,
+          logger,
+          types: Object.keys(contentTypes),
+          mail: email ? mail : undefined,
+          adminUrl: (item) => new URL(localePath(appConfig.defaultLocale, contentTypes[item.type]?.adminPath(item.id) ?? "/admin/content"), env.NEXT_PUBLIC_SITE_URL).toString(),
+          onChange: (item) => contentTypes[item.type]?.onChange?.(item),
+          now: overrides.now,
+        })
+      : undefined;
+  if (content) periodic["content.publish_due"] = async () => void (await content.publishDue());
+
   const productContext: ProductContext | undefined = db
     ? { db, logger, mail, rateLimiter, payments, jobs, audit: admin, now: overrides.now ?? (() => new Date()) }
     : undefined;
@@ -228,7 +247,12 @@ export function buildContainer(features: Features, env: Env, overrides: Containe
   const vnpay = payments.vnpay;
   const handleVnpayIpn = vnpay ? createVnpayIpn({ verify: (p) => vnpay.verify(p), handlers: vnpayIpnHandlers, logger }) : undefined;
 
-  return { features, logger, mail, health, rateLimiter, payments, handleVnpayIpn, contact, app, jobs, entitlements, billing, admin, analytics, storage, media };
+  return { features, logger, mail, health, rateLimiter, payments, handleVnpayIpn, contact, app, jobs, entitlements, billing, admin, analytics, storage, media, content };
+}
+
+/** Manifest `contentTypes` (optional export; `in` first because test mocks of the manifest throw on missing exports). */
+export function productContentTypes(): Record<string, ContentTypeDefinition> {
+  return "contentTypes" in productManifest ? ((productManifest as { contentTypes?: Record<string, ContentTypeDefinition> }).contentTypes ?? {}) : {};
 }
 
 function buildBilling(

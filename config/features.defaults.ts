@@ -10,6 +10,7 @@ export const featureDefaults = {
   usage: false,
   storage: false,
   media: false,
+  content: false,
   analytics: false,
   admin: false,
   ai: false,

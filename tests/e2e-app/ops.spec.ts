@@ -52,8 +52,10 @@ test.describe("admin", () => {
     const out = execFileSync(process.execPath, ["scripts/admin-grant.ts", adminEmail], { env: { ...process.env, DATABASE_URL: process.env.E2E_DATABASE_URL } }).toString();
     expect(out).toContain("is now an admin");
 
-    // Media module is off in this app: its library does not exist, even for admins.
+    // Media and content modules are off in this app: their pages do not exist, even for admins.
     expect((await adminPage.goto("/admin/media"))?.status()).toBe(404);
+    expect((await adminPage.goto("/admin/content"))?.status()).toBe(404);
+    expect((await adminPage.request.get("/api/content/preview?id=x")).status()).toBe(404);
 
     await adminPage.goto("/dashboard");
     await adminPage.getByRole("link", { name: "Quản trị" }).click();

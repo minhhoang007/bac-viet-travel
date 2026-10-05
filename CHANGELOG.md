@@ -4,6 +4,12 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+### Added — editorial workflow (CMS, ADR-0009)
+- Module `content` (profile app, requires admin): drafts and live copies as JSON per project content type (manifest `contentTypes`), review (editor submits, admins emailed; admin publishes, schedules or sends back with a note), hide/show, version history with restore, optimistic locking (`revision`, `CONFLICT`), scheduled publishing on the jobs tick (`content.publish_due`).
+- Review queue `/admin/content`, `<WorkflowPanel>` / `<ContentResult>` (`app/_components/workflow-panel.tsx`) for project edit pages; admin workflow actions are audited.
+- Draft Mode preview `/api/content/preview`; `readContent(type, slug)` (`app/_lib/content.ts`) and `<PreviewBanner>` for public pages.
+- `appConfig.timeZone` (default `Asia/Ho_Chi_Minh`) and `zonedToUtc` / `utcToZoned` (`core/i18n/time-zone.ts`).
+
 ### Added — media library (CMS groundwork, ADR-0008)
 - Module `media` (profile app, requires admin): public images on Cloudinary's free plan. Staff (editors and admins) upload several images at once at `/admin/media`; the browser posts straight to Cloudinary with a server signature (`allowed_formats` signed); on confirm the server reads what Cloudinary stored and rejects other formats or sizes. Alt text per locale, focal point picker, search, deletion blocked while a project reports the image in use (manifest `mediaInUse`), hourly purge of unconfirmed uploads.
 - `media.imageProps(asset, { aspect, widths })` + `<MediaImage>`: responsive `srcSet` from Cloudinary (`f_auto,q_auto`, crop around the focal point), no Vercel image-optimization quota.

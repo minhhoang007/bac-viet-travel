@@ -26,7 +26,10 @@ export default async function AdminLayout({ children, params }: { children: Reac
 
   // Pages for optional modules appear only when the module is on.
   // Content pages: editors and admins.
-  const contentNav = container.media ? [{ label: c.nav.media, href: href("/admin/media") }] : [];
+  const contentNav = [
+    ...(container.content ? [{ label: c.nav.content, href: href("/admin/content") }] : []),
+    ...(container.media ? [{ label: c.nav.media, href: href("/admin/media") }] : []),
+  ];
   const product = [...productAdminNavFor(user).map((item) => ({ label: item.label[locale as Locale], href: href(item.href) })), ...contentNav];
   const nav = isAdmin
     ? [
