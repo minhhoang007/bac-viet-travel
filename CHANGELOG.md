@@ -4,6 +4,9 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+### Added — project footer
+- Optional `ProductFooter({ locale })` export in `product/layout.tsx` replaces the starter footer (one footer with the project's columns and legal block).
+
 ### Added — editorial workflow (CMS, ADR-0009)
 - Module `content` (profile app, requires admin): drafts and live copies as JSON per project content type (manifest `contentTypes`), review (editor submits, admins emailed; admin publishes, schedules or sends back with a note), hide/show, version history with restore, optimistic locking (`revision`, `CONFLICT`), scheduled publishing on the jobs tick (`content.publish_due`).
 - Review queue `/admin/content`, `<WorkflowPanel>` / `<ContentResult>` (`app/_components/workflow-panel.tsx`) for project edit pages; admin workflow actions are audited.

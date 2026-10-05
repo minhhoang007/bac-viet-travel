@@ -8,3 +8,8 @@ export function ProductLayoutExtras({ locale }: { locale: Locale }) {
   void locale;
   return null;
 }
+
+/*
+ * Optional: export ProductFooter({ locale }) to replace the starter footer entirely (one footer with your own columns,
+ * legal block and policy links). Keep the terms and privacy links in it.
+ */
