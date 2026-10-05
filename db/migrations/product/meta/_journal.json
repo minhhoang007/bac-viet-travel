@@ -22,6 +22,13 @@
       "when": 1790847385059,
       "tag": "0002_mysterious_mulholland_black",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791199530144,
+      "tag": "0003_pale_guardsmen",
+      "breakpoints": true
     }
   ]
 }

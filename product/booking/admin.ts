@@ -1,12 +1,14 @@
-import { and, asc, count, desc, eq, gte, ilike, inArray, isNull, lte, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, gte, ilike, inArray, isNull, lte, or, sql, type SQL } from "drizzle-orm";
 import { AppError } from "@/core/errors";
 import type { Logger } from "@/core/logger";
 import type { MailPort } from "@/core/ports/mail";
 import type { ProductContext } from "@/core/product/context";
 import type { Db } from "@/db/client";
-import { bookingPayments, bookings, departures, type Booking, type BookingPayment, type BookingStatus, type Departure } from "../schema/booking";
+import { createHash, randomBytes, randomInt } from "node:crypto";
+import { bookingPayments, bookings, departures, type Booking, type BookingPayment, type BookingSource, type BookingStatus, type Departure } from "../schema/booking";
 import { bookingStatusEmail, reminderEmail } from "./emails";
-import { addDays, vietnamToday } from "./rules";
+import { addDays, bookingRules, vietnamToday } from "./rules";
+import { manualBookingSchema } from "./validations";
 
 export interface Actor {
   id: string;
@@ -16,7 +18,7 @@ export interface Actor {
 /** "attention" = what staff must act on: refunds owed and paid deposits not yet confirmed. */
 export type BookingFilter = BookingStatus | "attention" | "all";
 
-export interface AdminBookingRow extends Pick<Booking, "id" | "code" | "status" | "name" | "email" | "phone" | "seats" | "totalVnd" | "depositVnd" | "refundDueVnd" | "refundedAt" | "createdAt"> {
+export interface AdminBookingRow extends Pick<Booking, "id" | "code" | "status" | "name" | "email" | "phone" | "seats" | "totalVnd" | "depositVnd" | "refundDueVnd" | "refundedAt" | "createdAt" | "source" | "externalRef"> {
   tourSlug: string;
   date: string;
 }
@@ -29,12 +31,17 @@ export interface AdminDepartureRow extends Departure {
 }
 
 export interface BookingAdmin {
-  list(options?: { filter?: BookingFilter; tourSlug?: string; from?: string; to?: string; query?: string; page?: number; pageSize?: number }): Promise<{ rows: AdminBookingRow[]; total: number }>;
+  list(options?: { filter?: BookingFilter; source?: BookingSource; tourSlug?: string; from?: string; to?: string; query?: string; page?: number; pageSize?: number }): Promise<{ rows: AdminBookingRow[]; total: number }>;
   get(code: string): Promise<{ booking: Booking; departure: Departure; payments: BookingPayment[] } | null>;
   confirm(actor: Actor, code: string): Promise<boolean>;
   cancel(actor: Actor, code: string, input: { reason: string; refund: boolean }): Promise<boolean>;
   markRefunded(actor: Actor, code: string, input: { note: string }): Promise<boolean>;
   setStaffNote(actor: Actor, code: string, note: string): Promise<boolean>;
+  /**
+   * Staff-entered booking (phone, Zalo, OTA), paid outside the website. Takes seats under the same departure lock as
+   * online holds, so the website and OTAs never oversell. Audited.
+   */
+  createManual(actor: Actor, raw: Record<string, unknown>): Promise<ManualBookingResult>;
 
   listDepartures(options: { tourSlug?: string; from: string; to: string }): Promise<AdminDepartureRow[]>;
   addDepartures(actor: Actor, input: { tourSlug: string; dates: string[]; capacity: number; priceVnd: number | null }): Promise<number>;
@@ -45,6 +52,13 @@ export interface BookingAdmin {
   sendReminders(): Promise<number>;
 }
 
+export type ManualBookingResult =
+  | { status: "created"; code: string }
+  | { status: "invalid"; fieldErrors: Record<string, string> }
+  | { status: "sold_out"; seatsLeft: number }
+  | { status: "unavailable" };
+
+const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 const CODE = /^BV-[A-Z2-9]{6}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -79,6 +93,10 @@ export function createBookingAdmin(deps: {
   /** Emails never fail an admin action that already happened. */
   const send = async (message: Parameters<MailPort["send"]>[0], code: string) =>
     deps.mail.send(message).catch((error) => logger.error("booking.email_failed", { code, kind: message.kind, error }));
+  /** Guest emails are skipped for bookings an OTA handles (guestEmails = false) or without an address. */
+  const sendToGuest = async (booking: Booking, message: Parameters<MailPort["send"]>[0]) => {
+    if (booking.guestEmails && booking.email) await send(message, booking.code);
+  };
 
   const seatCounts = (at: Date) => ({
     sold: sql<number>`coalesce((select sum(b.seats) from bookings b where b.departure_id = departures.id and b.status in ('deposit_paid', 'confirmed')), 0)::int`,
@@ -86,11 +104,12 @@ export function createBookingAdmin(deps: {
   });
 
   return {
-    async list({ filter = "attention", tourSlug, from, to, query, page = 1, pageSize = 25 } = {}) {
+    async list({ filter = "attention", source, tourSlug, from, to, query, page = 1, pageSize = 25 } = {}) {
       const where: SQL[] = [];
       if (filter === "attention") where.push(or(eq(bookings.status, "deposit_paid"), and(sql`${bookings.refundDueVnd} > 0`, isNull(bookings.refundedAt)))!);
       else if (filter !== "all") where.push(eq(bookings.status, filter));
       if (tourSlug) where.push(eq(departures.tourSlug, tourSlug));
+      if (source) where.push(eq(bookings.source, source));
       if (from && DAY.test(from)) where.push(gte(departures.date, from));
       if (to && DAY.test(to)) where.push(lte(departures.date, to));
       const q = query?.trim().slice(0, 100);
@@ -111,6 +130,8 @@ export function createBookingAdmin(deps: {
           refundDueVnd: bookings.refundDueVnd,
           refundedAt: bookings.refundedAt,
           createdAt: bookings.createdAt,
+          source: bookings.source,
+          externalRef: bookings.externalRef,
           tourSlug: departures.tourSlug,
           date: departures.date,
         })
@@ -143,7 +164,7 @@ export function createBookingAdmin(deps: {
       });
       if (updated) {
         const row = (await load(code))!;
-        await send(bookingStatusEmail({ booking: updated, departure: row.d, title: deps.tourTitle(row.d.tourSlug, updated.locale), kind: "confirmed" }), code);
+        await sendToGuest(updated, bookingStatusEmail({ booking: updated, departure: row.d, title: deps.tourTitle(row.d.tourSlug, updated.locale), kind: "confirmed" }));
       }
       return changed;
     },
@@ -168,7 +189,7 @@ export function createBookingAdmin(deps: {
       });
       if (updated) {
         const row = (await load(code))!;
-        await send(bookingStatusEmail({ booking: updated, departure: row.d, title: deps.tourTitle(row.d.tourSlug, updated.locale), kind: "cancelled" }), code);
+        await sendToGuest(updated, bookingStatusEmail({ booking: updated, departure: row.d, title: deps.tourTitle(row.d.tourSlug, updated.locale), kind: "cancelled" }));
       }
       return changed;
     },
@@ -194,6 +215,65 @@ export function createBookingAdmin(deps: {
         const done = await db.update(bookings).set({ staffNote: note.trim().slice(0, 2000) }).where(eq(bookings.code, code)).returning({ id: bookings.id });
         return done.length > 0;
       });
+    },
+
+    async createManual(actor, raw) {
+      const parsed = manualBookingSchema.safeParse(raw);
+      if (!parsed.success) {
+        const fieldErrors: Record<string, string> = {};
+        for (const issue of parsed.error.issues) fieldErrors[String(issue.path[0])] ??= issue.message;
+        return { status: "invalid", fieldErrors };
+      }
+      const input = parsed.data;
+      let result = { status: "unavailable" } as ManualBookingResult; // set inside the audited transaction
+      const code = `BV-${Array.from({ length: 6 }, () => CODE_ALPHABET[randomInt(CODE_ALPHABET.length)]).join("")}`;
+      await audited(actor, "booking.create_manual", code, { source: input.source, externalRef: input.externalRef || null }, async () => {
+        result = await db.transaction(async (tx): Promise<ManualBookingResult> => {
+          const at = now();
+          // Same lock as online holds: the website, OTAs and staff share one seat count.
+          const [departure] = await tx.select().from(departures).where(eq(departures.id, input.departureId)).for("update");
+          // Staff may enter bookings inside the online cut-off, but not on a past or closed date.
+          if (!departure || departure.status !== "open" || departure.date < vietnamToday(at)) return { status: "unavailable" };
+          const [row] = await tx
+            .select({ taken: sql<number>`coalesce(sum(${bookings.seats}), 0)::int` })
+            .from(bookings)
+            .where(and(eq(bookings.departureId, departure.id), or(inArray(bookings.status, ACTIVE), and(eq(bookings.status, "held"), gt(bookings.holdExpiresAt, at)))));
+          const seats = input.adults + input.children;
+          const seatsLeft = departure.capacity - (row?.taken ?? 0);
+          if (seats > seatsLeft) return { status: "sold_out", seatsLeft: Math.max(0, seatsLeft) };
+
+          await tx.insert(bookings).values({
+            code,
+            // No guest link for staff-entered bookings: a random token nobody knows.
+            tokenHash: createHash("sha256").update(randomBytes(24)).digest("hex"),
+            departureId: departure.id,
+            status: input.status,
+            holdExpiresAt: at,
+            name: input.name,
+            email: input.email,
+            phone: input.phone,
+            note: input.note,
+            locale: input.locale,
+            adults: input.adults,
+            children: input.children,
+            infants: input.infants,
+            seats,
+            // What was actually received, per seat (OTA net prices differ from the website price).
+            unitPriceVnd: Math.round(input.amountVnd / seats),
+            totalVnd: input.amountVnd,
+            depositVnd: Math.ceil((input.amountVnd * bookingRules.depositRate) / 1000) * 1000,
+            depositPaidAt: at,
+            confirmedAt: input.status === "confirmed" ? at : null,
+            source: input.source,
+            externalRef: input.externalRef || null,
+            guestEmails: input.guestEmails,
+          });
+          return { status: "created", code };
+        });
+        return result.status === "created";
+      });
+      if (result.status === "created") logger.info("booking.created_manual", { code: result.code, source: input.source });
+      return result;
     },
 
     async listDepartures({ tourSlug, from, to }) {
@@ -288,6 +368,8 @@ export function createBookingAdmin(deps: {
           and(
             inArray(bookings.status, ACTIVE),
             isNull(bookings.reminderSentAt),
+            eq(bookings.guestEmails, true),
+            sql`${bookings.email} <> ''`,
             sql`${bookings.departureId} in (select id from departures where date > ${today} and date <= ${addDays(today, REMINDER_DAYS)})`,
           ),
         )

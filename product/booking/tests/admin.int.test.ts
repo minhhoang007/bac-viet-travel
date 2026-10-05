@@ -109,6 +109,51 @@ describe("booking admin", () => {
     expect(await bookingAdmin.sendReminders()).toBe(0);
   });
 
+  describe("manual / OTA bookings", () => {
+    const klook = (departureId: string, extra: Record<string, unknown> = {}) => ({
+      departureId, name: "John Smith", email: "", phone: "", adults: "2", source: "klook", externalRef: "KL-123456", amountVnd: "1500000", status: "confirmed", locale: "en", ...extra,
+    });
+
+    it("takes seats under the same lock as the website, no guest emails, audited; never oversells", async () => {
+      const [d] = await db.insert(departures).values({ tourSlug: "ninh-binh-day-tour", date: "2026-10-10", capacity: 4 }).returning();
+      const created = await bookingAdmin.createManual(staff, klook(d!.id));
+      expect(created.status).toBe("created");
+      const code = (created as { code: string }).code;
+      expect(await row(code)).toMatchObject({ status: "confirmed", source: "klook", externalRef: "KL-123456", guestEmails: false, seats: 2, totalVnd: 1_500_000 });
+      expect((await booking.getDeparture(d!.id))!.seatsLeft).toBe(2);
+
+      // Website hold for 2 takes the rest; the OTA cannot add one more.
+      const held = await booking.hold({ departureId: d!.id, name: "Lan", email: "lan@example.com", phone: "0912345678", adults: "2", locale: "vi", agree: "on" }, "ip");
+      expect(held.status).toBe("held");
+      expect(await bookingAdmin.createManual(staff, klook(d!.id, { adults: "1" }))).toEqual({ status: "sold_out", seatsLeft: 0 });
+
+      // OTA bookings: confirm/cancel/reminder send nothing to the guest.
+      expect(await bookingAdmin.cancel(staff, code, { reason: "Khách huỷ trên Klook", refund: false })).toBe(true);
+      expect(sent).toEqual([]);
+      const { rows } = await container.admin!.listAudit({ targetId: code });
+      expect(rows.map((r) => r.action)).toEqual(["booking.cancel", "booking.create_manual"]);
+      expect((await bookingAdmin.list({ filter: "all", source: "klook" })).rows.map((r) => r.code)).toEqual([code]);
+      expect((await bookingAdmin.list({ filter: "all", source: "website" })).rows).toHaveLength(1);
+    });
+
+    it("validates input; guest emails need an address; closed or past dates are refused", async () => {
+      const [d] = await db.insert(departures).values({ tourSlug: "ninh-binh-day-tour", date: "2026-10-10", capacity: 10 }).returning();
+      expect(await bookingAdmin.createManual(staff, klook(d!.id, { name: "", source: "website", amountVnd: "-1" }))).toMatchObject({
+        status: "invalid",
+        fieldErrors: { name: "required", source: "invalid", amountVnd: "invalid" },
+      });
+      expect(await bookingAdmin.createManual(staff, klook(d!.id, { guestEmails: "on" }))).toMatchObject({ status: "invalid", fieldErrors: { email: "required" } });
+
+      const withEmail = await bookingAdmin.createManual(staff, klook(d!.id, { source: "phone", email: "guest@example.com", guestEmails: "on", status: "deposit_paid" }));
+      expect(await row((withEmail as { code: string }).code)).toMatchObject({ status: "deposit_paid", guestEmails: true, email: "guest@example.com" });
+
+      const [past] = await db.insert(departures).values({ tourSlug: "ninh-binh-day-tour", date: "2026-09-30", capacity: 10 }).returning();
+      const [closed] = await db.insert(departures).values({ tourSlug: "ninh-binh-day-tour", date: "2026-10-12", capacity: 10, status: "closed" }).returning();
+      expect(await bookingAdmin.createManual(staff, klook(past!.id))).toEqual({ status: "unavailable" });
+      expect(await bookingAdmin.createManual(staff, klook(closed!.id))).toEqual({ status: "unavailable" });
+    });
+  });
+
   it("stats: deposits this week and what needs action", async () => {
     await paidBooking();
     await paidBooking();

@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
-import { check, date, index, integer, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { boolean, check, date, index, integer, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { id, timestamps } from "@/db/columns";
+import { BOOKING_SOURCES } from "../booking/sources";
 
 /** One scheduled departure of a tour (tour = slug of content/tours/<locale>/<slug>.mdx). */
 export const departures = pgTable(
@@ -25,6 +26,8 @@ export const departures = pgTable(
 /** refund_due: a deposit arrived after the hold expired and the seats were gone (staff refunds it). */
 export const BOOKING_STATUSES = ["held", "expired", "deposit_paid", "refund_due", "confirmed", "cancelled"] as const;
 export type BookingStatus = (typeof BOOKING_STATUSES)[number];
+
+export { BOOKING_SOURCES, MANUAL_SOURCES, type BookingSource } from "../booking/sources";
 
 export const bookings = pgTable(
   "bookings",
@@ -61,6 +64,11 @@ export const bookings = pgTable(
     /** Staff-only note (never shown to the guest). */
     staffNote: text("staff_note").notNull().default(""),
     reminderSentAt: timestamp("reminder_sent_at", { withTimezone: true }),
+    source: text("source", { enum: BOOKING_SOURCES }).notNull().default("website"),
+    /** The OTA's own booking reference (e.g. Klook order number), for staff-entered bookings. */
+    externalRef: text("external_ref"),
+    /** false: send the guest no emails (the OTA already sends its own voucher and messages). */
+    guestEmails: boolean("guest_emails").notNull().default(true),
     ...timestamps(),
   },
   (t) => [

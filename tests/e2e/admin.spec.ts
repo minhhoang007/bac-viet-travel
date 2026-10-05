@@ -102,3 +102,25 @@ test("staff add a departure date and close another; guests see the change", asyn
   await page.goto(`/tours/${TOUR}/book`);
   await expect(page.locator(`[data-departure="${newDate}"]`)).toContainText("Đã đóng");
 });
+
+test("staff enter an OTA booking: seats shared with the website, source shown, no guest email by default", async ({ page }) => {
+  await signInAsAdmin(page);
+  await page.goto("/admin/bookings");
+  await page.getByRole("link", { name: "+ Nhập booking" }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Nhập booking (điện thoại, Zalo, OTA)");
+
+  await page.getByLabel("Mã đặt chỗ bên OTA").fill("KL-E2E-1");
+  await page.getByLabel("Họ tên khách").fill("John Smith");
+  await page.getByLabel("Người lớn").fill("2");
+  await page.getByLabel("Số tiền thực thu (VND)").fill("1500000");
+  await page.getByRole("button", { name: "Tạo booking" }).click();
+
+  await expect(page).toHaveURL(/\/admin\/bookings\/BV-[A-Z2-9]{6}\?result=done$/);
+  await expect(page.getByTestId("detail-source")).toHaveText("Klook · KL-E2E-1");
+  await expect(page.getByText("Không gửi email cho khách")).toBeVisible();
+
+  await page.goto("/admin/bookings?filter=all&source=klook");
+  await expect(page.getByTestId("booking-source").first()).toContainText("KL-E2E-1");
+  const result = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
+  expect(result.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id)).toEqual([]);
+});

@@ -4,6 +4,7 @@ import { redirect, unstable_rethrow } from "next/navigation";
 import { z } from "zod";
 import { requireAdmin } from "@/app/_lib/admin";
 import { localePath } from "@/core/i18n/routing";
+import type { ManualBookingResult } from "@/product/booking/admin";
 import { addDays } from "@/product/booking/rules";
 
 const locale = z.enum(["vi", "en"]).catch("vi");
@@ -82,4 +83,21 @@ export async function updateDeparture(formData: FormData): Promise<void> {
       ...((status === "open" || status === "closed") && { status }),
     }),
   );
+}
+
+export type ManualBookingState = Exclude<ManualBookingResult, { status: "created" }> | { status: "error" } | null;
+
+/** Staff-entered booking (phone, Zalo, OTA). Validation and seat checks live in the service; success opens the booking. */
+export async function createManualBooking(_prev: ManualBookingState, formData: FormData): Promise<ManualBookingState> {
+  const ctx = await requireAdmin();
+  const l = locale.parse(formData.get("locale"));
+  let result: ManualBookingResult;
+  try {
+    result = await service(ctx).createManual(ctx.user, Object.fromEntries(formData));
+  } catch (error) {
+    ctx.container.logger.warn("booking_admin.action_failed", { error });
+    return { status: "error" };
+  }
+  if (result.status !== "created") return result;
+  redirect(localePath(l, `/admin/bookings/${result.code}?result=done`));
 }

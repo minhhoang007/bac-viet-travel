@@ -67,7 +67,9 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
             {row(g.email, <a href={`mailto:${b.email}`} className="underline">{b.email}</a>)}
             {row(g.phone, b.phone)}
             {row("Locale", b.locale)}
+            {row(c.source, <span data-testid="detail-source">{c.sources[b.source]}{b.externalRef && ` · ${b.externalRef}`}</span>)}
           </dl>
+          {!b.guestEmails && <p className="mt-2 text-xs font-medium text-amber-700">{c.noGuestEmails}</p>}
         </section>
         <section className="rounded-lg border border-border p-4">
           <h2 className="font-semibold">{c.detail.trip}</h2>

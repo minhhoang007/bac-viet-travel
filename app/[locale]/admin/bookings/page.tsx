@@ -6,6 +6,7 @@ import type { Locale } from "@/config/app";
 import type { BookingFilter } from "@/product/booking/admin";
 import { getBookingAdminContent } from "@/product/booking/admin-content";
 import { formatVnd } from "@/product/booking/content";
+import { BOOKING_SOURCES, type BookingSource } from "@/product/booking/sources";
 import { getTourCatalog } from "@/product/tours/catalog";
 
 const PAGE_SIZE = 25;
@@ -13,7 +14,7 @@ const FILTERS = ["attention", "all", "held", "deposit_paid", "refund_due", "conf
 
 type Props = {
   params: Promise<{ locale: Locale }>;
-  searchParams: Promise<{ filter?: string; tour?: string; from?: string; to?: string; q?: string; page?: string }>;
+  searchParams: Promise<{ filter?: string; source?: string; tour?: string; from?: string; to?: string; q?: string; page?: string }>;
 };
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: Locale }> }): Promise<Metadata> {
@@ -32,18 +33,24 @@ export default async function AdminBookingsPage({ params, searchParams }: Props)
   const page = Math.max(1, Number.parseInt(sp.page ?? "1", 10) || 1);
   const tours = getTourCatalog().list(locale);
   const tour = tours.some((t) => t.slug === sp.tour) ? sp.tour : undefined;
+  const source = (BOOKING_SOURCES as readonly string[]).includes(sp.source ?? "") ? (sp.source as BookingSource) : undefined;
   const [{ rows, total }, stats] = await Promise.all([
-    service.list({ filter, tourSlug: tour, from: sp.from, to: sp.to, query: sp.q, page, pageSize: PAGE_SIZE }),
+    service.list({ filter, source, tourSlug: tour, from: sp.from, to: sp.to, query: sp.q, page, pageSize: PAGE_SIZE }),
     service.stats(),
   ]);
   const title = (slug: string) => tours.find((t) => t.slug === slug)?.title ?? slug;
   const query = (extra: Record<string, string>) =>
-    localePath(locale, `/admin/bookings?${new URLSearchParams(Object.fromEntries(Object.entries({ filter, tour, from: sp.from, to: sp.to, q: sp.q, ...extra }).filter((e): e is [string, string] => Boolean(e[1]))))}`);
+    localePath(locale, `/admin/bookings?${new URLSearchParams(Object.fromEntries(Object.entries({ filter, source, tour, from: sp.from, to: sp.to, q: sp.q, ...extra }).filter((e): e is [string, string] => Boolean(e[1]))))}`);
   const input = "h-10 rounded-md border border-border bg-background px-3 text-sm";
 
   return (
     <div className="grid gap-6">
-      <h1 className="text-2xl font-bold">{c.bookings}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold">{c.bookings}</h1>
+        <a href={localePath(locale, "/admin/bookings/new")} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
+          {c.newBooking}
+        </a>
+      </div>
 
       <section className="grid gap-3 sm:grid-cols-4" data-testid="booking-stats">
         {[
@@ -91,6 +98,14 @@ export default async function AdminBookingsPage({ params, searchParams }: Props)
             </option>
           ))}
         </select>
+        <select name="source" defaultValue={source ?? ""} aria-label={c.source} className={input}>
+          <option value="">{c.allSources}</option>
+          {BOOKING_SOURCES.map((s) => (
+            <option key={s} value={s}>
+              {c.sources[s]}
+            </option>
+          ))}
+        </select>
         <label className="grid text-xs text-muted-foreground">
           {c.from}
           <input type="date" name="from" defaultValue={sp.from} className={input} />
@@ -131,6 +146,12 @@ export default async function AdminBookingsPage({ params, searchParams }: Props)
                 <td className="py-2 pr-4">
                   {b.name}
                   <span className="block text-xs text-muted-foreground">{b.phone}</span>
+                  {b.source !== "website" && (
+                    <span className="block text-xs font-medium" data-testid="booking-source">
+                      {c.sources[b.source]}
+                      {b.externalRef && ` · ${b.externalRef}`}
+                    </span>
+                  )}
                 </td>
                 <td className="py-2 pr-4">{b.seats}</td>
                 <td className="py-2 pr-4">{formatVnd(b.totalVnd, locale)}</td>
