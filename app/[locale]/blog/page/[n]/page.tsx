@@ -11,7 +11,7 @@ import { BlogIndex } from "../../_index-view";
 
 type Props = { params: Promise<{ locale: Locale; n: string }> };
 
-export const dynamicParams = false;
+// Unknown params render on demand and end in notFound() below (dynamicParams = false logs a NoFallbackError per 404).
 
 export function generateStaticParams({ params }: { params: { locale: string } }) {
   const blog = getBlog();

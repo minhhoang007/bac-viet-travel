@@ -6,7 +6,6 @@ import { appConfig, type Locale } from "@/config/app";
 import { getAppContent } from "@/content";
 
 export const dynamic = "force-static";
-export const dynamicParams = false;
 
 export function generateStaticParams() {
   return getBlog() ? appConfig.locales.map((locale) => ({ locale })) : [];
@@ -19,6 +18,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ loc
   const blog = getBlog();
   if (!blog) return new Response("Not found", { status: 404 });
   const { locale } = await params;
+  if (!appConfig.locales.includes(locale as Locale)) return new Response("Not found", { status: 404 });
   const site = seoSite(getPublicEnv().NEXT_PUBLIC_SITE_URL);
   const c = getAppContent(locale as Locale).blog;
   const items = blog

@@ -69,7 +69,7 @@ Trạng thái: ⬜ chưa làm · 🟨 đang làm · ✅ xong
 
 ---
 
-## V1.0 — Release 🟨 (`v1.0.0-rc.16`; deploy thật ✅ 2026-10-01; chờ project app thật của chủ repo)
+## V1.0 — Release ✅ (`v1.0.0`, 2026-10-05)
 
 > Quyết định 2026-09-30: project B (app) là **project thật** của chủ repo, không dựng project thử nghiệm.
 > V1.0 được tag khi project đó chạy thật và phát hiện đã được ghi vào [docs/REUSE-PROOFS.md](docs/REUSE-PROOFS.md).
@@ -81,7 +81,7 @@ Trạng thái: ⬜ chưa làm · 🟨 đang làm · ✅ xong
 - [x] **36.B-2:** nâng cấp một project từ tag cũ lên tag mới theo [docs/UPGRADING.md](docs/UPGRADING.md). — Hạ Long Tours rc.1 → rc.2; xung đột chỉ ở file project sở hữu; follow-up U1–U4. Bước migration: quyết định 2026-10-05 chấp nhận CI (migrate DB trống + `verify:init`) thay cho chạy tay.
 - [x] **36.B-3:** cấu hình tối thiểu (mọi module tắt, không secret) build + chạy — CI `build-minimal` + E2E.
 
-> V1.0 phụ thuộc vào hai project thật. Trong lúc chờ, phát hành `v1.0.0-rc.N` để dùng.
+> Hai project thật đã xong (Hạ Long Tours, Bắc Việt Travel). Bắc Việt nâng cấp rc.12 → rc.16 không xung đột ở file của starter.
 
 **Exit:** tag `v1.0.0`.
 
