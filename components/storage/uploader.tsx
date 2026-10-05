@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 
 type UploadError = "type" | "size" | "quota" | "failed";
@@ -17,11 +17,15 @@ export interface UploaderProps {
 }
 
 /** Validate → reserve (server) → PUT straight to object storage → confirm (server). */
+const noopSubscribe = () => () => {};
+
 export function Uploader({ label, uploadingLabel, accept, maxBytes, errors, requestUpload, confirmUpload }: UploaderProps) {
   const input = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<UploadError | null>(null);
+  // Disabled in the server HTML: a file picked before hydration would be dropped (no onChange yet).
+  const hydrated = useSyncExternalStore(noopSubscribe, () => true, () => false);
 
   async function upload(file: File) {
     setError(null);
@@ -52,7 +56,7 @@ export function Uploader({ label, uploadingLabel, accept, maxBytes, errors, requ
           type="file"
           className="sr-only"
           accept={accept.join(",")}
-          disabled={busy}
+          disabled={busy || !hydrated}
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (file) void upload(file);

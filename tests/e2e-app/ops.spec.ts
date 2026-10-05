@@ -108,6 +108,7 @@ test.describe("storage", () => {
     await owner.getByRole("link", { name: "Tệp" }).click();
     await expect(owner.getByText("Chưa có tệp nào.")).toBeVisible();
 
+    await expect(owner.locator("input[type=file]")).toBeEnabled(); // hydrated (disabled in the server HTML)
     await owner.locator("input[type=file]").setInputFiles({ name: "ghi chú.txt", mimeType: "text/plain", buffer: Buffer.from("xin chào") });
     const item = owner.getByTestId("file-list").getByRole("listitem").filter({ hasText: "ghi chú.txt" });
     await expect(item).toBeVisible();
