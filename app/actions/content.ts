@@ -51,8 +51,12 @@ export async function submitContent(formData: FormData): Promise<void> {
 
 export async function approveContent(formData: FormData): Promise<void> {
   const at = String(formData.get("publishAt") ?? "");
-  const publishAt = at ? zonedToUtc(at, appConfig.timeZone) : null;
-  await run(formData, "admin", publishAt ? "schedule" : "publish", (c, actor, id, rev) => c.approve(actor, id, { revision: rev, publishAt: publishAt ?? undefined }));
+  const publishAt = at ? zonedToUtc(at, appConfig.timeZone) : undefined;
+  await run(formData, "admin", at ? "schedule" : "publish", async (c, actor, id, rev) => {
+    // A schedule that does not parse must fail, never fall through to "publish now".
+    if (at && !publishAt) throw new AppError("VALIDATION_ERROR", "Invalid publish time");
+    return c.approve(actor, id, { revision: rev, publishAt: publishAt ?? undefined });
+  });
 }
 
 export async function rejectContent(formData: FormData): Promise<void> {

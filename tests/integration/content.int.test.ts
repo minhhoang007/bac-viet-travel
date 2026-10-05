@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { users } from "@/core/users/schema";
 import { createLogger } from "@/core/logger";
@@ -145,5 +146,45 @@ describe("content workflow", () => {
     const failing = createContentModule({ db, logger, types: ["tour"], mail: { send: async () => { throw new Error("smtp down"); } }, adminUrl: () => "" });
     const item = await failing.create(editor, { type: "tour", slug: "ha-long", data: {} });
     expect((await failing.submit(editor, item.id, item.revision)).status).toBe("pending");
+  });
+
+  it("publish and submit are atomic with their snapshot: a failed snapshot changes nothing", async () => {
+    const item = await draft();
+    await db.execute(sql`CREATE FUNCTION fail_snapshot() RETURNS trigger AS $f$ BEGIN RAISE EXCEPTION 'snapshot failed'; END $f$ LANGUAGE plpgsql`);
+    await db.execute(sql`CREATE TRIGGER fail_snapshot BEFORE INSERT ON content_versions FOR EACH ROW EXECUTE FUNCTION fail_snapshot()`);
+    try {
+      await expect(content.approve(admin, item.id, { revision: item.revision })).rejects.toThrow();
+      await expect(content.submit(editor, item.id, item.revision)).rejects.toThrow();
+      expect(await content.get(item.id)).toMatchObject({ status: "draft", published: null, revision: item.revision });
+      expect(await content.getBySlug("tour", "ha-long")).toBeNull();
+      expect(changed).toEqual([]);
+      expect(sent).toEqual([]);
+    } finally {
+      await db.execute(sql`DROP TRIGGER fail_snapshot ON content_versions`);
+      await db.execute(sql`DROP FUNCTION fail_snapshot()`);
+    }
+  });
+
+  it("delete is refused when the item is shown again between the check and the delete", async () => {
+    const item = await draft();
+    const live = await content.approve(admin, item.id, { revision: item.revision });
+    await content.setHidden(admin, item.id, { revision: live.revision, hidden: true });
+    // Another admin shows it again right after remove() read it: run that update just before the DELETE executes.
+    const racing = new Proxy(db, {
+      get(target, key, receiver) {
+        if (key !== "delete") return Reflect.get(target, key, receiver);
+        return (table: Parameters<typeof db.delete>[0]) => ({
+          where: (where: Parameters<ReturnType<typeof db.delete>["where"]>[0]) => ({
+            returning: async (columns: Record<string, never>) => {
+              await db.execute(sql`UPDATE content_items SET hidden = false, revision = revision + 1 WHERE id = ${item.id}`);
+              return target.delete(table).where(where).returning(columns);
+            },
+          }),
+        });
+      },
+    });
+    const module = createContentModule({ db: racing, logger, types: ["tour"], adminUrl: () => "" });
+    await expect(module.remove(admin, item.id)).rejects.toMatchObject({ code: "CONFLICT" });
+    expect(await content.getBySlug("tour", "ha-long")).not.toBeNull();
   });
 });

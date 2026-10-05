@@ -1,4 +1,4 @@
-import { and, count, desc, eq, inArray, isNotNull, lte, ne, or } from "drizzle-orm";
+import { and, count, desc, eq, inArray, isNotNull, isNull, lte, ne, or } from "drizzle-orm";
 import { AppError } from "@/core/errors";
 import type { Logger } from "@/core/logger";
 import type { MailPort } from "@/core/ports/mail";
@@ -56,6 +56,8 @@ export interface ContentDeps {
   now?: () => Date;
 }
 
+type Executor = Pick<Db, "insert" | "update" | "select" | "delete">;
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const MAX_JSON = 512 * 1024;
@@ -91,11 +93,11 @@ export function createContentModule(deps: ContentDeps): ContentModule {
   };
 
   /** Applies a change only if nobody changed the item since `revision` (and it is in an allowed status). */
-  const transition = async (id: string, revision: number, from: readonly ContentStatus[] | null, set: Partial<ContentItemRow>) => {
+  const transition = async (id: string, revision: number, from: readonly ContentStatus[] | null, set: Partial<ContentItemRow>, tx: Executor = db) => {
     const row = await load(id);
     if (row.revision !== revision) throw new AppError("CONFLICT", "Changed by someone else");
     if (from && !from.includes(row.status)) throw new AppError("CONFLICT", `Not allowed from ${row.status}`);
-    const [updated] = await db
+    const [updated] = await tx
       .update(contentItems)
       .set({ ...set, revision: revision + 1 })
       .where(and(eq(contentItems.id, id), eq(contentItems.revision, revision)))
@@ -104,11 +106,11 @@ export function createContentModule(deps: ContentDeps): ContentModule {
     return updated;
   };
 
-  const snapshot = async (item: ContentItem, event: "submitted" | "published", actorId: string | null) => {
-    await db.insert(contentVersions).values({ itemId: item.id, event, slug: item.slug, data: item.draft, createdBy: actorId });
+  const snapshot = async (item: ContentItem, event: "submitted" | "published", actorId: string | null, tx: Executor = db) => {
+    await tx.insert(contentVersions).values({ itemId: item.id, event, slug: item.slug, data: item.draft, createdBy: actorId });
     // Keep the newest MAX_VERSIONS.
-    const old = await db.select({ id: contentVersions.id }).from(contentVersions).where(eq(contentVersions.itemId, item.id)).orderBy(desc(contentVersions.createdAt)).offset(MAX_VERSIONS);
-    if (old.length) await db.delete(contentVersions).where(inArray(contentVersions.id, old.map((v) => v.id)));
+    const old = await tx.select({ id: contentVersions.id }).from(contentVersions).where(eq(contentVersions.itemId, item.id)).orderBy(desc(contentVersions.createdAt)).offset(MAX_VERSIONS);
+    if (old.length) await tx.delete(contentVersions).where(inArray(contentVersions.id, old.map((v) => v.id)));
   };
 
   const changed = async (item: ContentItem) => {
@@ -131,14 +133,18 @@ export function createContentModule(deps: ContentDeps): ContentModule {
     }
   };
 
+  // Going live and its snapshot commit together; the cache hook runs only after the commit.
   const publish = async (row: ContentItem, actorId: string | null) => {
-    const [updated] = await db
-      .update(contentItems)
-      .set({ status: "published", published: row.draft, publishedSlug: row.slug, publishedAt: now(), publishAt: null, hidden: false, reviewNote: null, revision: row.revision + 1 })
-      .where(and(eq(contentItems.id, row.id), eq(contentItems.revision, row.revision)))
-      .returning();
-    if (!updated) throw new AppError("CONFLICT", "Changed by someone else");
-    await snapshot(updated, "published", actorId);
+    const updated = await db.transaction(async (tx) => {
+      const [item] = await tx
+        .update(contentItems)
+        .set({ status: "published", published: row.draft, publishedSlug: row.slug, publishedAt: now(), publishAt: null, hidden: false, reviewNote: null, revision: row.revision + 1 })
+        .where(and(eq(contentItems.id, row.id), eq(contentItems.revision, row.revision)))
+        .returning();
+      if (!item) throw new AppError("CONFLICT", "Changed by someone else");
+      await snapshot(item, "published", actorId, tx);
+      return item;
+    });
     logger.info("content.published", { id: row.id, type: row.type });
     await changed(updated);
     return updated;
@@ -212,8 +218,11 @@ export function createContentModule(deps: ContentDeps): ContentModule {
     },
 
     async submit(actor, id, revision) {
-      const updated = await transition(id, revision, ["draft"], { status: "pending", submittedBy: actor.id, reviewNote: null });
-      await snapshot(updated, "submitted", actor.id);
+      const updated = await db.transaction(async (tx) => {
+        const item = await transition(id, revision, ["draft"], { status: "pending", submittedBy: actor.id, reviewNote: null }, tx);
+        await snapshot(item, "submitted", actor.id, tx);
+        return item;
+      });
       logger.info("content.submitted", { id, type: updated.type });
       const admins = await db.select({ email: users.email }).from(users).where(and(eq(users.role, "admin"), eq(users.status, "active")));
       await notify(
@@ -289,7 +298,12 @@ export function createContentModule(deps: ContentDeps): ContentModule {
     async remove(actor, id) {
       const row = await load(id);
       if (row.published && !row.hidden) throw new AppError("CONFLICT", "Hide it before deleting");
-      await db.delete(contentItems).where(eq(contentItems.id, id));
+      // Re-checked in the statement: someone may show it again (or edit it) between the read and the delete.
+      const deleted = await db
+        .delete(contentItems)
+        .where(and(eq(contentItems.id, id), eq(contentItems.revision, row.revision), or(isNull(contentItems.published), eq(contentItems.hidden, true))))
+        .returning({ id: contentItems.id });
+      if (deleted.length === 0) throw new AppError("CONFLICT", "Changed by someone else");
       logger.info("content.deleted", { id, type: row.type, actorId: actor.id });
       if (row.published) await changed(row);
     },
