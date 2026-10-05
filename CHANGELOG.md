@@ -4,6 +4,15 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-10-05
+
+### Security
+- `better-auth` 1.7.7: fixes a critical Magic Link account takeover when Google (or another OAuth provider) is enabled ([GHSA-965c-763c-88jm](https://github.com/better-auth/better-auth/security/advisories/GHSA-965c-763c-88jm)). Magic links sent before the upgrade stop working; users request a new one.
+
+### Changed
+- Dependency updates (next 16.3.8, next-intl 4.14.9, AWS SDK, Polar SDK, vitest…).
+- E2E helpers read magic-link tokens with the new `magic-link:` identifier prefix.
+
 ## [1.0.1] - 2026-10-05
 
 ### Changed — agent skills (ideas from DietrichGebert/ponytail, adapted; plugin not installed)

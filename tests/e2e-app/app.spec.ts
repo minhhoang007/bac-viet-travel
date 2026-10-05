@@ -9,9 +9,10 @@ const sql = postgres(process.env.E2E_DATABASE_URL!, { max: 1, onnotice: () => {}
 test.afterAll(() => sql.end());
 
 async function magicLink(email: string): Promise<string> {
+  // better-auth >= 1.7.7 stores magic-link identifiers as "magic-link:<token>"; the link in the email carries the bare token.
   for (let i = 0; i < 30; i++) {
     const [row] = await sql<{ identifier: string }[]>`
-      select identifier from verifications where value like ${`%"${email}"%`} order by created_at desc limit 1`;
+      select regexp_replace(identifier, '^magic-link:', '') as identifier from verifications where value like ${`%"${email}"%`} order by created_at desc limit 1`;
     if (row) return `/api/auth/magic-link/verify?token=${row.identifier}&callbackURL=%2Fdashboard`;
     await new Promise((r) => setTimeout(r, 300));
   }

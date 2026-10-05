@@ -37,6 +37,12 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
+### v1.0.2 (2026-10-05) — security: better-auth 1.7.7
+- **Upgrade promptly if Google sign-in is enabled** (Magic Link account takeover, GHSA-965c-763c-88jm). No migration.
+- Pending magic links stop working after deploy; users request a new one.
+- Project tests that read magic-link tokens from the `verifications` table must strip the new `magic-link:` prefix
+  (see `tests/e2e-app/app.spec.ts`).
+
 ### v1.0.1 (2026-10-05) — blog 404 log noise, agent skills
 - No action needed. Blog routes no longer export `dynamicParams = false` (unknown URLs still 404).
 

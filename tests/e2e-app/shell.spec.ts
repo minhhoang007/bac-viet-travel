@@ -18,7 +18,7 @@ async function signedIn(browser: Browser, viewport: { width: number; height: num
   await page.fill("#login-email", email);
   await page.getByRole("button", { name: "Gửi liên kết đăng nhập" }).click();
   await expect(page.getByRole("status")).toBeVisible();
-  const [row] = await sql<{ identifier: string }[]>`select identifier from verifications where value like ${`%"${email}"%`} order by created_at desc limit 1`;
+  const [row] = await sql<{ identifier: string }[]>`select regexp_replace(identifier, '^magic-link:', '') as identifier from verifications where value like ${`%"${email}"%`} order by created_at desc limit 1`;
   await page.goto(`/api/auth/magic-link/verify?token=${row!.identifier}&callbackURL=%2Fdashboard`);
   await expect(page).toHaveURL(/\/dashboard$/);
   return page;
