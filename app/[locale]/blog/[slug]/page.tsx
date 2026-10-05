@@ -16,7 +16,7 @@ import { formatDate, requireBlog } from "../_shared";
 type Props = { params: Promise<{ locale: Locale; slug: string }> };
 
 // Every post is prerendered; unknown slugs are 404 without touching the file system at request time.
-export const dynamicParams = false;
+// Unknown params render on demand and end in notFound() below (dynamicParams = false logs a NoFallbackError per 404).
 
 export function generateStaticParams({ params }: { params: { locale: string } }) {
   return (getBlog()?.list(params.locale) ?? []).map((p) => ({ slug: p.slug }));

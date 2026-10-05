@@ -4,6 +4,13 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+### Changed — agent skills (ideas from DietrichGebert/ponytail, adapted; plugin not installed)
+- `karpathy-guidelines` §2: reuse order before new code (repo → stdlib → platform feature → installed dependency) and `// simplification:` comments for deliberate shortcuts.
+- `systematic-debugging`: grep every caller and fix in the shared function.
+
+### Fixed
+- Blog: unknown slugs, pages and tags are 404 without Next's `NoFallbackError` in the server log (`dynamicParams = false` removed; the pages already call `notFound()`).
+
 ## [1.0.0] - 2026-10-05
 
 First stable release. Same code as `1.0.0-rc.16`.
