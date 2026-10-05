@@ -22,7 +22,9 @@
     "verify:init": "bash scripts/verify-init.sh",
     "test:e2e:app": "bash scripts/e2e-app.sh",
     "admin:grant": "node --env-file-if-exists=.env.local scripts/admin-grant.ts",
-    "storage:up": "docker compose up -d storage"
+    "storage:up": "docker compose up -d storage",
+    "launch:check": "node --import ./scripts/ts-alias.mjs scripts/launch-check.ts",
+    "setup:check": "node --env-file-if-exists=.env.local --import ./scripts/ts-alias.mjs scripts/setup-check.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1143.0",

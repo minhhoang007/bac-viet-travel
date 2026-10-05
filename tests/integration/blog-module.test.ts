@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { featureDefaults } from "@/config/features.defaults";
 import { blogConfig } from "@/config/blog";
 import { appConfig } from "@/config/app";
+import { localePath } from "@/core/i18n/routing";
 import { createBlog } from "@/modules/blog";
 
 afterEach(() => {
@@ -55,9 +56,11 @@ describe("blog module", () => {
     expect(res.headers.get("content-type")).toContain("application/rss+xml");
     expect(await res.text()).toContain("<title>Welcome to the blog</title>");
     const sitemap = (await import("@/app/sitemap")).default();
-    expect(sitemap.find((e) => e.url.endsWith("/en/blog/welcome-to-the-blog"))?.alternates?.languages).toEqual({
-      vi: "http://localhost:3000/blog/chao-mung-den-voi-blog",
-      en: "http://localhost:3000/en/blog/welcome-to-the-blog",
+    // Locale-agnostic: projects may change the default locale (no prefix) in config/app.ts.
+    const url = (locale: string, slug: string) => `http://localhost:3000${localePath(locale, `/blog/${slug}`)}`;
+    expect(sitemap.find((e) => e.url === url("en", "welcome-to-the-blog"))?.alternates?.languages).toEqual({
+      vi: url("vi", "chao-mung-den-voi-blog"),
+      en: url("en", "welcome-to-the-blog"),
     });
   });
 

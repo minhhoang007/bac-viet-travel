@@ -44,5 +44,11 @@ For multi-step work, state a brief plan first:
 ```
 Loop until verified. `pnpm check` green is the minimum bar; "should work" is not evidence.
 
+## 5. Verify before claiming done
+- Before saying "done", "fixed" or "passing", run the command that proves it in this session and read its output.
+- Report the command and its result (pass/fail counts, the relevant lines). Failing or skipped? Say so.
+- A claim about a bug or test needs the specific test; a claim about the app needs `run` / E2E, not only unit tests.
+- Earlier runs, a subagent's report or "the change is trivial" are not evidence.
+
 ## Signs it is working
 Smaller diffs, fewer rewrites caused by overcomplication, clarifying questions *before* implementation, and every "done" backed by a command and its output.

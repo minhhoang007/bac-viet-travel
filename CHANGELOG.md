@@ -4,6 +4,59 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.0.0-rc.16] - 2026-10-05
+
+### Added — found on Bắc Việt Travel (project B)
+- VNPay `query()` (querydr) on the payment adapter: `paid` with IPN-shaped params, `unpaid`, `not_found`; response signature verified. Periodic `billing.reconcile_vnpay` confirms orders paid at VNPay whose IPN never arrived (G11).
+- Favicon from the brand: `app/icon.tsx`. `pnpm launch:check` reports a missing favicon.
+
+### Fixed
+- `/favicon.ico` and any one-segment path with a dot answered 500 (reached the home page as the locale); now 404 (G12).
+- VNPay billing orders send their stored `createdAt` as `vnp_CreateDate`, so querydr finds them.
+- Storage uploader: the file input is disabled until hydration (a file picked earlier was dropped silently); fixes a flaky E2E. The admin E2E retries the confirm-dialog trigger for the same reason.
+
+### Docs
+- V1.0 reuse proofs complete: project B (Bắc Việt Travel) recorded; migration-upgrade step covered by CI (owner decision 2026-10-05).
+
+## [1.0.0-rc.15] - 2026-10-05
+
+### Added — agent skills (ideas from obra/superpowers, adapted; plugin not installed)
+- Skill `systematic-debugging`: root cause before any fix; stop after 3 failed fixes.
+- Skill `receiving-code-review`: verify each review finding against the code and repo rules before changing it.
+- `karpathy-guidelines` §5 "Verify before claiming done": every "done" cites a command run in the session and its output.
+
+### Added — reuse/security findings (rc.15)
+- Shared VNPay IPN: `/api/billing/vnpay/ipn` verifies the signature once, then offers the order to the product (manifest `vnpayIpn`), then to billing. Works without the billing module. Helpers `checkVnpayOrder`, `VNPAY_CONFIRMED` in `core/payments/vnpay-ipn.ts` (reuse finding G8b).
+- Per-user rate limit on Polar checkout/portal and VNPay payment creation (10 / 10 min).
+- Periodic `billing.purge_orders`: deletes VNPay orders still pending after 24 h.
+
+### Fixed
+- `/pricing`: the free plan shows a formatted price ("0 ₫" / "$0") instead of "0".
+- `pnpm launch:check`: robots.txt is reported as blocking the site only when the `User-agent: *` group has `Disallow: /` (blocking one bot such as GPTBot is fine).
+
+## [1.0.0-rc.14] - 2026-10-02
+
+### Added — ship fast (lessons from ShipFast, keeping the architecture and tests)
+- `docs/QUICKSTART.md` (clone → configure → deploy → check on one page) and `docs/LAUNCH.md` (domain, email DNS SPF/DKIM/DMARC, payments, legal-page prompt, monitoring).
+- `pnpm setup:check`: Node version, env missing for the profile and enabled modules, database reachable. Prints names only. Uses the same rules as runtime (`envProblems()` in `bootstrap/env.ts`).
+- `pnpm launch:check <url>`: HTTPS, title/description/canonical, share image, security headers, robots.txt, sitemap, `/api/health`, legal pages of a deployed site.
+- Landing blocks in `components/marketing/`: `Pricing`, `Steps`, `ProblemSolution`, `Testimonials`, `LogoCloud`. The home page renders each one when its optional key is set in `content/<locale>/marketing.ts`; the billing `/pricing` page now uses `Pricing` too.
+- `scripts/ts-alias.mjs`: lets `node` run scripts that import project code (`@/…`).
+
+## [1.0.0-rc.13] - 2026-10-02
+
+### Added — dashboard kit (patterns from shadcn-admin, no fork)
+- `components/app-shell/`: `AppShell` for dashboard and admin — shadcn `sidebar` (collapsible, state kept in the `sidebar_state` cookie, sheet on mobile, current page from the URL), skip link; `PageHeader` (breadcrumb, the page's only `h1`, description, actions).
+- `components/feedback/`: `EmptyState`, `ErrorState`, `ConfirmDialog` (admin "disable user" / role changes now ask first).
+- `components/forms/`: `FormField` (label + input + error with aria wired), `FormError`, `SubmitButton` (`useFormStatus`), `FormState<F>` + `toFormState(error, fields)` mapping zod / `AppError` to field or form errors. Contact, login and the notes example use them.
+- shadcn `sidebar`, `tooltip`, `skeleton` in `components/ui/`; sidebar colors derive from the brand tokens.
+
+### Changed
+- Notes example: field errors show under the field (`#note-title-error`) instead of one message for the form.
+
+### Removed
+- `components/dashboard/shell.tsx` (`DashboardShell`) — use `AppShell` (see UPGRADING).
+
 ## [1.0.0-rc.12] - 2026-10-01
 
 ### Fixed (found on a real deployment, reuse finding G10)

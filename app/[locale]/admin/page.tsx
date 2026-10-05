@@ -5,6 +5,7 @@ import { Stat } from "@/components/admin/stat";
 import { formatBytes } from "@/components/ui/format-bytes";
 import type { Locale } from "@/config/app";
 import { getAppContent } from "@/content";
+import { PageHeader } from "@/components/app-shell/page-header";
 
 const DAYS = 30;
 
@@ -45,9 +46,7 @@ export default async function AdminOverviewPage({ params }: { params: Promise<{ 
 
   return (
     <div className="grid gap-6">
-      <h1 className="text-2xl font-bold">
-        {getAppContent(locale).admin.nav.overview} <span className="text-base font-normal text-muted-foreground">· {c.last30Days}</span>
-      </h1>
+      <PageHeader title={getAppContent(locale).admin.nav.overview} description={c.last30Days} />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label={c.totalUsers} value={users.total} />
         <Stat label={c.newUsers} value={sum(signups.map((d) => d.count))} />

@@ -34,7 +34,7 @@ describe("content", () => {
     // A JSX text node starting with a letter, e.g. <h2>Features</h2>
     // (skips TS generics/arrows such as `=> Promise<T>`)
     const jsxText = /(?<!=)>\s*\p{L}[^<>{}();=]*</u;
-    for (const dir of ["components/marketing", "components/layout", "components/dashboard", "components/auth", "components/admin", "components/analytics", "components/storage", "components/blog", "product/_example-notes/components"]) {
+    for (const dir of ["components/marketing", "components/layout", "components/app-shell", "components/feedback", "components/forms", "components/auth", "components/admin", "components/analytics", "components/storage", "components/blog", "product/_example-notes/components"]) {
       if (!existsSync(dir)) continue;
       for (const file of readdirSync(dir).filter((f) => f.endsWith(".tsx"))) {
         const source = readFileSync(path.join(dir, file), "utf8");

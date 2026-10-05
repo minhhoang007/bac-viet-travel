@@ -48,6 +48,16 @@ Dependencies flow one way: Product → Modules (public API only) → Core. Detai
 - Errors: throw `AppError` codes; never return raw DB/provider errors.
 - User-visible strings live in `content/` (i18n-ready).
 
+## UI (details: skill `ui-components`)
+- Before creating a component, look in this order: `components/ui` → `components/app-shell`, `components/forms`,
+  `components/feedback` → the module's UI folder → the current product feature. Reuse or extend before adding.
+- Ownership: `components/ui` = primitives; other `components/*` = generic app patterns; module UI = one capability;
+  `product/**/components` = product-only. Promote to a shared folder only when two independent features need it.
+- Forms: server action + `useActionState` + zod, returning `FormState` (`toFormState`). React Hook Form only inside
+  `product/`, for field arrays, multi-step forms or live validation — still calling the same action and schema.
+- State: server data → Server Components; URL state (filters, pages, tabs) → `searchParams`; form state → the form;
+  local UI → `useState`. No global client store or client data-fetching library unless a product needs it.
+
 ## Security and correctness
 - Never log secrets, tokens or personal data. Never commit `.env*` (except `.env.example`).
 - Webhooks: verify signature on raw body; store event + enqueue job in one transaction; ack fast; idempotent handler;
@@ -68,7 +78,8 @@ Dependencies flow one way: Product → Modules (public API only) → Core. Detai
 
 ## Project skills
 `.claude/skills/`: `karpathy-guidelines`, `phase-execution`, `product-feature`, `module-authoring`,
-`tdd-critical-flows`, `security-review-starter`, `starter-upgrade`, `ui-components`.
+`tdd-critical-flows`, `security-review-starter`, `starter-upgrade`, `ui-components`, `systematic-debugging`,
+`receiving-code-review`.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

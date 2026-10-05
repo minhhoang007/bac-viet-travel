@@ -1,6 +1,9 @@
 "use client";
 
 import { useActionState } from "react";
+import { FormError } from "@/components/forms/form-error";
+import { FormField } from "@/components/forms/form-field";
+import { SubmitButton } from "@/components/forms/submit-button";
 
 type State = { status: "sent" } | { status: "invalid_email" } | { status: "rate_limited" } | { status: "error" } | null;
 
@@ -17,7 +20,7 @@ export interface LoginFormProps {
 }
 
 export function LoginForm({ locale, sendMagicLink, labels }: LoginFormProps) {
-  const [state, action, pending] = useActionState(sendMagicLink, null);
+  const [state, action] = useActionState(sendMagicLink, null);
 
   if (state?.status === "sent") {
     return (
@@ -30,32 +33,11 @@ export function LoginForm({ locale, sendMagicLink, labels }: LoginFormProps) {
   const error = state ? labels.errors[state.status] : undefined;
 
   return (
-    <form action={action} className="grid gap-3" noValidate>
+    <form action={action} className="grid gap-4" noValidate>
       <input type="hidden" name="locale" value={locale} />
-      <label htmlFor="login-email" className="text-sm font-medium">
-        {labels.email}
-        <input
-          id="login-email"
-          name="email"
-          type="email"
-          autoComplete="email"
-          required
-          aria-invalid={error ? true : undefined}
-          className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-        />
-      </label>
-      {error && (
-        <p role="alert" className="text-sm text-red-600">
-          {error}
-        </p>
-      )}
-      <button
-        type="submit"
-        disabled={pending}
-        className="h-11 rounded-md bg-primary px-5 text-sm font-medium text-primary-foreground disabled:opacity-60"
-      >
-        {pending ? labels.sending : labels.sendLink}
-      </button>
+      <FormField id="login-email" name="email" type="email" autoComplete="email" required label={labels.email} />
+      <FormError message={error} />
+      <SubmitButton label={labels.sendLink} pendingLabel={labels.sending} className="justify-self-stretch" />
     </form>
   );
 }

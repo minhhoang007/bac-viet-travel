@@ -3,14 +3,15 @@ import { setRequestLocale } from "next-intl/server";
 import { requireAdmin } from "@/app/_lib/admin";
 import { setUserRole, setUserStatus } from "@/app/actions/admin";
 import { ResultNotice } from "@/components/admin/result-notice";
+import { PageHeader } from "@/components/app-shell/page-header";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
+import { localePath } from "@/core/i18n/routing";
 import { formatBytes } from "@/components/ui/format-bytes";
 import type { Locale } from "@/config/app";
 import { billingConfig } from "@/config/billing";
 import { getAppContent } from "@/content";
 
 type Props = { params: Promise<{ locale: Locale; id: string }>; searchParams: Promise<{ result?: string }> };
-
-const button = "h-10 rounded-md border border-border px-4 text-sm font-medium hover:bg-muted";
 
 export default async function AdminUserPage({ params, searchParams }: Props) {
   const { locale, id } = await params;
@@ -20,7 +21,8 @@ export default async function AdminUserPage({ params, searchParams }: Props) {
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const user = await admin.getUser(id);
   if (!user) notFound();
-  const c = getAppContent(locale).admin;
+  const content = getAppContent(locale);
+  const c = content.admin;
   const date = (d: Date) => d.toLocaleDateString(locale === "vi" ? "vi-VN" : "en-US");
 
   const [access, billing, files, audit] = await Promise.all([
@@ -39,7 +41,13 @@ export default async function AdminUserPage({ params, searchParams }: Props) {
 
   return (
     <div className="grid max-w-3xl gap-6">
-      <h1 className="text-2xl font-bold break-all">{user.email}</h1>
+      <PageHeader
+        title={user.email}
+        breadcrumb={{
+          label: content.dashboard.shell.breadcrumb,
+          items: [{ label: c.nav.users, href: localePath(locale, "/admin/users") }, { label: user.email }],
+        }}
+      />
       <ResultNotice result={result} done={c.done} failed={c.failed} />
       <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
         <dt className="text-muted-foreground">{c.users.role}</dt>
@@ -71,20 +79,27 @@ export default async function AdminUserPage({ params, searchParams }: Props) {
         <p className="text-sm text-muted-foreground">{c.users.selfNote}</p>
       ) : (
         <div className="flex flex-wrap gap-3">
-          <form action={setUserStatus}>
+          <ConfirmDialog
+            trigger={user.status === "active" ? c.users.disable : c.users.enable}
+            title={c.confirmTitle}
+            description={user.status === "active" ? c.users.confirmDisable : undefined}
+            cancel={c.cancel}
+            action={setUserStatus}
+            destructive={user.status === "active"}
+          >
             {hidden}
             <input type="hidden" name="status" value={user.status === "active" ? "disabled" : "active"} />
-            <button type="submit" className={button}>
-              {user.status === "active" ? c.users.disable : c.users.enable}
-            </button>
-          </form>
-          <form action={setUserRole}>
+          </ConfirmDialog>
+          <ConfirmDialog
+            trigger={user.role === "admin" ? c.users.makeUser : c.users.makeAdmin}
+            title={c.confirmTitle}
+            description={c.users.confirmRole}
+            cancel={c.cancel}
+            action={setUserRole}
+          >
             {hidden}
             <input type="hidden" name="role" value={user.role === "admin" ? "user" : "admin"} />
-            <button type="submit" className={button}>
-              {user.role === "admin" ? c.users.makeUser : c.users.makeAdmin}
-            </button>
-          </form>
+          </ConfirmDialog>
         </div>
       )}
 

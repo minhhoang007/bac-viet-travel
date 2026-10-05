@@ -6,6 +6,7 @@ import { openPolarPortal, startPolarCheckout, startVnpayPayment } from "@/app/ac
 import type { Locale } from "@/config/app";
 import { billingConfig } from "@/config/billing";
 import { getAppContent } from "@/content";
+import { PageHeader } from "@/components/app-shell/page-header";
 
 type Props = { params: Promise<{ locale: Locale }>; searchParams: Promise<{ checkout?: string; error?: string }> };
 
@@ -35,7 +36,7 @@ export default async function BillingPage({ params, searchParams }: Props) {
 
   return (
     <div className="grid max-w-2xl gap-8">
-      <h1 className="text-2xl font-bold">{c.title}</h1>
+      <PageHeader title={c.title} />
       {checkout === "success" && (
         <p role="status" className="rounded-md border border-border p-3 text-sm">
           {c.checkoutSuccess}
@@ -43,7 +44,7 @@ export default async function BillingPage({ params, searchParams }: Props) {
       )}
       {error && (
         <p role="alert" className="rounded-md border border-red-600/40 p-3 text-sm text-red-600">
-          {c.error}
+          {error === "rate_limited" ? c.rateLimited : c.error}
         </p>
       )}
 

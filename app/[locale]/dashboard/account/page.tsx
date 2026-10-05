@@ -3,6 +3,7 @@ import { requirePageUser } from "@/app/_lib/session";
 import { deleteAccount } from "@/app/actions/account";
 import type { Locale } from "@/config/app";
 import { getAppContent } from "@/content";
+import { PageHeader } from "@/components/app-shell/page-header";
 
 export default async function AccountPage({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params;
@@ -12,7 +13,7 @@ export default async function AccountPage({ params }: { params: Promise<{ locale
 
   return (
     <div className="grid max-w-xl gap-8">
-      <h1 className="text-2xl font-bold">{c.title}</h1>
+      <PageHeader title={c.title} />
       <section>
         <h2 className="font-semibold">{c.profile}</h2>
         <p className="mt-1 text-sm text-muted-foreground">{user.email}</p>
