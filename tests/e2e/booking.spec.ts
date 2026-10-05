@@ -77,7 +77,7 @@ test("private tour: tour page offer → guest picks the date and group size, pri
   await expect(page.getByTestId("private-offer")).toContainText("Tour riêng từ");
   await page.getByRole("link", { name: "Đặt tour riêng" }).click();
   await expect(page).toHaveURL(new RegExp(`${TOUR}/book[?]type=private$`));
-  await expect(page.getByRole("link", { name: "Tour riêng" })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("main").getByRole("link", { name: "Tour riêng" })).toHaveAttribute("aria-current", "page");
   await expect(page.getByTestId("departures")).toHaveCount(0);
 
   await page.getByLabel("Người lớn").fill("1");

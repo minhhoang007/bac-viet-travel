@@ -95,7 +95,7 @@ test("company block, About and policy pages: legal details from config/contact.t
     ["Chính sách thanh toán", "/payment", "Chính sách thanh toán"],
   ] as const) {
     await page.goto("/");
-    await page.getByTestId("company-info").getByRole("link", { name, exact: true }).click();
+    await page.getByRole("contentinfo").getByRole("link", { name, exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`${path}$`));
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(heading);
   }

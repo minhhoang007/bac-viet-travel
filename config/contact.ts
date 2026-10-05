@@ -20,6 +20,8 @@ export const contactConfig = {
   zalo: "0900000000",
   /** WhatsApp number in international format, digits only → https://wa.me/<number> */
   whatsapp: "84900000000",
+  /** Short form for the header, e.g. "8:00–21:00". */
+  hoursShort: "8:00–21:00",
   businessHours: { vi: "8:00 – 21:00 hằng ngày", en: "8:00 – 21:00 daily (GMT+7)" },
   /** City for the TravelAgency JSON-LD. */
   city: "Hà Nội",

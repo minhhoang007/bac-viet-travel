@@ -1,10 +1,9 @@
-// Project-owned: header links.
+// Project-owned: header links (after the "Destinations" menu, which lists DESTINATIONS).
 import type { NavLink } from "./navigation.defaults";
 
 export const siteNavigation: NavLink[] = [
-  { href: "/tours", label: { vi: "Tour", en: "Tours" } },
-  { href: "/tours#ha-long", label: { vi: "Hạ Long", en: "Ha Long" } },
-  { href: "/tours#ninh-binh", label: { vi: "Ninh Bình", en: "Ninh Binh" } },
-  { href: "/tours#sapa", label: { vi: "Sapa", en: "Sapa" } },
-  { href: "/#contact", label: { vi: "Liên hệ", en: "Contact" } },
+  { href: "/tours", label: { vi: "Tour ghép", en: "Group tours" } },
+  { href: "/#contact", label: { vi: "Tour riêng", en: "Private tours" } },
+  { href: "/blog", label: { vi: "Cẩm nang", en: "Travel guide" } },
+  { href: "/about", label: { vi: "Về chúng tôi", en: "About us" } },
 ];

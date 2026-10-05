@@ -1,17 +1,20 @@
 // Project-owned.
 import { brandDefaults } from "./brand.defaults";
 
-/** Emerald / jade: the colour of Ha Long water and Sapa rice terraces. */
+/**
+ * Jade (Ha Long water, Sapa terraces) on warm paper, ink text; sand is a decoration-only accent (product/brand/logo.tsx).
+ * Calm, premium style: few colours, lots of space.
+ */
 export const brand = {
   ...brandDefaults,
   logoText: "Bắc Việt Travel",
   colors: {
     light: {
-      background: "#ffffff",
+      background: "#fbfaf7",
       foreground: "#0f1f1a",
-      muted: "#f0f7f4",
-      mutedForeground: "#4b5f58",
-      border: "#dbe8e2",
+      muted: "#f3f0e9",
+      mutedForeground: "#56645f",
+      border: "#e7e2d8",
       primary: "#0f766e",
       primaryForeground: "#ffffff",
     },
