@@ -147,6 +147,8 @@ export function buildContainer(features: Features, env: Env, overrides: Containe
     handlers[PROCESS_WEBHOOK_JOB] = (payload) => billing.processWebhookEvent(String(payload.eventRowId));
     periodic["billing.sweep_webhooks"] = async () => void (await billing.sweepWebhookEvents());
     periodic["billing.reconcile"] = async () => void (await billing.reconcileSubscriptions());
+    // Reconcile first: a paid order whose IPN was lost must not reach the purge.
+    periodic["billing.reconcile_vnpay"] = async () => void (await billing.reconcileVnpayOrders());
     periodic["billing.purge_orders"] = async () => void (await billing.purgeStaleOrders());
   }
 

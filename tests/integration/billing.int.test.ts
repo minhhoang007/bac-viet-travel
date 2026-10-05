@@ -1,7 +1,8 @@
 import { eq, inArray, sql } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { users } from "@/core/users/schema";
-import { vnpayProvider, vnpaySign } from "@/providers/billing/vnpay";
+import { vnpayDate, vnpayProvider, vnpaySign } from "@/providers/billing/vnpay";
+import { fakeVnpayQuery, type FakeTransaction } from "@/tests/fakes/vnpay-query";
 import { resetDb, testDb } from "./setup/db";
 import { testApp } from "./setup/app";
 import { WebhookSignatureError, type ProviderSubscription, type SubscriptionProvider } from "@/modules/billing";
@@ -31,9 +32,12 @@ const fakePolar: SubscriptionProvider = {
 const revoked: string[] = [];
 let revokeFails = false;
 const VNPAY = { tmnCode: "TESTCODE", hashSecret: "TESTSECRETTESTSECRETTESTSECRET12" };
+// What the fake VNPay querydr endpoint knows, by txnRef (reconcile tests fill it).
+const vnpayTransactions: Record<string, FakeTransaction> = {};
+const vnpayQuery = fakeVnpayQuery(VNPAY.hashSecret, vnpayTransactions);
 
 // Billing config enables both providers; the Polar product id comes from env like in production.
-const t = testApp(db, { saas: true, env: { POLAR_PRODUCT_PRO_MONTHLY: "prod_pro_month" }, overrides: { billingProviders: { polar: fakePolar, vnpay: vnpayProvider(VNPAY) } } });
+const t = testApp(db, { saas: true, env: { POLAR_PRODUCT_PRO_MONTHLY: "prod_pro_month" }, overrides: { billingProviders: { polar: fakePolar, vnpay: vnpayProvider({ ...VNPAY, fetch: vnpayQuery.fetch }) } } });
 const billing = t.container.billing!;
 const jobs = t.container.jobs!;
 const ent = t.container.entitlements!;
@@ -309,6 +313,25 @@ describe("VNPay (one-time period purchase)", () => {
     expect(await billing.purgeStaleOrders()).toBe(1);
     const left = await db.select({ txnRef: billingOrders.txnRef }).from(billingOrders);
     expect(left.map((r) => r.txnRef).sort()).toEqual([recent.txnRef, paid.txnRef].sort());
+  });
+
+  it("reconcile: a paid order whose IPN was lost is confirmed once; unpaid and fresh orders stay pending (rc.16)", async () => {
+    const owner = await user();
+    const [paid, unpaid, fresh] = [await order(owner), await order(owner), await order(owner)];
+    vnpayTransactions[paid.txnRef] = { amount: 199_000, status: "00" };
+    vnpayTransactions[unpaid.txnRef] = { amount: 199_000, status: "01" };
+    vnpayTransactions[fresh.txnRef] = { amount: 199_000, status: "00" }; // link still valid: wait for the IPN
+    await db.update(billingOrders).set({ createdAt: new Date(Date.now() - 30 * 60_000) }).where(inArray(billingOrders.txnRef, [paid.txnRef, unpaid.txnRef]));
+
+    expect(await billing.reconcileVnpayOrders()).toBe(1);
+    const status = async (txnRef: string) => (await db.select().from(billingOrders).where(eq(billingOrders.txnRef, txnRef)))[0]!.status;
+    expect([await status(paid.txnRef), await status(unpaid.txnRef), await status(fresh.txnRef)]).toEqual(["paid", "pending", "pending"]);
+    expect((await ent.getAccess(owner)).plan).toBe("pro");
+    expect(await billing.reconcileVnpayOrders()).toBe(0); // nothing left to confirm
+    // The payment URL carries the stored creation date, which is what reconcile sends back as vnp_TransactionDate.
+    const [freshRow] = await db.select().from(billingOrders).where(eq(billingOrders.txnRef, fresh.txnRef));
+    expect(fresh.params.vnp_CreateDate).toBe(vnpayDate(freshRow!.createdAt));
+    expect(vnpayQuery.requests.find((r) => r.vnp_TxnRef === paid.txnRef)?.vnp_TransactionDate).toMatch(/^\d{14}$/);
   });
 
   it("account deletion keeps the financial record, anonymized", async () => {

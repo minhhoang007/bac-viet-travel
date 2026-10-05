@@ -69,6 +69,13 @@ export async function checkLaunch(base: string, fetch: Fetch): Promise<LaunchRes
       const type = image.headers.get("content-type") ?? "";
       add(image.status === 200 && type.startsWith("image/"), "Share image (og:image)", image.status === 200 ? type : `got ${image.status}`);
     }
+    const iconHref = home.body.match(/<link[^>]*rel="(?:shortcut )?icon"[^>]*href="([^"]*)"/i)?.[1];
+    if (!iconHref) {
+      add(false, "Favicon", "missing <link rel=\"icon\">");
+    } else {
+      const icon = await get(iconHref);
+      add(icon.status === 200, "Favicon", icon.status === 200 ? undefined : `got ${icon.status}`);
+    }
     const missing = SECURITY_HEADERS.filter((h) => !home.headers.get(h));
     add(missing.length === 0, "Security headers", missing.length ? `missing ${missing.join(", ")}` : undefined);
   }

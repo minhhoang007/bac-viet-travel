@@ -15,6 +15,7 @@ export const PROCESS_WEBHOOK_JOB = "billing.process_webhook";
 const MAX_EVENT_ATTEMPTS = 8;
 const EVENT_LEASE = "2 minutes";
 const STALE_ORDER_MS = 24 * 60 * 60_000;
+const PAYMENT_LINK_MS = 15 * 60_000;
 
 export interface BillingDeps {
   db: Db;
@@ -54,6 +55,8 @@ export interface BillingModule {
   vnpayIpnHandler: VnpayIpnHandler;
   /** Periodic: delete VNPay orders still pending after a day (the payment link expires after 15 minutes). */
   purgeStaleOrders(): Promise<number>;
+  /** Periodic: ask VNPay about orders pending past the 15-minute link (IPN lost) and confirm the paid ones. */
+  reconcileVnpayOrders(limit?: number): Promise<number>;
   /** Return-URL page: verified order status (never grants access — only the IPN does). */
   vnpayReturnStatus(params: Record<string, string>): Promise<{ valid: boolean; status: "pending" | "paid" | "failed" | "unknown" }>;
   /** Account deletion hook: revoke live subscriptions at the provider so the user is never charged again. */
@@ -320,7 +323,8 @@ export function createBillingModule(deps: BillingDeps): BillingModule {
         .insert(billingOrders)
         .values({ ownerId: user.id, provider: "vnpay", plan, interval, amount, currency: "VND", txnRef: crypto.randomUUID().replace(/-/g, "") })
         .returning();
-      const createdAt = now();
+      // The stored createdAt, so reconcileVnpayOrders can query VNPay with the same transaction date.
+      const createdAt = order!.createdAt;
       return vnpay.buildPaymentUrl({
         txnRef: order!.txnRef,
         amount,
@@ -330,7 +334,7 @@ export function createBillingModule(deps: BillingDeps): BillingModule {
         returnUrl,
         locale,
         createdAt,
-        expiresAt: new Date(createdAt.getTime() + 15 * 60_000),
+        expiresAt: new Date(createdAt.getTime() + PAYMENT_LINK_MS),
       });
     },
 
@@ -339,6 +343,36 @@ export function createBillingModule(deps: BillingDeps): BillingModule {
     },
 
     vnpayIpnHandler,
+
+    async reconcileVnpayOrders(limit = 50) {
+      if (!deps.vnpay) return 0;
+      const vnpay = deps.vnpay;
+      const t = now().getTime();
+      const pending = await db
+        .select({ txnRef: billingOrders.txnRef, createdAt: billingOrders.createdAt })
+        .from(billingOrders)
+        .where(
+          and(
+            eq(billingOrders.provider, "vnpay"),
+            eq(billingOrders.status, "pending"),
+            lt(billingOrders.createdAt, new Date(t - PAYMENT_LINK_MS)),
+            gt(billingOrders.createdAt, new Date(t - STALE_ORDER_MS)),
+          ),
+        )
+        .limit(limit);
+      let confirmed = 0;
+      for (const order of pending) {
+        try {
+          const result = await vnpay.query(order);
+          if (result.status !== "paid") continue;
+          if ((await vnpayIpnHandler(result.params))?.RspCode === "00") confirmed += 1;
+        } catch (error) {
+          logger.error("billing.vnpay_reconcile_failed", { txnRef: order.txnRef, error });
+        }
+      }
+      if (confirmed) logger.warn("billing.vnpay_reconciled", { count: confirmed }); // an IPN was lost
+      return confirmed;
+    },
 
     async purgeStaleOrders() {
       const removed = await db

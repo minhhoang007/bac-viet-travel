@@ -143,6 +143,15 @@ test("share image exists for every page (og:image responds with a PNG)", async (
   expect(res.headers()["content-type"]).toBe("image/png");
 });
 
+test("favicon from the brand; unknown paths with a dot are 404, not 500", async ({ page, request }) => {
+  await page.goto("/");
+  const href = await page.locator('link[rel="icon"]').first().getAttribute("href");
+  const icon = await request.get(href!);
+  expect(icon.status()).toBe(200);
+  expect(icon.headers()["content-type"]).toBe("image/png");
+  for (const path of ["/favicon.ico", "/x.txt", "/wp-login.php"]) expect((await request.get(path)).status(), path).toBe(404);
+});
+
 test("health endpoint responds without caching", async ({ request }) => {
   const health = await request.get("/api/health");
   expect(health.status()).toBe(200);
