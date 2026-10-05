@@ -4,6 +4,11 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+### Added — agent skills (ideas from obra/superpowers, adapted; plugin not installed)
+- Skill `systematic-debugging`: root cause before any fix; stop after 3 failed fixes.
+- Skill `receiving-code-review`: verify each review finding against the code and repo rules before changing it.
+- `karpathy-guidelines` §5 "Verify before claiming done": every "done" cites a command run in the session and its output.
+
 ## [1.0.0-rc.14] - 2026-10-02
 
 ### Added — ship fast (lessons from ShipFast, keeping the architecture and tests)
