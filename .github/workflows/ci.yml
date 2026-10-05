@@ -53,6 +53,8 @@ jobs:
 
   e2e-app:
     name: Browser E2E (profile app)
+    # The starter's generated example app; projects (they have starter.lock.json) test their own app below.
+    if: hashFiles('starter.lock.json') == ''
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -81,8 +83,22 @@ jobs:
 
   build-minimal:
     # Guards "really off": default config (profile site, all modules off) must build and run with NO secrets.
+    # In a project this is the project's own E2E. The build gets no secrets; the Postgres service is only used by
+    # projects whose E2E server needs a database (profile app: tests/e2e/server-env.ts reads E2E_DATABASE_URL).
     name: Build + E2E with no secrets
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: project_e2e
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 2s --health-retries 30
+    env:
+      E2E_DATABASE_URL: postgres://postgres:postgres@localhost:5432/project_e2e
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
