@@ -71,7 +71,7 @@ export interface AppContent {
   admin: {
     title: string;
     backToApp: string;
-    nav: { overview: string; users: string; jobs: string; billing: string; audit: string };
+    nav: { overview: string; users: string; jobs: string; billing: string; audit: string; media: string };
     overview: {
       newUsers: string;
       proUsers: string;
@@ -111,6 +111,24 @@ export interface AppContent {
     jobs: { title: string; name: string; attempts: string; lastError: string; retry: string; empty: string };
     billing: { subscriptions: string; orders: string; problemEvents: string; retry: string; empty: string };
     audit: { title: string; time: string; actor: string; action: string; target: string; empty: string };
+    media: {
+      title: string;
+      upload: string;
+      uploading: string;
+      search: string;
+      empty: string;
+      edit: string;
+      back: string;
+      alt: string;
+      altHint: string;
+      focal: string;
+      focalHint: string;
+      save: string;
+      remove: string;
+      removeAsk: string;
+      size: string;
+      errors: { format: string; size: string; failed: string; inUse: string };
+    };
     done: string;
     failed: string;
     confirmTitle: string;

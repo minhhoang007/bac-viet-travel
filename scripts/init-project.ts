@@ -9,8 +9,8 @@
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 
-const MODULES = ["email", "jobs", "entitlements", "billing", "usage", "storage", "analytics", "admin", "ai", "blog"];
-const AVAILABLE = ["email", "jobs", "entitlements", "billing", "admin", "analytics", "storage", "blog"]; // modules implemented in this starter version
+const MODULES = ["email", "jobs", "entitlements", "billing", "usage", "storage", "analytics", "admin", "ai", "blog", "media"];
+const AVAILABLE = ["email", "jobs", "entitlements", "billing", "admin", "analytics", "storage", "blog", "media"]; // modules implemented in this starter version
 
 const { values } = parseArgs({
   options: {
@@ -38,7 +38,7 @@ for (const m of modules) {
   if (!MODULES.includes(m)) fail(`unknown module "${m}". Known: ${MODULES.join(", ")}`);
   if (!AVAILABLE.includes(m)) fail(`module "${m}" is not implemented in this starter version yet`);
 }
-const APP_ONLY = ["jobs", "entitlements", "billing", "admin", "storage"];
+const APP_ONLY = ["jobs", "entitlements", "billing", "admin", "storage", "media"];
 for (const m of modules) {
   if (profile === "site" && APP_ONLY.includes(m)) fail(`module "${m}" needs --profile app`);
 }
@@ -195,6 +195,7 @@ if (profile === "site" && modules.has("analytics")) env.push("DATABASE_URL (anal
 if (modules.has("jobs")) env.push("CRON_SECRET");
 if (modules.has("analytics")) env.push("ANALYTICS_SECRET");
 if (modules.has("storage")) env.push("STORAGE_ENDPOINT / STORAGE_BUCKET / STORAGE_ACCESS_KEY_ID / STORAGE_SECRET_ACCESS_KEY");
+if (modules.has("media")) env.push("CLOUDINARY_CLOUD_NAME / CLOUDINARY_API_KEY / CLOUDINARY_API_SECRET");
 if (modules.has("billing")) {
   env.push(
     "POLAR_ACCESS_TOKEN / POLAR_WEBHOOK_SECRET / POLAR_SERVER / POLAR_PRODUCT_PRO_MONTHLY / POLAR_PRODUCT_PRO_YEARLY",

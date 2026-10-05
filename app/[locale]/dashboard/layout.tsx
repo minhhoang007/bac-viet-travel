@@ -30,7 +30,8 @@ export default async function DashboardLayout({
   const { user } = await requirePageUser(locale);
   const c = getAppContent(locale as Locale).dashboard;
 
-  const adminHref = (u: typeof user) => (hasRole(u, "admin") ? "/admin" : (productAdminNavFor(u)[0]?.href ?? null));
+  const adminHref = (u: typeof user) =>
+    hasRole(u, "admin") ? "/admin" : (productAdminNavFor(u)[0]?.href ?? (hasRole(u, "editor") && getContainer().media ? "/admin/media" : null));
   const nav = [
     { label: c.nav.overview, href: localePath(locale, "/dashboard") },
     ...productNav.map((item) => ({ label: item.label[locale as Locale], href: localePath(locale, item.href) })),

@@ -37,6 +37,16 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
+### Unreleased — media library (starter migration)
+- **Starter migration** (`media_assets`): run `pnpm db:migrate` (on a database copy first, see Procedure). The table is
+  created even when the module is off.
+- New config pair `config/media.defaults.ts` (starter) / `config/media.ts` (project-owned: set `folder`).
+- New content keys: `admin.nav.media`, `admin.media.*` (projects overriding `content/` must add them).
+- To use it: `features.media = true` (needs `admin`), set `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`,
+  `CLOUDINARY_API_SECRET`. Optional: export `mediaInUse(db, id)` from `product/manifest.ts` to block deleting images
+  your published content uses.
+- `features` gains `media: false` (projects spreading `featureDefaults` get it automatically).
+
 ### Unreleased — editor role
 - New content keys `admin.users.changeRole`, `admin.users.roles` (projects overriding `content/` must add them).
 - `product/manifest.ts` (project-owned): optionally add `roles?: readonly ("editor" | "admin")[]` to `ProductNavItem`
