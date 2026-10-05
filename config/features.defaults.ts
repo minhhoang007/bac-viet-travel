@@ -9,6 +9,7 @@ export const featureDefaults = {
   billing: false,
   usage: false,
   storage: false,
+  media: false,
   analytics: false,
   admin: false,
   ai: false,

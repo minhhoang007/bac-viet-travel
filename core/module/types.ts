@@ -1,6 +1,6 @@
 export const MODULE_NAMES = [
   "email", "jobs", "entitlements", "billing", "usage",
-  "storage", "analytics", "admin", "ai", "blog",
+  "storage", "analytics", "admin", "ai", "blog", "media",
 ] as const;
 
 export type ModuleName = (typeof MODULE_NAMES)[number];

@@ -17,19 +17,23 @@ import { createBillingModule, PROCESS_WEBHOOK_JOB, type BillingModule, type OneT
 import { createEmailModule, SEND_EMAIL_JOB, type EmailProvider } from "@/modules/email";
 import { createEntitlementsModule, type EntitlementsModule } from "@/modules/entitlements";
 import { createJobsModule, type JobHandler, type JobsModule } from "@/modules/jobs";
+import { createMediaModule, type MediaModule, type MediaProvider } from "@/modules/media";
 import { createStorageModule, type ObjectStorage, type StorageModule } from "@/modules/storage";
 import { polarProvider } from "@/providers/billing/polar";
 import { VNPAY_SANDBOX_URL, vnpayProvider } from "@/providers/billing/vnpay";
 import { consoleEmailProvider } from "@/providers/email/console";
 import { resendProvider } from "@/providers/email/resend";
 import { upstashRateLimiter } from "@/providers/rate-limit/upstash";
+import { cloudinaryProvider } from "@/providers/media/cloudinary";
 import { s3Storage } from "@/providers/storage/s3";
+import * as productManifest from "@/product/manifest";
 import { createProduct, type Product } from "@/product/manifest";
 import { appConfig } from "@/config/app";
 import { brand } from "@/config/brand";
 import { authConfig } from "@/config/auth";
 import { billingConfig } from "@/config/billing";
 import { features } from "@/config/features";
+import { mediaConfig } from "@/config/media";
 import { storageConfig } from "@/config/storage";
 import { getEnv, type Env } from "./env";
 
@@ -70,6 +74,8 @@ export interface Container {
   admin?: AdminModule;
   analytics?: AnalyticsModule;
   storage?: StorageModule;
+  /** Public images for staff-edited content (ADR-0008). */
+  media?: MediaModule;
 }
 
 export interface ContainerOverrides {
@@ -81,6 +87,7 @@ export interface ContainerOverrides {
   billingProviders?: { polar?: SubscriptionProvider; vnpay?: OneTimePaymentProvider };
   now?: () => Date;
   objectStorage?: ObjectStorage;
+  mediaProvider?: MediaProvider;
 }
 
 const CONTACT_LIMIT: RateLimitRule = { max: 5, windowMs: 10 * 60_000 };
@@ -177,6 +184,23 @@ export function buildContainer(features: Features, env: Env, overrides: Containe
       : undefined;
   if (storage) periodic["storage.purge_pending"] = async () => void (await storage.purgePending());
 
+  // Project hook: images used by live content cannot be deleted (manifest `mediaInUse`).
+  const mediaInUse = (productManifest as { mediaInUse?: (db: Db, id: string) => Promise<boolean> }).mediaInUse;
+  const media =
+    features.media && db
+      ? createMediaModule({
+          db,
+          logger,
+          config: mediaConfig,
+          provider:
+            overrides.mediaProvider ??
+            cloudinaryProvider({ cloudName: env.extra.CLOUDINARY_CLOUD_NAME!, apiKey: env.extra.CLOUDINARY_API_KEY!, apiSecret: env.extra.CLOUDINARY_API_SECRET! }),
+          inUse: mediaInUse ? (id) => mediaInUse(db, id) : undefined,
+          now: overrides.now,
+        })
+      : undefined;
+  if (media) periodic["media.purge_pending"] = async () => void (await media.purgePending());
+
   const admin = features.admin && db ? createAdminModule({ db, logger }) : undefined;
 
   const productContext: ProductContext | undefined = db
@@ -203,7 +227,7 @@ export function buildContainer(features: Features, env: Env, overrides: Containe
   const vnpay = payments.vnpay;
   const handleVnpayIpn = vnpay ? createVnpayIpn({ verify: (p) => vnpay.verify(p), handlers: vnpayIpnHandlers, logger }) : undefined;
 
-  return { features, logger, mail, health, rateLimiter, payments, handleVnpayIpn, contact, app, jobs, entitlements, billing, admin, analytics, storage };
+  return { features, logger, mail, health, rateLimiter, payments, handleVnpayIpn, contact, app, jobs, entitlements, billing, admin, analytics, storage, media };
 }
 
 function buildBilling(
