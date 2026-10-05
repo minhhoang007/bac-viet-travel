@@ -4,6 +4,8 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-10-05
+
 ### Fixed — CI in projects
 - `Build + E2E` has a Postgres service and `E2E_DATABASE_URL`, so a project in profile app runs its own E2E in CI (the build still gets no secrets). The starter's example-app E2E job runs only in the starter repo (no `starter.lock.json`).
 
