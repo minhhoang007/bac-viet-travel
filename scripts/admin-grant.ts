@@ -9,7 +9,7 @@ import postgres from "postgres";
 const args = process.argv.slice(2);
 const roleFlag = args.indexOf("--role");
 const role = roleFlag >= 0 ? args[roleFlag + 1] : "admin";
-const email = args.find((a, i) => !a.startsWith("--") && i !== roleFlag + 1)?.trim().toLowerCase();
+const email = args.find((a, i) => !a.startsWith("--") && (roleFlag < 0 || i !== roleFlag + 1))?.trim().toLowerCase();
 const url = process.env.DATABASE_URL;
 if (!email || !url || (role !== "admin" && role !== "editor")) {
   console.error("Usage: DATABASE_URL=... pnpm admin:grant <email> [--role admin|editor]");
