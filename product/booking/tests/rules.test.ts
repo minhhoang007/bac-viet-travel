@@ -22,7 +22,7 @@ describe("booking rules", () => {
   });
 
   it("validates the guest form: party size limits and contact fields", () => {
-    const base = { departureId: "0199a000-0000-7000-8000-000000000000", name: "Lan", email: "lan@example.com", phone: "0912 345 678", adults: "2" };
+    const base = { departureId: "0199a000-0000-7000-8000-000000000000", name: "Lan", email: "lan@example.com", phone: "0912 345 678", adults: "2", agree: "on" };
     expect(bookingInputSchema.parse(base)).toMatchObject({ adults: 2, children: 0, infants: 0, locale: "vi" });
     const tooMany = bookingInputSchema.safeParse({ ...base, adults: "6", children: "5" });
     expect(tooMany.error?.issues[0]).toMatchObject({ path: ["children"], message: "too_many" });

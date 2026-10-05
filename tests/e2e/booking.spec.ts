@@ -35,6 +35,7 @@ test("guest holds seats: live quote, then a private booking page with a 15-minut
   await page.getByLabel("Họ tên").fill("Nguyễn Văn A");
   await page.getByLabel("Email").fill("a@example.com");
   await page.getByLabel("Số điện thoại / WhatsApp").fill("0912 345 678");
+  await page.getByRole("checkbox", { name: /Tôi đồng ý/ }).check();
   await page.getByRole("button", { name: "Giữ chỗ 15 phút" }).click();
 
   await expect(page).toHaveURL(/\/booking\/BV-[A-Z2-9]{6}\?t=[\w-]{20,}$/);
@@ -60,6 +61,7 @@ test("server validation keeps the guest on the form; asking for more seats than 
   await page.getByLabel("Họ tên").fill("Tran B");
   await page.getByLabel("Email").fill("b@example.com");
   await page.getByLabel("Số điện thoại / WhatsApp").fill("0912345678");
+  await page.getByRole("checkbox", { name: /Tôi đồng ý/ }).check();
   await page.getByRole("button", { name: "Giữ chỗ 15 phút" }).click();
   await expect(page.getByRole("alert").filter({ hasText: "chỗ" })).toContainText("Chỉ còn 3 chỗ cho ngày này");
 });

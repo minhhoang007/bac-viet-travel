@@ -26,6 +26,7 @@ const guest = (departureId: string, extra: Record<string, unknown> = {}) => ({
   phone: "0912345678",
   adults: "1",
   locale: "vi",
+  agree: "on",
   ...extra,
 });
 
@@ -85,6 +86,8 @@ describe("booking holds", () => {
     expect((await service().hold(guest(tooSoon.id), "ip")).status).toBe("unavailable");
     expect((await service().hold(guest("0199a000-0000-7000-8000-000000000000"), "ip")).status).toBe("unavailable");
     expect(await service().hold(guest(closed.id, { email: "bad", adults: "11" }), "ip")).toMatchObject({ status: "invalid", fieldErrors: { email: "invalid", adults: "invalid" } });
+    // The terms and cancellation policy must be accepted (checkbox).
+    expect(await service().hold(guest(closed.id, { agree: undefined }), "ip")).toMatchObject({ status: "invalid", fieldErrors: { agree: "must_agree" } });
     expect((await service().listDepartures("ha-long-cruise-2d1n")).map((v) => v.bookable)).toEqual([false, false]);
   });
 

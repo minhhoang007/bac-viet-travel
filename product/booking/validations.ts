@@ -14,6 +14,8 @@ export const bookingInputSchema = z
     children: count(0, bookingRules.maxSeatsPerBooking).default(0),
     infants: count(0, bookingRules.maxInfants).default(0),
     note: z.string().trim().max(1000, "too_long").default(""),
+    /** Checkbox "I accept the terms and the cancellation policy" (browsers post "on"). */
+    agree: z.literal("on", { message: "must_agree" }),
     locale: z.enum(["vi", "en"]).catch("vi"),
   })
   .refine((v) => v.adults + v.children <= bookingRules.maxSeatsPerBooking, { path: ["children"], message: "too_many" });

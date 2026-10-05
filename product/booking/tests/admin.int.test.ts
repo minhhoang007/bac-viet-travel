@@ -17,7 +17,7 @@ let staff: { id: string; email: string };
 async function paidBooking(capacity = 10, date = "2026-10-10", seats = 2) {
   let [d] = await db.select().from(departures).where(eq(departures.date, date));
   d ??= (await db.insert(departures).values({ tourSlug: "ninh-binh-day-tour", date, capacity }).returning())[0]!;
-  const held = await booking.hold({ departureId: d.id, name: "Lan", email: "lan@example.com", phone: "0912345678", adults: String(seats), locale: "vi" }, `ip-${Math.random()}`);
+  const held = await booking.hold({ departureId: d.id, name: "Lan", email: "lan@example.com", phone: "0912345678", adults: String(seats), locale: "vi", agree: "on" }, `ip-${Math.random()}`);
   if (held.status !== "held") throw new Error(held.status);
   await db.update(bookings).set({ status: "deposit_paid", depositPaidAt: clock }).where(eq(bookings.code, held.code));
   return { code: held.code, departure: d };

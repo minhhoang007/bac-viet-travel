@@ -24,7 +24,7 @@ import { formatPrice } from "@/product/tours/format";
 
 type Props = { params: Promise<{ locale: Locale; slug: string }> };
 
-export const dynamicParams = false;
+// Unknown slugs end in notFound() below (dynamicParams = false logs a NoFallbackError per 404).
 
 export function generateStaticParams() {
   return getTourCatalog().slugs().map((slug) => ({ slug }));

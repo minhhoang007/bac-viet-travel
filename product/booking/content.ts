@@ -29,6 +29,7 @@ const vi = {
   deposit: "Đặt cọc (30%)",
   rest: "Thanh toán phần còn lại trước ngày đi",
   submit: "Giữ chỗ 15 phút",
+  agree: { before: "Tôi đồng ý với ", terms: "điều khoản dịch vụ", and: " và ", cancellation: "chính sách huỷ / hoàn tiền", after: "." },
   sending: "Đang giữ chỗ…",
   vndNote: "Giá thanh toán bằng VND.",
   errors: {
@@ -36,6 +37,7 @@ const vi = {
     invalid: "Thông tin không hợp lệ.",
     too_long: "Nội dung quá dài.",
     too_many: "Tối đa 10 khách (người lớn + trẻ em) mỗi đơn.",
+    must_agree: "Vui lòng đồng ý với điều khoản và chính sách huỷ để tiếp tục.",
     sold_out: (n: number) => (n > 0 ? `Chỉ còn ${n} chỗ cho ngày này. Vui lòng giảm số khách hoặc chọn ngày khác.` : "Ngày này vừa hết chỗ. Vui lòng chọn ngày khác."),
     unavailable: "Ngày này không còn nhận đặt. Vui lòng chọn ngày khác.",
     rate_limited: "Bạn thao tác quá nhiều lần. Vui lòng thử lại sau ít phút hoặc nhắn Zalo cho chúng tôi.",
@@ -102,6 +104,7 @@ const en: BookingContent = {
   deposit: "Deposit (30%)",
   rest: "Pay the balance before departure",
   submit: "Hold seats for 15 minutes",
+  agree: { before: "I accept the ", terms: "terms of service", and: " and the ", cancellation: "cancellation & refund policy", after: "." },
   sending: "Holding seats…",
   vndNote: "Charged in Vietnamese dong (VND).",
   errors: {
@@ -109,6 +112,7 @@ const en: BookingContent = {
     invalid: "Please check this value.",
     too_long: "Text is too long.",
     too_many: "Up to 10 guests (adults + children) per booking.",
+    must_agree: "Please accept the terms and the cancellation policy to continue.",
     sold_out: (n) => (n > 0 ? `Only ${n} seats left on this date. Reduce the group or choose another date.` : "This date just sold out. Please choose another date."),
     unavailable: "This date is no longer bookable. Please choose another date.",
     rate_limited: "Too many attempts. Please try again in a few minutes or message us on WhatsApp.",

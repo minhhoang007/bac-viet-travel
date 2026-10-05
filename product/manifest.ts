@@ -65,7 +65,7 @@ export interface ProductNavItem {
 export const productNav: ProductNavItem[] = [];
 
 /** Public product pages for sitemap.xml (paths without locale prefix). */
-export const sitemapPaths: string[] = ["/tours", ...getTourCatalog().slugs().map((slug) => `/tours/${slug}`)];
+export const sitemapPaths: string[] = ["/about", "/cancellation", "/payment", "/tours", ...getTourCatalog().slugs().map((slug) => `/tours/${slug}`)];
 
 /** Admin menu entries (starter rc.11). */
 export const productAdminNav: ProductNavItem[] = [

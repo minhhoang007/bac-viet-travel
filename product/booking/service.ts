@@ -7,8 +7,8 @@ import { bookings, departures, type Booking, type Departure } from "../schema/bo
 import { addDays, bookingRules, isBookableDate, quote, vietnamToday } from "./rules";
 import { bookingInputSchema } from "./validations";
 
-export type BookingField = "departureId" | "name" | "email" | "phone" | "adults" | "children" | "infants" | "note";
-export type BookingFieldError = "required" | "invalid" | "too_long" | "too_many";
+export type BookingField = "departureId" | "name" | "email" | "phone" | "adults" | "children" | "infants" | "note" | "agree";
+export type BookingFieldError = "required" | "invalid" | "too_long" | "too_many" | "must_agree";
 
 export type HoldResult =
   | { status: "held"; code: string; token: string }
@@ -46,7 +46,7 @@ export interface BookingService {
 const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // no 0/O, 1/I/L
 const CODE = /^BV-[A-Z2-9]{6}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const FIELD_ERRORS = ["required", "invalid", "too_long", "too_many"] as const;
+const FIELD_ERRORS = ["required", "invalid", "too_long", "too_many", "must_agree"] as const;
 
 const newCode = () => `BV-${Array.from({ length: 6 }, () => CODE_ALPHABET[randomInt(CODE_ALPHABET.length)]).join("")}`;
 const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");

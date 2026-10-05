@@ -83,3 +83,27 @@ test("tour gallery, mobile menu and accessibility (axe) on travel pages", async 
   await page.getByTestId("mobile-menu").getByRole("link", { name: "Sapa" }).click();
   await expect(page).toHaveURL(/\/tours#sapa$/);
 });
+
+test("company block, About and policy pages: legal details from config/contact.ts in both languages", async ({ page }) => {
+  await page.goto("/");
+  const company = page.getByTestId("company-info");
+  await expect(company).toContainText("MST");
+  await expect(company).toContainText("Giấy phép kinh doanh lữ hành quốc tế");
+  for (const [name, path, heading] of [
+    ["Giới thiệu", "/about", "Giới thiệu Bắc Việt Travel"],
+    ["Chính sách huỷ / hoàn tiền", "/cancellation", "Chính sách huỷ / hoàn tiền"],
+    ["Chính sách thanh toán", "/payment", "Chính sách thanh toán"],
+  ] as const) {
+    await page.goto("/");
+    await page.getByTestId("company-info").getByRole("link", { name, exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`${path}$`));
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(heading);
+  }
+  await expect(page.getByText("tiền cọc 30% giá tour")).toBeVisible(); // payment page: deposit rate from the booking rules
+  await page.goto("/cancellation");
+  await expect(page.getByText(/hoàn 100% tiền cọc/)).toBeVisible();
+
+  await page.goto("/en/about");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("About Bắc Việt Travel");
+  await expect(page.getByText("International tour operator licence").first()).toBeVisible();
+});

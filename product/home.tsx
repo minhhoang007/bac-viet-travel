@@ -23,6 +23,8 @@ export function ProductHomeSections({ locale }: { locale: Locale }) {
     "@context": "https://schema.org",
     "@type": "TravelAgency",
     name: contactConfig.companyName,
+    legalName: contactConfig.legalName,
+    taxID: contactConfig.taxCode,
     telephone: contactConfig.hotline,
     email: contactConfig.email,
     address: { "@type": "PostalAddress", streetAddress: contactConfig.address, addressLocality: contactConfig.city, addressCountry: "VN" },

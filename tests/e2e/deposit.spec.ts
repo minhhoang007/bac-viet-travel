@@ -17,6 +17,7 @@ async function holdAndPay(page: Page) {
   await page.getByLabel("Họ tên").fill("Lê Thu");
   await page.getByLabel("Email").fill("thu@example.com");
   await page.getByLabel("Số điện thoại / WhatsApp").fill("0987654321");
+  await page.getByRole("checkbox", { name: /Tôi đồng ý/ }).check();
   await page.getByRole("button", { name: "Giữ chỗ 15 phút" }).click();
   await expect(page.locator("[data-booking-status=held]")).toBeVisible();
   await expect(page.getByTestId("sandbox-banner")).toContainText("không trừ tiền thật");

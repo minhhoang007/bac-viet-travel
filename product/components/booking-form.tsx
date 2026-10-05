@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/components/ui/cn";
 import type { Locale } from "@/config/app";
+import { localePath } from "@/core/i18n/routing";
 import { formatDay, formatVnd, getBookingContent } from "../booking/content";
 import { quote } from "../booking/rules";
 import type { BookingField, HoldResult } from "../booking/service";
@@ -282,6 +283,28 @@ export function BookingForm({
             </p>
           </div>
         )}
+        <div className="mt-4 text-sm">
+          <label className="flex items-start gap-2">
+            <input
+              {...aria("agree")}
+              type="checkbox"
+              required
+              className="mt-0.5 size-4 shrink-0 accent-primary"
+            />
+            <span>
+              {t.agree.before}
+              <a href={localePath(locale, "/terms")} target="_blank" className="underline">
+                {t.agree.terms}
+              </a>
+              {t.agree.and}
+              <a href={localePath(locale, "/cancellation")} target="_blank" className="underline">
+                {t.agree.cancellation}
+              </a>
+              {t.agree.after}
+            </span>
+          </label>
+          {message("agree")}
+        </div>
         {formError && (
           <p
             role="alert"

@@ -65,7 +65,7 @@ export const app: AppContent = {
     terms: "Terms of Service",
     privacy: "Privacy Policy",
     lastUpdated: "Last updated",
-    templateNotice: "This is a template. Replace it with legal text appropriate for your business.",
+    templateNotice: "This policy is being finalised and may change. For any question, contact us by hotline or WhatsApp.",
   },
   files: {
     title: "My files",

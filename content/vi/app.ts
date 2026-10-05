@@ -65,7 +65,7 @@ export const app: AppContent = {
     terms: "Điều khoản sử dụng",
     privacy: "Chính sách quyền riêng tư",
     lastUpdated: "Cập nhật lần cuối",
-    templateNotice: "Đây là mẫu. Hãy thay bằng nội dung pháp lý phù hợp với doanh nghiệp của bạn.",
+    templateNotice: "Chính sách đang được hoàn thiện và có thể thay đổi. Nếu cần giải đáp, vui lòng liên hệ hotline hoặc Zalo.",
   },
   files: {
     title: "Tệp của tôi",

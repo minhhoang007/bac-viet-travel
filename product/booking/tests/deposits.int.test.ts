@@ -45,7 +45,7 @@ const LINKS = { siteUrl: "https://bacviet.example", teamEmail: "team@example.com
 
 async function holdOn(capacity: number, adults = 1) {
   const [d] = await db.insert(departures).values({ tourSlug: "ninh-binh-day-tour", date: "2026-10-10", capacity }).returning();
-  const held = await bookingService.hold({ departureId: d!.id, name: "Lan", email: "lan@example.com", phone: "0912345678", adults: String(adults), locale: "vi" }, "ip");
+  const held = await bookingService.hold({ departureId: d!.id, name: "Lan", email: "lan@example.com", phone: "0912345678", adults: String(adults), locale: "vi", agree: "on" }, "ip");
   if (held.status !== "held") throw new Error(held.status);
   return { departure: d!, ...held };
 }
@@ -150,7 +150,7 @@ describe("booking deposits (VNPay)", () => {
     const late = await holdOn(1);
     const lateReq = await startPayment(late.code, late.token);
     clock = new Date(clock.getTime() + 16 * 60_000);
-    const other = await bookingService.hold({ departureId: late.departure.id, name: "Bao", email: "b@example.com", phone: "0912345679", adults: "1", locale: "vi" }, "ip2");
+    const other = await bookingService.hold({ departureId: late.departure.id, name: "Bao", email: "b@example.com", phone: "0912345679", adults: "1", locale: "vi", agree: "on" }, "ip2");
     expect(other.status).toBe("held");
     expect((await deposits.handleIpn(ipn(lateReq), LINKS)).RspCode).toBe("00");
     expect((await status(late.code)).status).toBe("refund_due");
@@ -159,7 +159,7 @@ describe("booking deposits (VNPay)", () => {
 
   it("reconcile: a deposit paid at VNPay whose IPN was lost is confirmed before its hold expires; unpaid ones expire", async () => {
     const paid = await holdOn(10);
-    const second = await bookingService.hold({ departureId: paid.departure.id, name: "Minh", email: "minh@example.com", phone: "0912345679", adults: "1", locale: "vi" }, "ip2");
+    const second = await bookingService.hold({ departureId: paid.departure.id, name: "Minh", email: "minh@example.com", phone: "0912345679", adults: "1", locale: "vi", agree: "on" }, "ip2");
     if (second.status !== "held") throw new Error(second.status);
     const unpaid = second;
     const paidReq = await startPayment(paid.code, paid.token);
