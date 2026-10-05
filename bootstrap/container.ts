@@ -185,7 +185,8 @@ export function buildContainer(features: Features, env: Env, overrides: Containe
   if (storage) periodic["storage.purge_pending"] = async () => void (await storage.purgePending());
 
   // Project hook: images used by live content cannot be deleted (manifest `mediaInUse`).
-  const mediaInUse = (productManifest as { mediaInUse?: (db: Db, id: string) => Promise<boolean> }).mediaInUse;
+  // `in` first: optional export (test mocks of the manifest throw on reading a missing export).
+  const mediaInUse = "mediaInUse" in productManifest ? (productManifest as { mediaInUse?: (db: Db, id: string) => Promise<boolean> }).mediaInUse : undefined;
   const media =
     features.media && db
       ? createMediaModule({
