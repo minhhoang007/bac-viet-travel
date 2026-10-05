@@ -52,6 +52,8 @@ describe("admin: users", () => {
     await admin.setUserRole(actor, u.id, "admin");
     expect((await admin.getUser(u.id))?.role).toBe("admin");
     expect((await admin.listAudit({ targetId: u.id })).rows[0]).toMatchObject({ action: "user.set_role", metadata: { from: "user", to: "admin" } });
+    await admin.setUserRole(actor, u.id, "editor");
+    expect((await admin.listAudit({ targetId: u.id })).rows[0]).toMatchObject({ metadata: { from: "admin", to: "editor" } });
   });
 
   it("an admin cannot disable or demote themselves", async () => {

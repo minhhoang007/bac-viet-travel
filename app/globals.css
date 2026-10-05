@@ -18,7 +18,14 @@
   --accent-foreground: var(--foreground);
   --input: var(--border);
   --ring: var(--primary);
-  --destructive: #dc2626;
+  /*
+   * Status colors (errors, warnings, success), readable as text on the background (WCAG AA) in both schemes.
+   * Use text-danger, border-danger/40, bg-warning/10… never raw palette colors.
+   */
+  --danger: #b91c1c;
+  --warning: #a16207;
+  --success: #15803d;
+  --destructive: var(--danger);
   --sidebar: var(--background);
   --sidebar-foreground: var(--foreground);
   --sidebar-primary: var(--primary);
@@ -27,6 +34,14 @@
   --sidebar-accent-foreground: var(--foreground);
   --sidebar-border: var(--border);
   --sidebar-ring: var(--primary);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --danger: #f87171;
+    --warning: #facc15;
+    --success: #4ade80;
+  }
 }
 
 @theme inline {
@@ -48,6 +63,9 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-destructive: var(--destructive);
+  --color-danger: var(--danger);
+  --color-warning: var(--warning);
+  --color-success: var(--success);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: var(--radius);
   --radius-lg: calc(var(--radius) + 2px);

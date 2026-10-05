@@ -6,6 +6,8 @@ import { blogModule } from "@/modules/blog";
 import { emailModule } from "@/modules/email";
 import { entitlementsModule } from "@/modules/entitlements";
 import { jobsModule } from "@/modules/jobs";
+import { mediaModule } from "@/modules/media";
+import { contentModule } from "@/modules/content";
 import { storageModule } from "@/modules/storage";
 
 /** Manifests of all modules shipped with the starter. */
@@ -18,4 +20,6 @@ export const moduleManifests: readonly ModuleManifest[] = [
   analyticsModule,
   storageModule,
   blogModule,
+  mediaModule,
+  contentModule,
 ];

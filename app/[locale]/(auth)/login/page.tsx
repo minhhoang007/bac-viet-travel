@@ -9,6 +9,8 @@ import { Container } from "@/components/ui/container";
 import { localePath } from "@/core/i18n/routing";
 import { authConfig } from "@/config/auth";
 import type { Locale } from "@/config/app";
+import { Notice } from "@/components/feedback/notice";
+import { SubmitButton } from "@/components/forms/submit-button";
 import { getAppContent } from "@/content";
 
 type Props = { params: Promise<{ locale: Locale }>; searchParams: Promise<{ error?: string }> };
@@ -31,9 +33,9 @@ export default async function LoginPage({ params, searchParams }: Props) {
       <h1 className="text-2xl font-bold">{c.title}</h1>
       <p className="mt-2 text-sm text-muted-foreground">{c.subtitle}</p>
       {error && (
-        <p role="alert" className="mt-4 rounded-md border border-red-600/40 p-3 text-sm text-red-600">
+        <Notice tone="danger" className="mt-4">
           {c.errors.link}
-        </p>
+        </Notice>
       )}
       <div className="mt-8 grid gap-6">
         {app.auth.methods.magicLink && <LoginForm locale={locale} sendMagicLink={sendMagicLink} labels={c} />}
@@ -43,9 +45,7 @@ export default async function LoginPage({ params, searchParams }: Props) {
         {app.auth.methods.google && (
           <form action={signInWithGoogle}>
             <input type="hidden" name="locale" value={locale} />
-            <button type="submit" className="h-11 w-full rounded-md border border-border text-sm font-medium hover:bg-muted">
-              {c.google}
-            </button>
+            <SubmitButton label={c.google} variant="outline" className="h-11 w-full justify-self-stretch" />
           </form>
         )}
       </div>

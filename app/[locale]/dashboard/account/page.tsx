@@ -3,6 +3,7 @@ import { requirePageUser } from "@/app/_lib/session";
 import { deleteAccount } from "@/app/actions/account";
 import type { Locale } from "@/config/app";
 import { getAppContent } from "@/content";
+import { SubmitButton } from "@/components/forms/submit-button";
 import { PageHeader } from "@/components/app-shell/page-header";
 
 export default async function AccountPage({ params }: { params: Promise<{ locale: Locale }> }) {
@@ -28,8 +29,8 @@ export default async function AccountPage({ params }: { params: Promise<{ locale
           </button>
         </form>
       </section>
-      <section className="rounded-md border border-red-600/40 p-4">
-        <h2 className="font-semibold text-red-600">{c.deleteTitle}</h2>
+      <section className="rounded-md border border-danger/40 p-4">
+        <h2 className="font-semibold text-danger">{c.deleteTitle}</h2>
         <p className="mt-1 text-sm text-muted-foreground">{c.deleteText}</p>
         <form action={deleteAccount} className="mt-3 grid gap-2">
           <input type="hidden" name="locale" value={locale} />
@@ -43,9 +44,7 @@ export default async function AccountPage({ params }: { params: Promise<{ locale
               className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
             />
           </label>
-          <button type="submit" className="h-10 justify-self-start rounded-md bg-red-600 px-4 text-sm font-medium text-white">
-            {c.deleteButton}
-          </button>
+          <SubmitButton label={c.deleteButton} variant="destructive" />
         </form>
       </section>
     </div>

@@ -21,8 +21,11 @@ async function signedIn(browser: Browser, viewport: { width: number; height: num
   const [row] = await sql<{ identifier: string }[]>`select regexp_replace(identifier, '^magic-link:', '') as identifier from verifications where value like ${`%"${email}"%`} order by created_at desc limit 1`;
   await page.goto(`/api/auth/magic-link/verify?token=${row!.identifier}&callbackURL=%2Fdashboard`);
   await expect(page).toHaveURL(/\/dashboard$/);
+  emailOf.set(page, email);
   return page;
 }
+
+const emailOf = new WeakMap<Page, string>();
 
 const noHorizontalScroll = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);
 
@@ -66,10 +69,16 @@ test("skip link and no serious accessibility violations on signed-in pages (axe)
   await page.keyboard.press("Enter");
   await expect(page.locator("#app-content")).toBeFocused();
 
-  for (const path of ["/dashboard", "/dashboard/account", "/dashboard/product/notes"]) {
-    await page.goto(path);
+  const scan = async (path: string) => {
+    const response = await page.goto(path);
+    if (response?.status() === 404) return; // optional module off in this app
     const result = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
     const serious = result.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
     expect(serious, `${path}: ${serious.map((v) => v.id).join(", ")}`).toEqual([]);
-  }
+  };
+  for (const path of ["/dashboard", "/dashboard/account", "/dashboard/product/notes"]) await scan(path);
+
+  // Admin pages (tables, notices, forms): same user promoted to admin.
+  await sql`update users set role = 'admin' where email = ${emailOf.get(page)!}`;
+  for (const path of ["/admin", "/admin/users", "/admin/jobs", "/admin/billing", "/admin/audit", "/admin/media", "/admin/content"]) await scan(path);
 });

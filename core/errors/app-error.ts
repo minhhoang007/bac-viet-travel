@@ -7,6 +7,8 @@ export const APP_ERROR_CODES = [
   "QUOTA_EXCEEDED",
   "MODULE_DISABLED",
   "NOT_FOUND",
+  /** The request clashes with the current state (e.g. deleting an image still in use, a stale edit). */
+  "CONFLICT",
   "INTERNAL_ERROR",
 ] as const;
 
@@ -21,6 +23,7 @@ const HTTP_STATUS: Record<AppErrorCode, number> = {
   QUOTA_EXCEEDED: 429,
   MODULE_DISABLED: 404,
   NOT_FOUND: 404,
+  CONFLICT: 409,
   INTERNAL_ERROR: 500,
 };
 
@@ -33,6 +36,7 @@ const SAFE_MESSAGE: Record<AppErrorCode, string> = {
   QUOTA_EXCEEDED: "Usage limit reached.",
   MODULE_DISABLED: "Not found.",
   NOT_FOUND: "Not found.",
+  CONFLICT: "This conflicts with the current state. Reload and try again.",
   INTERNAL_ERROR: "Something went wrong.",
 };
 

@@ -3,6 +3,7 @@ import { requireAdmin } from "@/app/_lib/admin";
 import { localePath } from "@/core/i18n/routing";
 import type { Locale } from "@/config/app";
 import { getAppContent } from "@/content";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { PageHeader } from "@/components/app-shell/page-header";
 
 const PAGE_SIZE = 25;
@@ -42,32 +43,30 @@ export default async function AdminUsersPage({ params, searchParams }: Props) {
           {c.users.search}
         </button>
       </form>
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm">
-          <thead className="text-muted-foreground">
-            <tr>
-              <th className="py-2 pr-4 font-medium">{c.users.email}</th>
-              <th className="py-2 pr-4 font-medium">{c.users.role}</th>
-              <th className="py-2 pr-4 font-medium">{c.users.status}</th>
-              <th className="py-2 font-medium">{c.users.createdAt}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((u) => (
-              <tr key={u.id} className="border-t border-border">
-                <td className="py-2 pr-4">
-                  <a href={localePath(locale, `/admin/users/${u.id}`)} className="underline-offset-2 hover:underline">
-                    {u.email}
-                  </a>
-                </td>
-                <td className="py-2 pr-4">{u.role}</td>
-                <td className="py-2 pr-4">{u.status}</td>
-                <td className="py-2">{date(u.createdAt)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>{c.users.email}</TableHead>
+            <TableHead>{c.users.role}</TableHead>
+            <TableHead>{c.users.status}</TableHead>
+            <TableHead>{c.users.createdAt}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((u) => (
+            <TableRow key={u.id}>
+              <TableCell>
+                <a href={localePath(locale, `/admin/users/${u.id}`)} className="underline-offset-2 hover:underline">
+                  {u.email}
+                </a>
+              </TableCell>
+              <TableCell>{c.users.roles[u.role]}</TableCell>
+              <TableCell>{u.status}</TableCell>
+              <TableCell>{date(u.createdAt)}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
       <nav className="flex gap-3 text-sm">
         {page > 1 && <a href={pageHref(page - 1)}>← {c.users.previous}</a>}
         {page * PAGE_SIZE < total && <a href={pageHref(page + 1)}>{c.users.next} →</a>}

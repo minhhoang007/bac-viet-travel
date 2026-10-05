@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import type { Metadata } from "next";
+import { productAdminNavFor } from "@/app/_lib/admin";
 import { requirePageUser } from "@/app/_lib/session";
+import { hasRole } from "@/core/auth";
 import { signOut } from "@/app/actions/auth";
 import { AppShell } from "@/components/app-shell/app-shell";
 import { sidebarDefaultOpen } from "@/app/_lib/sidebar";
@@ -28,6 +30,8 @@ export default async function DashboardLayout({
   const { user } = await requirePageUser(locale);
   const c = getAppContent(locale as Locale).dashboard;
 
+  const adminHref = (u: typeof user) =>
+    hasRole(u, "admin") ? "/admin" : (productAdminNavFor(u)[0]?.href ?? (hasRole(u, "editor") && getContainer().media ? "/admin/media" : null));
   const nav = [
     { label: c.nav.overview, href: localePath(locale, "/dashboard") },
     ...productNav.map((item) => ({ label: item.label[locale as Locale], href: localePath(locale, item.href) })),
@@ -36,8 +40,8 @@ export default async function DashboardLayout({
       href: localePath(locale, item.href),
     })),
     { label: c.nav.account, href: localePath(locale, "/dashboard/account") },
-    // Admin link for admins only (the admin pages themselves 404 for everyone else).
-    ...(user.role === "admin" && getContainer().admin ? [{ label: c.nav.admin, href: localePath(locale, "/admin") }] : []),
+    // Admin link for staff only (the admin pages themselves 404 for everyone else). Editors land on their first content page.
+    ...(getContainer().admin && adminHref(user) ? [{ label: c.nav.admin, href: localePath(locale, adminHref(user)!) }] : []),
   ];
 
   return (
