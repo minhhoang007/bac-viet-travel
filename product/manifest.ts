@@ -16,6 +16,7 @@ export function createProduct(db: Db, ctx: ProductContext) {
     logger: ctx.logger,
     rateLimiter: ctx.rateLimiter("booking-hold", { max: 10, windowMs: 10 * 60_000 }),
     tourPrice: (slug) => catalog.get("vi", slug)?.price.vnd ?? null,
+    tourPrivate: (slug) => catalog.get("vi", slug)?.private ?? null,
     now: ctx.now,
   });
   const deposits = createDepositService({

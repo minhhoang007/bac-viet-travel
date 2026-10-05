@@ -3,16 +3,17 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { setRequestLocale } from "next-intl/server";
 import { getBooking } from "@/app/_lib/booking";
-import { holdSeats } from "@/app/actions/booking";
+import { holdPrivateSeats, holdSeats } from "@/app/actions/booking";
 import { Container } from "@/components/ui/container";
 import { localePath } from "@/core/i18n/routing";
 import type { Locale } from "@/config/app";
 import { getBookingContent } from "@/product/booking/content";
+import { addDays, bookingRules, vietnamToday } from "@/product/booking/rules";
 import { BookingForm } from "@/product/components/booking-form";
 import { getProductContent } from "@/product/content";
 import { getTourCatalog } from "@/product/tours/catalog";
 
-type Props = { params: Promise<{ locale: Locale; slug: string }>; searchParams: Promise<{ d?: string }> };
+type Props = { params: Promise<{ locale: Locale; slug: string }>; searchParams: Promise<{ d?: string; type?: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale, slug } = await params;
@@ -28,8 +29,11 @@ export default async function BookTourPage({ params, searchParams }: Props) {
   const tour = getTourCatalog().get(locale, slug);
   if (!tour) notFound();
   const t = getBookingContent(locale);
-  const departures = await getBooking().listDepartures(slug);
-  const { d } = await searchParams;
+  const { d, type } = await searchParams;
+  const isPrivate = type === "private" && Boolean(tour.private);
+  const departures = isPrivate ? [] : await getBooking().listDepartures(slug);
+  const today = vietnamToday(new Date());
+  const tab = (active: boolean) => `rounded-full border px-4 py-1.5 text-sm ${active ? "border-primary bg-primary text-primary-foreground" : "border-border hover:bg-muted"}`;
 
   return (
     <Container className="py-10">
@@ -40,10 +44,23 @@ export default async function BookTourPage({ params, searchParams }: Props) {
       <p className="mt-1 text-muted-foreground">
         {getProductContent(locale).tours.days(tour.days, tour.nights)} · {tour.departure}
       </p>
+      {tour.private && (
+        <nav className="mt-6 flex flex-wrap items-center gap-2" aria-label={t.modePrivate}>
+          <a href={localePath(locale, `/tours/${slug}/book`)} aria-current={!isPrivate ? "page" : undefined} className={tab(!isPrivate)}>
+            {t.modeGroup}
+          </a>
+          <a href={localePath(locale, `/tours/${slug}/book?type=private`)} aria-current={isPrivate ? "page" : undefined} className={tab(isPrivate)}>
+            {t.modePrivate}
+          </a>
+          {isPrivate && <span className="text-sm text-muted-foreground">{t.privateHint}</span>}
+        </nav>
+      )}
       <div className="mt-8">
         <BookingForm
-          action={holdSeats}
+          key={isPrivate ? "private" : "group"}
+          action={isPrivate ? holdPrivateSeats : holdSeats}
           locale={locale}
+          privateTour={isPrivate ? { tourSlug: slug, pricing: tour.private!, minDate: addDays(today, bookingRules.cutoffDays), maxDate: addDays(today, 366) } : undefined}
           initialDepartureId={d}
           departures={departures.map((x) => ({ id: x.id, date: x.date, seatsLeft: x.seatsLeft, unitPriceVnd: x.unitPriceVnd, bookable: x.bookable, status: x.status }))}
         />

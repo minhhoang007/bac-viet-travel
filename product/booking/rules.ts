@@ -26,6 +26,24 @@ export function quote(unitPriceVnd: number, party: { adults: number; children: n
   return { seats: party.adults + party.children, unitPriceVnd, childPriceVnd, totalVnd, depositVnd: roundUp1000(totalVnd * bookingRules.depositRate) };
 }
 
+/** Private tour price per person by group size: the tier with the largest minGuests ≤ guests applies. */
+export interface PrivatePricing {
+  tiers: readonly { minGuests: number; vnd: number; usd: number }[];
+  maxGuests: number;
+}
+
+/** Tier for this many guests (adults + children), or null outside [first tier, maxGuests]. */
+export function privateTier(pricing: PrivatePricing, guests: number) {
+  if (guests > pricing.maxGuests) return null;
+  return [...pricing.tiers].reverse().find((t) => guests >= t.minGuests) ?? null;
+}
+
+/** Quote for a private tour: tier price per adult, children at the usual child rate. */
+export function privateQuote(pricing: PrivatePricing, party: { adults: number; children: number }): Quote | null {
+  const tier = privateTier(pricing, party.adults + party.children);
+  return tier ? quote(tier.vnd, party) : null;
+}
+
 /** Today's date in Vietnam (UTC+7, no DST) as YYYY-MM-DD. */
 export function vietnamToday(now: Date): string {
   return new Date(now.getTime() + 7 * 3_600_000).toISOString().slice(0, 10);

@@ -4,10 +4,10 @@ import type { Logger } from "@/core/logger";
 import type { RateLimiter } from "@/core/security/rate-limit";
 import type { Db } from "@/db/client";
 import { bookings, departures, type Booking, type Departure } from "../schema/booking";
-import { addDays, bookingRules, isBookableDate, quote, vietnamToday } from "./rules";
-import { bookingInputSchema } from "./validations";
+import { addDays, bookingRules, isBookableDate, privateQuote, privateTier, quote, vietnamToday, type PrivatePricing } from "./rules";
+import { bookingInputSchema, privateBookingInputSchema } from "./validations";
 
-export type BookingField = "departureId" | "name" | "email" | "phone" | "adults" | "children" | "infants" | "note" | "agree";
+export type BookingField = "departureId" | "tourSlug" | "date" | "name" | "email" | "phone" | "adults" | "children" | "infants" | "note" | "agree";
 export type BookingFieldError = "required" | "invalid" | "too_long" | "too_many" | "must_agree";
 
 export type HoldResult =
@@ -37,6 +37,11 @@ export interface BookingService {
   getDeparture(id: string): Promise<DepartureView | null>;
   /** Validates, re-counts seats under a row lock and holds them for bookingRules.holdMinutes. */
   hold(raw: Record<string, unknown>, clientKey: string): Promise<HoldResult>;
+  /**
+   * Private tour: the guest picks any bookable date and the group size; a private departure is created for this
+   * booking alone (capacity = its seats), priced by the tour's private tiers, and held like a group booking.
+   */
+  holdPrivate(raw: Record<string, unknown>, clientKey: string): Promise<HoldResult>;
   /** Guest lookup: a wrong code or token both give null (indistinguishable). */
   getForGuest(code: string, token: string): Promise<BookingView | null>;
   /** Marks stale holds as expired. Returns how many. */
@@ -57,6 +62,8 @@ export function createBookingService(deps: {
   rateLimiter: RateLimiter;
   /** Adult list price of a tour (VND), null if the tour does not exist. */
   tourPrice: (slug: string) => number | null;
+  /** Private tour pricing of a tour, null if it has none. */
+  tourPrivate?: (slug: string) => PrivatePricing | null;
   now?: () => Date;
 }): BookingService {
   const { db } = deps;
@@ -77,6 +84,37 @@ export function createBookingService(deps: {
     return { ...d, seatsLeft, unitPriceVnd: d.priceVnd ?? listPrice, bookable: d.status === "open" && seatsLeft > 0 && isBookableDate(d.date, at) };
   };
 
+  const invalid = (issues: { path: PropertyKey[]; message: string }[]): HoldResult => {
+    const fieldErrors: Partial<Record<BookingField, BookingFieldError>> = {};
+    for (const issue of issues) fieldErrors[issue.path[0] as BookingField] ??= FIELD_ERRORS.find((e) => e === issue.message) ?? "invalid";
+    return { status: "invalid", fieldErrors };
+  };
+
+  type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
+  type Party = { name: string; email: string; phone: string; note: string; locale: string; adults: number; children: number; infants: number };
+  const insertHeld = async (tx: Tx, departureId: string, input: Party, q: ReturnType<typeof quote>, token: string, at: Date): Promise<HoldResult> => {
+    const code = newCode();
+    await tx.insert(bookings).values({
+      code,
+      tokenHash: hashToken(token),
+      departureId,
+      holdExpiresAt: new Date(at.getTime() + bookingRules.holdMinutes * 60_000),
+      name: input.name,
+      email: input.email,
+      phone: input.phone,
+      note: input.note,
+      locale: input.locale,
+      adults: input.adults,
+      children: input.children,
+      infants: input.infants,
+      seats: q.seats,
+      unitPriceVnd: q.unitPriceVnd,
+      totalVnd: q.totalVnd,
+      depositVnd: q.depositVnd,
+    });
+    return { status: "held", code, token };
+  };
+
   return {
     async listDepartures(tourSlug) {
       const at = now();
@@ -84,7 +122,7 @@ export function createBookingService(deps: {
       const rows = await db
         .select({ d: departures, taken: takenSql(at) })
         .from(departures)
-        .where(and(eq(departures.tourSlug, tourSlug), gte(departures.date, today), lte(departures.date, addDays(today, 366))))
+        .where(and(eq(departures.tourSlug, tourSlug), eq(departures.kind, "group"), gte(departures.date, today), lte(departures.date, addDays(today, 366))))
         .orderBy(asc(departures.date));
       return rows.map((r) => view(r.d, r.taken, at)).filter((v) => v !== null);
     },
@@ -92,7 +130,7 @@ export function createBookingService(deps: {
     async getDeparture(id) {
       if (!UUID.test(id)) return null;
       const at = now();
-      const [row] = await db.select({ d: departures, taken: takenSql(at) }).from(departures).where(eq(departures.id, id));
+      const [row] = await db.select({ d: departures, taken: takenSql(at) }).from(departures).where(and(eq(departures.id, id), eq(departures.kind, "group")));
       return row ? view(row.d, row.taken, at) : null;
     },
 
@@ -103,13 +141,7 @@ export function createBookingService(deps: {
         return { status: "rate_limited" };
       }
       const parsed = bookingInputSchema.safeParse(raw);
-      if (!parsed.success) {
-        const fieldErrors: Partial<Record<BookingField, BookingFieldError>> = {};
-        for (const issue of parsed.error.issues) {
-          fieldErrors[issue.path[0] as BookingField] ??= FIELD_ERRORS.find((e) => e === issue.message) ?? "invalid";
-        }
-        return { status: "invalid", fieldErrors };
-      }
+      if (!parsed.success) return invalid(parsed.error.issues);
       if (!(await deps.rateLimiter.limit(clientKey)).success) return { status: "rate_limited" };
       const input = parsed.data;
       const token = randomBytes(24).toString("base64url");
@@ -119,7 +151,7 @@ export function createBookingService(deps: {
         // Row lock: concurrent holds on the same departure run one after another, so seats are never oversold.
         const [departure] = await tx.select().from(departures).where(eq(departures.id, input.departureId)).for("update");
         const listPrice = departure ? deps.tourPrice(departure.tourSlug) : null;
-        if (!departure || listPrice === null || departure.status !== "open" || !isBookableDate(departure.date, at)) return { status: "unavailable" };
+        if (!departure || departure.kind !== "group" || listPrice === null || departure.status !== "open" || !isBookableDate(departure.date, at)) return { status: "unavailable" };
 
         await tx
           .update(bookings)
@@ -134,28 +166,37 @@ export function createBookingService(deps: {
         const seatsLeft = departure.capacity - (row?.taken ?? 0);
         if (q.seats > seatsLeft) return { status: "sold_out", seatsLeft: Math.max(0, seatsLeft) };
 
-        const code = newCode();
-        await tx.insert(bookings).values({
-          code,
-          tokenHash: hashToken(token),
-          departureId: departure.id,
-          holdExpiresAt: new Date(at.getTime() + bookingRules.holdMinutes * 60_000),
-          name: input.name,
-          email: input.email,
-          phone: input.phone,
-          note: input.note,
-          locale: input.locale,
-          adults: input.adults,
-          children: input.children,
-          infants: input.infants,
-          seats: q.seats,
-          unitPriceVnd: q.unitPriceVnd,
-          totalVnd: q.totalVnd,
-          depositVnd: q.depositVnd,
-        });
-        return { status: "held", code, token };
+        return insertHeld(tx, departure.id, input, q, token, at);
       });
       if (result.status === "held") deps.logger.info("booking.held", { code: result.code });
+      return result;
+    },
+
+    async holdPrivate(raw, clientKey) {
+      if (typeof raw.website === "string" && raw.website.length > 0) {
+        deps.logger.warn("booking.honeypot");
+        return { status: "rate_limited" };
+      }
+      const parsed = privateBookingInputSchema.safeParse(raw);
+      if (!parsed.success) return invalid(parsed.error.issues);
+      const input = parsed.data;
+      const at = now();
+      const pricing = deps.tourPrivate?.(input.tourSlug) ?? null;
+      if (!pricing || deps.tourPrice(input.tourSlug) === null) return { status: "unavailable" };
+      if (!isBookableDate(input.date, at) || input.date > addDays(vietnamToday(at), 366)) return { status: "invalid", fieldErrors: { date: "invalid" } };
+      const q = privateQuote(pricing, input);
+      if (!q) return { status: "invalid", fieldErrors: { adults: input.adults + input.children > pricing.maxGuests ? "too_many" : "invalid" } };
+      if (!(await deps.rateLimiter.limit(clientKey)).success) return { status: "rate_limited" };
+      const token = randomBytes(24).toString("base64url");
+
+      const result = await db.transaction(async (tx): Promise<HoldResult> => {
+        const [departure] = await tx
+          .insert(departures)
+          .values({ tourSlug: input.tourSlug, date: input.date, capacity: q.seats, priceVnd: privateTier(pricing, q.seats)!.vnd, kind: "private" })
+          .returning({ id: departures.id });
+        return insertHeld(tx, departure!.id, input, q, token, at);
+      });
+      if (result.status === "held") deps.logger.info("booking.held_private", { code: result.code });
       return result;
     },
 

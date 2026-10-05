@@ -21,6 +21,7 @@ export type BookingFilter = BookingStatus | "attention" | "all";
 export interface AdminBookingRow extends Pick<Booking, "id" | "code" | "status" | "name" | "email" | "phone" | "seats" | "totalVnd" | "depositVnd" | "refundDueVnd" | "refundedAt" | "createdAt" | "source" | "externalRef"> {
   tourSlug: string;
   date: string;
+  kind: Departure["kind"];
 }
 
 export interface AdminDepartureRow extends Departure {
@@ -134,6 +135,7 @@ export function createBookingAdmin(deps: {
           externalRef: bookings.externalRef,
           tourSlug: departures.tourSlug,
           date: departures.date,
+          kind: departures.kind,
         })
         .from(bookings)
         .innerJoin(departures, eq(departures.id, bookings.departureId))
@@ -233,7 +235,7 @@ export function createBookingAdmin(deps: {
           // Same lock as online holds: the website, OTAs and staff share one seat count.
           const [departure] = await tx.select().from(departures).where(eq(departures.id, input.departureId)).for("update");
           // Staff may enter bookings inside the online cut-off, but not on a past or closed date.
-          if (!departure || departure.status !== "open" || departure.date < vietnamToday(at)) return { status: "unavailable" };
+          if (!departure || departure.kind !== "group" || departure.status !== "open" || departure.date < vietnamToday(at)) return { status: "unavailable" };
           const [row] = await tx
             .select({ taken: sql<number>`coalesce(sum(${bookings.seats}), 0)::int` })
             .from(bookings)
@@ -277,7 +279,8 @@ export function createBookingAdmin(deps: {
     },
 
     async listDepartures({ tourSlug, from, to }) {
-      const where = [gte(departures.date, from), lte(departures.date, to)];
+      // Private departures belong to one booking each: they are managed from the booking, not here.
+      const where = [gte(departures.date, from), lte(departures.date, to), eq(departures.kind, "group")];
       if (tourSlug) where.push(eq(departures.tourSlug, tourSlug));
       const rows = await db
         .select({ d: departures, ...seatCounts(now()) })

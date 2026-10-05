@@ -141,7 +141,10 @@ export default async function AdminBookingsPage({ params, searchParams }: Props)
                 </td>
                 <td className="py-2 pr-4">
                   {b.date}
-                  <span className="block text-xs text-muted-foreground">{title(b.tourSlug)}</span>
+                  <span className="block text-xs text-muted-foreground">
+                    {title(b.tourSlug)}
+                    {b.kind === "private" && <strong className="ml-1 font-semibold text-foreground">· {c.privateTour}</strong>}
+                  </span>
                 </td>
                 <td className="py-2 pr-4">
                   {b.name}

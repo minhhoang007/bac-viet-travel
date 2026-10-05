@@ -26,6 +26,19 @@ export async function holdSeats(_prev: HoldFormState, formData: FormData): Promi
   redirect(localePath(localeOf(formData), `/booking/${result.code}?t=${result.token}`));
 }
 
+/** Private tour: same as holdSeats, with a guest-chosen date and group size. */
+export async function holdPrivateSeats(_prev: HoldFormState, formData: FormData): Promise<HoldFormState> {
+  const raw = Object.fromEntries(formData);
+  let result: HoldResult;
+  try {
+    result = await getBooking().holdPrivate(raw, clientKeyFrom(await headers()));
+  } catch {
+    return { status: "error" };
+  }
+  if (result.status !== "held") return result;
+  redirect(localePath(localeOf(formData), `/booking/${result.code}?t=${result.token}`));
+}
+
 /** Starts a VNPay deposit for a held booking and sends the guest to VNPay. */
 export async function startDeposit(_prev: DepositFormState, formData: FormData): Promise<DepositFormState> {
   const code = String(formData.get("code") ?? "");

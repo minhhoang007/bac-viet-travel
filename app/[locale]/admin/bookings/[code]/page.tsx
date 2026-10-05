@@ -74,7 +74,7 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
         <section className="rounded-lg border border-border p-4">
           <h2 className="font-semibold">{c.detail.trip}</h2>
           <dl className="mt-2 grid grid-cols-[110px_1fr] gap-1 text-sm">
-            {row(c.tour, title)}
+            {row(c.tour, d.kind === "private" ? <>{title} · <strong data-testid="private-tour">{c.privateTour}</strong></> : title)}
             {row(c.columns.date, <span className="capitalize">{formatDay(d.date, locale)}</span>)}
             {row(g.adults, b.adults)}
             {row(g.children, b.children)}

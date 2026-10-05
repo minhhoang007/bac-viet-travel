@@ -25,6 +25,16 @@ const tourSchema = z.object({
   featured: z.boolean().default(false),
   /** Display order inside a destination (lower first). */
   order: z.number().int().default(100),
+  /** Private tour (own vehicle, guide and date): price per person by group size. Absent = group tours only. */
+  private: z
+    .object({
+      tiers: z
+        .array(z.object({ minGuests: z.number().int().min(1), vnd: z.number().int().positive(), usd: z.number().positive() }))
+        .min(1)
+        .refine((t) => t.every((x, i) => i === 0 || x.minGuests > t[i - 1]!.minGuests), "tiers must be sorted by minGuests"),
+      maxGuests: z.number().int().min(1).max(50),
+    })
+    .optional(),
 });
 
 export type TourData = z.infer<typeof tourSchema>;

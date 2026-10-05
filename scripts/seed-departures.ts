@@ -37,7 +37,7 @@ try {
     const rows = await sql`
       insert into departures (tour_slug, date, capacity)
       select ${slug}, d::date, ${capacity} from unnest(${dates}::text[]) as d
-      on conflict (tour_slug, date) do nothing
+      on conflict (tour_slug, date) where kind = 'group' do nothing
       returning id, date, capacity`;
     added += rows.length;
 

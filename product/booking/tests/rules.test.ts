@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { bookingInputSchema } from "../validations";
-import { addDays, isBookableDate, quote, vietnamToday } from "../rules";
+import { addDays, isBookableDate, privateQuote, privateTier, quote, vietnamToday } from "../rules";
 
 describe("booking rules", () => {
   it("prices children at 75% and the deposit at 30%, both rounded up to 1,000 VND", () => {
@@ -11,6 +11,16 @@ describe("booking rules", () => {
       totalVnd: 5_198_000,
       depositVnd: 1_560_000,
     });
+  });
+
+  it("private tours: price per guest by group size (adults + children), children at 75%, limits enforced", () => {
+    const pricing = { maxGuests: 8, tiers: [{ minGuests: 2, vnd: 3_000_000, usd: 120 }, { minGuests: 4, vnd: 2_000_000, usd: 80 }] };
+    expect(privateTier(pricing, 1)).toBeNull();
+    expect(privateTier(pricing, 3)?.vnd).toBe(3_000_000);
+    expect(privateTier(pricing, 4)?.vnd).toBe(2_000_000);
+    expect(privateTier(pricing, 9)).toBeNull();
+    expect(privateQuote(pricing, { adults: 3, children: 1 })).toEqual({ seats: 4, unitPriceVnd: 2_000_000, childPriceVnd: 1_500_000, totalVnd: 7_500_000, depositVnd: 2_250_000 });
+    expect(privateQuote(pricing, { adults: 1, children: 0 })).toBeNull();
   });
 
   it("uses Vietnam time for today and enforces the 2-day cutoff", () => {

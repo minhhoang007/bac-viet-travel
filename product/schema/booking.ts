@@ -15,10 +15,13 @@ export const departures = pgTable(
     /** Adult price for this departure; null = the tour's list price. */
     priceVnd: integer("price_vnd"),
     status: text("status", { enum: ["open", "closed"] }).notNull().default("open"),
+    /** group: shared seats, listed for guests. private: created by one private booking (capacity = its seats), never listed. */
+    kind: text("kind", { enum: ["group", "private"] }).notNull().default("group"),
     ...timestamps(),
   },
   (t) => [
-    uniqueIndex("departures_tour_date_idx").on(t.tourSlug, t.date),
+    // One group departure per tour and day; private departures may share the day.
+    uniqueIndex("departures_tour_date_idx").on(t.tourSlug, t.date).where(sql`${t.kind} = 'group'`),
     check("departures_capacity_check", sql`${t.capacity} > 0`),
   ],
 );

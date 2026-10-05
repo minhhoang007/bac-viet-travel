@@ -23,6 +23,24 @@ export const bookingInputSchema = z
 
 export type BookingInput = z.infer<typeof bookingInputSchema>;
 
+/** Private tour: the guest picks the date; seat limits come from the tour's private pricing (checked in the service). */
+export const privateBookingInputSchema = z
+  .object({
+    tourSlug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "invalid"),
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "invalid"),
+    name: z.string().trim().min(2, "required").max(100, "too_long"),
+    email: z.email("invalid").max(200, "too_long"),
+    phone: z.string().trim().regex(/^\+?[0-9 ().-]{8,20}$/, "invalid"),
+    adults: count(1, 50),
+    children: count(0, 50).default(0),
+    infants: count(0, bookingRules.maxInfants).default(0),
+    note: z.string().trim().max(1000, "too_long").default(""),
+    locale: z.enum(["vi", "en"]).catch("vi"),
+    agree: z.literal("on", { message: "must_agree" }),
+  });
+
+export type PrivateBookingInput = z.infer<typeof privateBookingInputSchema>;
+
 /**
  * Staff-entered booking (phone, Zalo, OTA). Paid outside the website, so it is created directly as deposit_paid or
  * confirmed. Email is optional (OTAs often hide it); amountVnd is what the company actually receives.

@@ -71,3 +71,25 @@ test("English booking page shows prices in VND with a note", async ({ page }) =>
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Book:");
   await expect(page.getByTestId("quote")).toContainText("Charged in Vietnamese dong (VND).");
 });
+
+test("private tour: tour page offer → guest picks the date and group size, price by tier, then a held booking", async ({ page }) => {
+  await page.goto(TOUR);
+  await expect(page.getByTestId("private-offer")).toContainText("Tour riêng từ");
+  await page.getByRole("link", { name: "Đặt tour riêng" }).click();
+  await expect(page).toHaveURL(new RegExp(`${TOUR}/book[?]type=private$`));
+  await expect(page.getByRole("link", { name: "Tour riêng" })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByTestId("departures")).toHaveCount(0);
+
+  await page.getByLabel("Người lớn").fill("1");
+  await expect(page.getByTestId("private-range")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Giữ chỗ 15 phút" })).toBeDisabled();
+
+  await page.getByLabel("Người lớn").fill("4");
+  await expect(page.getByTestId("private-tiers").locator("li.font-semibold")).toContainText("3–4 khách");
+  await page.getByLabel("Họ tên").fill("Nguyễn Văn Riêng");
+  await page.getByLabel("Email").fill("rieng@example.com");
+  await page.getByLabel("Số điện thoại / WhatsApp").fill("0912 345 679");
+  await page.getByRole("checkbox", { name: /Tôi đồng ý/ }).check();
+  await page.getByRole("button", { name: "Giữ chỗ 15 phút" }).click();
+  await expect(page).toHaveURL(/\/booking\/BV-[A-Z2-9]{6}\?t=[\w-]{20,}$/);
+});

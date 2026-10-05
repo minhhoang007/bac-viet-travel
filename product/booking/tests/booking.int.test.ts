@@ -10,12 +10,15 @@ const { db, close } = testDb();
 const logger = createLogger({ write: () => {} });
 let clock = new Date("2026-10-01T03:00:00Z");
 
+const PRIVATE = { maxGuests: 10, tiers: [{ minGuests: 2, vnd: 3_000_000, usd: 120 }, { minGuests: 4, vnd: 2_500_000, usd: 100 }] };
+
 const service = (max = 1_000) =>
   createBookingService({
     db,
     logger,
     rateLimiter: createMemoryRateLimiter({ max, windowMs: 60_000 }),
     tourPrice: (slug) => (slug === "ha-long-cruise-2d1n" ? 2_000_000 : null),
+    tourPrivate: (slug) => (slug === "ha-long-cruise-2d1n" ? PRIVATE : null),
     now: () => clock,
   });
 
@@ -104,5 +107,37 @@ describe("booking holds", () => {
     await limited.hold(guest(d.id), "same");
     expect((await limited.hold(guest(d.id), "same")).status).toBe("rate_limited");
     expect((await db.select().from(bookings)).length).toBe(2);
+  });
+
+  describe("private tours", () => {
+    const privateGuest = (extra: Record<string, unknown> = {}) => ({
+      tourSlug: "ha-long-cruise-2d1n", date: "2026-10-10", name: "Nguyễn Lan", email: "lan@example.com", phone: "0912345678", adults: "4", locale: "vi", agree: "on", ...extra,
+    });
+
+    it("creates its own departure (capacity = group), priced by tier, held like a group booking; never listed", async () => {
+      // A group departure on the same day stays untouched (the unique day index only covers group departures).
+      const [group] = await db.insert(departures).values({ tourSlug: "ha-long-cruise-2d1n", date: "2026-10-10", capacity: 4 }).returning();
+      const held = await service().holdPrivate(privateGuest({ children: "1" }), "ip");
+      expect(held.status).toBe("held");
+      const [b] = await db.select().from(bookings).where(eq(bookings.code, (held as { code: string }).code));
+      expect(b).toMatchObject({ status: "held", seats: 5, unitPriceVnd: 2_500_000, totalVnd: 4 * 2_500_000 + 1_875_000 });
+      const [d] = await db.select().from(departures).where(eq(departures.id, b!.departureId));
+      expect(d).toMatchObject({ kind: "private", capacity: 5, date: "2026-10-10", priceVnd: 2_500_000 });
+
+      expect((await service().listDepartures("ha-long-cruise-2d1n")).map((x) => x.id)).toEqual([group!.id]);
+      expect((await service().getDeparture(group!.id))!.seatsLeft).toBe(4);
+      expect(await service().getDeparture(d!.id)).toBeNull();
+      // A group hold cannot target a private departure.
+      expect((await service().hold(guest(d!.id), "ip")).status).toBe("unavailable");
+    });
+
+    it("refuses group sizes outside the tiers, dates inside the cut-off, and tours without private pricing", async () => {
+      expect(await service().holdPrivate(privateGuest({ adults: "1" }), "ip")).toMatchObject({ status: "invalid", fieldErrors: { adults: "invalid" } });
+      expect(await service().holdPrivate(privateGuest({ adults: "8", children: "3" }), "ip")).toMatchObject({ status: "invalid", fieldErrors: { adults: "too_many" } });
+      expect(await service().holdPrivate(privateGuest({ date: "2026-10-02" }), "ip")).toMatchObject({ status: "invalid", fieldErrors: { date: "invalid" } });
+      expect(await service().holdPrivate(privateGuest({ agree: undefined }), "ip")).toMatchObject({ status: "invalid", fieldErrors: { agree: "must_agree" } });
+      expect((await service().holdPrivate(privateGuest({ tourSlug: "sapa-trekking-2d1n" }), "ip")).status).toBe("unavailable");
+      expect(await db.select().from(departures)).toEqual([]);
+    });
   });
 });

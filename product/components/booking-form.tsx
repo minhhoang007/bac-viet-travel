@@ -9,7 +9,7 @@ import { cn } from "@/components/ui/cn";
 import type { Locale } from "@/config/app";
 import { localePath } from "@/core/i18n/routing";
 import { formatDay, formatVnd, getBookingContent } from "../booking/content";
-import { quote } from "../booking/rules";
+import { privateQuote, privateTier, quote, type PrivatePricing } from "../booking/rules";
 import type { BookingField, HoldResult } from "../booking/service";
 
 export interface DepartureOption {
@@ -24,11 +24,21 @@ export interface DepartureOption {
 type State =
   Exclude<HoldResult, { status: "held" }> | { status: "error" } | null;
 
+/** Private mode: the guest picks any date in [minDate, maxDate] and the group size; price per person by tier. */
+export interface PrivateTourOption {
+  tourSlug: string;
+  pricing: PrivatePricing;
+  minDate: string;
+  maxDate: string;
+}
+
 export interface BookingFormProps {
   action: (prev: State, formData: FormData) => Promise<State>;
   departures: DepartureOption[];
   initialDepartureId?: string;
   locale: Locale;
+  /** Set: private tour form (no departure list). */
+  privateTour?: PrivateTourOption;
 }
 
 export function BookingForm({
@@ -36,6 +46,7 @@ export function BookingForm({
   departures,
   initialDepartureId,
   locale,
+  privateTour,
 }: BookingFormProps) {
   const t = getBookingContent(locale);
   const [state, formAction, pending] = useActionState(action, null);
@@ -47,8 +58,16 @@ export function BookingForm({
   );
   const [adults, setAdults] = useState(2);
   const [children, setChildren] = useState(0);
-  const chosen = departures.find((d) => d.id === departureId);
-  const q = chosen ? quote(chosen.unitPriceVnd, { adults, children }) : null;
+  const [date, setDate] = useState(privateTour?.minDate ?? "");
+  const group = departures.find((d) => d.id === departureId);
+  // One shape for both modes: the chosen day, and the quote for it.
+  const chosen = privateTour ? (date ? { date } : undefined) : group;
+  const q = privateTour
+    ? privateQuote(privateTour.pricing, { adults, children })
+    : group
+      ? quote(group.unitPriceVnd, { adults, children })
+      : null;
+  const guestsOutOfRange = Boolean(privateTour) && q === null;
 
   const error = (field: BookingField) => {
     const code =
@@ -89,7 +108,7 @@ export function BookingForm({
           ? t.seatsLeft(d.seatsLeft)
           : t.tooSoon;
 
-  if (departures.length === 0)
+  if (!privateTour && departures.length === 0)
     return (
       <p className="rounded-md border border-border bg-muted p-4 text-sm">
         {t.noDepartures}
@@ -103,12 +122,52 @@ export function BookingForm({
       noValidate
     >
       <input type="hidden" name="locale" value={locale} />
-      <input type="hidden" name="departureId" value={departureId ?? ""} />
+      {privateTour ? (
+        <input type="hidden" name="tourSlug" value={privateTour.tourSlug} />
+      ) : (
+        <input type="hidden" name="departureId" value={departureId ?? ""} />
+      )}
       <div className="absolute -left-[9999px]" aria-hidden="true">
         <input type="text" name="website" tabIndex={-1} autoComplete="off" />
       </div>
 
       <div className="grid gap-8">
+{privateTour ? (
+        <fieldset>
+          <legend className="text-lg font-semibold">{t.privateDateTitle}</legend>
+          <div className="mt-3 grid gap-4 sm:grid-cols-[220px_1fr]">
+            <div>
+              <Label htmlFor="booking-date">{t.privateDate}</Label>
+              <Input
+                {...aria("date")}
+                type="date"
+                min={privateTour.minDate}
+                max={privateTour.maxDate}
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="mt-1"
+                required
+              />
+              {message("date")}
+            </div>
+            <div className="text-sm">
+              <p className="font-medium">{t.privateTiersTitle}</p>
+              <ul className="mt-1 grid gap-1 text-muted-foreground" data-testid="private-tiers">
+                {privateTour.pricing.tiers.map((tier, i) => {
+                  const next = privateTour.pricing.tiers[i + 1];
+                  const active = q !== null && privateTier(privateTour.pricing, adults + children) === tier;
+                  return (
+                    <li key={tier.minGuests} className={cn(active && "font-semibold text-foreground")}>
+                      {t.tierLine(tier.minGuests, next ? next.minGuests - 1 : privateTour.pricing.maxGuests)}: {formatVnd(tier.vnd, locale)}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </div>
+        </fieldset>
+
+        ) : (
         <fieldset>
           <legend className="text-lg font-semibold">{t.departuresTitle}</legend>
           <ul
@@ -159,6 +218,7 @@ export function BookingForm({
           </ul>
           {message("departureId")}
         </fieldset>
+        )}
 
         <fieldset className="grid gap-4">
           <legend className="text-lg font-semibold">{t.formTitle}</legend>
@@ -203,7 +263,7 @@ export function BookingForm({
                 {...aria("adults")}
                 type="number"
                 min={1}
-                max={10}
+                max={privateTour?.pricing.maxGuests ?? 10}
                 value={adults}
                 onChange={(e) =>
                   setAdults(Math.max(0, Number(e.target.value) || 0))
@@ -305,6 +365,11 @@ export function BookingForm({
           </label>
           {message("agree")}
         </div>
+        {guestsOutOfRange && privateTour && (
+          <p className="mt-4 text-sm text-red-700" data-testid="private-range">
+            {t.privateRange(privateTour.pricing.tiers[0]!.minGuests, privateTour.pricing.maxGuests)}
+          </p>
+        )}
         {formError && (
           <p
             role="alert"
@@ -316,7 +381,7 @@ export function BookingForm({
         <Button
           type="submit"
           className="mt-4 w-full"
-          disabled={pending || !chosen}
+          disabled={pending || !chosen || !q}
         >
           {pending ? t.sending : t.submit}
         </Button>

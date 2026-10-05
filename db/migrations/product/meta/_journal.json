@@ -29,6 +29,13 @@
       "when": 1791199530144,
       "tag": "0003_pale_guardsmen",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791200241537,
+      "tag": "0004_parallel_colleen_wing",
+      "breakpoints": true
     }
   ]
 }

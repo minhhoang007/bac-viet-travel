@@ -15,7 +15,7 @@ import { seoSite } from "@/core/seo/site";
 import type { Locale } from "@/config/app";
 import { contactConfig, whatsappUrl, zaloUrl } from "@/config/contact";
 import { features } from "@/config/features";
-import { getBookingContent } from "@/product/booking/content";
+import { formatVnd, getBookingContent } from "@/product/booking/content";
 import { InquiryForm } from "@/product/components/inquiry-form";
 import { TourCard } from "@/product/components/tour-card";
 import { getProductContent } from "@/product/content";
@@ -200,6 +200,15 @@ export default async function TourPage({ params }: Props) {
             {b.cta}
           </ButtonLink>
           <p className="mt-1 text-xs text-muted-foreground">{b.ctaHint}</p>
+          {tour.private && (
+            <div className="mt-4 border-t border-border pt-4" data-testid="private-offer">
+              <p className="text-sm font-medium">{b.privateFrom(formatVnd(tour.private.tiers.at(-1)!.vnd, locale))}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{b.privateHint}</p>
+              <ButtonLink href={localePath(locale, `/tours/${slug}/book?type=private`)} variant="outline" className="mt-2 w-full">
+                {b.privateCta}
+              </ButtonLink>
+            </div>
+          )}
           <h2 className="mt-5 border-t border-border pt-4 text-lg font-semibold">{c.inquiry.title}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{c.inquiry.subtitle}</p>
           <div className="mt-4">
