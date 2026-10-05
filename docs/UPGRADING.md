@@ -37,6 +37,9 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
+### v1.1.1 (2026-10-05) — CI in projects
+- No migration. `.github/workflows/ci.yml`: take the starter's version (projects now run their own E2E with a Postgres service; the example-app job is skipped in projects).
+
 ### v1.1.0 (2026-10-05) — CMS groundwork
 Two starter migrations: create a Neon branch, run `pnpm db:migrate` against it and the E2E suite, then migrate production. Both only add tables (unused while `media` / `content` are off).
 
