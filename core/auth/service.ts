@@ -1,8 +1,16 @@
 import { AppError } from "@/core/errors";
 import type { RateLimiter } from "@/core/security/rate-limit";
+import { ROLES } from "@/core/users/schema";
 import type { BetterAuthInstance } from "./adapters/better-auth";
 
-export type Role = "user" | "admin";
+export type Role = (typeof ROLES)[number];
+
+/** Roles are ordered: each one includes the rights of those before it (admin ⊇ editor ⊇ user). */
+export function hasRole(user: { role: Role }, required: Role): boolean {
+  return ROLES.indexOf(user.role) >= ROLES.indexOf(required);
+}
+
+const toRole = (value: unknown): Role => (ROLES as readonly unknown[]).includes(value) ? (value as Role) : "user";
 
 export interface AuthUser {
   id: string;
@@ -19,7 +27,7 @@ export interface AuthService {
   getUser(headers: Headers): Promise<AuthUser | null>;
   /** Throws AUTH_ERROR when not signed in. */
   requireUser(headers: Headers): Promise<AuthUser>;
-  /** Throws AUTH_ERROR / PERMISSION_ERROR. */
+  /** Throws AUTH_ERROR / PERMISSION_ERROR. Hierarchical: requireRole(h, "editor") also admits admins. */
   requireRole(headers: Headers, role: Role): Promise<AuthUser>;
   /**
    * Rate limited per client and per recipient (throws RATE_LIMIT_ERROR). Server-side `auth.api.*` calls bypass
@@ -56,7 +64,7 @@ export function createAuthService(
     if (!session) return null;
     const u = session.user as typeof session.user & { role?: string; status?: string };
     if (u.status === "disabled") return null;
-    return { id: u.id, email: u.email, name: u.name, image: u.image ?? null, role: u.role === "admin" ? "admin" : "user" };
+    return { id: u.id, email: u.email, name: u.name, image: u.image ?? null, role: toRole(u.role) };
   };
 
   const requireUser = async (headers: Headers) => {
@@ -71,7 +79,7 @@ export function createAuthService(
     requireUser,
     async requireRole(headers, role) {
       const user = await requireUser(headers);
-      if (role === "admin" && user.role !== "admin") throw new AppError("PERMISSION_ERROR");
+      if (!hasRole(user, role)) throw new AppError("PERMISSION_ERROR");
       return user;
     },
     async signInMagicLink({ email, callbackURL, errorCallbackURL, clientKey }, headers) {

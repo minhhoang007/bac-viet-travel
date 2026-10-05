@@ -5,6 +5,9 @@ import { retryJob } from "@/app/actions/admin";
 import { ResultNotice } from "@/components/admin/result-notice";
 import type { Locale } from "@/config/app";
 import { getAppContent } from "@/content";
+import { SubmitButton } from "@/components/forms/submit-button";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { EmptyState } from "@/components/feedback/empty-state";
 import { PageHeader } from "@/components/app-shell/page-header";
 
 type Props = { params: Promise<{ locale: Locale }>; searchParams: Promise<{ result?: string }> };
@@ -23,44 +26,40 @@ export default async function AdminJobsPage({ params, searchParams }: Props) {
       <PageHeader title={c.jobs.title} />
       <ResultNotice result={result} done={c.done} failed={c.failed} />
       {jobs.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{c.jobs.empty}</p>
+        <EmptyState title={c.jobs.empty} />
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="text-muted-foreground">
-              <tr>
-                <th className="py-2 pr-4 font-medium">{c.jobs.name}</th>
-                <th className="py-2 pr-4 font-medium">{c.users.status}</th>
-                <th className="py-2 pr-4 font-medium">{c.jobs.attempts}</th>
-                <th className="py-2 pr-4 font-medium">{c.jobs.lastError}</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {jobs.map((job) => (
-                <tr key={job.id} className="border-t border-border align-top" data-job-status={job.status}>
-                  <td className="py-2 pr-4 font-mono text-xs">{job.name}</td>
-                  <td className="py-2 pr-4">{job.status}</td>
-                  <td className="py-2 pr-4 tabular-nums">
-                    {job.attempts}/{job.maxAttempts}
-                  </td>
-                  <td className="max-w-xs truncate py-2 pr-4 text-muted-foreground" title={job.lastError ?? ""}>
-                    {job.lastError}
-                  </td>
-                  <td className="py-2">
-                    <form action={retryJob}>
-                      <input type="hidden" name="locale" value={locale} />
-                      <input type="hidden" name="id" value={job.id} />
-                      <button type="submit" className="rounded border border-border px-3 py-1 hover:bg-muted">
-                        {c.jobs.retry}
-                      </button>
-                    </form>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>{c.jobs.name}</TableHead>
+              <TableHead>{c.users.status}</TableHead>
+              <TableHead>{c.jobs.attempts}</TableHead>
+              <TableHead>{c.jobs.lastError}</TableHead>
+              <TableHead />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {jobs.map((job) => (
+              <TableRow key={job.id} className="align-top" data-job-status={job.status}>
+                <TableCell className="font-mono text-xs">{job.name}</TableCell>
+                <TableCell>{job.status}</TableCell>
+                <TableCell className="tabular-nums">
+                  {job.attempts}/{job.maxAttempts}
+                </TableCell>
+                <TableCell className="max-w-xs truncate text-muted-foreground" title={job.lastError ?? ""}>
+                  {job.lastError}
+                </TableCell>
+                <TableCell>
+                  <form action={retryJob}>
+                    <input type="hidden" name="locale" value={locale} />
+                    <input type="hidden" name="id" value={job.id} />
+                    <SubmitButton label={c.jobs.retry} variant="outline" size="sm" />
+                  </form>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       )}
     </div>
   );

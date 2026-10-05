@@ -7,6 +7,7 @@ import { Uploader } from "@/components/storage/uploader";
 import { formatBytes } from "@/components/ui/format-bytes";
 import type { Locale } from "@/config/app";
 import { getAppContent } from "@/content";
+import { SubmitButton } from "@/components/forms/submit-button";
 import { PageHeader } from "@/components/app-shell/page-header";
 
 export default async function FilesPage({ params }: { params: Promise<{ locale: Locale }> }) {
@@ -53,9 +54,7 @@ export default async function FilesPage({ params }: { params: Promise<{ locale: 
               </a>
               <form action={deleteFile}>
                 <input type="hidden" name="id" value={f.id} />
-                <button type="submit" className="rounded border border-border px-3 py-1 hover:bg-muted">
-                  {c.delete}
-                </button>
+                <SubmitButton label={c.delete} variant="outline" size="sm" />
               </form>
             </li>
           ))}

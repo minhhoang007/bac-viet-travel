@@ -34,3 +34,17 @@ export interface ProductJobs {
   /** Run on every jobs tick (Vercel Cron → /api/jobs/run): sweeps, reminders. */
   periodic?: Record<string, () => Promise<void>>;
 }
+
+/**
+ * A staff-edited content type (manifest `contentTypes`, content module, ADR-0009). Keys are the type names.
+ * Paths are locale-less ("/admin/tours/<id>"); the starter adds the locale.
+ */
+export interface ContentTypeDefinition {
+  label: Record<string, string>;
+  /** The project's edit page for an item. */
+  adminPath(id: string): string;
+  /** Public page for a slug (Draft Mode preview opens it). */
+  publicPath(slug: string): string;
+  /** After a publish, hide or unhide (also from the scheduled-publish job): e.g. revalidateTag(...). */
+  onChange?(item: { id: string; type: string; slug: string; publishedSlug: string | null }): Promise<void> | void;
+}

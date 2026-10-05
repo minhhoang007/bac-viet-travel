@@ -60,6 +60,8 @@ export function createProduct(db: Db, ctx: ProductContext) {
 export interface ProductNavItem {
   href: string;
   label: Record<Locale, string>;
+  /** productAdminNav only: roles besides admin that see the entry, e.g. ["editor"] for content pages. */
+  roles?: readonly ("editor" | "admin")[];
 }
 
 /** Dashboard menu entries for product pages (href without locale prefix). */

@@ -42,9 +42,20 @@ test.describe("admin", () => {
     await userPage.goto("/dashboard");
     await expect(userPage.getByRole("link", { name: "Quản trị" })).toHaveCount(0);
 
+    // Editors (content staff) do not reach the starter's admin pages: users, jobs, money, audit.
+    const asEditor = execFileSync(process.execPath, ["scripts/admin-grant.ts", userEmail, "--role", "editor"], { env: { ...process.env, DATABASE_URL: process.env.E2E_DATABASE_URL } }).toString();
+    expect(asEditor).toContain("is now an editor");
+    expect((await userPage.goto("/admin"))?.status()).toBe(404);
+    expect((await userPage.goto("/admin/users"))?.status()).toBe(404);
+
     // First admin comes from the CLI.
     const out = execFileSync(process.execPath, ["scripts/admin-grant.ts", adminEmail], { env: { ...process.env, DATABASE_URL: process.env.E2E_DATABASE_URL } }).toString();
     expect(out).toContain("is now an admin");
+
+    // Media and content modules are off in this app: their pages do not exist, even for admins.
+    expect((await adminPage.goto("/admin/media"))?.status()).toBe(404);
+    expect((await adminPage.goto("/admin/content"))?.status()).toBe(404);
+    expect((await adminPage.request.get("/api/content/preview?id=x")).status()).toBe(404);
 
     await adminPage.goto("/dashboard");
     await adminPage.getByRole("link", { name: "Quản trị" }).click();

@@ -6,6 +6,7 @@ import { ResultNotice } from "@/components/admin/result-notice";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { localePath } from "@/core/i18n/routing";
+import { ROLES } from "@/core/users/schema";
 import { formatBytes } from "@/components/ui/format-bytes";
 import type { Locale } from "@/config/app";
 import { billingConfig } from "@/config/billing";
@@ -90,15 +91,18 @@ export default async function AdminUserPage({ params, searchParams }: Props) {
             {hidden}
             <input type="hidden" name="status" value={user.status === "active" ? "disabled" : "active"} />
           </ConfirmDialog>
-          <ConfirmDialog
-            trigger={user.role === "admin" ? c.users.makeUser : c.users.makeAdmin}
-            title={c.confirmTitle}
-            description={c.users.confirmRole}
-            cancel={c.cancel}
-            action={setUserRole}
-          >
+          <ConfirmDialog trigger={c.users.changeRole} title={c.confirmTitle} description={c.users.confirmRole} cancel={c.cancel} action={setUserRole}>
             {hidden}
-            <input type="hidden" name="role" value={user.role === "admin" ? "user" : "admin"} />
+            <label className="mb-4 grid gap-1 text-sm">
+              {c.users.role}
+              <select name="role" defaultValue={user.role} className="h-10 rounded-md border border-border bg-background px-3">
+                {ROLES.map((r) => (
+                  <option key={r} value={r}>
+                    {c.users.roles[r]}
+                  </option>
+                ))}
+              </select>
+            </label>
           </ConfirmDialog>
         </div>
       )}

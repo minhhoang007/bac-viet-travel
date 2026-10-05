@@ -37,6 +37,40 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
+### v1.1.0 (2026-10-05) — CMS groundwork
+Two starter migrations: create a Neon branch, run `pnpm db:migrate` against it and the E2E suite, then migrate production. Both only add tables (unused while `media` / `content` are off).
+
+#### Editorial workflow (starter migration)
+- **Starter migration** (`content_items`, `content_versions`): run `pnpm db:migrate` (database copy first).
+- New content keys: `admin.nav.content`, `admin.content.*`. New config key `appConfig.timeZone` (projects spreading
+  `appDefaults` get it).
+- To use it: `features.content = true` (needs `admin`; `email` for review emails, `jobs` for scheduled publishing),
+  export `contentTypes` from `product/manifest.ts`, read public content with `readContent(type, slug)` or
+  `container.content.listPublished(type)`, and put `<WorkflowPanel>` on your edit pages.
+- Scheduled publishing runs on the jobs tick: set a frequent cron (Vercel Pro) for timely publishing.
+
+#### Media library (starter migration)
+- **Starter migration** (`media_assets`): run `pnpm db:migrate` (on a database copy first, see Procedure). The table is
+  created even when the module is off.
+- New config pair `config/media.defaults.ts` (starter) / `config/media.ts` (project-owned: set `folder`).
+- New content keys: `admin.nav.media`, `admin.media.*` (projects overriding `content/` must add them).
+- To use it: `features.media = true` (needs `admin`), set `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`,
+  `CLOUDINARY_API_SECRET`. Optional: export `mediaInUse(db, id)` from `product/manifest.ts` to block deleting images
+  your published content uses.
+- `features` gains `media: false` (projects spreading `featureDefaults` get it automatically).
+
+#### Project footer, UI foundation
+- Optional `ProductFooter({ locale })` in `product/layout.tsx` replaces the starter footer.
+- New status tokens `danger` / `warning` / `success`, `Notice`, `Table`; `SubmitButton` gains `variant` / `size`. Project
+  code using raw palette colors keeps working; move it to the tokens when you touch it.
+
+#### Editor role
+- New content keys `admin.users.changeRole`, `admin.users.roles` (projects overriding `content/` must add them).
+- `product/manifest.ts` (project-owned): optionally add `roles?: readonly ("editor" | "admin")[]` to `ProductNavItem`
+  and `roles: ["editor"]` to admin entries editors may open; guard those pages with `requireStaff("editor")`.
+- Code comparing `user.role === "admin"` keeps working; prefer `hasRole(user, "admin")`.
+- No migration.
+
 ### v1.0.2 (2026-10-05) — security: better-auth 1.7.7
 - **Upgrade promptly if Google sign-in is enabled** (Magic Link account takeover, GHSA-965c-763c-88jm). No migration.
 - Pending magic links stop working after deploy; users request a new one.

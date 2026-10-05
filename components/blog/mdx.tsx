@@ -7,7 +7,7 @@ import remarkGfm from "remark-gfm";
 /** Highlighted note inside a post (MDX tag `Callout`, optional `tone="warning"`). */
 export function Callout({ tone = "info", children }: { tone?: "info" | "warning"; children: ReactNode }) {
   return (
-    <aside className={tone === "warning" ? "my-6 rounded-md border border-amber-500/50 bg-amber-500/10 p-4" : "my-6 rounded-md border border-border bg-muted p-4"}>
+    <aside className={tone === "warning" ? "my-6 rounded-md border border-warning/50 bg-warning/10 p-4" : "my-6 rounded-md border border-border bg-muted p-4"}>
       {children}
     </aside>
   );
