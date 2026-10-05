@@ -4,6 +4,11 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-06
+
+### Added — project header and fonts
+- Optional `ProductHeader({ locale })` and `productFontVariables` exports in `product/layout.tsx`: replace the starter header; load fonts with next/font into `--brand-font-sans` / `--brand-font-heading` (Tailwind `font-sans`, `font-heading`; h1–h3 use the heading font). Without them nothing changes.
+
 ## [1.1.1] - 2026-10-05
 
 ### Fixed — CI in projects

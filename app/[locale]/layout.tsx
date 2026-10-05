@@ -24,6 +24,10 @@ export function generateStaticParams() {
 
 // Optional project footer replacing the starter one (product/layout.tsx `ProductFooter`; `in`: projects without it).
 const ProductFooter = "ProductFooter" in productLayout ? (productLayout as { ProductFooter?: (p: { locale: Locale }) => ReactNode }).ProductFooter : undefined;
+// Optional project header replacing the starter one (`ProductHeader`, same contract as ProductFooter).
+const ProductHeader = "ProductHeader" in productLayout ? (productLayout as { ProductHeader?: (p: { locale: Locale }) => ReactNode }).ProductHeader : undefined;
+// Optional next/font class names setting --brand-font-sans / --brand-font-heading (`productFontVariables`).
+const fontVariables = "productFontVariables" in productLayout ? ((productLayout as { productFontVariables?: string }).productFontVariables ?? "") : "";
 
 export default async function LocaleLayout({
   children,
@@ -42,23 +46,27 @@ export default async function LocaleLayout({
   const home = localePath(locale);
 
   return (
-    <html lang={locale}>
+    <html lang={locale} className={fontVariables || undefined}>
       <head>
         {/* Theme variables from config/brand.ts (validated color values only). */}
         <style dangerouslySetInnerHTML={{ __html: themeCss(brand.colors) }} />
       </head>
       <body className="flex min-h-screen flex-col">
         <NextIntlClientProvider>
-          <SiteHeader
-            logoText={brand.logoText}
-            homeHref={home}
-            links={[
-              ...siteNavigation.map((l) => ({ label: l.label[locale as Locale], href: localePath(locale, l.href) })),
-              ...(features.blog ? [{ label: blog.nav, href: localePath(locale, "/blog") }] : []),
-            ]}
-            localeSwitch={{ label: c.nav.switchLocale, href: localePath(other), hrefLang: other }}
-            menu={{ open: c.nav.menu, close: c.nav.close }}
-          />
+          {ProductHeader ? (
+            <ProductHeader locale={locale as Locale} />
+          ) : (
+            <SiteHeader
+              logoText={brand.logoText}
+              homeHref={home}
+              links={[
+                ...siteNavigation.map((l) => ({ label: l.label[locale as Locale], href: localePath(locale, l.href) })),
+                ...(features.blog ? [{ label: blog.nav, href: localePath(locale, "/blog") }] : []),
+              ]}
+              localeSwitch={{ label: c.nav.switchLocale, href: localePath(other), hrefLang: other }}
+              menu={{ open: c.nav.menu, close: c.nav.close }}
+            />
+          )}
           <main className="flex-1">{children}</main>
           {ProductFooter ? (
             <ProductFooter locale={locale as Locale} />
