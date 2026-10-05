@@ -14,12 +14,16 @@ import { AnalyticsTracker } from "@/components/analytics/tracker";
 import { ConsentBanner } from "@/components/analytics/consent-banner";
 import { features } from "@/config/features";
 import { Toaster } from "@/components/ui/sonner";
+import * as productLayout from "@/product/layout";
 import { ProductLayoutExtras } from "@/product/layout";
 import "../globals.css";
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
 }
+
+// Optional project footer replacing the starter one (product/layout.tsx `ProductFooter`; `in`: projects without it).
+const ProductFooter = "ProductFooter" in productLayout ? (productLayout as { ProductFooter?: (p: { locale: Locale }) => ReactNode }).ProductFooter : undefined;
 
 export default async function LocaleLayout({
   children,
@@ -56,15 +60,19 @@ export default async function LocaleLayout({
             menu={{ open: c.nav.menu, close: c.nav.close }}
           />
           <main className="flex-1">{children}</main>
-          <SiteFooter
-            name={appConfig.name}
-            rights={c.footer.rights}
-            year={new Date().getFullYear()}
-            links={[
-              { label: legal.terms, href: localePath(locale, "/terms") },
-              { label: legal.privacy, href: localePath(locale, "/privacy") },
-            ]}
-          />
+          {ProductFooter ? (
+            <ProductFooter locale={locale as Locale} />
+          ) : (
+            <SiteFooter
+              name={appConfig.name}
+              rights={c.footer.rights}
+              year={new Date().getFullYear()}
+              links={[
+                { label: legal.terms, href: localePath(locale, "/terms") },
+                { label: legal.privacy, href: localePath(locale, "/privacy") },
+              ]}
+            />
+          )}
           <ProductLayoutExtras locale={locale as Locale} />
           <Toaster />
           {features.analytics && (
