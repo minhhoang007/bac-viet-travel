@@ -4,6 +4,12 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+### Added — UI foundation
+- Status color tokens `danger` / `warning` / `success` (light and dark, WCAG AA as text) in `app/globals.css`; raw palette colors removed from starter components.
+- `Notice` (`components/feedback/notice.tsx`; `ResultNotice` uses it), `Table` primitives (`components/ui/table.tsx`) on every admin list, `EmptyState` on every empty admin list.
+- `SubmitButton` takes `variant` / `size` and sets `aria-busy`; every mutating form uses it (no double submits).
+- axe scans the admin pages in the app E2E. Skill `ui-components`: status colors, Notice / Table, SubmitButton rule, a section for staff-facing pages.
+
 ### Added — project footer
 - Optional `ProductFooter({ locale })` export in `product/layout.tsx` replaces the starter footer (one footer with the project's columns and legal block).
 

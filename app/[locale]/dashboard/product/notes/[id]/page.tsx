@@ -8,6 +8,7 @@ import { getAppContent } from "@/content";
 import type { Locale } from "@/config/app";
 import { getNotesContent } from "@/product/_example-notes/content";
 import { deleteNote, updateNote } from "@/product/_example-notes/actions";
+import { SubmitButton } from "@/components/forms/submit-button";
 import { NoteForm } from "@/product/_example-notes/components/note-form";
 
 export default async function NotePage({ params }: { params: Promise<{ locale: Locale; id: string }> }) {
@@ -35,9 +36,7 @@ export default async function NotePage({ params }: { params: Promise<{ locale: L
       <form action={deleteNote}>
         <input type="hidden" name="locale" value={locale} />
         <input type="hidden" name="id" value={note.id} />
-        <button type="submit" className="rounded-md border border-red-600/40 px-4 py-2 text-sm text-red-600">
-          {c.delete}
-        </button>
+        <SubmitButton label={c.delete} variant="outline" className="border-danger/40 text-danger" />
       </form>
     </div>
   );

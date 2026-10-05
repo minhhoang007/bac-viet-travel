@@ -1,7 +1,8 @@
 import { approveContent, rejectContent, restoreContent, setContentHidden, submitContent } from "@/app/actions/content";
 import { ResultNotice } from "@/components/admin/result-notice";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
-import { Button } from "@/components/ui/button";
+import { Notice } from "@/components/feedback/notice";
+import { SubmitButton } from "@/components/forms/submit-button";
 import { appConfig, type Locale } from "@/config/app";
 import { getAppContent } from "@/content";
 import type { ContentItem, ContentVersion } from "@/modules/content";
@@ -49,10 +50,9 @@ export function WorkflowPanel({ item, versions, locale, isAdmin, returnTo }: { i
         )}
       </dl>
       {item.reviewNote && item.status === "draft" && (
-        <div role="note" className="rounded-md border border-amber-500/50 bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-100">
-          <p className="font-medium">{c.reviewNote}</p>
-          <p className="whitespace-pre-line">{item.reviewNote}</p>
-        </div>
+        <Notice tone="warning" role="note" title={c.reviewNote}>
+          {item.reviewNote}
+        </Notice>
       )}
 
       <div className="flex flex-wrap gap-2">
@@ -62,22 +62,20 @@ export function WorkflowPanel({ item, versions, locale, isAdmin, returnTo }: { i
         {item.status === "draft" && !isAdmin && (
           <form action={submitContent}>
             {hidden}
-            <Button type="submit">{c.submit}</Button>
+            <SubmitButton label={c.submit} size="default" />
           </form>
         )}
         {isAdmin && (item.status === "draft" || item.status === "pending") && (
           <form action={approveContent}>
             {hidden}
-            <Button type="submit">{c.publishNow}</Button>
+            <SubmitButton label={c.publishNow} size="default" />
           </form>
         )}
         {isAdmin && item.published !== null && (
           <form action={setContentHidden}>
             {hidden}
             <input type="hidden" name="hidden" value={String(!item.hidden)} />
-            <Button type="submit" variant="outline">
-              {item.hidden ? c.show : c.hide}
-            </Button>
+            <SubmitButton label={item.hidden ? c.show : c.hide} variant="outline" size="default" />
           </form>
         )}
       </div>
@@ -89,9 +87,7 @@ export function WorkflowPanel({ item, versions, locale, isAdmin, returnTo }: { i
             {c.scheduleAt}
             <input type="datetime-local" name="publishAt" required className="h-9 rounded-md border border-border bg-background px-2" />
           </label>
-          <Button type="submit" variant="outline">
-            {c.schedule}
-          </Button>
+          <SubmitButton label={c.schedule} variant="outline" size="default" />
         </form>
       )}
 
@@ -102,9 +98,7 @@ export function WorkflowPanel({ item, versions, locale, isAdmin, returnTo }: { i
             {c.rejectNote}
             <textarea name="note" rows={3} maxLength={2000} className="rounded-md border border-border bg-background p-2" />
           </label>
-          <Button type="submit" variant="outline" className="w-fit">
-            {c.reject}
-          </Button>
+          <SubmitButton label={c.reject} variant="outline" size="default" />
         </form>
       )}
 
@@ -134,11 +128,6 @@ export function WorkflowPanel({ item, versions, locale, isAdmin, returnTo }: { i
 /** Outcome of the last workflow action (?result=done|conflict|failed). */
 export function ContentResult({ result, locale }: { result?: string; locale: Locale }) {
   const content = getAppContent(locale).admin;
-  if (result === "conflict")
-    return (
-      <p role="alert" className="rounded-md border border-red-600/40 p-3 text-sm text-red-600">
-        {content.content.conflict}
-      </p>
-    );
+  if (result === "conflict") return <Notice tone="danger">{content.content.conflict}</Notice>;
   return <ResultNotice result={result} done={content.done} failed={content.failed} />;
 }
