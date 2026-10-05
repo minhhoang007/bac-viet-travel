@@ -4,6 +4,14 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-05
+
+First stable release. Same code as `1.0.0-rc.16`.
+
+- All REQUIREMENTS §3 items done: two real projects (site: Hạ Long Tours; app: Bắc Việt Travel, deployed with real VNPay
+  sandbox payments), upgrades across tags (rc.1→rc.2, rc.6→rc.7, rc.12→rc.16), minimal configuration in CI.
+- The migration-during-upgrade step is covered by CI (owner decision 2026-10-05, docs/REUSE-PROOFS.md).
+
 ## [1.0.0-rc.16] - 2026-10-05
 
 ### Added — found on Bắc Việt Travel (project B)

@@ -37,6 +37,9 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
+### v1.0.0 (2026-10-05) — stable
+- Same code as rc.16: no action beyond the rc.16 notes. Projects on rc.N can move to `v1.0.0` with a plain merge.
+
 ### v1.0.0-rc.16 (2026-10-05) — favicon, VNPay reconcile
 - **Favicon:** `app/icon.tsx` draws the first letter of `brand.logoText` on the primary color. Own icon: add
   `app/favicon.ico` (project-owned). `proxy.ts` no longer handles `/icon`. Paths with a dot (`/favicon.ico`, `/x.txt`) are

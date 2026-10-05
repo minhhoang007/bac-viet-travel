@@ -108,6 +108,19 @@ Done 2026-09-30 on Hạ Long Tours (profile site): `v1.0.0-rc.1` → `v1.0.0-rc.
 Result: 60 unit, 25 pages, 15 E2E (10 starter-owned generic + 5 project) green. From rc.3 on, neither file
 should conflict again — to be confirmed by the next upgrade.
 
+**Upgrade of project B (app) rc.12 → rc.16 (2026-10-05):** 5 conflicts, all predicted by the conflict table:
+4 example-notes files deleted in the project and modified by the starter → keep deleted; `product/manifest.ts` → ours.
+No conflict in starter-owned files; the project modifies no starter-owned file. `pnpm check` 130 unit,
+`pnpm test:int` 106, deployed to production (`/api/health` ok, `pnpm launch:check` 13/13). Then the project adopted
+rc.16's VNPay `query()` (deposit reconcile before holds expire, G11) without touching starter code.
+
+| Step | Result |
+|---|---|
+| `git merge v1.0.0-rc.16` | 5 conflicts, project-owned / deleted-example only |
+| `pnpm check` / `test:int` | green: 130 unit, 106 integration |
+| `db:migrate` | no migrations between rc.12 and rc.16 (see decision above) |
+| Production | deployed, health ok, launch check 13/13 |
+
 ## 3. Minimal configuration ✅ (automated)
 
 All modules off, no secrets → builds, runs, no module endpoints or jobs.
