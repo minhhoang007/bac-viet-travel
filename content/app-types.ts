@@ -105,6 +105,8 @@ export interface AppContent {
       selfNote: string;
       confirmDisable: string;
       confirmRole: string;
+      changeRole: string;
+      roles: { user: string; editor: string; admin: string };
     };
     jobs: { title: string; name: string; attempts: string; lastError: string; retry: string; empty: string };
     billing: { subscriptions: string; orders: string; problemEvents: string; retry: string; empty: string };

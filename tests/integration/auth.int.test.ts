@@ -88,6 +88,16 @@ describe("auth (magic link, real DB)", () => {
     await expect(t.app.auth.requireRole(headers, "admin")).resolves.toMatchObject({ role: "admin" });
   });
 
+  it("requireRole is hierarchical: editor pages admit editors and admins, admin pages refuse editors", async () => {
+    const headers = await signIn(t, "editor@example.com");
+    await expect(t.app.auth.requireRole(headers, "editor")).rejects.toMatchObject({ code: "PERMISSION_ERROR" });
+    await handle.db.update(users).set({ role: "editor" }).where(eq(users.email, "editor@example.com"));
+    await expect(t.app.auth.requireRole(headers, "editor")).resolves.toMatchObject({ role: "editor" });
+    await expect(t.app.auth.requireRole(headers, "admin")).rejects.toMatchObject({ code: "PERMISSION_ERROR" });
+    await handle.db.update(users).set({ role: "admin" }).where(eq(users.email, "editor@example.com"));
+    await expect(t.app.auth.requireRole(headers, "editor")).resolves.toMatchObject({ role: "admin" });
+  });
+
   it("disabled users are treated as signed out", async () => {
     const headers = await signIn(t, "off@example.com");
     await handle.db.update(users).set({ status: "disabled" }).where(eq(users.email, "off@example.com"));

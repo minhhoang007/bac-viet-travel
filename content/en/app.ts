@@ -126,6 +126,8 @@ export const app: AppContent = {
       selfNote: "You cannot disable or demote yourself.",
       confirmDisable: "The user will be signed out and cannot sign in again until re-enabled.",
       confirmRole: "This changes the user's access to the admin area.",
+      changeRole: "Change role",
+      roles: { user: "User", editor: "Editor (content only)", admin: "Admin" },
     },
     jobs: { title: "Failed jobs", name: "Name", attempts: "Attempts", lastError: "Last error", retry: "Retry", empty: "No failed jobs." },
     billing: {

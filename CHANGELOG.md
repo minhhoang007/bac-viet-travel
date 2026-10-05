@@ -4,6 +4,11 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+### Added — editor role (CMS groundwork)
+- Role `editor` besides `user` and `admin` (no migration). `hasRole` is hierarchical (admin ⊇ editor ⊇ user); `requireRole(h, "editor")` admits admins.
+- `requireStaff(role)` in `app/_lib/admin.ts`; `requireAdmin()` = `requireStaff("admin")`. Editors open the admin layout but only product pages whose `productAdminNav` entry lists `roles: ["editor"]`; every starter admin page (users, jobs, billing, audit) stays admin-only.
+- Admin user page: choose user / editor / admin. `pnpm admin:grant <email> --role editor`.
+
 ## [1.0.2] - 2026-10-05
 
 ### Security
