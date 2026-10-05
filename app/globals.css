@@ -152,8 +152,11 @@ body {
 }
 
 
-h1,
-h2,
-h3 {
-  font-family: var(--font-heading);
+/* In the base layer so utilities (e.g. font-sans on a heading) still win. */
+@layer base {
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-heading);
+  }
 }
