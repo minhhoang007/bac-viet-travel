@@ -4,6 +4,7 @@ import { notFound, redirect, unstable_rethrow } from "next/navigation";
 import { z } from "zod";
 import { requireAdmin } from "@/app/_lib/admin";
 import { localePath } from "@/core/i18n/routing";
+import { ROLES } from "@/core/users/schema";
 
 const locale = z.enum(["vi", "en"]).catch("vi");
 const uuid = z.uuid();
@@ -33,7 +34,7 @@ export async function setUserStatus(formData: FormData): Promise<void> {
 }
 
 export async function setUserRole(formData: FormData): Promise<void> {
-  const role = z.enum(["user", "admin"]).parse(formData.get("role"));
+  const role = z.enum(ROLES).parse(formData.get("role"));
   await run(formData, "/admin/users/:id", async ({ admin, user }, id) => {
     await admin.setUserRole(user, id, role);
     return true;

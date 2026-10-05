@@ -60,7 +60,7 @@ export default async function AdminUsersPage({ params, searchParams }: Props) {
                     {u.email}
                   </a>
                 </td>
-                <td className="py-2 pr-4">{u.role}</td>
+                <td className="py-2 pr-4">{c.users.roles[u.role]}</td>
                 <td className="py-2 pr-4">{u.status}</td>
                 <td className="py-2">{date(u.createdAt)}</td>
               </tr>

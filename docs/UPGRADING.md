@@ -37,6 +37,13 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
+### Unreleased — editor role
+- New content keys `admin.users.changeRole`, `admin.users.roles` (projects overriding `content/` must add them).
+- `product/manifest.ts` (project-owned): optionally add `roles?: readonly ("editor" | "admin")[]` to `ProductNavItem`
+  and `roles: ["editor"]` to admin entries editors may open; guard those pages with `requireStaff("editor")`.
+- Code comparing `user.role === "admin"` keeps working; prefer `hasRole(user, "admin")`.
+- No migration.
+
 ### v1.0.2 (2026-10-05) — security: better-auth 1.7.7
 - **Upgrade promptly if Google sign-in is enabled** (Magic Link account takeover, GHSA-965c-763c-88jm). No migration.
 - Pending magic links stop working after deploy; users request a new one.

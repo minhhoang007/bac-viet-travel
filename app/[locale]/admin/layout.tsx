@@ -1,17 +1,13 @@
 import type { ReactNode } from "react";
 import type { Metadata } from "next";
-import { requireAdmin } from "@/app/_lib/admin";
+import { productAdminNavFor, requireStaff } from "@/app/_lib/admin";
+import { hasRole } from "@/core/auth";
 import { signOut } from "@/app/actions/auth";
 import { AppShell } from "@/components/app-shell/app-shell";
 import { sidebarDefaultOpen } from "@/app/_lib/sidebar";
 import { localePath } from "@/core/i18n/routing";
 import type { Locale } from "@/config/app";
 import { getAppContent } from "@/content";
-import * as manifest from "@/product/manifest";
-import type { ProductNavItem } from "@/product/manifest";
-
-// Projects created before rc.11 have no productAdminNav export.
-const productAdminNav = (manifest as { productAdminNav?: ProductNavItem[] }).productAdminNav ?? [];
 
 // Default title for pages without their own (documents need a <title>, WCAG 2.4.2).
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
@@ -21,25 +17,30 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 
 export default async function AdminLayout({ children, params }: { children: ReactNode; params: Promise<{ locale: string }> }) {
   const { locale } = await params;
-  const { user, container } = await requireAdmin();
+  // Editors see the layout with their content pages only; every starter admin page still requires an admin.
+  const { user, container } = await requireStaff("editor");
+  const isAdmin = hasRole(user, "admin");
   const content = getAppContent(locale as Locale);
   const c = content.admin;
   const href = (path: string) => localePath(locale, path);
 
   // Pages for optional modules appear only when the module is on.
-  const nav = [
-    { label: c.nav.overview, href: href("/admin") },
-    { label: c.nav.users, href: href("/admin/users") },
-    ...(container.jobs ? [{ label: c.nav.jobs, href: href("/admin/jobs") }] : []),
-    ...(container.billing ? [{ label: c.nav.billing, href: href("/admin/billing") }] : []),
-    ...productAdminNav.map((item) => ({ label: item.label[locale as Locale], href: href(item.href) })),
-    { label: c.nav.audit, href: href("/admin/audit") },
-    { label: c.backToApp, href: href("/dashboard") },
-  ];
+  const product = productAdminNavFor(user).map((item) => ({ label: item.label[locale as Locale], href: href(item.href) }));
+  const nav = isAdmin
+    ? [
+        { label: c.nav.overview, href: href("/admin") },
+        { label: c.nav.users, href: href("/admin/users") },
+        ...(container.jobs ? [{ label: c.nav.jobs, href: href("/admin/jobs") }] : []),
+        ...(container.billing ? [{ label: c.nav.billing, href: href("/admin/billing") }] : []),
+        ...product,
+        { label: c.nav.audit, href: href("/admin/audit") },
+        { label: c.backToApp, href: href("/dashboard") },
+      ]
+    : [...product, { label: c.backToApp, href: href("/dashboard") }];
 
   return (
     <AppShell
-      brand={{ label: c.title, href: href("/admin") }}
+      brand={{ label: c.title, href: isAdmin ? href("/admin") : (product[0]?.href ?? href("/dashboard")) }}
       nav={nav}
       user={user}
       labels={content.dashboard.shell}

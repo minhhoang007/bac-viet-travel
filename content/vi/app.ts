@@ -126,6 +126,8 @@ export const app: AppContent = {
       selfNote: "Bạn không thể khoá hoặc bỏ quyền admin của chính mình.",
       confirmDisable: "Người dùng sẽ bị đăng xuất và không đăng nhập lại được cho đến khi mở khoá.",
       confirmRole: "Quyền vào trang quản trị của người dùng này sẽ thay đổi.",
+      changeRole: "Đổi vai trò",
+      roles: { user: "Người dùng", editor: "Biên tập viên (sửa nội dung)", admin: "Quản trị viên" },
     },
     jobs: { title: "Job lỗi", name: "Tên", attempts: "Số lần", lastError: "Lỗi gần nhất", retry: "Chạy lại", empty: "Không có job lỗi." },
     billing: {
