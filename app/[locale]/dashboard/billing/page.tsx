@@ -6,6 +6,8 @@ import { openPolarPortal, startPolarCheckout, startVnpayPayment } from "@/app/ac
 import type { Locale } from "@/config/app";
 import { billingConfig } from "@/config/billing";
 import { getAppContent } from "@/content";
+import { Notice } from "@/components/feedback/notice";
+import { SubmitButton } from "@/components/forms/submit-button";
 import { PageHeader } from "@/components/app-shell/page-header";
 
 type Props = { params: Promise<{ locale: Locale }>; searchParams: Promise<{ checkout?: string; error?: string }> };
@@ -32,7 +34,6 @@ export default async function BillingPage({ params, searchParams }: Props) {
       <input type="hidden" name="interval" value={interval} />
     </>
   );
-  const button = "h-10 rounded-md border border-border px-4 text-sm font-medium hover:bg-muted";
 
   return (
     <div className="grid max-w-2xl gap-8">
@@ -43,9 +44,7 @@ export default async function BillingPage({ params, searchParams }: Props) {
         </p>
       )}
       {error && (
-        <p role="alert" className="rounded-md border border-red-600/40 p-3 text-sm text-red-600">
-          {error === "rate_limited" ? c.rateLimited : c.error}
-        </p>
+        <Notice tone="danger">{error === "rate_limited" ? c.rateLimited : c.error}</Notice>
       )}
 
       <section className="rounded-lg border border-border p-5">
@@ -62,9 +61,7 @@ export default async function BillingPage({ params, searchParams }: Props) {
         {access.source === "polar_subscription" && (
           <form action={openPolarPortal} className="mt-4">
             {hidden("month")}
-            <button type="submit" className={button}>
-              {c.manage}
-            </button>
+            <SubmitButton label={c.manage} variant="outline" size="default" />
           </form>
         )}
       </section>
@@ -79,9 +76,7 @@ export default async function BillingPage({ params, searchParams }: Props) {
                 {(["month", "year"] as const).map((interval) => (
                   <form key={interval} action={startPolarCheckout}>
                     {hidden(interval)}
-                    <button type="submit" className={button}>
-                      {interval === "month" ? c.monthly : c.yearly} · {money(pro.prices!.usd[interval], "USD", locale)}
-                    </button>
+                    <SubmitButton label={`${interval === "month" ? c.monthly : c.yearly} · ${money(pro.prices!.usd[interval], "USD", locale)}`} variant="outline" size="default" />
                   </form>
                 ))}
               </div>
@@ -95,9 +90,7 @@ export default async function BillingPage({ params, searchParams }: Props) {
                 {(["month", "year"] as const).map((interval) => (
                   <form key={interval} action={startVnpayPayment}>
                     {hidden(interval)}
-                    <button type="submit" className={button}>
-                      {interval === "month" ? c.monthly : c.yearly} · {money(pro.prices!.vnd[interval], "VND", locale)}
-                    </button>
+                    <SubmitButton label={`${interval === "month" ? c.monthly : c.yearly} · ${money(pro.prices!.vnd[interval], "VND", locale)}`} variant="outline" size="default" />
                   </form>
                 ))}
               </div>

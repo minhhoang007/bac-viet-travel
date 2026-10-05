@@ -73,7 +73,7 @@ export function MediaUploader({ label, uploadingLabel, formats, maxBytes, errors
         />
       </label>
       {problems.length > 0 && (
-        <ul role="alert" className="text-sm text-red-700">
+        <ul role="alert" className="text-sm text-danger">
           {problems.map((p) => (
             <li key={p}>{p}</li>
           ))}

@@ -7,10 +7,11 @@ import { ResultNotice } from "@/components/admin/result-notice";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { FocalPicker } from "@/components/media/focal-picker";
-import { Button } from "@/components/ui/button";
 import { formatBytes } from "@/components/ui/format-bytes";
 import { localePath } from "@/core/i18n/routing";
 import { appConfig, type Locale } from "@/config/app";
+import { Notice } from "@/components/feedback/notice";
+import { SubmitButton } from "@/components/forms/submit-button";
 import { getAppContent } from "@/content";
 
 type Props = { params: Promise<{ locale: Locale; id: string }>; searchParams: Promise<{ result?: string }> };
@@ -40,7 +41,7 @@ export default async function MediaEditPage({ params, searchParams }: Props) {
       </a>
       <PageHeader title={asset.name || c.edit} description={`${c.size}: ${asset.width} × ${asset.height} · ${formatBytes(asset.bytes)} · ${asset.format.toUpperCase()}`} />
       {result === "in_use" ? (
-        <p role="alert" className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">{c.errors.inUse}</p>
+        <Notice tone="danger">{c.errors.inUse}</Notice>
       ) : (
         <ResultNotice result={result} done={content.done} failed={content.failed} />
       )}
@@ -62,7 +63,7 @@ export default async function MediaEditPage({ params, searchParams }: Props) {
             </label>
           ))}
         </fieldset>
-        <Button type="submit" className="w-fit">{c.save}</Button>
+        <SubmitButton label={c.save} size="default" />
       </form>
       <ConfirmDialog trigger={c.remove} title={content.confirmTitle} description={c.removeAsk} cancel={content.cancel} action={deleteMedia} destructive>
         <input type="hidden" name="locale" value={locale} />
