@@ -20,57 +20,8 @@ export const marketing: MarketingContent = {
     title: "Đặt tour dễ dàng",
     items: [
       { title: "1. Chọn tour", description: "Xem lịch trình chi tiết, giá bao gồm và không bao gồm." },
-      { title: "2. Gửi yêu cầu", description: "Điền form hoặc nhắn Zalo / WhatsApp, không cần thanh toán trước." },
-      { title: "3. Xác nhận", description: "Chúng tôi gọi lại trong 24 giờ để chốt lịch và giá." },
-    ],
-  },
-  problemSolution: {
-    title: "Bớt việc lặp lại ở mỗi dự án",
-    before: {
-      title: "Tự dựng từ đầu",
-      items: [
-        "Mất vài tuần cho đăng nhập, email, SEO trước khi viết dòng code sản phẩm đầu tiên",
-        "Mỗi dự án một cách tổ chức code, khó bảo trì",
-        "Lỗi bảo mật chỉ lộ ra khi đã chạy thật",
-      ],
-    },
-    after: {
-      title: "Dùng Minh Starter",
-      items: [
-        "Bật module cần dùng, bắt đầu từ phần sản phẩm ngay ngày đầu",
-        "Một kiến trúc cho mọi dự án, được kiểm tra tự động",
-        "Phân quyền, webhook, giới hạn tần suất đã có test",
-      ],
-    },
-  },
-  steps: {
-    title: "Bắt đầu trong 3 bước",
-    items: [
-      { title: "Khởi tạo", description: "Chạy pnpm init:project: đặt tên, chọn profile và module." },
-      { title: "Xây sản phẩm", description: "Viết phần riêng của bạn trong product/ theo feature mẫu." },
-      { title: "Ra mắt", description: "Deploy lên Vercel, chạy pnpm launch:check rồi đón khách." },
-    ],
-  },
-  pricing: {
-    title: "Chọn gói phù hợp",
-    subtitle: "Ví dụ khối bảng giá: sửa trong content/ hoặc xoá đi nếu không cần.",
-    plans: [
-      {
-        name: "Website",
-        price: "Liên hệ",
-        description: "Trang giới thiệu dịch vụ, SEO, form liên hệ.",
-        features: ["Đa ngôn ngữ", "Blog", "Form liên hệ qua email"],
-        cta: { label: "Liên hệ", href: "#contact" },
-      },
-      {
-        name: "Web app",
-        price: "Liên hệ",
-        description: "Đăng nhập, dashboard, thanh toán.",
-        features: ["Mọi thứ của Website", "Đăng nhập không mật khẩu", "Thanh toán VNPay / Polar", "Trang quản trị"],
-        cta: { label: "Liên hệ", href: "#contact" },
-        highlighted: true,
-        badge: "Phổ biến",
-      },
+      { title: "2. Giữ chỗ", description: "Chọn ngày khởi hành và giữ chỗ online, hoặc nhắn Zalo / WhatsApp để được tư vấn." },
+      { title: "3. Xác nhận", description: "Thanh toán qua VNPay hoặc chuyển khoản, nhận xác nhận và lịch trình qua email." },
     ],
   },
   faq: {
