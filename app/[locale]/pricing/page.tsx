@@ -38,7 +38,7 @@ export default async function PricingPage({ params }: Props) {
         const plan = billingConfig.plans[id];
         return {
           name: plan.name[locale],
-          price: plan.prices ? (locale === "vi" ? vnd(plan.prices.vnd.month) : usd(plan.prices.usd.month)) : "0",
+          price: locale === "vi" ? vnd(plan.prices?.vnd.month ?? 0) : usd(plan.prices?.usd.month ?? 0),
           period: plan.prices ? c.perMonth : undefined,
           cta: { label: c.choosePlan, href: localePath(locale, "/dashboard/billing") },
         };

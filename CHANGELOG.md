@@ -9,6 +9,15 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 - Skill `receiving-code-review`: verify each review finding against the code and repo rules before changing it.
 - `karpathy-guidelines` §5 "Verify before claiming done": every "done" cites a command run in the session and its output.
 
+### Added — reuse/security findings (rc.15)
+- Shared VNPay IPN: `/api/billing/vnpay/ipn` verifies the signature once, then offers the order to the product (manifest `vnpayIpn`), then to billing. Works without the billing module. Helpers `checkVnpayOrder`, `VNPAY_CONFIRMED` in `core/payments/vnpay-ipn.ts` (reuse finding G8b).
+- Per-user rate limit on Polar checkout/portal and VNPay payment creation (10 / 10 min).
+- Periodic `billing.purge_orders`: deletes VNPay orders still pending after 24 h.
+
+### Fixed
+- `/pricing`: the free plan shows a formatted price ("0 ₫" / "$0") instead of "0".
+- `pnpm launch:check`: robots.txt is reported as blocking the site only when the `User-agent: *` group has `Disallow: /` (blocking one bot such as GPTBot is fine).
+
 ## [1.0.0-rc.14] - 2026-10-02
 
 ### Added — ship fast (lessons from ShipFast, keeping the architecture and tests)

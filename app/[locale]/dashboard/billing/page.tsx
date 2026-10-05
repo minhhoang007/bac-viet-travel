@@ -44,7 +44,7 @@ export default async function BillingPage({ params, searchParams }: Props) {
       )}
       {error && (
         <p role="alert" className="rounded-md border border-red-600/40 p-3 text-sm text-red-600">
-          {c.error}
+          {error === "rate_limited" ? c.rateLimited : c.error}
         </p>
       )}
 

@@ -6,6 +6,7 @@ import { createContactService, type ContactService } from "@/core/contact";
 import { createLogger, type Logger } from "@/core/logger";
 import type { Features } from "@/core/module";
 import { noopMail, type MailMessage, type MailPort } from "@/core/ports/mail";
+import { createVnpayIpn, type VnpayIpnHandler, type VnpayIpnResult } from "@/core/payments/vnpay-ipn";
 import type { Payments } from "@/core/ports/payments";
 import type { ProductContext, ProductJobs } from "@/core/product/context";
 import { createMemoryRateLimiter, withFallback, type RateLimiter, type RateLimitRule } from "@/core/security/rate-limit";
@@ -38,6 +39,8 @@ export interface AppServices {
   auth: AuthService;
   account: AccountService;
   product: Product["services"];
+  /** The product's VNPay IPN handler (manifest `vnpayIpn`), tried before billing. */
+  vnpayIpn?: VnpayIpnHandler;
 }
 
 /** Services wired for the running project. Optional members exist only when their module/profile is on. */
@@ -52,6 +55,11 @@ export interface Container {
   rateLimiter(name: string, rule: RateLimitRule): RateLimiter;
   /** One-time payment providers configured by env (independent of the billing module). */
   payments: Payments;
+  /**
+   * The VNPay IPN endpoint, present when VNPay is configured: verifies the signature once, then offers the order to
+   * the product, then to billing (one IPN URL per merchant code).
+   */
+  handleVnpayIpn?: (params: Record<string, string>) => Promise<VnpayIpnResult>;
   logger: Logger;
   mail: MailPort;
   contact?: ContactService;
@@ -78,6 +86,7 @@ export interface ContainerOverrides {
 const CONTACT_LIMIT: RateLimitRule = { max: 5, windowMs: 10 * 60_000 };
 const MAGIC_LINK_PER_CLIENT: RateLimitRule = { max: 5, windowMs: 10 * 60_000 };
 const MAGIC_LINK_PER_RECIPIENT: RateLimitRule = { max: 3, windowMs: 10 * 60_000 };
+const CHECKOUT_LIMIT: RateLimitRule = { max: 10, windowMs: 10 * 60_000 };
 
 let cached: Container | undefined;
 
@@ -132,12 +141,13 @@ export function buildContainer(features: Features, env: Env, overrides: Containe
 
   const billing =
     features.billing && db && jobs && entitlements
-      ? buildBilling(env, { db, logger, jobs, entitlements, overrides, vnpay: payments.vnpay })
+      ? buildBilling(env, { db, logger, jobs, entitlements, overrides, vnpay: payments.vnpay, checkoutLimiter: rateLimiter("billing:checkout", CHECKOUT_LIMIT) })
       : undefined;
   if (billing) {
     handlers[PROCESS_WEBHOOK_JOB] = (payload) => billing.processWebhookEvent(String(payload.eventRowId));
     periodic["billing.sweep_webhooks"] = async () => void (await billing.sweepWebhookEvents());
     periodic["billing.reconcile"] = async () => void (await billing.reconcileSubscriptions());
+    periodic["billing.purge_orders"] = async () => void (await billing.purgeStaleOrders());
   }
 
   const analytics = features.analytics && db ? createAnalyticsModule({ db, secret: env.extra.ANALYTICS_SECRET!, purgeOnCollect: !jobs, now: overrides.now }) : undefined;
@@ -187,12 +197,16 @@ export function buildContainer(features: Features, env: Env, overrides: Containe
     }
   };
 
-  return { features, logger, mail, health, rateLimiter, payments, contact, app, jobs, entitlements, billing, admin, analytics, storage };
+  const vnpayIpnHandlers = [app?.vnpayIpn, billing?.providers.includes("vnpay") ? billing.vnpayIpnHandler : undefined].filter((h) => h !== undefined);
+  const vnpay = payments.vnpay;
+  const handleVnpayIpn = vnpay ? createVnpayIpn({ verify: (p) => vnpay.verify(p), handlers: vnpayIpnHandlers, logger }) : undefined;
+
+  return { features, logger, mail, health, rateLimiter, payments, handleVnpayIpn, contact, app, jobs, entitlements, billing, admin, analytics, storage };
 }
 
 function buildBilling(
   env: Env,
-  ctx: { db: Db; logger: Logger; jobs: JobsModule; entitlements: EntitlementsModule; overrides: ContainerOverrides; vnpay?: OneTimePaymentProvider },
+  ctx: { db: Db; logger: Logger; jobs: JobsModule; entitlements: EntitlementsModule; overrides: ContainerOverrides; vnpay?: OneTimePaymentProvider; checkoutLimiter: RateLimiter },
 ): BillingModule {
   const enabled = billingConfig.providers;
   const polar = enabled.includes("polar")
@@ -214,6 +228,7 @@ function buildBilling(
       products: { pro: { month: env.POLAR_PRODUCT_PRO_MONTHLY ?? "", year: env.POLAR_PRODUCT_PRO_YEARLY ?? "" } },
     },
     vnpay,
+    checkoutLimiter: ctx.checkoutLimiter,
     now: ctx.overrides.now,
   });
 }
@@ -230,7 +245,7 @@ function buildPayments(env: Env, overrides: ContainerOverrides): Payments {
 }
 
 // Projects created before rc.10 declare createProduct(db): calling it with the extra context is harmless.
-const createProductWith: (db: Db, ctx: ProductContext) => Product & { jobs?: ProductJobs } = createProduct;
+const createProductWith: (db: Db, ctx: ProductContext) => Product & { jobs?: ProductJobs; vnpayIpn?: VnpayIpnHandler } = createProduct;
 
 function buildApp(
   env: Env,
@@ -299,7 +314,7 @@ function buildApp(
       ...(storage ? [async (userId: string) => void (await storage.deleteAllForUser(userId))] : []),
     ],
   );
-  return { db, auth, account, product: product.services };
+  return { db, auth, account, product: product.services, vnpayIpn: product.vnpayIpn };
 }
 
 function emailProvider(env: Env, logger: Logger): EmailProvider {

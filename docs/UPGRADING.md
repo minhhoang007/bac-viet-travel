@@ -37,6 +37,18 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
+### Unreleased (rc.15) — shared VNPay IPN, checkout limits
+- **Product VNPay payments:** return `vnpayIpn` from `createProduct` (type `VnpayIpnHandler`, `@/core/payments/vnpay-ipn`).
+  The endpoint `/api/billing/vnpay/ipn` now exists whenever `VNPAY_TMN_CODE` + `VNPAY_HASH_SECRET` are set (billing
+  module or not), verifies the signature once, then offers each IPN to the product handler, then to billing. Your
+  handler gets verified params, returns `null` for txnRefs that are not yours, and should use `checkVnpayOrder(order, params)`
+  (amount + still pending) before updating the order in one conditional `UPDATE … WHERE status = 'pending'`.
+  If you wrote your own IPN route for product orders, move its logic into `vnpayIpn` and register the starter URL at VNPay.
+- Checkout, portal and VNPay payment creation are limited to 10 per user per 10 minutes (`?error=rate_limited`).
+  New content key `billing.rateLimited` (projects overriding `content/` must add it).
+- VNPay billing orders still `pending` after 24 hours are deleted by the jobs tick (`billing.purge_orders`).
+- No migration.
+
 ### v1.0.0-rc.14 (2026-10-02) — ship fast
 - New optional marketing content keys (`logos`, `problemSolution`, `steps`, `testimonials`, `pricing`). The starter's
   sample content sets `problemSolution`, `steps` and `pricing`: if your project overrides `content/`, nothing changes;

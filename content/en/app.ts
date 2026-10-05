@@ -59,6 +59,7 @@ export const app: AppContent = {
     backToBilling: "Back to billing",
     checkoutSuccess: "Thank you! Your plan will be active in a moment.",
     error: "Could not start the payment. Please try again.",
+    rateLimited: "Too many attempts. Please wait a few minutes and try again.",
   },
   legal: {
     terms: "Terms of Service",
