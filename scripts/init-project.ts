@@ -9,8 +9,8 @@
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 
-const MODULES = ["email", "jobs", "entitlements", "billing", "usage", "storage", "analytics", "admin", "ai", "blog", "media"];
-const AVAILABLE = ["email", "jobs", "entitlements", "billing", "admin", "analytics", "storage", "blog", "media"]; // modules implemented in this starter version
+const MODULES = ["email", "jobs", "entitlements", "billing", "usage", "storage", "analytics", "admin", "ai", "blog", "media", "content"];
+const AVAILABLE = ["email", "jobs", "entitlements", "billing", "admin", "analytics", "storage", "blog", "media", "content"]; // modules implemented in this starter version
 
 const { values } = parseArgs({
   options: {
@@ -38,7 +38,7 @@ for (const m of modules) {
   if (!MODULES.includes(m)) fail(`unknown module "${m}". Known: ${MODULES.join(", ")}`);
   if (!AVAILABLE.includes(m)) fail(`module "${m}" is not implemented in this starter version yet`);
 }
-const APP_ONLY = ["jobs", "entitlements", "billing", "admin", "storage", "media"];
+const APP_ONLY = ["jobs", "entitlements", "billing", "admin", "storage", "media", "content"];
 for (const m of modules) {
   if (profile === "site" && APP_ONLY.includes(m)) fail(`module "${m}" needs --profile app`);
 }

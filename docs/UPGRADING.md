@@ -37,6 +37,15 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
+### Unreleased — editorial workflow (starter migration)
+- **Starter migration** (`content_items`, `content_versions`): run `pnpm db:migrate` (database copy first).
+- New content keys: `admin.nav.content`, `admin.content.*`. New config key `appConfig.timeZone` (projects spreading
+  `appDefaults` get it).
+- To use it: `features.content = true` (needs `admin`; `email` for review emails, `jobs` for scheduled publishing),
+  export `contentTypes` from `product/manifest.ts`, read public content with `readContent(type, slug)` or
+  `container.content.listPublished(type)`, and put `<WorkflowPanel>` on your edit pages.
+- Scheduled publishing runs on the jobs tick: set a frequent cron (Vercel Pro) for timely publishing.
+
 ### Unreleased — media library (starter migration)
 - **Starter migration** (`media_assets`): run `pnpm db:migrate` (on a database copy first, see Procedure). The table is
   created even when the module is off.

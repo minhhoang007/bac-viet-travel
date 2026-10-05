@@ -71,7 +71,7 @@ export interface AppContent {
   admin: {
     title: string;
     backToApp: string;
-    nav: { overview: string; users: string; jobs: string; billing: string; audit: string; media: string };
+    nav: { overview: string; users: string; jobs: string; billing: string; audit: string; media: string; content: string };
     overview: {
       newUsers: string;
       proUsers: string;
@@ -128,6 +128,39 @@ export interface AppContent {
       removeAsk: string;
       size: string;
       errors: { format: string; size: string; failed: string; inUse: string };
+    };
+    content: {
+      title: string;
+      description: string;
+      empty: string;
+      all: string;
+      type: string;
+      slug: string;
+      status: string;
+      updated: string;
+      statuses: { draft: string; pending: string; approved: string; published: string };
+      hidden: string;
+      live: string;
+      notLive: string;
+      scheduledFor: string;
+      reviewNote: string;
+      workflow: string;
+      submit: string;
+      publishNow: string;
+      schedule: string;
+      scheduleAt: string;
+      reject: string;
+      rejectNote: string;
+      hide: string;
+      show: string;
+      preview: string;
+      previewing: string;
+      exitPreview: string;
+      history: string;
+      restore: string;
+      restoreAsk: string;
+      events: { submitted: string; published: string };
+      conflict: string;
     };
     done: string;
     failed: string;
