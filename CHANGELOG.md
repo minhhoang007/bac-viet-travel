@@ -4,6 +4,19 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.0.0-rc.16] - 2026-10-05
+
+### Added — found on Bắc Việt Travel (project B)
+- VNPay `query()` (querydr) on the payment adapter: `paid` with IPN-shaped params, `unpaid`, `not_found`; response signature verified. Periodic `billing.reconcile_vnpay` confirms orders paid at VNPay whose IPN never arrived (G11).
+- Favicon from the brand: `app/icon.tsx`. `pnpm launch:check` reports a missing favicon.
+
+### Fixed
+- `/favicon.ico` and any one-segment path with a dot answered 500 (reached the home page as the locale); now 404 (G12).
+- VNPay billing orders send their stored `createdAt` as `vnp_CreateDate`, so querydr finds them.
+
+### Docs
+- V1.0 reuse proofs complete: project B (Bắc Việt Travel) recorded; migration-upgrade step covered by CI (owner decision 2026-10-05).
+
 ## [1.0.0-rc.15] - 2026-10-05
 
 ### Added — agent skills (ideas from obra/superpowers, adapted; plugin not installed)

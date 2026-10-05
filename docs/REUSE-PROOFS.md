@@ -2,7 +2,7 @@
 
 V1.0 is only tagged when all three are done. Until then, projects use `v1.0.0-rc.N`.
 
-## 1. Two different real projects 🟨 (A done, B pending)
+## 1. Two different real projects ✅ (A site, B app — 2026-10-05)
 
 **Project B = your real app project** (decision 2026-09-30). While building it:
 
@@ -18,10 +18,16 @@ V1.0 is only tagged when all three are done. Until then, projects use `v1.0.0-rc
 
 | | Project A (site) | Project B (app) |
 |---|---|---|
-| Name / repo | Hạ Long Tours — `D:\dev\halong-tours` (local) | |
-| Starter version | v1.0.0-rc.1 → upgraded to rc.2 (proof 2) | |
-| Init command | `pnpm init:project --name "…" --profile site --modules email` | `pnpm init:project --name "…" --profile app` |
-| Deployed URL | not deployed yet | |
+| Name / repo | Hạ Long Tours — `D:\dev\halong-tours` (local) | Bắc Việt Travel — `minhhoang007/bac-viet-travel` |
+| Starter version | v1.0.0-rc.1 → upgraded to rc.2 (proof 2) | from rc.6 (site), upgraded rc.7 → rc.9 → … → rc.12; now profile app |
+| Init command | `pnpm init:project --name "…" --profile site --modules email` | profile app; modules email, blog, jobs, admin |
+| Deployed URL | not deployed yet | https://bac-viet-travel.vercel.app (Vercel + Neon + Resend) |
+
+**Project B result (2026-10-05):** tours from MDX, departures with seats, booking with a 15-minute hold, VNPay deposit
+(sandbox) confirmed by IPN, guest and team emails, `/admin/bookings` + `/admin/departures` (audited), reminder and
+hold-expiry jobs. Product tables in `product/schema/` with product migrations. Real VNPay sandbox payments BV-MK9PF2 and
+BV-XK5WCS were confirmed by VNPay's own IPN; the first one (BV-WRRTD2, before the IPN URL was registered at VNPay) was
+recovered with querydr, which became G11. Findings G7–G12 below.
 
 **Real deployment proof (2026-10-01):** demo app `minhhoang007/minh-starter-demo` (profile app, example slice, from rc.9) on
 https://minh-starter-demo.vercel.app with Neon (pooled) and Resend. Migrations run with `pnpm db:migrate`; `/api/health`
@@ -57,6 +63,8 @@ Upgraded **rc.6 → rc.7** (UI kit): 2 conflicts, both predicted by UPGRADING (`
 | B (Bắc Việt booking) | (would add a second IPN route) | G8b: `ctx.payments.vnpay` built payment URLs, but the only IPN endpoint served billing orders (product orders got `01`); VNPay calls one IPN URL per merchant code | Yes → shared IPN: manifest `vnpayIpn` + `checkVnpayOrder` (rc.15) |
 | B (Bắc Việt admin) | `app/[locale]/admin/layout.tsx` (starter-owned) | G9: the admin menu was fixed; product admin pages (bookings, departures) could not be listed without editing a starter file, and product actions had no audit log | Yes → `productAdminNav` + `ctx.audit` (rc.11) |
 | B (Bắc Việt deploy) | (none — failed only on Vercel) | G10: dynamic pages reading `content/tours/*.mdx` at request time got an empty catalog (404) because Vercel bundles only imported files; local `next start` hid it | Yes → `outputFileTracingIncludes` for `content/**` (rc.12) |
+| B (Bắc Việt payments) | (none — operations) | G11: the IPN URL must be registered by VNPay (merchants cannot set it); until then a paid deposit stayed `pending` and the hold would have expired. Recovered by hand with querydr | Yes → `query()` on the VNPay adapter + `billing.reconcile_vnpay`; products call it before expiring a hold (rc.16) |
+| B (Bắc Việt deploy) | (none — production logs) | G12: `/favicon.ico` (and any one-segment path with a dot, e.g. scanner probes) answered 500: it skips `proxy.ts` and reached the home page as the "locale" | Yes → locale check on the home page + brand favicon `app/icon.tsx` (rc.16) |
 | A2 | `tests/e2e/server-env.ts` | G6: with the email module on, the production E2E server cannot send (console provider is dev-only), so successful form submissions are only covered by unit tests | Maybe → a test-only mail sink allowed when `E2E=1` |
 
 Lesson from A2: the rc.2 extension points (navigation, home sections, sitemap paths, form defaults, JSON-LD, server env)
@@ -67,6 +75,11 @@ Lesson from A: every finding was a **hard-coded value in a protected file** that
 Outcome: adjust boundaries (move things to config/content/props) for every "yes".
 
 ## 2. Upgrade a project across starter tags ✅ (with follow-ups)
+
+**Decision 2026-10-05 (owner):** the "starter migration during an upgrade" step is accepted as covered by automation
+instead of a manual run: CI applies every starter + product migration to an empty database (integration global setup,
+`e2e-app`), and `pnpm verify:init` runs migrations on fresh clones. No release since rc.10 shipped a starter migration;
+the first one that does gets a manual upgrade on a DB copy of project B, recorded here. V1.0 is not blocked on it.
 
 1. Project initialized from `v1.0.0-rc.1`.
 2. Starter releases `v1.0.0-rc.2` with at least one Core change and one starter migration.

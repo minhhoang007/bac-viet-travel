@@ -37,6 +37,18 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
+### v1.0.0-rc.16 (2026-10-05) — favicon, VNPay reconcile
+- **Favicon:** `app/icon.tsx` draws the first letter of `brand.logoText` on the primary color. Own icon: add
+  `app/favicon.ico` (project-owned). `proxy.ts` no longer handles `/icon`. Paths with a dot (`/favicon.ico`, `/x.txt`) are
+  now 404 instead of 500.
+- **VNPay reconcile:** `OneTimePaymentProvider` has `query({ txnRef, createdAt })` (VNPay querydr): `paid` (with
+  IPN-shaped params), `unpaid` or `not_found`; throws on provider errors. Pass the same `createdAt` you gave
+  `buildPaymentUrl` (store it). Billing runs `billing.reconcile_vnpay` before `billing.purge_orders`.
+  **Products with VNPay holds:** before expiring a hold whose payment is still pending, call
+  `ctx.payments.vnpay.query(...)`; on `paid`, run your IPN handler with `result.params`. Custom fakes of
+  `OneTimePaymentProvider` need a `query` method.
+- No migration.
+
 ### v1.0.0-rc.15 (2026-10-05) — shared VNPay IPN, checkout limits
 - **Product VNPay payments:** return `vnpayIpn` from `createProduct` (type `VnpayIpnHandler`, `@/core/payments/vnpay-ipn`).
   The endpoint `/api/billing/vnpay/ipn` now exists whenever `VNPAY_TMN_CODE` + `VNPAY_HASH_SECRET` are set (billing
