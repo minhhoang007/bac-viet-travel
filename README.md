@@ -3,7 +3,7 @@
 Reusable Next.js starter for content/service websites (profile `site`) and logged-in web apps (profile `app`).
 Small, boring, tested: architecture rules are enforced by tooling, and every optional module is *really off* when disabled.
 
-**Status:** `v1.0.1` — site + app profiles, 9 optional modules, UI kit + dashboard kit, landing blocks, setup/launch checks, production hardening, product context (jobs, payments, shared VNPay IPN).
+**Status:** `v1.0.2` — site + app profiles, 9 optional modules, UI kit + dashboard kit, landing blocks, setup/launch checks, production hardening, product context (jobs, payments, shared VNPay IPN).
 V1.0 final waits for a real deployment and a real app project ([docs/REUSE-PROOFS.md](docs/REUSE-PROOFS.md), [ROADMAP.md](ROADMAP.md)).
 
 **New project? Start with [docs/QUICKSTART.md](docs/QUICKSTART.md)** — clone to live site on one page.
