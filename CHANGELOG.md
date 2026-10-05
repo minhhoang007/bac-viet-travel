@@ -4,6 +4,10 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-05
+
+CMS groundwork: editor role, media library (Cloudinary), editorial workflow, project footer, UI foundation. **Two starter migrations** (`media_assets`; `content_items`, `content_versions`): run them on a database copy first.
+
 ### Added — UI foundation
 - Status color tokens `danger` / `warning` / `success` (light and dark, WCAG AA as text) in `app/globals.css`; raw palette colors removed from starter components.
 - `Notice` (`components/feedback/notice.tsx`; `ResultNotice` uses it), `Table` primitives (`components/ui/table.tsx`) on every admin list, `EmptyState` on every empty admin list.
