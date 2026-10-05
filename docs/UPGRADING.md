@@ -37,6 +37,9 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
+### v1.0.1 (2026-10-05) — blog 404 log noise, agent skills
+- No action needed. Blog routes no longer export `dynamicParams = false` (unknown URLs still 404).
+
 ### v1.0.0 (2026-10-05) — stable
 - Same code as rc.16: no action beyond the rc.16 notes. Projects on rc.N can move to `v1.0.0` with a plain merge.
 
