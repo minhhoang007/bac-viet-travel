@@ -53,8 +53,8 @@ jobs:
 
   e2e-app:
     name: Browser E2E (profile app)
-    # The starter's generated example app; projects (they have starter.lock.json) test their own app below.
-    if: hashFiles('starter.lock.json') == ''
+    # The starter's generated example app. Projects (they have starter.lock.json) skip it and test their own app in
+    # "Build + E2E" (a job-level if cannot read files, so each step checks).
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -70,16 +70,24 @@ jobs:
       E2E_DATABASE_URL: postgres://postgres:postgres@localhost:5432/minh_e2e
     steps:
       - uses: actions/checkout@v7
+      - id: repo
+        run: echo "starter=$([ -f starter.lock.json ] && echo false || echo true)" >> "$GITHUB_OUTPUT"
       - uses: pnpm/action-setup@v6
+        if: steps.repo.outputs.starter == 'true'
       - uses: actions/setup-node@v7
+        if: steps.repo.outputs.starter == 'true'
         with:
           node-version-file: .nvmrc
           cache: pnpm
       # S3-compatible storage for the storage module (service containers cannot take a command).
       - run: docker run -d -p 58333:8333 -v "$PWD/db/docker/s3.json:/etc/seaweedfs/s3.json:ro" chrislusf/seaweedfs server -dir=/data -s3 -s3.port=8333 -s3.config=/etc/seaweedfs/s3.json -s3.allowedOrigins=*
+        if: steps.repo.outputs.starter == 'true'
       - run: pnpm install --frozen-lockfile
+        if: steps.repo.outputs.starter == 'true'
       - run: pnpm exec playwright install --with-deps chromium
+        if: steps.repo.outputs.starter == 'true'
       - run: pnpm test:e2e:app
+        if: steps.repo.outputs.starter == 'true'
 
   build-minimal:
     # Guards "really off": default config (profile site, all modules off) must build and run with NO secrets.
