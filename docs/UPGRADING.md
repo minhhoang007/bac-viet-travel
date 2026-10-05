@@ -37,6 +37,10 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
+### v1.2.0 (2026-10-06) — project header and fonts
+- No migration, nothing required. Optional exports in `product/layout.tsx`: `ProductHeader`, `productFontVariables`.
+  `app/globals.css` now sets `body` and h1–h3 fonts through `--font-sans` / `--font-heading` (same system fonts by default).
+
 ### v1.1.1 (2026-10-05) — CI in projects
 - No migration. `.github/workflows/ci.yml`: take the starter's version (projects now run their own E2E with a Postgres service; the example-app job is skipped in projects).
 
