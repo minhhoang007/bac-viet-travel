@@ -19,7 +19,7 @@ async function signInAsAdmin(page: Page) {
   let token: string | undefined;
   for (let i = 0; i < 30 && !token; i++) {
     [{ identifier: token } = { identifier: undefined }] = await sql<{ identifier: string }[]>`
-      select identifier from verifications where value like ${`%"${STAFF}"%`} order by created_at desc limit 1`;
+      select regexp_replace(identifier, '^magic-link:', '') as identifier from verifications where value like ${`%"${STAFF}"%`} order by created_at desc limit 1`;
     if (!token) await new Promise((r) => setTimeout(r, 300));
   }
   await page.goto(`/api/auth/magic-link/verify?token=${token}&callbackURL=%2Fdashboard`);
