@@ -54,6 +54,7 @@ export interface AppContent {
     backToBilling: string;
     checkoutSuccess: string;
     error: string;
+    rateLimited: string;
   };
   files: {
     title: string;

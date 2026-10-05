@@ -59,6 +59,7 @@ export const app: AppContent = {
     backToBilling: "Về trang gói dịch vụ",
     checkoutSuccess: "Cảm ơn bạn! Gói sẽ được kích hoạt trong giây lát.",
     error: "Không tạo được thanh toán. Vui lòng thử lại.",
+    rateLimited: "Bạn thử quá nhiều lần. Vui lòng đợi vài phút rồi thử lại.",
   },
   legal: {
     terms: "Điều khoản sử dụng",

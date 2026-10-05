@@ -18,6 +18,7 @@ export function createProduct(db: Db, ctx: ProductContext) {
   // Background work (needs the jobs module): { handlers: { "notes.x": fn }, periodic: { "notes.sweep": fn } }.
   const jobs: ProductJobs = {};
 
+  // VNPay orders of the product (needs VNPAY_* env): return `vnpayIpn` (VnpayIpnHandler, core/payments/vnpay-ipn.ts).
   return { services: { notes }, exporters, jobs };
 }
 

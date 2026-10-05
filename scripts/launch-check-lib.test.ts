@@ -60,6 +60,14 @@ describe("checkLaunch", () => {
     ]);
   });
 
+  it("robots.txt: blocking one bot is fine, blocking everyone is not", async () => {
+    const robots = async (body: string) =>
+      (await checkLaunch(ORIGIN, fakeFetch({ ...healthySite, "/robots.txt": { body } }))).find((r) => r.name === "robots.txt")!.ok;
+    expect(await robots("User-agent: GPTBot\nDisallow: /\n\nUser-agent: *\nAllow: /")).toBe(true);
+    expect(await robots("User-agent: *\nAllow: /\n\nUser-agent: CCBot\nDisallow: /")).toBe(true);
+    expect(await robots("User-agent: Googlebot\nUser-agent: *\nDisallow: /   # maintenance")).toBe(false);
+  });
+
   it("reports an http URL and an unreachable site without throwing", async () => {
     const down: Fetch = async () => {
       throw new Error("ENOTFOUND");

@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { users } from "@/core/users/schema";
 import { vnpayProvider, vnpaySign } from "@/providers/billing/vnpay";
@@ -281,6 +281,34 @@ describe("VNPay (one-time period purchase)", () => {
     const owner = await user();
     for (const { txnRef } of [await order(owner), await order(owner)]) await billing.handleVnpayIpn(ipnFor(txnRef));
     expect((await ent.getAccess(owner)).endsAt!.getTime() - Date.now()).toBeGreaterThan(59 * DAY);
+  });
+
+  it("the container endpoint verifies and confirms billing orders (rc.15)", async () => {
+    const owner = await user();
+    const { txnRef } = await order(owner);
+    expect(await t.container.handleVnpayIpn!({ ...ipnFor(txnRef), vnp_Amount: "1" })).toMatchObject({ RspCode: "97" });
+    expect(await t.container.handleVnpayIpn!(ipnFor(txnRef))).toEqual({ RspCode: "00", Message: "Confirm Success" });
+    expect((await ent.getAccess(owner)).plan).toBe("pro");
+  });
+
+  it("limits payment creation per user: the 11th attempt in 10 minutes is refused (rc.15)", async () => {
+    const owner = await user();
+    for (let i = 0; i < 10; i++) await order(owner);
+    await expect(order(owner)).rejects.toMatchObject({ code: "RATE_LIMIT_ERROR" });
+    await expect(billing.createPolarPortal(owner, "https://x")).rejects.toMatchObject({ code: "RATE_LIMIT_ERROR" });
+    await order(await user()); // another user is not affected
+    expect(await db.$count(billingOrders)).toBe(11);
+  });
+
+  it("purges VNPay orders still pending after a day; keeps recent and settled ones (rc.15)", async () => {
+    const owner = await user();
+    const [stale, recent, paid] = [await order(owner), await order(owner), await order(owner)];
+    await billing.handleVnpayIpn(ipnFor(paid.txnRef));
+    const old = new Date(Date.now() - 2 * DAY);
+    await db.update(billingOrders).set({ createdAt: old }).where(inArray(billingOrders.txnRef, [stale.txnRef, paid.txnRef]));
+    expect(await billing.purgeStaleOrders()).toBe(1);
+    const left = await db.select({ txnRef: billingOrders.txnRef }).from(billingOrders);
+    expect(left.map((r) => r.txnRef).sort()).toEqual([recent.txnRef, paid.txnRef].sort());
   });
 
   it("account deletion keeps the financial record, anonymized", async () => {

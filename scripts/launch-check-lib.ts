@@ -16,6 +16,27 @@ const meta = (html: string, attr: "name" | "property", key: string) =>
   html.match(new RegExp(`<meta[^>]*content="([^"]*)"[^>]*${attr}="${key}"`, "i"))?.[1];
 const isLocal = (url: string) => /\/\/(localhost|127\.0\.0\.1)(:|\/|$)/.test(url);
 
+/** True when the `User-agent: *` group has `Disallow: /`. Blocking one bot (e.g. GPTBot) is a choice, not an error. */
+function disallowsAllForEveryone(robots: string): boolean {
+  let agents: string[] = [];
+  let inRules = false;
+  for (const raw of robots.split(/\r?\n/)) {
+    const line = raw.replace(/#.*/, "").trim();
+    const [, field, value = ""] = line.match(/^([a-z-]+)\s*:\s*(.*)$/i) ?? [];
+    if (!field) continue;
+    if (field.toLowerCase() === "user-agent") {
+      // Consecutive User-agent lines share one group; a User-agent after rules starts a new group.
+      if (inRules) agents = [];
+      inRules = false;
+      agents.push(value.trim());
+    } else {
+      inRules = true;
+      if (field.toLowerCase() === "disallow" && value.trim() === "/" && agents.includes("*")) return true;
+    }
+  }
+  return false;
+}
+
 export async function checkLaunch(base: string, fetch: Fetch): Promise<LaunchResult[]> {
   const results: LaunchResult[] = [];
   const add = (ok: boolean, name: string, detail?: string) => results.push({ ok, name, ...(detail && { detail }) });
@@ -53,7 +74,7 @@ export async function checkLaunch(base: string, fetch: Fetch): Promise<LaunchRes
   }
 
   const robots = await get("/robots.txt");
-  const blocksAll = /^\s*disallow:\s*\/\s*$/im.test(robots.body);
+  const blocksAll = disallowsAllForEveryone(robots.body);
   add(robots.status === 200 && !blocksAll, "robots.txt", robots.status !== 200 ? `got ${robots.status}` : blocksAll ? "blocks the whole site" : undefined);
 
   const sitemap = await get("/sitemap.xml");

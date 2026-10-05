@@ -69,7 +69,7 @@ Trạng thái: ⬜ chưa làm · 🟨 đang làm · ✅ xong
 
 ---
 
-## V1.0 — Release 🟨 (`v1.0.0-rc.14`; deploy thật ✅ 2026-10-01; chờ project app thật của chủ repo)
+## V1.0 — Release 🟨 (`v1.0.0-rc.15`; deploy thật ✅ 2026-10-01; chờ project app thật của chủ repo)
 
 > Quyết định 2026-09-30: project B (app) là **project thật** của chủ repo, không dựng project thử nghiệm.
 > V1.0 được tag khi project đó chạy thật và phát hiện đã được ghi vào [docs/REUSE-PROOFS.md](docs/REUSE-PROOFS.md).
@@ -166,7 +166,14 @@ Mỗi module chỉ được gắn nhãn **Stable** khi đạt Module DoD ([REQUI
 | ✅ 4 | `pnpm launch:check <url>` | Unit test (fetch giả); chạy thật trên bac-viet-travel.vercel.app: 12/12 ✔ |
 | ✅ 5 | `docs/LAUNCH.md`: domain, DNS email (SPF/DKIM/DMARC), thanh toán, prompt soạn điều khoản, vận hành | Review |
 
-### rc.15 — DataTable kit ⬜ (làm khi một project cần bảng quản lý)
+### rc.15 — Sửa sau security review + code review ✅ (2026-10-05)
+| # | Task | Kiểm chứng |
+|---|---|---|
+| ✅ 1 | IPN VNPay dùng chung: kiểm chữ ký một lần → `vnpayIpn` của product → billing; chạy cả khi tắt billing (G8b) | Integration: 00/01/04/97/99, thứ tự product → billing, 404 khi không có VNPay |
+| ✅ 2 | Rate limit checkout/portal/VNPay (10 / 10 phút / user) + dọn đơn VNPay pending > 24h | Integration |
+| ✅ 3 | `/pricing` gói miễn phí hiện "0 ₫"; `launch:check` chỉ báo robots khi `User-agent: *` chặn `/` | Unit test |
+
+### rc.16 — DataTable kit ⬜ (làm khi một project cần bảng quản lý)
 | # | Task | Kiểm chứng |
 |---|---|---|
 | 1 | `components/data-table/`: bảng server-side, trạng thái (trang, sắp xếp, lọc, tìm) nằm trên `searchParams`; khai báo cột có kiểu | Unit test parse/serialize URL state |
