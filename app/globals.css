@@ -45,6 +45,9 @@
 }
 
 @theme inline {
+  /* Fonts: system stack unless the project sets --brand-font-sans / --brand-font-heading (product/layout.tsx). */
+  --font-sans: var(--brand-font-sans, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif);
+  --font-heading: var(--brand-font-heading, var(--font-sans));
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
@@ -83,7 +86,7 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-sans);
 }
 
 /* Blog post body (MDX). Minimal typography without a plugin; projects may swap in @tailwindcss/typography. */
@@ -148,3 +151,9 @@ body {
   text-align: left;
 }
 
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-heading);
+}
