@@ -23,6 +23,8 @@ export const e2eServerEnv: Record<string, string> = {
   VNPAY_HASH_SECRET: E2E_VNPAY.hashSecret,
   DATABASE_URL,
   BETTER_AUTH_SECRET: "e2e-secret-0123456789abcdef0123456789",
+  // Required with the jobs module; CI has no .env.local.
+  CRON_SECRET: "e2e-cron-secret-0123456789abcdef",
   EMAIL_PROVIDER: "resend",
   EMAIL_API_KEY: "re_e2e_not_used",
   EMAIL_FROM: "booking@example.com",
