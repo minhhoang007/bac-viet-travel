@@ -12,6 +12,8 @@ export interface AppContent {
   };
   dashboard: {
     nav: { overview: string; account: string; admin: string };
+    /** App shell (dashboard + admin): sidebar sheet title, toggle button, skip link, breadcrumb landmark. */
+    shell: { menu: string; toggle: string; skip: string; breadcrumb: string };
     signOut: string;
     welcome: string;
     overviewText: string;
@@ -52,6 +54,7 @@ export interface AppContent {
     backToBilling: string;
     checkoutSuccess: string;
     error: string;
+    rateLimited: string;
   };
   files: {
     title: string;
@@ -100,12 +103,16 @@ export interface AppContent {
       previous: string;
       next: string;
       selfNote: string;
+      confirmDisable: string;
+      confirmRole: string;
     };
     jobs: { title: string; name: string; attempts: string; lastError: string; retry: string; empty: string };
     billing: { subscriptions: string; orders: string; problemEvents: string; retry: string; empty: string };
     audit: { title: string; time: string; actor: string; action: string; target: string; empty: string };
     done: string;
     failed: string;
+    confirmTitle: string;
+    cancel: string;
   };
   blog: {
     nav: string;

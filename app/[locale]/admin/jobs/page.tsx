@@ -5,6 +5,7 @@ import { retryJob } from "@/app/actions/admin";
 import { ResultNotice } from "@/components/admin/result-notice";
 import type { Locale } from "@/config/app";
 import { getAppContent } from "@/content";
+import { PageHeader } from "@/components/app-shell/page-header";
 
 type Props = { params: Promise<{ locale: Locale }>; searchParams: Promise<{ result?: string }> };
 
@@ -19,7 +20,7 @@ export default async function AdminJobsPage({ params, searchParams }: Props) {
 
   return (
     <div className="grid gap-6">
-      <h1 className="text-2xl font-bold">{c.jobs.title}</h1>
+      <PageHeader title={c.jobs.title} />
       <ResultNotice result={result} done={c.done} failed={c.failed} />
       {jobs.length === 0 ? (
         <p className="text-sm text-muted-foreground">{c.jobs.empty}</p>

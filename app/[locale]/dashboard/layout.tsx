@@ -2,7 +2,8 @@ import type { ReactNode } from "react";
 import type { Metadata } from "next";
 import { requirePageUser } from "@/app/_lib/session";
 import { signOut } from "@/app/actions/auth";
-import { DashboardShell } from "@/components/dashboard/shell";
+import { AppShell } from "@/components/app-shell/app-shell";
+import { sidebarDefaultOpen } from "@/app/_lib/sidebar";
 import { localePath } from "@/core/i18n/routing";
 import { appConfig, type Locale } from "@/config/app";
 import { getAppContent } from "@/content";
@@ -10,7 +11,11 @@ import { productNav } from "@/product/manifest";
 import { getContainer } from "@/bootstrap/container";
 import { getModuleNavigation } from "@/bootstrap/navigation";
 
-export const metadata: Metadata = { robots: { index: false } };
+// Default title for pages without their own (documents need a <title>, WCAG 2.4.2).
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  return { title: getAppContent(locale as Locale).dashboard.nav.overview, robots: { index: false } };
+}
 
 export default async function DashboardLayout({
   children,
@@ -36,10 +41,12 @@ export default async function DashboardLayout({
   ];
 
   return (
-    <DashboardShell
+    <AppShell
       brand={{ label: appConfig.name, href: localePath(locale, "/dashboard") }}
       nav={nav}
       user={user}
+      labels={c.shell}
+      defaultOpen={await sidebarDefaultOpen()}
       signOut={
         <form action={signOut}>
           <input type="hidden" name="locale" value={locale} />
@@ -50,6 +57,6 @@ export default async function DashboardLayout({
       }
     >
       {children}
-    </DashboardShell>
+    </AppShell>
   );
 }

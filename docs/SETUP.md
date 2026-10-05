@@ -20,6 +20,7 @@ git remote add origin <project-url>
 pnpm install
 pnpm init:project        # tên, brand, profile, module; xoá _example-notes
 cp .env.example .env.local
+pnpm setup:check         # báo biến môi trường còn thiếu cho profile/module đã bật
 pnpm check
 pnpm dev
 ```

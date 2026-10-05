@@ -2,6 +2,8 @@ import { and, desc, eq, gt, inArray, lt, or, sql } from "drizzle-orm";
 import { users } from "@/core/users/schema";
 import { AppError } from "@/core/errors";
 import type { Logger } from "@/core/logger";
+import { checkVnpayOrder, createVnpayIpn, VNPAY_CONFIRMED, type VnpayIpnHandler, type VnpayIpnResult } from "@/core/payments/vnpay-ipn";
+import type { RateLimiter } from "@/core/security/rate-limit";
 import type { Db } from "@/db/client";
 import type { BillingInterval, BillingProviderId, PlanDefinition, PlanId } from "@/config/billing.defaults";
 import type { EntitlementsModule } from "@/modules/entitlements";
@@ -12,6 +14,8 @@ import { billingOrders, subscriptions, webhookEvents } from "./schema";
 export const PROCESS_WEBHOOK_JOB = "billing.process_webhook";
 const MAX_EVENT_ATTEMPTS = 8;
 const EVENT_LEASE = "2 minutes";
+const STALE_ORDER_MS = 24 * 60 * 60_000;
+const PAYMENT_LINK_MS = 15 * 60_000;
 
 export interface BillingDeps {
   db: Db;
@@ -25,10 +29,12 @@ export interface BillingDeps {
   polar?: SubscriptionProvider & { products: Partial<Record<PlanId, Partial<Record<BillingInterval, string>>>> };
   /** One-time payments (VNPay) — present when "vnpay" is enabled. */
   vnpay?: OneTimePaymentProvider;
+  /** Per-user limit on checkout / portal / payment creation (each call hits the provider or writes an order). */
+  checkoutLimiter?: RateLimiter;
   now?: () => Date;
 }
 
-export type VnpayIpnResult = { RspCode: "00" | "01" | "02" | "04" | "97" | "99"; Message: string };
+export type { VnpayIpnResult } from "@/core/payments/vnpay-ipn";
 
 export interface BillingModule {
   providers: BillingProviderId[];
@@ -43,7 +49,14 @@ export interface BillingModule {
   /** Periodic: compare live subscriptions with the provider and fix drift. */
   reconcileSubscriptions(limit?: number): Promise<number>;
   createVnpayPayment(input: { user: { id: string }; plan: PlanId; interval: BillingInterval; ipAddr: string; returnUrl: string; locale: "vi" | "en" }): Promise<string>;
+  /** Verifies the signature, then handles the IPN. The app endpoint uses `vnpayIpnHandler` behind a shared verifier. */
   handleVnpayIpn(params: Record<string, string>): Promise<VnpayIpnResult>;
+  /** IPN for billing orders, signature already verified; null when the txnRef is not a billing order. */
+  vnpayIpnHandler: VnpayIpnHandler;
+  /** Periodic: delete VNPay orders still pending after a day (the payment link expires after 15 minutes). */
+  purgeStaleOrders(): Promise<number>;
+  /** Periodic: ask VNPay about orders pending past the 15-minute link (IPN lost) and confirm the paid ones. */
+  reconcileVnpayOrders(limit?: number): Promise<number>;
   /** Return-URL page: verified order status (never grants access — only the IPN does). */
   vnpayReturnStatus(params: Record<string, string>): Promise<{ valid: boolean; status: "pending" | "paid" | "failed" | "unknown" }>;
   /** Account deletion hook: revoke live subscriptions at the provider so the user is never charged again. */
@@ -76,6 +89,43 @@ export function createBillingModule(deps: BillingDeps): BillingModule {
   const requireVnpay = () => {
     if (!deps.vnpay) throw new AppError("BILLING_ERROR", "VNPay is not enabled");
     return deps.vnpay;
+  };
+
+  const checkLimit = async (userId: string) => {
+    if (deps.checkoutLimiter && !(await deps.checkoutLimiter.limit(`billing:checkout:${userId}`)).success) {
+      throw new AppError("RATE_LIMIT_ERROR");
+    }
+  };
+
+  const vnpayIpnHandler: VnpayIpnHandler = async (params) => {
+    const [order] = await db
+      .select()
+      .from(billingOrders)
+      .where(and(eq(billingOrders.provider, "vnpay"), eq(billingOrders.txnRef, params.vnp_TxnRef ?? "")));
+    if (!order) return null;
+    const checked = checkVnpayOrder(order, params);
+    if ("stop" in checked) return checked.stop;
+
+    const { success } = checked;
+    await db.transaction(async (tx) => {
+      const [claimed] = await tx
+        .update(billingOrders)
+        .set({
+          status: success ? "paid" : "failed",
+          paidAt: success ? now() : null,
+          providerTransactionId: params.vnp_TransactionNo ?? null,
+          providerResponse: params,
+        })
+        .where(and(eq(billingOrders.id, order.id), eq(billingOrders.status, "pending")))
+        .returning();
+      if (!claimed || !success || !claimed.ownerId) return;
+      await deps.entitlements.grantPeriod(
+        { ownerId: claimed.ownerId, plan: claimed.plan as PlanId, source: "vnpay_order", sourceId: claimed.id, days: deps.periodDays[claimed.interval] },
+        tx,
+      );
+    });
+    logger.info("billing.vnpay_ipn", { orderId: order.id, success });
+    return VNPAY_CONFIRMED;
   };
 
   const planForProduct = (productId: string): PlanId | undefined => {
@@ -144,12 +194,14 @@ export function createBillingModule(deps: BillingDeps): BillingModule {
 
     async createPolarCheckout(user, plan, interval, successUrl) {
       const polar = requirePolar();
+      await checkLimit(user.id);
       const productId = polar.products[plan]?.[interval];
       if (!productId) throw new AppError("BILLING_ERROR", `No Polar product for ${plan}/${interval}`);
       return (await polar.createCheckout({ productId, userId: user.id, email: user.email, successUrl })).url;
     },
 
     async createPolarPortal(userId, returnUrl) {
+      await checkLimit(userId);
       return (await requirePolar().createPortalSession({ userId, returnUrl })).url;
     },
 
@@ -264,13 +316,15 @@ export function createBillingModule(deps: BillingDeps): BillingModule {
 
     async createVnpayPayment({ user, plan, interval, ipAddr, returnUrl, locale }) {
       const vnpay = requireVnpay();
+      await checkLimit(user.id);
       const amount = deps.plans[plan].prices?.vnd[interval];
       if (!amount) throw new AppError("BILLING_ERROR", `No VND price for ${plan}/${interval}`);
       const [order] = await db
         .insert(billingOrders)
         .values({ ownerId: user.id, provider: "vnpay", plan, interval, amount, currency: "VND", txnRef: crypto.randomUUID().replace(/-/g, "") })
         .returning();
-      const createdAt = now();
+      // The stored createdAt, so reconcileVnpayOrders can query VNPay with the same transaction date.
+      const createdAt = order!.createdAt;
       return vnpay.buildPaymentUrl({
         txnRef: order!.txnRef,
         amount,
@@ -280,45 +334,53 @@ export function createBillingModule(deps: BillingDeps): BillingModule {
         returnUrl,
         locale,
         createdAt,
-        expiresAt: new Date(createdAt.getTime() + 15 * 60_000),
+        expiresAt: new Date(createdAt.getTime() + PAYMENT_LINK_MS),
       });
     },
 
     async handleVnpayIpn(params) {
-      try {
-        if (!requireVnpay().verify(params)) return { RspCode: "97", Message: "Invalid signature" };
-        const [order] = await db
-          .select()
-          .from(billingOrders)
-          .where(and(eq(billingOrders.provider, "vnpay"), eq(billingOrders.txnRef, params.vnp_TxnRef ?? "")));
-        if (!order) return { RspCode: "01", Message: "Order not found" };
-        if (Number(params.vnp_Amount) !== order.amount * 100) return { RspCode: "04", Message: "Invalid amount" };
-        if (order.status !== "pending") return { RspCode: "02", Message: "Order already confirmed" };
+      return createVnpayIpn({ verify: (p) => requireVnpay().verify(p), handlers: [vnpayIpnHandler], logger })(params);
+    },
 
-        const success = params.vnp_ResponseCode === "00" && params.vnp_TransactionStatus === "00";
-        await db.transaction(async (tx) => {
-          const [claimed] = await tx
-            .update(billingOrders)
-            .set({
-              status: success ? "paid" : "failed",
-              paidAt: success ? now() : null,
-              providerTransactionId: params.vnp_TransactionNo ?? null,
-              providerResponse: params,
-            })
-            .where(and(eq(billingOrders.id, order.id), eq(billingOrders.status, "pending")))
-            .returning();
-          if (!claimed || !success || !claimed.ownerId) return;
-          await deps.entitlements.grantPeriod(
-            { ownerId: claimed.ownerId, plan: claimed.plan as PlanId, source: "vnpay_order", sourceId: claimed.id, days: deps.periodDays[claimed.interval] },
-            tx,
-          );
-        });
-        logger.info("billing.vnpay_ipn", { orderId: order.id, success });
-        return { RspCode: "00", Message: "Confirm Success" };
-      } catch (error) {
-        logger.error("billing.vnpay_ipn_failed", { error });
-        return { RspCode: "99", Message: "Unknown error" };
+    vnpayIpnHandler,
+
+    async reconcileVnpayOrders(limit = 50) {
+      if (!deps.vnpay) return 0;
+      const vnpay = deps.vnpay;
+      const t = now().getTime();
+      const pending = await db
+        .select({ txnRef: billingOrders.txnRef, createdAt: billingOrders.createdAt })
+        .from(billingOrders)
+        .where(
+          and(
+            eq(billingOrders.provider, "vnpay"),
+            eq(billingOrders.status, "pending"),
+            lt(billingOrders.createdAt, new Date(t - PAYMENT_LINK_MS)),
+            gt(billingOrders.createdAt, new Date(t - STALE_ORDER_MS)),
+          ),
+        )
+        .limit(limit);
+      let confirmed = 0;
+      for (const order of pending) {
+        try {
+          const result = await vnpay.query(order);
+          if (result.status !== "paid") continue;
+          if ((await vnpayIpnHandler(result.params))?.RspCode === "00") confirmed += 1;
+        } catch (error) {
+          logger.error("billing.vnpay_reconcile_failed", { txnRef: order.txnRef, error });
+        }
       }
+      if (confirmed) logger.warn("billing.vnpay_reconciled", { count: confirmed }); // an IPN was lost
+      return confirmed;
+    },
+
+    async purgeStaleOrders() {
+      const removed = await db
+        .delete(billingOrders)
+        .where(and(eq(billingOrders.provider, "vnpay"), eq(billingOrders.status, "pending"), lt(billingOrders.createdAt, new Date(now().getTime() - STALE_ORDER_MS))))
+        .returning({ id: billingOrders.id });
+      if (removed.length) logger.info("billing.stale_orders_purged", { count: removed.length });
+      return removed.length;
     },
 
     async revokeSubscriptionsForUser(userId) {

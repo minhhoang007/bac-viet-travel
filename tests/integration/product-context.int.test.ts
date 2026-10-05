@@ -3,12 +3,15 @@ import { validateEnv } from "@/bootstrap/env";
 import { moduleManifests } from "@/bootstrap/modules";
 import { featureDefaults } from "@/config/features.defaults";
 import type { ProductContext } from "@/core/product/context";
+import { checkVnpayOrder, VNPAY_CONFIRMED } from "@/core/payments/vnpay-ipn";
 import { users } from "@/core/users/schema";
+import type { SubscriptionProvider } from "@/modules/billing";
+import { vnpaySign } from "@/providers/billing/vnpay";
 import { resetDb, testDb } from "./setup/db";
 import { testApp } from "./setup/app";
 
 // A fake product that records its context and registers jobs (rc.10: G7 + G8).
-const seen = vi.hoisted(() => ({ ctx: undefined as ProductContext | undefined, handled: [] as unknown[], ticks: 0 }));
+const seen = vi.hoisted(() => ({ ctx: undefined as ProductContext | undefined, handled: [] as unknown[], ticks: 0, ipnThrows: false }));
 vi.mock("@/product/manifest", () => ({
   createProduct: (_db: unknown, ctx: ProductContext) => {
     seen.ctx = ctx;
@@ -18,6 +21,13 @@ vi.mock("@/product/manifest", () => ({
       jobs: {
         handlers: { "test.handle": async (payload: Record<string, unknown>) => void seen.handled.push(payload) },
         periodic: { "test.sweep": async () => void seen.ticks++ },
+      },
+      // A booking-style handler: claims txnRefs starting with "BK", one 150,000 VND pending order (rc.15).
+      vnpayIpn: async (params: Record<string, string>) => {
+        if (!params.vnp_TxnRef?.startsWith("BK")) return null;
+        if (seen.ipnThrows) throw new Error("db down");
+        const checked = checkVnpayOrder({ amount: 150_000, status: "pending" }, params);
+        return "stop" in checked ? checked.stop : VNPAY_CONFIRMED;
       },
     };
   },
@@ -33,6 +43,7 @@ beforeEach(async () => {
   seen.ctx = undefined;
   seen.handled = [];
   seen.ticks = 0;
+  seen.ipnThrows = false;
 });
 afterAll(() => close());
 
@@ -63,6 +74,40 @@ describe("product context (rc.10)", () => {
     expect(seen.ctx!.payments.vnpay).toBeUndefined();
     testApp(db, { env: { ...VNPAY, VNPAY_PAYMENT_URL: "https://pay.vnpay.vn/vpcpay.html" } });
     expect(seen.ctx!.payments.vnpay!.sandbox).toBe(false);
+  });
+
+  describe("VNPay IPN endpoint (rc.15)", () => {
+    const ipn = (txnRef: string, amount = 150_000) => {
+      const params = { vnp_TmnCode: VNPAY.VNPAY_TMN_CODE, vnp_TxnRef: txnRef, vnp_Amount: String(amount * 100), vnp_ResponseCode: "00", vnp_TransactionStatus: "00" };
+      return { ...params, vnp_SecureHash: vnpaySign(params, VNPAY.VNPAY_HASH_SECRET) };
+    };
+
+    it("routes product orders without the billing module: 00, 04, unknown 01, bad signature 97, handler error 99", async () => {
+      const { container } = testApp(db, { env: VNPAY });
+      const handle = container.handleVnpayIpn!;
+      expect(await handle(ipn("BK1"))).toEqual(VNPAY_CONFIRMED);
+      expect(await handle(ipn("BK1", 1_000))).toMatchObject({ RspCode: "04" });
+      expect(await handle(ipn("XX1"))).toMatchObject({ RspCode: "01" });
+      expect(await handle({ ...ipn("BK1"), vnp_Amount: "1" })).toMatchObject({ RspCode: "97" });
+      seen.ipnThrows = true;
+      expect(await handle(ipn("BK1"))).toEqual({ RspCode: "99", Message: "Unknown error" });
+    });
+
+    it("offers the order to the product first, then to billing (one IPN URL per merchant)", async () => {
+      const polar = {} as SubscriptionProvider; // not called here
+      const { container } = testApp(db, { saas: true, env: VNPAY, overrides: { billingProviders: { polar } } });
+      const [owner] = await db.insert(users).values({ email: "buyer@example.com" }).returning();
+      const url = await container.billing!.createVnpayPayment({ user: { id: owner!.id }, plan: "pro", interval: "month", ipAddr: "203.0.113.1", returnUrl: "https://x/r", locale: "vi" });
+      const txnRef = new URL(url).searchParams.get("vnp_TxnRef")!;
+
+      expect(await container.handleVnpayIpn!(ipn("BK2"))).toEqual(VNPAY_CONFIRMED);
+      expect(await container.handleVnpayIpn!(ipn(txnRef, 199_000))).toEqual(VNPAY_CONFIRMED);
+      expect((await container.entitlements!.getAccess(owner!.id)).plan).toBe("pro");
+    });
+
+    it("is absent without VNPay env, so the route answers 404", () => {
+      expect(testApp(db).container.handleVnpayIpn).toBeUndefined();
+    });
   });
 
   it("refuses a half-configured VNPay pair", () => {

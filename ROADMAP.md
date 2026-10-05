@@ -69,7 +69,7 @@ Trạng thái: ⬜ chưa làm · 🟨 đang làm · ✅ xong
 
 ---
 
-## V1.0 — Release 🟨 (`v1.0.0-rc.12`; deploy thật ✅ 2026-10-01; chờ project app thật của chủ repo)
+## V1.0 — Release 🟨 (`v1.0.0-rc.16`; deploy thật ✅ 2026-10-01; chờ project app thật của chủ repo)
 
 > Quyết định 2026-09-30: project B (app) là **project thật** của chủ repo, không dựng project thử nghiệm.
 > V1.0 được tag khi project đó chạy thật và phát hiện đã được ghi vào [docs/REUSE-PROOFS.md](docs/REUSE-PROOFS.md).
@@ -77,8 +77,8 @@ Trạng thái: ⬜ chưa làm · 🟨 đang làm · ✅ xong
 - [x] `pnpm init:project` (đổi tên/brand, chọn profile, bật module, xoá `_example-notes`) + `pnpm verify:init` (4 biến thể trên clone sạch).
 - [x] Security review → [docs/security/review-v1.0.md](docs/security/review-v1.0.md) (5 lỗi đã sửa, 5 rủi ro chấp nhận có ghi lại).
 - [x] Docs đầy đủ (README, ARCHITECTURE, AGENTS, SECURITY, UPGRADING, DEPLOY, REUSE-PROOFS).
-- [ ] **36.B-1:** hai project thật (một site, một app); ghi mọi chỗ phải sửa Core/Modules. — 🟨 Site Hạ Long Tours (thử nghiệm) xong (F1–F7 → rc.2); project app = project thật của chủ repo.
-- [x] **36.B-2:** nâng cấp một project từ tag cũ lên tag mới theo [docs/UPGRADING.md](docs/UPGRADING.md). — Hạ Long Tours rc.1 → rc.2; xung đột chỉ ở file project sở hữu; follow-up U1–U4; bước migration chưa được thử.
+- [x] **36.B-1:** hai project thật (một site, một app); ghi mọi chỗ phải sửa Core/Modules. — Site Hạ Long Tours (F1–F7 → rc.2); app Bắc Việt Travel (G7–G12 → rc.10–rc.16), deploy thật, thanh toán VNPay sandbox qua IPN (2026-10-05).
+- [x] **36.B-2:** nâng cấp một project từ tag cũ lên tag mới theo [docs/UPGRADING.md](docs/UPGRADING.md). — Hạ Long Tours rc.1 → rc.2; xung đột chỉ ở file project sở hữu; follow-up U1–U4. Bước migration: quyết định 2026-10-05 chấp nhận CI (migrate DB trống + `verify:init`) thay cho chạy tay.
 - [x] **36.B-3:** cấu hình tối thiểu (mọi module tắt, không secret) build + chạy — CI `build-minimal` + E2E.
 
 > V1.0 phụ thuộc vào hai project thật. Trong lúc chờ, phát hành `v1.0.0-rc.N` để dùng.
@@ -143,8 +143,51 @@ Mỗi module chỉ được gắn nhãn **Stable** khi đạt Module DoD ([REQUI
 - [x] `productAdminNav`: trang admin của dự án có trong menu /admin (G9).
 - [x] `ctx.audit`: thao tác admin của dự án ghi chung nhật ký audit (G9).
 
+### rc.13 — Dashboard kit: shell, page, feedback, form ✅ (chờ review)
+> Quyết định 2026-10-02: lấy pattern UI từ shadcn-admin, **không fork, không đổi cấu trúc thư mục**, không thêm
+> TanStack Query/Zustand/RHF. Form mặc định = server action + `useActionState` + zod.
+
+| # | Task | Kiểm chứng |
+|---|---|---|
+| ✅ 1 | `components/app-shell/`: `AppShell` (shadcn `sidebar`: thu gọn, nhớ trạng thái bằng cookie, Sheet trên mobile, skip-to-content), nav nhận từ props. Dashboard + admin dùng chung; xoá `components/dashboard/shell.tsx` | E2E 390px + desktop, axe sạch; `pnpm arch` xanh |
+| ✅ 2 | `PageHeader` (title, description, actions, breadcrumb) dùng ở các trang dashboard/admin | Trang có đúng một `h1`; E2E |
+| ✅ 3 | `components/feedback/`: `EmptyState`, `ErrorState`, `ConfirmDialog` | E2E admin khoá user qua dialog (repo chưa có môi trường test component) |
+| ✅ 4 | `components/forms/`: `FormState<F>` + `toFormState`, `FormField`, `FormError`, `SubmitButton`; chuyển contact, login, note form | Test map lỗi zod/AppError; không còn `inputClass` lặp; E2E form cũ xanh |
+| ✅ 5 | Luật: phân vai component, "xem cái có sẵn trước", quy ước state, quy ước form → AGENTS.md + skill `ui-components` | Review docs |
+
+### rc.14 — Ship fast (học trải nghiệm ShipFast) ✅ (chờ review)
+> Quyết định 2026-10-02: lấy trải nghiệm "lên mạng nhanh" của ShipFast, giữ kiến trúc + test. Làm trước DataTable.
+
+| # | Task | Kiểm chứng |
+|---|---|---|
+| ✅ 1 | `docs/QUICKSTART.md`: clone → deploy → check trên một trang; README trỏ vào | Clean clone đo thời gian phần local |
+| ✅ 2 | `pnpm setup:check`: Node, env thiếu theo profile/module (dùng chung luật `envProblems` với runtime), DB | Unit test; chạy thật với cấu hình sai → exit 1 |
+| ✅ 3 | Block landing: `Pricing` (content-driven, dùng lại ở /pricing), `Steps`, `ProblemSolution`, `Testimonials`, `LogoCloud` | Render test; E2E trang chủ + axe + 390px |
+| ✅ 4 | `pnpm launch:check <url>` | Unit test (fetch giả); chạy thật trên bac-viet-travel.vercel.app: 12/12 ✔ |
+| ✅ 5 | `docs/LAUNCH.md`: domain, DNS email (SPF/DKIM/DMARC), thanh toán, prompt soạn điều khoản, vận hành | Review |
+
+### rc.15 — Sửa sau security review + code review ✅ (2026-10-05)
+| # | Task | Kiểm chứng |
+|---|---|---|
+| ✅ 1 | IPN VNPay dùng chung: kiểm chữ ký một lần → `vnpayIpn` của product → billing; chạy cả khi tắt billing (G8b) | Integration: 00/01/04/97/99, thứ tự product → billing, 404 khi không có VNPay |
+| ✅ 2 | Rate limit checkout/portal/VNPay (10 / 10 phút / user) + dọn đơn VNPay pending > 24h | Integration |
+| ✅ 3 | `/pricing` gói miễn phí hiện "0 ₫"; `launch:check` chỉ báo robots khi `User-agent: *` chặn `/` | Unit test |
+
+### rc.16 — Favicon + đối soát VNPay (phát hiện từ Bắc Việt) ✅ (2026-10-05)
+| # | Task | Kiểm chứng |
+|---|---|---|
+| ✅ 1 | G12: `/favicon.ico` và đường dẫn có dấu chấm → 404 (không còn 500); favicon từ brand (`app/icon.tsx`); `launch:check` kiểm favicon | E2E starter; unit test |
+| ✅ 2 | G11: `query()` (querydr) trên adapter VNPay; `billing.reconcile_vnpay` xác nhận đơn đã trả mà mất IPN | Unit test (VNPay giả có ký); integration; chữ ký querydr kiểm chứng với sandbox thật |
+
+### rc.17 — DataTable kit ⬜ (làm khi một project cần bảng quản lý)
+| # | Task | Kiểm chứng |
+|---|---|---|
+| 1 | `components/data-table/`: bảng server-side, trạng thái (trang, sắp xếp, lọc, tìm) nằm trên `searchParams`; khai báo cột có kiểu | Unit test parse/serialize URL state |
+| 2 | Chuyển 4 bảng admin (users, audit, billing, jobs) sang kit | E2E phân trang/tìm kiếm; axe |
+| 3 | Mẫu dùng trong `_example-notes` + skill `product-feature` | Review docs |
+
 ### Còn lại ⬜
-`ai` (+ `usage`), CLI `create-minh-app`.
+`ai` (+ `usage`), CLI `create-minh-app`, command menu ⌘K.
 
 ---
 

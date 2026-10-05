@@ -19,6 +19,7 @@ export const app: AppContent = {
   },
   dashboard: {
     nav: { overview: "Tổng quan", account: "Tài khoản", admin: "Quản trị" },
+    shell: { menu: "Menu", toggle: "Ẩn/hiện menu", skip: "Bỏ qua, đến nội dung chính", breadcrumb: "Đường dẫn" },
     signOut: "Đăng xuất",
     welcome: "Xin chào",
     overviewText: "Đây là dashboard mẫu. Phần sản phẩm nằm trong mục Ghi chú.",
@@ -58,6 +59,7 @@ export const app: AppContent = {
     backToBilling: "Về trang gói dịch vụ",
     checkoutSuccess: "Cảm ơn bạn! Gói sẽ được kích hoạt trong giây lát.",
     error: "Không tạo được thanh toán. Vui lòng thử lại.",
+    rateLimited: "Bạn thử quá nhiều lần. Vui lòng đợi vài phút rồi thử lại.",
   },
   legal: {
     terms: "Điều khoản sử dụng",
@@ -122,6 +124,8 @@ export const app: AppContent = {
       previous: "Trước",
       next: "Sau",
       selfNote: "Bạn không thể khoá hoặc bỏ quyền admin của chính mình.",
+      confirmDisable: "Người dùng sẽ bị đăng xuất và không đăng nhập lại được cho đến khi mở khoá.",
+      confirmRole: "Quyền vào trang quản trị của người dùng này sẽ thay đổi.",
     },
     jobs: { title: "Job lỗi", name: "Tên", attempts: "Số lần", lastError: "Lỗi gần nhất", retry: "Chạy lại", empty: "Không có job lỗi." },
     billing: {
@@ -134,6 +138,8 @@ export const app: AppContent = {
     audit: { title: "Nhật ký quản trị", time: "Thời gian", actor: "Người thực hiện", action: "Hành động", target: "Đối tượng", empty: "Chưa có thao tác nào." },
     done: "Đã thực hiện.",
     failed: "Không thực hiện được.",
+    confirmTitle: "Xác nhận thao tác",
+    cancel: "Huỷ",
   },
   blog: {
     nav: "Blog",

@@ -157,6 +157,49 @@ describe("booking deposits (VNPay)", () => {
     expect(sent.map((m) => m.kind)).toEqual(["booking_refund_due", "booking_team_refund"]);
   });
 
+  it("reconcile: a deposit paid at VNPay whose IPN was lost is confirmed before its hold expires; unpaid ones expire", async () => {
+    const paid = await holdOn(10);
+    const second = await bookingService.hold({ departureId: paid.departure.id, name: "Minh", email: "minh@example.com", phone: "0912345679", adults: "1", locale: "vi" }, "ip2");
+    if (second.status !== "held") throw new Error(second.status);
+    const unpaid = second;
+    const paidReq = await startPayment(paid.code, paid.token);
+    await startPayment(unpaid.code, unpaid.token);
+    const asked: { txnRef: string; createdAt: Date }[] = [];
+    // The adapter's query() (tested in the starter), answered here: VNPay has the first payment, not the second.
+    const reconciling = createDepositService({
+      db,
+      logger,
+      mail: { send: async (m) => void sent.push(m) },
+      bookings: bookingService,
+      vnpay: {
+        ...vnpay,
+        query: async (input) => {
+          asked.push(input);
+          return input.txnRef === paidReq.vnp_TxnRef
+            ? { status: "paid", params: { vnp_TxnRef: input.txnRef, vnp_Amount: paidReq.vnp_Amount!, vnp_ResponseCode: "00", vnp_TransactionStatus: "00", vnp_TransactionNo: "15695332", vnp_BankCode: "NCB" } }
+            : { status: "unpaid" };
+        },
+      },
+      tourTitle: () => "Ninh Bình 1 ngày",
+      now: () => clock,
+    });
+
+    expect(await reconciling.reconcile(LINKS)).toBe(0); // holds still running: wait for the IPN
+    expect(asked).toEqual([]);
+
+    clock = new Date(clock.getTime() + 16 * 60_000);
+    expect(await reconciling.reconcile(LINKS)).toBe(1);
+    await bookingService.expireStale();
+    expect((await status(paid.code)).status).toBe("deposit_paid");
+    expect((await status(unpaid.code)).status).toBe("expired");
+    expect(sent.map((m) => m.kind)).toEqual(["booking_deposit_paid", "booking_team_paid"]);
+    // VNPay is asked with the attempt's stored creation time, the vnp_CreateDate of its payment URL.
+    const gmt7 = (d: Date) => new Date(d.getTime() + 7 * 3_600_000).toISOString().replace(/\D/g, "").slice(0, 14);
+    expect(gmt7(asked.find((a) => a.txnRef === paidReq.vnp_TxnRef)!.createdAt)).toBe(paidReq.vnp_CreateDate);
+
+    expect(await reconciling.reconcile(LINKS)).toBe(0); // paid now; the unpaid one is asked again but stays unpaid
+  });
+
   it("return URL: pending until the IPN arrives, then paid; forged params are invalid", async () => {
     const { code, token } = await holdOn(10);
     const req = await startPayment(code, token);

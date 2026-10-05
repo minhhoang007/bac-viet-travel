@@ -1,3 +1,4 @@
+import { getEnv } from "@/bootstrap/env";
 import type { AccountDataExporter } from "@/core/account";
 import type { Locale } from "@/config/app";
 import type { ProductContext, ProductJobs } from "@/core/product/context";
@@ -43,7 +44,12 @@ export function createProduct(db: Db, ctx: ProductContext) {
   const jobs: ProductJobs = {
     periodic: {
       "booking.reminders": async () => void (await bookingAdmin.sendReminders()),
-      "booking.expire_holds": async () => void (await booking.expireStale()),
+      // Ask VNPay first: a paid deposit whose IPN was lost must not expire with its hold.
+      "booking.expire_holds": async () => {
+        const env = getEnv();
+        await deposits.reconcile({ siteUrl: env.NEXT_PUBLIC_SITE_URL, teamEmail: env.extra.CONTACT_TO_EMAIL });
+        await booking.expireStale();
+      },
     },
   };
 

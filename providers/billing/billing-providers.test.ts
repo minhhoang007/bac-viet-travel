@@ -2,6 +2,7 @@ import { createHmac, randomBytes } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { WebhookSignatureError } from "@/modules/billing";
 import { polarProvider } from "./polar";
+import { fakeVnpayQuery } from "@/tests/fakes/vnpay-query";
 import { vnpayDate, vnpayProvider, vnpaySign, vnpaySignData } from "./vnpay";
 
 describe("VNPay adapter", () => {
@@ -39,6 +40,30 @@ describe("VNPay adapter", () => {
     const params = { vnp_TmnCode: "TMN12345", vnp_Amount: "100", vnp_TxnRef: "r1" };
     const expected = createHmac("sha512", "SECRETSECRETSECRETSECRETSECRET12").update("vnp_Amount=100&vnp_TmnCode=TMN12345&vnp_TxnRef=r1").digest("hex");
     expect(vnpaySign(params, "SECRETSECRETSECRETSECRETSECRET12")).toBe(expected);
+  });
+});
+
+describe("VNPay querydr (reconcile when the IPN is lost)", () => {
+  const secret = "SECRETSECRETSECRETSECRETSECRET12";
+  const createdAt = new Date("2026-10-05T08:14:53.209Z");
+  const provider = (fetch: typeof globalThis.fetch) => vnpayProvider({ tmnCode: "TMN12345", hashSecret: secret, fetch });
+
+  it("paid → IPN-shaped params that the adapter's own IPN checks accept, request signed with the creation date", async () => {
+    const fake = fakeVnpayQuery(secret, { T1: { amount: 150_000, status: "00" } });
+    const result = await provider(fake.fetch).query({ txnRef: "T1", createdAt });
+    expect(result).toEqual({ status: "paid", params: expect.objectContaining({ vnp_TxnRef: "T1", vnp_Amount: "15000000", vnp_ResponseCode: "00", vnp_TransactionStatus: "00", vnp_TransactionNo: "15695332" }) });
+    const req = fake.requests[0]!;
+    expect(req).toMatchObject({ vnp_Command: "querydr", vnp_TmnCode: "TMN12345", vnp_TxnRef: "T1", vnp_TransactionDate: "20261005151453" });
+    const data = ["vnp_RequestId", "vnp_Version", "vnp_Command", "vnp_TmnCode", "vnp_TxnRef", "vnp_TransactionDate", "vnp_CreateDate", "vnp_IpAddr", "vnp_OrderInfo"].map((k) => req[k]).join("|");
+    expect(req.vnp_SecureHash).toBe(createHmac("sha512", secret).update(data).digest("hex"));
+  });
+
+  it("unpaid, not found, and a forged response (throws, nothing confirmed)", async () => {
+    const fake = fakeVnpayQuery(secret, { T2: { amount: 1, status: "01" } });
+    expect(await provider(fake.fetch).query({ txnRef: "T2", createdAt })).toEqual({ status: "unpaid" });
+    expect(await provider(fake.fetch).query({ txnRef: "nope", createdAt })).toEqual({ status: "not_found" });
+    const forged = fakeVnpayQuery(secret, { T3: { amount: 1, status: "00" } }, { tamper: true });
+    await expect(provider(forged.fetch).query({ txnRef: "T3", createdAt })).rejects.toThrow(/invalid response signature/);
   });
 });
 

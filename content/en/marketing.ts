@@ -24,6 +24,55 @@ export const marketing: MarketingContent = {
       { title: "3. Confirm", description: "We reply within 24 hours to confirm the date and price." },
     ],
   },
+  problemSolution: {
+    title: "Less repeated work on every project",
+    before: {
+      title: "Building from scratch",
+      items: [
+        "Weeks on sign-in, email and SEO before the first line of product code",
+        "Every project organized differently, hard to maintain",
+        "Security bugs show up only in production",
+      ],
+    },
+    after: {
+      title: "With Minh Starter",
+      items: [
+        "Turn on the modules you need, write product code on day one",
+        "One architecture for every project, checked automatically",
+        "Authorization, webhooks and rate limits already tested",
+      ],
+    },
+  },
+  steps: {
+    title: "Start in 3 steps",
+    items: [
+      { title: "Create", description: "Run pnpm init:project: name it, pick a profile and modules." },
+      { title: "Build", description: "Write your own part in product/ following the example feature." },
+      { title: "Launch", description: "Deploy to Vercel, run pnpm launch:check and welcome users." },
+    ],
+  },
+  pricing: {
+    title: "Pick a plan",
+    subtitle: "Sample pricing block: edit it in content/ or remove it.",
+    plans: [
+      {
+        name: "Website",
+        price: "Contact us",
+        description: "Service site with SEO and a contact form.",
+        features: ["Multilingual", "Blog", "Contact form by email"],
+        cta: { label: "Contact", href: "#contact" },
+      },
+      {
+        name: "Web app",
+        price: "Contact us",
+        description: "Sign-in, dashboard, payments.",
+        features: ["Everything in Website", "Passwordless sign-in", "VNPay / Polar payments", "Admin area"],
+        cta: { label: "Contact", href: "#contact" },
+        highlighted: true,
+        badge: "Popular",
+      },
+    ],
+  },
   faq: {
     title: "Frequently asked questions",
     items: [

@@ -3,6 +3,7 @@ import { requireAdmin } from "@/app/_lib/admin";
 import { localePath } from "@/core/i18n/routing";
 import type { Locale } from "@/config/app";
 import { getAppContent } from "@/content";
+import { PageHeader } from "@/components/app-shell/page-header";
 
 const PAGE_SIZE = 25;
 
@@ -22,9 +23,13 @@ export default async function AdminUsersPage({ params, searchParams }: Props) {
 
   return (
     <div className="grid gap-6">
-      <h1 className="text-2xl font-bold">
-        {c.nav.users} <span className="text-base font-normal text-muted-foreground">({total})</span>
-      </h1>
+      <PageHeader
+        title={
+          <>
+            {c.nav.users} <span className="text-base font-normal text-muted-foreground">({total})</span>
+          </>
+        }
+      />
       <form method="get" className="flex max-w-md gap-2">
         <input
           name="q"
