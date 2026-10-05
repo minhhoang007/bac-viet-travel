@@ -22,6 +22,12 @@ for trivial tasks, use judgment.
 - No error handling for impossible scenarios.
 - If 200 lines could be 50, rewrite it.
 - Test: would a senior engineer call this overcomplicated? Then simplify.
+- Before writing new code, stop at the first option that works (after reading the code the change touches):
+  already in this repo (`core/`, `components/ui`, `components/forms`, an existing helper) → standard library →
+  platform feature (native HTML element, CSS, DB constraint) → installed dependency → only then new code.
+- A deliberate shortcut with a known limit gets a comment naming the limit and when to upgrade:
+  `// simplification: <limit>, <upgrade when>`. `grep -rn "simplification:"` lists the debt.
+  Never a shortcut on validation, auth, money, data loss or accessibility.
 
 ## 3. Surgical changes
 - Touch only what the task requires. Do not "improve" adjacent code, comments or formatting.

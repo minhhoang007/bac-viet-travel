@@ -29,6 +29,8 @@ Adapted from obra/superpowers (`systematic-debugging`, MIT) for Minh Web App Sta
 
 ## 4. Fix
 - Write a failing test that reproduces the bug (critical flows: follow `tdd-critical-flows`).
+- Before editing a function, grep every caller. Fix it once where all callers pass through, not only on the path
+  the bug report names; sibling callers stay broken otherwise.
 - One fix at the root cause, then the test and `pnpm check` pass.
 - **3 failed fixes → stop.** Report findings and question the design with the user instead of a 4th attempt.
 
