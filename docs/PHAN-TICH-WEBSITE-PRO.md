@@ -170,3 +170,44 @@ B9 (CMS tour), D3 (thẻ quốc tế), H2–H4, D9–D11, B5, B8, F5, G5–G8, H
 - Tham khảo đối thủ miền Bắc: [TourRadar Vietnam](https://www.tourradar.com/d/vietnam), [GADT Travel](https://gadttravel.com/), [WaytoVietnam](https://waytovietnam.com/), [TripAdvisor: Ninh Binh – Ha Long 3N2Đ](https://www.tripadvisor.com/AttractionProductReview-g293924-d27099815-Ninh_Binh_Ha_Long_3_days_2_nights_2026_Updated_Travel_Package-Hanoi.html)
 
 *Các yêu cầu pháp lý ở đây là tóm tắt để định hướng. Trước khi bán thật, nên xác nhận với luật sư hoặc đơn vị dịch vụ pháp lý.*
+
+## 5. Quyết định của chủ (2026-10-05) và lộ trình điều chỉnh
+
+| Câu hỏi | Trả lời | Hệ quả |
+|---|---|---|
+| Khách mục tiêu | Cả khách Việt và quốc tế | Song ngữ đầy đủ; thẻ quốc tế qua **VNPay** (hỗ trợ Visa/Master/JCB, phí khoảng 2%) thay vì thêm cổng; WhatsApp + Zalo |
+| Giấy phép | Công ty đã có | Làm được ngay việc thông báo Bộ Công Thương và footer pháp lý |
+| Mô hình tour | Ghép + riêng; tour theo yêu cầu nghiên cứu sau | Giá theo đối tượng (ghép) và giá theo số khách (riêng) |
+| Thanh toán | Cọc + chuyển khoản; chính sách cụ thể sau | VietQR (admin xác nhận) đi cùng VNPay; trang chính sách để khung, điền sau |
+| Người vận hành | Chủ + marketing (không lập trình) | **CMS sửa tour trong admin** chuyển lên giai đoạn 0 |
+| Ngân sách | 2 triệu/tháng giai đoạn đầu | Xem bảng chi phí bên dưới |
+| OTA | Kết hợp Klook… giai đoạn đầu | **Đặt chỗ thủ công / nhập booking OTA** để chung một nguồn số chỗ (giai đoạn 0) |
+
+### Chi phí ước tính mỗi tháng (giá tham khảo, cần kiểm tra lại lúc mua)
+
+| Hạng mục | Lựa chọn | Ước tính |
+|---|---|---|
+| Hosting | **Vercel Pro**, bắt buộc khi bán (gói Hobby cấm thương mại); có cron mỗi phút | ~$20 ≈ 520.000đ |
+| Database | Neon Free (0,5 GB), chuyển region sang Singapore | 0đ (nâng gói khi dữ liệu lớn) |
+| Domain | `.vn` hoặc `.com` (trả theo năm) | ~30.000–70.000đ/tháng |
+| Email gửi tự động | Resend Free (3.000 email/tháng) | 0đ |
+| Theo dõi lỗi / uptime | Sentry Free, UptimeRobot Free | 0đ |
+| Zalo OA / ZNS | OA miễn phí; ZNS tính theo tin | ~50.000–150.000đ |
+| Thanh toán | VNPay (thu theo % giao dịch), OTA (hoa hồng) | Theo doanh thu, không cố định |
+| **Tổng cố định** | | **~650.000–750.000đ**, còn dư cho ảnh / quảng cáo |
+
+### Giai đoạn 0 điều chỉnh: "demo như web thật"
+
+1. Thông tin công ty thật: tên pháp nhân, MST, giấy phép, địa chỉ, hotline, Zalo, WhatsApp, email; footer pháp lý; trang Giới thiệu.
+2. Trang chính sách: huỷ / hoàn tiền, thanh toán, bảo mật (NĐ 13/2023), điều khoản. Dựng khung, nội dung điền khi có chính sách.
+3. Domain + email từ domain; logo Bộ Công Thương sau khi thông báo xong.
+4. Hạ tầng: Vercel Pro, cron mỗi 5–10 phút, Neon Singapore, Sentry + uptime.
+5. Thanh toán: VNPay production (thẻ nội địa, QR, thẻ quốc tế) + chuyển khoản VietQR có admin xác nhận.
+6. Tour ghép + riêng: giá người lớn / trẻ em / em bé; tour riêng có giá theo số khách.
+7. **CMS tour trong admin**: thêm / sửa tour, ảnh, giá, lịch khởi hành, không cần code.
+8. **Nhập booking thủ công / từ OTA** để giữ chỗ chung một nguồn.
+9. Ảnh thật (chủ cung cấp).
+
+Giai đoạn 1 giữ như mục 3: trang điểm đến, lịch khởi hành trực quan, voucher PDF, Zalo OA, đánh giá, schema, đo lường chuyển đổi, danh sách khách theo chuyến, mã giảm giá.
+
+Nguồn: [Vercel Hobby (commercial use)](https://vercel.com/docs/plans/hobby), [VNPAY: thẻ quốc tế](https://vnpayment.vnpay.vn/).
