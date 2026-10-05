@@ -3,7 +3,7 @@ import { checkLaunch, formatLaunch, type Fetch } from "./launch-check-lib";
 
 const ORIGIN = "https://example.com";
 const HOME = `<html><head><title>Example</title><meta name="description" content="A site">
-<link rel="canonical" href="${ORIGIN}/"><meta property="og:image" content="${ORIGIN}/api/og?title=x"></head></html>`;
+<link rel="canonical" href="${ORIGIN}/"><link rel="icon" href="/icon?abc"><meta property="og:image" content="${ORIGIN}/api/og?title=x"></head></html>`;
 const SECURE = {
   "strict-transport-security": "max-age=1",
   "content-security-policy": "default-src 'self'",
@@ -24,6 +24,7 @@ function fakeFetch(pages: Record<string, Page>): Fetch {
 const healthySite: Record<string, Page> = {
   "/": { body: HOME, headers: SECURE },
   "/api/og?title=x": { headers: { "content-type": "image/png" } },
+  "/icon?abc": { headers: { "content-type": "image/png" } },
   "/robots.txt": { body: `User-Agent: *\nAllow: /\nSitemap: ${ORIGIN}/sitemap.xml` },
   "/sitemap.xml": { body: `<urlset><url><loc>${ORIGIN}/</loc></url><url><loc>${ORIGIN}/terms</loc></url></urlset>` },
   "/api/health": { body: '{"status":"ok"}' },
@@ -66,6 +67,12 @@ describe("checkLaunch", () => {
     expect(await robots("User-agent: GPTBot\nDisallow: /\n\nUser-agent: *\nAllow: /")).toBe(true);
     expect(await robots("User-agent: *\nAllow: /\n\nUser-agent: CCBot\nDisallow: /")).toBe(true);
     expect(await robots("User-agent: Googlebot\nUser-agent: *\nDisallow: /   # maintenance")).toBe(false);
+  });
+
+  it("reports a missing or broken favicon", async () => {
+    const favicon = async (pages: Record<string, Page>) => (await checkLaunch(ORIGIN, fakeFetch(pages))).find((r) => r.name === "Favicon");
+    expect(await favicon({ ...healthySite, "/": { body: HOME.replace(/<link rel="icon"[^>]*>/, ""), headers: SECURE } })).toMatchObject({ ok: false, detail: 'missing <link rel="icon">' });
+    expect(await favicon({ ...healthySite, "/icon?abc": { status: 404 } })).toMatchObject({ ok: false, detail: "got 404" });
   });
 
   it("reports an http URL and an unreachable site without throwing", async () => {

@@ -22,5 +22,6 @@ export default function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: "/((?!api|_next|_vercel|.*\\..*).*)",
+  // `icon$`: the generated favicon (app/icon.tsx) is served at /icon, without a locale.
+  matcher: "/((?!api|_next|_vercel|icon$|.*\\..*).*)",
 };

@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { hasLocale } from "next-intl";
 import { setRequestLocale } from "next-intl/server";
 import type { Locale } from "@/config/app";
 import { getMarketingContent } from "@/content";
-import { localePath } from "@/core/i18n/routing";
+import { localePath, routing } from "@/core/i18n/routing";
 import { createMetadata } from "@/core/seo";
 import { seoSite } from "@/core/seo/site";
 import { getPublicEnv } from "@/bootstrap/env";
@@ -23,10 +25,19 @@ import { ProductHomeSections } from "@/product/home";
 type Props = { params: Promise<{ locale: Locale }> };
 
 /** Anchors stay on the page; paths get the locale prefix. */
+/**
+ * Paths with a dot skip proxy.ts, so /favicon.ico or /x.txt arrive here as the "locale". The layout's notFound()
+ * renders in parallel with this page, so the page checks too (otherwise: no content for that locale → 500).
+ */
+function knownLocale(locale: string): Locale {
+  if (!hasLocale(routing.locales, locale)) notFound();
+  return locale;
+}
+
 const heroHref = (locale: Locale, href: string) => (href.startsWith("#") ? href : localePath(locale, href));
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { locale } = await params;
+  const locale = knownLocale((await params).locale);
   const c = getMarketingContent(locale);
   return createMetadata(seoSite(getPublicEnv().NEXT_PUBLIC_SITE_URL), {
     title: c.meta.title,
@@ -37,7 +48,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function HomePage({ params }: Props) {
-  const { locale } = await params;
+  const locale = knownLocale((await params).locale);
   setRequestLocale(locale);
   const c = getMarketingContent(locale);
 
