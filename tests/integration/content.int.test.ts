@@ -183,8 +183,8 @@ describe("content workflow", () => {
         });
       },
     });
-    const module = createContentModule({ db: racing, logger, types: ["tour"], adminUrl: () => "" });
-    await expect(module.remove(admin, item.id)).rejects.toMatchObject({ code: "CONFLICT" });
+    const racer = createContentModule({ db: racing, logger, types: ["tour"], adminUrl: () => "" });
+    await expect(racer.remove(admin, item.id)).rejects.toMatchObject({ code: "CONFLICT" });
     expect(await content.getBySlug("tour", "ha-long")).not.toBeNull();
   });
 });
