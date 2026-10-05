@@ -13,6 +13,7 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 ### Fixed
 - `/favicon.ico` and any one-segment path with a dot answered 500 (reached the home page as the locale); now 404 (G12).
 - VNPay billing orders send their stored `createdAt` as `vnp_CreateDate`, so querydr finds them.
+- Storage uploader: the file input is disabled until hydration (a file picked earlier was dropped silently); fixes a flaky E2E. The admin E2E retries the confirm-dialog trigger for the same reason.
 
 ### Docs
 - V1.0 reuse proofs complete: project B (Bắc Việt Travel) recorded; migration-upgrade step covered by CI (owner decision 2026-10-05).
