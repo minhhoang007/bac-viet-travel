@@ -26,6 +26,9 @@ export const departures = pgTable(
   ],
 );
 
+/** An add-on on a booking: quantity and line price at booking time. */
+export type BookedAddon = { id: string; name: { vi: string; en: string }; qty: number; vnd: number };
+
 /** One person on the trip, in party order: adults, then children, then infants. */
 export type Traveller = { name: string; birthYear: number };
 
@@ -60,6 +63,8 @@ export const bookings = pgTable(
     discountCode: text("discount_code"),
     /** Amount taken off the total by the code (VND). */
     discountVnd: integer("discount_vnd").notNull().default(0),
+    /** Add-ons chosen (B6), as priced when booking (names in both languages). */
+    addons: jsonb("addons").$type<BookedAddon[]>().notNull().default([]),
     /** Single rooms booked (supplement per room, B2). */
     singleRooms: integer("single_rooms").notNull().default(0),
     /** Seats taken: adults + children (infants share a seat). */

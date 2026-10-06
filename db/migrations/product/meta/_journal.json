@@ -78,6 +78,13 @@
       "when": 1791309406641,
       "tag": "0010_wet_moonstone",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791309844178,
+      "tag": "0011_rapid_zemo",
+      "breakpoints": true
     }
   ]
 }

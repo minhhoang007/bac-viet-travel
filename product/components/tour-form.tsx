@@ -12,7 +12,7 @@ import { DESTINATIONS } from "../tours/model";
 import { getTourAdminContent, tourProblemLabel } from "../tours/admin-content";
 import { tourProblems, type TourDraft } from "../tours/document";
 
-const TABS = ["general", "vi", "en", "seo", "images", "private"] as const;
+const TABS = ["general", "vi", "en", "seo", "images", "private", "addons"] as const;
 type Tab = (typeof TABS)[number];
 type Section = "shared" | "vi" | "en";
 type Obj = Record<string, unknown>;
@@ -58,11 +58,14 @@ export function TourForm({
     const next = { ...pricing, ...patch };
     set("shared", "pricing", Object.values(next).some((v) => v !== undefined) ? next : undefined);
   };
+  type AddonDraft = { id?: string; name?: { vi?: string; en?: string }; vnd?: number; per?: "person" | "booking" };
+  const addons = (section("shared").addons ?? []) as AddonDraft[];
+  const setAddon = (i: number, patch: AddonDraft) => set("shared", "addons", addons.map((a, j) => (j === i ? { ...a, ...patch } : a)));
   const priv = section("shared").private as { maxGuests?: number; tiers?: { minGuests?: number; vnd?: number; usd?: number }[] } | undefined;
 
   const tabLabel: Record<Tab, string> = c.tabs;
   const tabHasProblem = (t: Tab) =>
-    problems.some((p) => (t === "seo" ? /^(vi|en).seo/.test(p) : t === "vi" || t === "en" ? p.startsWith(`${t}.`) && !p.startsWith(`${t}.seo`) : t === "images" ? p.startsWith("shared.images") : t === "private" ? p.startsWith("shared.private") : p.startsWith("shared.") && !/^shared\.(images|private)/.test(p)));
+    problems.some((p) => (t === "seo" ? /^(vi|en).seo/.test(p) : t === "vi" || t === "en" ? p.startsWith(`${t}.`) && !p.startsWith(`${t}.seo`) : t === "images" ? p.startsWith("shared.images") : t === "private" ? p.startsWith("shared.private") : t === "addons" ? p.startsWith("shared.addons") : p.startsWith("shared.") && !/^shared\.(images|private|addons)/.test(p)));
   const problemLabel = (path: string) => tourProblemLabel(path, c);
 
   const textField = (s: Section, key: keyof typeof c.fields, multiline = false, hint?: string) => (
@@ -270,6 +273,39 @@ export function TourForm({
             </fieldset>
           </div>
         )}
+      </Panel>
+
+      <Panel id={`${ids}-panel-addons`} labelledBy={`${ids}-tab-addons`} hidden={tab !== "addons"}>
+        <p className="text-sm text-muted-foreground">{c.fields.addonsHint}</p>
+        <div className="grid gap-3" data-testid="addons-editor">
+          {addons.map((a, i) => (
+            <fieldset key={a.id ?? i} className="grid gap-3 rounded-lg border border-border p-3 sm:grid-cols-[1fr_1fr_8rem_9rem_auto]">
+              <legend className="px-1 text-sm font-medium">
+                {c.fields.addons} {i + 1}
+              </legend>
+              <Field label={c.fields.addonNameVi}>{(id) => <input id={id} className={input} value={a.name?.vi ?? ""} onChange={(e) => setAddon(i, { name: { ...a.name, vi: e.target.value } })} />}</Field>
+              <Field label={c.fields.addonNameEn}>{(id) => <input id={id} className={input} value={a.name?.en ?? ""} onChange={(e) => setAddon(i, { name: { ...a.name, en: e.target.value } })} />}</Field>
+              <Field label={c.fields.addonVnd}>{(id) => <input id={id} type="number" min={0} step={1000} className={input} value={a.vnd ?? ""} onChange={(e) => setAddon(i, { vnd: toNum(e.target.value) })} />}</Field>
+              <Field label={c.fields.addonPer}>
+                {(id) => (
+                  <select id={id} className={input} value={a.per ?? "person"} onChange={(e) => setAddon(i, { per: e.target.value as "person" | "booking" })}>
+                    <option value="person">{c.fields.addonPerPerson}</option>
+                    <option value="booking">{c.fields.addonPerBooking}</option>
+                  </select>
+                )}
+              </Field>
+              <div className="flex items-end">
+                <IconButton label={`${c.remove} ${i + 1}`} onClick={() => set("shared", "addons", addons.filter((_, j) => j !== i))}>
+                  <Trash2 className="size-4" />
+                </IconButton>
+              </div>
+            </fieldset>
+          ))}
+          {addons.length < 10 && (
+            // A stable random id: renaming or repricing an add-on keeps bookings pointing at the same one.
+            <AddButton label={c.add} onClick={() => set("shared", "addons", [...addons, { id: `a-${crypto.randomUUID().slice(0, 8)}`, per: "person" }])} />
+          )}
+        </div>
       </Panel>
 
       <div className="sticky bottom-0 -mx-4 border-t border-border bg-background/95 px-4 py-3 backdrop-blur">

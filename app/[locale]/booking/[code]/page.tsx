@@ -70,6 +70,7 @@ export default async function BookingPage({ params, searchParams }: Props) {
     booking.children && `${booking.children} ${t.children.toLowerCase()}`,
     booking.infants && `${booking.infants} ${t.infants.toLowerCase()}`,
     booking.singleRooms && t.singleLine(booking.singleRooms),
+    ...booking.addons.map((a) => t.addonLine(a.name[locale], a.qty)),
   ]
     .filter(Boolean)
     .join(", ");

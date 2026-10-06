@@ -32,6 +32,10 @@ const vi = {
   children: "Trẻ em (5–10 tuổi)",
   infants: "Em bé (dưới 5 tuổi)",
   singleRooms: "Phòng đơn (phụ thu)",
+  addonsTitle: "Dịch vụ thêm",
+  addonPerPerson: (price: string) => `${price}/khách`,
+  addonPerBooking: (price: string) => `${price}/đơn`,
+  addonLine: (name: string, qty: number) => (qty > 1 ? `${name} × ${qty}` : name),
   discount: {
     label: "Mã giảm giá (nếu có)",
     apply: "Áp dụng",
@@ -214,6 +218,10 @@ const en: BookingContent = {
   children: "Children (5–10)",
   infants: "Infants (under 5)",
   singleRooms: "Single rooms (supplement)",
+  addonsTitle: "Add-ons",
+  addonPerPerson: (price) => `${price} per traveller`,
+  addonPerBooking: (price) => `${price} per booking`,
+  addonLine: (name, qty) => (qty > 1 ? `${name} × ${qty}` : name),
   discount: {
     label: "Discount code (optional)",
     apply: "Apply",

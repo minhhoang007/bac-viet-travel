@@ -4,6 +4,7 @@ import type { Logger } from "@/core/logger";
 import type { RateLimiter } from "@/core/security/rate-limit";
 import type { Db } from "@/db/client";
 import { bookings, departures, discountCodes, type Booking, type Departure } from "../schema/booking";
+import type { Addon } from "../tours/model";
 import { addDays, applyDiscount, bookingRules, DEFAULT_TOUR_PRICING, type Discount, isBookableDate, privateQuote, privateTier, quote, vietnamToday, type PrivatePricing, type TourPricing } from "./rules";
 import { bookingInputSchema, discountCodeField, parseTravellers, privateBookingInputSchema } from "./validations";
 
@@ -80,6 +81,8 @@ export function createBookingService(deps: {
   tourPrivate?: (slug: string) => Promise<PrivatePricing | null>;
   /** Prices by traveller type (child %, infant, single supplement); the defaults when absent. */
   tourPricing?: (slug: string) => Promise<TourPricing>;
+  /** Add-ons the guest may choose on this tour (B6); none when absent. */
+  tourAddons?: (slug: string) => Promise<Addon[]>;
   now?: () => Date;
 }): BookingService {
   const { db } = deps;
@@ -129,6 +132,14 @@ export function createBookingService(deps: {
     return { code: row.code, kind: row.kind, value: row.value };
   };
   const pricingOf = async (slug: string) => (await deps.tourPricing?.(slug)) ?? DEFAULT_TOUR_PRICING;
+  const addonsOf = async (slug: string) => (await deps.tourAddons?.(slug)) ?? [];
+  /** Quantities from the form fields addon_<id> (unknown ids and bad numbers ignored; quote() caps them). */
+  const chosenAddons = (raw: Record<string, unknown>) =>
+    Object.fromEntries(
+      Object.entries(raw)
+        .filter(([k]) => /^addon_[a-z0-9-]{2,30}$/.test(k))
+        .map(([k, v]) => [k.slice(6), Math.min(50, Math.max(0, Math.floor(Number(v)) || 0))]),
+    );
   /** Single rooms only on tours with a supplement. */
   const singleRoomsAllowed = (input: Party, pricing: TourPricing) => input.singleRooms === 0 || pricing.singleSupplementVnd > 0;
   const insertHeld = async (tx: Tx, departureId: string, input: Party, q: ReturnType<typeof applyDiscount>, token: string, at: Date): Promise<HoldResult> => {
@@ -147,6 +158,7 @@ export function createBookingService(deps: {
       children: input.children,
       infants: input.infants,
       singleRooms: q.singleRooms,
+      addons: q.addons.map((a) => ({ id: a.id, name: a.name, qty: a.qty, vnd: a.vnd })),
       discountCode: q.discountCode,
       discountVnd: q.discountVnd,
       seats: q.seats,
@@ -219,7 +231,7 @@ export function createBookingService(deps: {
           .from(bookings)
           .where(and(eq(bookings.departureId, departure.id), inArray(bookings.status, ["held", "deposit_paid", "confirmed"])));
 
-        const base = quote(departure.priceVnd ?? listPrice, input, pricing);
+        const base = quote(departure.priceVnd ?? listPrice, { ...input, addons: chosenAddons(raw) }, pricing, await addonsOf(departure.tourSlug));
         const seatsLeft = departure.capacity - (row?.taken ?? 0);
         if (base.seats > seatsLeft) return { status: "sold_out", seatsLeft: Math.max(0, seatsLeft) };
         const discount = await findDiscount(tx, input.discountCode, departure.tourSlug, base.totalVnd, at, true);
@@ -246,7 +258,7 @@ export function createBookingService(deps: {
       if (!isBookableDate(input.date, at) || input.date > addDays(vietnamToday(at), 366)) return { status: "invalid", fieldErrors: { date: "invalid" } };
       const tourPricing = await pricingOf(input.tourSlug);
       if (!singleRoomsAllowed(input, tourPricing)) return { status: "invalid", fieldErrors: { singleRooms: "invalid" } };
-      const q = privateQuote(pricing, input, tourPricing);
+      const q = privateQuote(pricing, { ...input, addons: chosenAddons(raw) }, tourPricing, await addonsOf(input.tourSlug));
       if (!q) return { status: "invalid", fieldErrors: { adults: input.adults + input.children > pricing.maxGuests ? "too_many" : "invalid" } };
       if (!(await deps.rateLimiter.limit(clientKey)).success) return { status: "rate_limited" };
       const token = randomBytes(24).toString("base64url");

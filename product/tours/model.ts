@@ -16,6 +16,18 @@ export const tourPricingSchema = z.object({
 });
 export type TourPricing = z.infer<typeof tourPricingSchema>;
 
+/**
+ * An optional extra the guest can add to a booking (B6): hotel pick-up, vegetarian meals, motorbike rental…
+ * per: "person" = up to one per traveller, "booking" = once. id stays the same when the name or price changes.
+ */
+export const addonSchema = z.object({
+  id: z.string().regex(/^[a-z0-9-]{2,30}$/),
+  name: z.object({ vi: z.string().trim().min(1).max(80), en: z.string().trim().min(1).max(80) }),
+  vnd: z.number().int().min(0).max(100_000_000),
+  per: z.enum(["person", "booking"]),
+});
+export type Addon = z.infer<typeof addonSchema>;
+
 /** Private tour (own vehicle, guide and date): price per person by group size. */
 export const privateTourSchema = z
   .object({
@@ -48,6 +60,7 @@ export const tourSchema = z.object({
   /** Private tour (own vehicle, guide and date): price per person by group size. Absent = group tours only. */
   private: privateTourSchema.optional(),
   pricing: tourPricingSchema.optional(),
+  addons: z.array(addonSchema).max(10).default([]),
 });
 
 export type TourData = z.infer<typeof tourSchema>;

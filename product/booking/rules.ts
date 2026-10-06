@@ -1,5 +1,5 @@
 // Type only: rules run in the browser (booking form) and must not pull zod in.
-import type { TourPricing } from "../tours/model";
+import type { Addon, TourPricing } from "../tours/model";
 
 /** Booking rules (Phase 1 defaults approved by the owner). Pure functions: no DB, no clock. */
 export const bookingRules = {
@@ -26,18 +26,33 @@ export interface Quote {
   /** Per single room (whole tour); 0 = not offered. */
   singleSupplementVnd: number;
   singleRooms: number;
+  /** Chosen add-ons with their quantity and line price (B6). */
+  addons: { id: string; name: Addon["name"]; qty: number; vnd: number }[];
   totalVnd: number;
   depositVnd: number;
 }
 
-export type Party = { adults: number; children: number; infants?: number; singleRooms?: number };
+export type Party = { adults: number; children: number; infants?: number; singleRooms?: number; addons?: Record<string, number> };
+
+/** Chosen add-ons priced: per-person ones capped at the number of travellers (adults + children), others at one. */
+export function priceAddons(available: readonly Addon[], party: Party): Quote["addons"] {
+  const travellers = party.adults + party.children;
+  return available
+    .map((a) => {
+      const wanted = Math.max(0, Math.floor(party.addons?.[a.id] ?? 0));
+      const qty = Math.min(wanted, a.per === "person" ? travellers : 1);
+      return { id: a.id, name: a.name, qty, vnd: qty * a.vnd };
+    })
+    .filter((a) => a.qty > 0);
+}
 
 /** Child price = adult price × childPercent (rounded up to 1,000 VND); infants and single rooms at the tour's price. */
-export function quote(unitPriceVnd: number, party: Party, pricing: TourPricing = DEFAULT_TOUR_PRICING): Quote {
+export function quote(unitPriceVnd: number, party: Party, pricing: TourPricing = DEFAULT_TOUR_PRICING, available: readonly Addon[] = []): Quote {
   const childPriceVnd = roundUp1000((unitPriceVnd * pricing.childPercent) / 100);
   const infants = party.infants ?? 0;
   const singleRooms = pricing.singleSupplementVnd > 0 ? (party.singleRooms ?? 0) : 0;
-  const totalVnd = party.adults * unitPriceVnd + party.children * childPriceVnd + infants * pricing.infantVnd + singleRooms * pricing.singleSupplementVnd;
+  const addons = priceAddons(available, party);
+  const totalVnd = party.adults * unitPriceVnd + party.children * childPriceVnd + infants * pricing.infantVnd + singleRooms * pricing.singleSupplementVnd + addons.reduce((n, a) => n + a.vnd, 0);
   return {
     seats: party.adults + party.children,
     unitPriceVnd,
@@ -45,6 +60,7 @@ export function quote(unitPriceVnd: number, party: Party, pricing: TourPricing =
     infantPriceVnd: pricing.infantVnd,
     singleSupplementVnd: pricing.singleSupplementVnd,
     singleRooms,
+    addons,
     totalVnd,
     depositVnd: roundUp1000(totalVnd * bookingRules.depositRate),
   };
@@ -75,9 +91,9 @@ export function applyDiscount(q: Quote, discount: Discount | null): Quote & { di
 }
 
 /** Quote for a private tour: tier price per adult, the tour's child / infant / single room prices. */
-export function privateQuote(pricing: PrivatePricing, party: Party, tourPricing: TourPricing = DEFAULT_TOUR_PRICING): Quote | null {
+export function privateQuote(pricing: PrivatePricing, party: Party, tourPricing: TourPricing = DEFAULT_TOUR_PRICING, available: readonly Addon[] = []): Quote | null {
   const tier = privateTier(pricing, party.adults + party.children);
-  return tier ? quote(tier.vnd, party, tourPricing) : null;
+  return tier ? quote(tier.vnd, party, tourPricing, available) : null;
 }
 
 /** Today's date in Vietnam (UTC+7, no DST) as YYYY-MM-DD. */

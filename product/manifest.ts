@@ -39,6 +39,7 @@ export function createProduct(db: Db, ctx: ProductContext) {
     tourPrice: async (slug) => (await tour(slug))?.price.vnd ?? null,
     tourPrivate: async (slug) => (await tour(slug))?.private ?? null,
     tourPricing: async (slug) => ({ ...DEFAULT_TOUR_PRICING, ...(await tour(slug))?.pricing }),
+    tourAddons: async (slug) => (await tour(slug))?.addons ?? [],
     now: ctx.now,
   });
   const deposits = createDepositService({
