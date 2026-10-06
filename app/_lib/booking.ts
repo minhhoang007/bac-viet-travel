@@ -5,6 +5,8 @@ import { bankTransferConfig } from "@/config/bank-transfer";
 export const getBooking = () => getContainer().app!.product.booking;
 export const getDeposits = () => getContainer().app!.product.deposits;
 export const isPaymentsSandbox = () => getContainer().app!.product.paymentsSandbox;
+/** Online card / QR payments (VNPay) are configured. */
+export const isVnpayConfigured = () => Boolean(getContainer().payments.vnpay);
 /** Bank transfer (VietQR) is offered with a real account, or with the demo account in payments sandbox mode only. */
 export const isTransferAvailable = () => !bankTransferConfig.demo || isPaymentsSandbox();
 

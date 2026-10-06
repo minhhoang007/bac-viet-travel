@@ -6,8 +6,7 @@ import type { Db } from "@/db/client";
 import { bookings, departures, tripFeedback, type Booking, type Departure, type TripFeedback } from "../schema/booking";
 import { addDays, vietnamToday } from "./rules";
 
-/** Feedback emails go out this many days after the departure date (covers tours up to 3 days), for 30 days. */
-export const FEEDBACK_AFTER_DAYS = 3;
+/** Feedback emails go out the day after the trip's last day (departure + tour days), for up to 30 days. */
 const FEEDBACK_WINDOW_DAYS = 30;
 const CODE = /^BV-[A-Z2-9]{6}$/;
 
@@ -32,6 +31,8 @@ export function createFeedbackService(deps: {
   secret: () => string;
   siteUrl: () => string;
   tourTitle: (slug: string, locale: string) => Promise<string>;
+  /** Length of a tour in days (1 when unknown). */
+  tourDays: (slug: string) => Promise<number>;
   now?: () => Date;
 }): FeedbackService {
   const { db, logger } = deps;
@@ -86,25 +87,31 @@ export function createFeedbackService(deps: {
 
     async sendRequests() {
       const today = vietnamToday(now());
+      const waiting = and(
+        inArray(bookings.status, ["deposit_paid", "confirmed"]),
+        isNull(bookings.feedbackRequestedAt),
+        eq(bookings.guestEmails, true),
+        sql`${bookings.email} <> ''`,
+      );
+      // Departures that started 1–30 days ago, then only trips whose last day has passed (tour length per tour).
+      const candidates = await db
+        .select({ id: bookings.id, date: departures.date, tourSlug: departures.tourSlug })
+        .from(bookings)
+        .innerJoin(departures, eq(departures.id, bookings.departureId))
+        .where(and(waiting, lte(departures.date, addDays(today, -1)), gte(departures.date, addDays(today, -FEEDBACK_WINDOW_DAYS))));
+      const days = new Map<string, number>();
+      const ended: string[] = [];
+      for (const c of candidates) {
+        if (!days.has(c.tourSlug)) days.set(c.tourSlug, Math.max(1, await deps.tourDays(c.tourSlug)));
+        // A 1-day tour on the 5th ends that day: the email goes on the 6th (departure + days).
+        if (addDays(c.date, days.get(c.tourSlug)!) <= today) ended.push(c.id);
+      }
+      if (ended.length === 0) return 0;
       // Claim first, then send: a crash may skip one email but never sends twice.
       const claimed = await db
         .update(bookings)
         .set({ feedbackRequestedAt: now() })
-        .where(
-          and(
-            inArray(bookings.status, ["deposit_paid", "confirmed"]),
-            isNull(bookings.feedbackRequestedAt),
-            eq(bookings.guestEmails, true),
-            sql`${bookings.email} <> ''`,
-            inArray(
-              bookings.departureId,
-              db
-                .select({ id: departures.id })
-                .from(departures)
-                .where(and(lte(departures.date, addDays(today, -FEEDBACK_AFTER_DAYS)), gte(departures.date, addDays(today, -FEEDBACK_WINDOW_DAYS)))),
-            ),
-          ),
-        )
+        .where(and(waiting, inArray(bookings.id, ended)))
         .returning();
       for (const b of claimed) {
         const [d] = await db.select({ tourSlug: departures.tourSlug }).from(departures).where(eq(departures.id, b.departureId));

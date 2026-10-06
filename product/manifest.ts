@@ -40,6 +40,7 @@ export function createProduct(db: Db, ctx: ProductContext) {
     tourPrivate: async (slug) => (await tour(slug))?.private ?? null,
     tourPricing: async (slug) => ({ ...DEFAULT_TOUR_PRICING, ...(await tour(slug))?.pricing }),
     tourAddons: async (slug) => (await tour(slug))?.addons ?? [],
+    discountLimiter: ctx.rateLimiter("booking:discount-preview", { max: 20, windowMs: 10 * 60_000 }),
     now: ctx.now,
   });
   const deposits = createDepositService({
@@ -75,6 +76,7 @@ export function createProduct(db: Db, ctx: ProductContext) {
     secret: () => getEnv().extra.BETTER_AUTH_SECRET ?? "",
     siteUrl: () => getEnv().NEXT_PUBLIC_SITE_URL,
     tourTitle,
+    tourDays: async (slug) => (await tour(slug))?.days ?? 1,
     now: ctx.now,
   });
 

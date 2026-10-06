@@ -16,6 +16,7 @@ const feedback = createFeedbackService({
   secret: () => "test-secret-0123456789abcdef0123456789",
   siteUrl: () => "https://bacviet.example",
   tourTitle: async () => "Sapa 2 ngày",
+  tourDays: async () => 2,
   now: () => clock,
 });
 
@@ -35,16 +36,18 @@ beforeEach(async () => {
 afterAll(() => close());
 
 describe("post-trip feedback (E4)", () => {
-  it("emails a signed link once, 3+ days after departure, only for paid trips with guest emails, within 30 days", async () => {
-    await booking("BV-FBAA22", "2026-11-06"); // ended: yes
-    await booking("BV-FBBB22", "2026-11-08"); // too recent
+  it("emails a signed link once, the day after the trip's last day, only for paid trips with guest emails, within 30 days", async () => {
+    await booking("BV-FBAA22", "2026-11-08"); // 2-day tour: 8th–9th, ended → today (10th)
+    await booking("BV-FBBB22", "2026-11-09"); // 9th–10th: still on the trip today
     await booking("BV-FBCC22", "2026-09-01"); // too old
     await booking("BV-FBDD22", "2026-11-05", { status: "cancelled" });
     await booking("BV-FBEE22", "2026-11-04", { guestEmails: false });
     expect(await feedback.sendRequests()).toBe(1);
     expect(sent.map((m) => [m.kind, m.to])).toEqual([["booking_feedback", "lan@example.com"]]);
     expect(sent[0]!.text).toContain(feedback.link("BV-FBAA22", "vi"));
-    expect(await feedback.sendRequests()).toBe(0); // once
+    clock = new Date("2026-11-11T03:00:00Z");
+    expect(await feedback.sendRequests()).toBe(1); // the second trip has ended now
+    expect(await feedback.sendRequests()).toBe(0); // once each
   });
 
   it("the guest rates once with the signed link; a wrong signature or rating is refused", async () => {

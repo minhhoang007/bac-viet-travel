@@ -257,6 +257,9 @@ export function createDepositService(deps: {
         try {
           const result = await vnpay.query(payment);
           if (result.status === "paid" && (await confirm(result.params, links)).RspCode === "00") confirmed += 1;
+          // Not paid and past VNPay's 15-minute payment window: the guest gave up. Close it, so it is not asked again.
+          else if (result.status !== "paid" && payment.createdAt.getTime() < at.getTime() - 20 * 60_000)
+            await db.update(bookingPayments).set({ status: "failed" }).where(and(eq(bookingPayments.txnRef, payment.txnRef), eq(bookingPayments.status, "pending")));
         } catch (error) {
           logger.error("booking.deposit_reconcile_failed", { txnRef: payment.txnRef, error });
         }

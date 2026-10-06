@@ -195,6 +195,14 @@ describe("booking deposits (VNPay)", () => {
     expect((await status(paid.code)).status).toBe("deposit_paid");
     expect((await status(unpaid.code)).status).toBe("expired");
     expect(sent.map((m) => m.kind)).toEqual(["booking_deposit_paid", "booking_team_paid"]);
+    // Still inside VNPay's window at 16 minutes: the unpaid attempt stays pending; past it, it is closed (not asked again).
+    const attempt = async () => (await db.select().from(bookingPayments).where(eq(bookingPayments.status, "pending"))).length;
+    expect(await attempt()).toBe(1);
+    clock = new Date(clock.getTime() + 10 * 60_000);
+    // createdAt is the database clock; move it to the test clock (30 minutes ago).
+    await db.update(bookingPayments).set({ createdAt: new Date(clock.getTime() - 30 * 60_000) }).where(eq(bookingPayments.status, "pending"));
+    await reconciling.reconcile(LINKS);
+    expect(await attempt()).toBe(0);
     // VNPay is asked with the attempt's stored creation time, the vnp_CreateDate of its payment URL.
     const gmt7 = (d: Date) => new Date(d.getTime() + 7 * 3_600_000).toISOString().replace(/\D/g, "").slice(0, 14);
     expect(gmt7(asked.find((a) => a.txnRef === paidReq.vnp_TxnRef)!.createdAt)).toBe(paidReq.vnp_CreateDate);
