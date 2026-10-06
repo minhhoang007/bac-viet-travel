@@ -77,7 +77,7 @@ export async function checkLaunch(base: string, fetch: Fetch): Promise<LaunchRes
       add(icon.status === 200, "Favicon", icon.status === 200 ? undefined : `got ${icon.status}`);
     }
     // Placeholder content (sample reviews, demo figures) is marked data-demo in the markup and must be gone.
-    const demo = home.body.match(/data-demo(?:=["']?([^"'\s>]*))?/i);
+    const demo = home.body.match(/\sdata-demo(?=[\s=>/])(?:=["']?([^"'\s>]*))?/i);
     add(!demo, "No demo content", demo ? `page has data-demo${demo[1] ? ` ("${demo[1]}")` : ""}: replace it with real content` : undefined);
     const missing = SECURITY_HEADERS.filter((h) => !home.headers.get(h));
     add(missing.length === 0, "Security headers", missing.length ? `missing ${missing.join(", ")}` : undefined);
