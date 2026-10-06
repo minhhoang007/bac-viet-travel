@@ -1,8 +1,10 @@
 import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import { draftMode } from "next/headers";
-import type { Tour, TourCatalog } from "@/product/tours/catalog";
+import { getTourCatalog, type Tour, type TourCatalog } from "@/product/tours/catalog";
+import { getContainer } from "@/bootstrap/container";
 import { toTour, tourDocumentSchema, tourProblems, type TourLocale } from "@/product/tours/document";
-import { TOUR_CONTENT_TYPE } from "@/product/tours/source";
+import { TOUR_CONTENT_TYPE, TOURS_CACHE_TAG } from "@/product/tours/source";
 import { readContent } from "./content";
 import { requireAppServices } from "./session";
 
@@ -36,3 +38,23 @@ export const getTourPage = cache(async (locale: TourLocale, slug: string): Promi
   const moved = await tours.moved(slug);
   return moved ? { moved } : null;
 });
+
+/**
+ * Published tours without forcing request-time rendering (data cache, tag "tours"), for static pages such as the
+ * home page: they are regenerated when a tour is published. A build without a database uses the MDX tours (the same
+ * tours `tours:import` copies).
+ */
+export async function getPublicTours(): Promise<TourCatalog> {
+  let app;
+  try {
+    app = getContainer().app;
+  } catch {
+    app = undefined;
+  }
+  if (app) return app.product.tours.catalog();
+  // Still read through a "tours"-tagged cache entry, so the first publish regenerates the page with database tours.
+  await fileFallbackTag();
+  return getTourCatalog();
+}
+
+const fileFallbackTag = unstable_cache(async () => true, ["tours:file-fallback"], { tags: [TOURS_CACHE_TAG] });

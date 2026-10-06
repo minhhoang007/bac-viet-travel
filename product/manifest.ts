@@ -111,6 +111,7 @@ export const contentTypes: Record<string, ContentTypeDefinition> = {
     publicPath: (slug) => `/tours/${slug}`,
     // A tour can be submitted and published only when complete (both languages, prices, images).
     validate: tourProblems,
-    onChange: () => revalidateTag(TOURS_CACHE_TAG, "max"),
+    // Expire at once: static pages (home) regenerate from fresh tours on the next visit.
+    onChange: () => revalidateTag(TOURS_CACHE_TAG, { expire: 0 }),
   },
 };
