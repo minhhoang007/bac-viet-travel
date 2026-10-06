@@ -161,7 +161,7 @@ export default async function AdminBookingsPage({ params, searchParams }: Props)
                 <td className="py-2">
                   {c.filters[b.status]}
                   {b.refundDueVnd > 0 && !b.refundedAt && (
-                    <span className="block text-xs font-semibold text-red-700">
+                    <span className="block text-xs font-semibold text-danger">
                       {c.refundOwed}: {formatVnd(b.refundDueVnd, locale)}
                     </span>
                   )}

@@ -63,6 +63,8 @@ test("deposit: VNPay URL for 30%, IPN confirms, guest returns to a paid booking"
   // VNPay's server calls the IPN; the page turns to "paid" on its own.
   expect(await (await request.get(`/api/booking/vnpay/ipn?${params}`)).json()).toEqual({ RspCode: "00", Message: "Confirm Success" });
   await expect(page.getByTestId("paid")).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByTestId("booking-steps").locator('[aria-current="step"]')).toContainText("Xác nhận");
+  await expect(page.getByTestId("next-steps")).toContainText("lịch trình chi tiết");
   await expect(page.locator("[data-booking-status=deposit_paid]")).toBeVisible();
 
   // A replayed IPN changes nothing; a forged one is rejected.

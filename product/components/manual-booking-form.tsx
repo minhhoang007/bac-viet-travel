@@ -39,7 +39,7 @@ export function ManualBookingForm({
         {...props}
       />
       {fieldError(name) && (
-        <span id={`manual-${name}-error`} className="mt-1 text-red-700">
+        <span id={`manual-${name}-error`} className="mt-1 text-danger">
           {m.errors[fieldError(name)!] ?? m.errors.invalid}
         </span>
       )}
@@ -52,12 +52,12 @@ export function ManualBookingForm({
     <form action={formAction} className="grid max-w-2xl gap-4" noValidate>
       <input type="hidden" name="locale" value={locale} />
       {state?.status === "sold_out" && (
-        <p role="alert" className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+        <p role="alert" className="rounded-md border border-danger/40 bg-danger/10 p-3 text-sm text-danger">
           {m.soldOut(state.seatsLeft)}
         </p>
       )}
       {(state?.status === "unavailable" || state?.status === "error") && (
-        <p role="alert" className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+        <p role="alert" className="rounded-md border border-danger/40 bg-danger/10 p-3 text-sm text-danger">
           {state.status === "unavailable" ? m.unavailable : c.result.failed}
         </p>
       )}

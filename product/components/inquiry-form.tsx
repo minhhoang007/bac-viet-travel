@@ -57,7 +57,7 @@ export function InquiryForm({ action, labels, tour, locale }: InquiryFormProps) 
   });
   const message = (name: InquiryField) =>
     error(name) && (
-      <span id={`inquiry-${name}-error`} className="mt-1 block text-sm text-red-600">
+      <span id={`inquiry-${name}-error`} className="mt-1 block text-sm text-danger">
         {error(name)}
       </span>
     );
@@ -130,7 +130,7 @@ export function InquiryForm({ action, labels, tour, locale }: InquiryFormProps) 
       {/* Honeypot, hidden from humans and assistive tech */}
       <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" className="hidden" />
       {formError && (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-danger">
           {formError}
         </p>
       )}

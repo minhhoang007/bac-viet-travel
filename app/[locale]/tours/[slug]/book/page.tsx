@@ -10,6 +10,7 @@ import type { Locale } from "@/config/app";
 import { getBookingContent } from "@/product/booking/content";
 import { addDays, bookingRules, vietnamToday } from "@/product/booking/rules";
 import { BookingForm } from "@/product/components/booking-form";
+import { BookingSteps } from "@/product/components/booking-steps";
 import { getProductContent } from "@/product/content";
 import { getTours } from "@/app/_lib/tours";
 
@@ -41,7 +42,10 @@ export default async function BookTourPage({ params, searchParams }: Props) {
       <a href={localePath(locale, `/tours/${slug}`)} className="text-sm text-muted-foreground hover:underline">
         ← {tour.title}
       </a>
-      <h1 className="mt-2 text-3xl font-bold">{t.pageTitle(tour.title)}</h1>
+      <div className="mt-4 max-w-2xl">
+        <BookingSteps locale={locale} current={1} />
+      </div>
+      <h1 className="mt-6 text-3xl font-semibold">{t.pageTitle(tour.title)}</h1>
       <p className="mt-1 text-muted-foreground">
         {getProductContent(locale).tours.days(tour.days, tour.nights)} · {tour.departure}
       </p>
@@ -63,6 +67,7 @@ export default async function BookTourPage({ params, searchParams }: Props) {
           locale={locale}
           privateTour={isPrivate ? { tourSlug: slug, pricing: tour.private!, minDate: addDays(today, bookingRules.cutoffDays), maxDate: addDays(today, 366) } : undefined}
           initialDepartureId={d}
+          tour={{ title: tour.title, image: tour.images[0]!, duration: getProductContent(locale).tours.days(tour.days, tour.nights) }}
           initialAdults={Number.isInteger(adults) && adults >= 1 && adults <= 50 ? adults : undefined}
           departures={departures.map((x) => ({ id: x.id, date: x.date, seatsLeft: x.seatsLeft, unitPriceVnd: x.unitPriceVnd, bookable: x.bookable, status: x.status }))}
         />
