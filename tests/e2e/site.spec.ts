@@ -255,3 +255,19 @@ test("contact page: chat first per language, office with a map link, the form; A
     expect(result.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => `${path}: ${v.id}`)).toEqual([]);
   }
 });
+
+test("tour page month calendar: switch views, move between months, book from a day", async ({ page }) => {
+  await page.goto("/tours/sapa-trekking-2d1n");
+  await expect(page.getByTestId("tour-departures").locator("[data-loaded]")).toBeVisible();
+  await page.getByRole("button", { name: "Lịch tháng" }).click();
+  const calendar = page.getByTestId("departure-calendar");
+  await expect(calendar).toBeVisible();
+  const first = (await page.getByTestId("calendar-month").textContent())!;
+  await calendar.getByRole("button", { name: "Tháng sau" }).click();
+  await expect(page.getByTestId("calendar-month")).not.toHaveText(first);
+  await calendar.getByRole("button", { name: "Tháng trước" }).click();
+  await expect(page.getByTestId("calendar-month")).toHaveText(first);
+  const day = calendar.getByRole("link", { name: /^Chọn / }).first();
+  await day.click();
+  await expect(page).toHaveURL(/\/book\?d=[0-9a-f-]+$/);
+});

@@ -9,6 +9,7 @@ import { formatDay, formatVnd, getBookingContent } from "../booking/content";
 import { getProductContent } from "../content";
 import { parseTourFilters } from "../tours/filters";
 import { formatPrice } from "../tours/format";
+import { DepartureCalendar } from "./departure-calendar";
 
 /** One departure as /api/tours/<slug>/departures returns it (live seats). */
 export type PublicDeparture = { id: string; date: string; status: string; seatsLeft: number; unitPriceVnd: number; bookable: boolean };
@@ -62,6 +63,7 @@ export function TourBookingProvider({ locale, slug, live = true, children }: { l
 /** Upcoming departures with live seats (first 8), each linking to the booking page with that date. */
 export function TourDepartureList({ locale, price }: { locale: Locale; price: { vnd: number; usd: number } }) {
   const { departures, failed, retry, chosen, bookHref } = useTourBooking();
+  const [view, setView] = useState<"list" | "month">("list");
   const c = getProductContent(locale);
   const b = getBookingContent(locale);
   if (failed) {
@@ -83,9 +85,23 @@ export function TourDepartureList({ locale, price }: { locale: Locale; price: { 
   }
   const upcoming = departures.slice(0, 8);
   const seatLabel = (d: PublicDeparture) => (d.bookable ? b.seatsLeft(d.seatsLeft) : d.status === "closed" ? b.closed : d.seatsLeft <= 0 ? b.soldOut : b.tooSoon);
+  const money = (vnd: number) => (locale === "vi" ? formatVnd(vnd, locale) : formatPrice({ price: { vnd, usd: Math.round((price.usd * vnd) / price.vnd) } }, locale));
+  const toggle = (value: "list" | "month", label: string) => (
+    <button type="button" aria-pressed={view === value} onClick={() => setView(value)} className={`rounded-md px-3 py-1 text-sm ${view === value ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}>
+      {label}
+    </button>
+  );
   return (
     <div data-loaded="">
-      {upcoming.length === 0 ? (
+      {departures.length > 0 && (
+        <div className="mt-4 inline-flex gap-1 rounded-lg border border-border p-1" role="group" aria-label={c.tours.departuresView}>
+          {toggle("list", c.tours.viewList)}
+          {toggle("month", c.tours.viewMonth)}
+        </div>
+      )}
+      {view === "month" && departures.length > 0 ? (
+        <DepartureCalendar locale={locale} days={departures.map((d) => ({ id: d.id, date: d.date, seatsLeft: d.seatsLeft, bookable: d.bookable, price: money(d.unitPriceVnd) }))} bookHref={bookHref} chosenId={chosen?.id} />
+      ) : upcoming.length === 0 ? (
         <p className="mt-4 rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">{b.noDepartures}</p>
       ) : (
         <ul className="mt-4 divide-y divide-border rounded-2xl border border-border">
@@ -99,7 +115,7 @@ export function TourDepartureList({ locale, price }: { locale: Locale; price: { 
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-sm font-semibold">{locale === "vi" ? formatVnd(d.unitPriceVnd, locale) : formatPrice({ price: { vnd: d.unitPriceVnd, usd: Math.round((price.usd * d.unitPriceVnd) / price.vnd) } }, locale)}</span>
+                <span className="text-sm font-semibold">{money(d.unitPriceVnd)}</span>
                 {d.bookable ? (
                   <ButtonLink href={bookHref(d.id)} className="h-9 px-4" variant={chosen?.id === d.id ? "primary" : "outline"} aria-label={c.tours.chooseDay(formatDay(d.date, locale))}>
                     {b.choose}
@@ -112,7 +128,7 @@ export function TourDepartureList({ locale, price }: { locale: Locale; price: { 
           ))}
         </ul>
       )}
-      {departures.length > upcoming.length && (
+      {view === "list" && departures.length > upcoming.length && (
         <a href={bookHref(chosen?.id)} className="mt-3 inline-block text-sm font-medium text-primary underline underline-offset-4">
           {c.tours.departuresAll} →
         </a>
