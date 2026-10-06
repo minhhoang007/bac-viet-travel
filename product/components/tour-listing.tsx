@@ -99,15 +99,15 @@ export function TourListing({ locale, tours, filters, destination }: { locale: L
       </form>
 
       <div>
-        <p className="text-sm text-muted-foreground" aria-live="polite" data-testid="tour-count">
+        <h2 className="font-sans text-sm font-normal text-muted-foreground" aria-live="polite" data-testid="tour-count">
           {t.count(results.length)}
           {tripLabel && ` · ${tripLabel}`}
-        </p>
+        </h2>
         {results.length === 0 ? (
           <p className="mt-6 rounded-2xl border border-dashed border-border p-8 text-center text-muted-foreground">{t.empty}</p>
         ) : (
           <div className="mt-4 grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-            {results.map((tour) => (
+            {results.map((tour, i) => (
               <div key={tour.slug} data-destination={tour.destination} className="contents">
                 <TourCard
                   href={`${localePath(locale, `/tours/${tour.slug}`)}${tourFilterQuery({ ...trip, sort: "popular" })}`}
@@ -119,6 +119,9 @@ export function TourListing({ locale, tours, filters, destination }: { locale: L
                   price={formatPrice(tour, locale)}
                   fromLabel={c.tours.from}
                   perPersonLabel={c.tours.perPerson}
+                  priority={i === 0}
+                  // Grid beside the 16rem filter column: 3 columns from xl, 2 from sm.
+                  sizes="(min-width: 1280px) 300px, (min-width: 640px) 45vw, 100vw"
                 />
               </div>
             ))}
