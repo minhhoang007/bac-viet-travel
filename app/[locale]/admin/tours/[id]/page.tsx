@@ -17,7 +17,7 @@ import { TOUR_CONTENT_TYPE } from "@/product/tours/source";
 
 type Props = { params: Promise<{ locale: Locale; id: string }>; searchParams: Promise<{ result?: string; tab?: string }> };
 
-const TABS = ["general", "vi", "en", "images", "private"] as const;
+const TABS = ["general", "vi", "en", "seo", "images", "private"] as const;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
