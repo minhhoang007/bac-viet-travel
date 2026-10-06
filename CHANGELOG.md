@@ -4,6 +4,11 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.6.5] - 2026-10-06
+
+### Fixed
+- Unknown URLs rendered the framework's bare English 404 (no header, footer or translation): `app/[locale]/[...rest]/page.tsx` now sends them to the localized `not-found.tsx`.
+
 ## [1.6.4] - 2026-10-06
 
 ### Added
