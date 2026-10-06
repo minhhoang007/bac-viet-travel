@@ -16,6 +16,10 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 - Blog pages read the blog through `loadBlog()` (`requireBlog()` is async). `/blog/rss.xml` renders per request with `cache-control: s-maxage=600` instead of `force-static`.
 - `productContentTypes()` callers use `allContentTypes()` (starter + project types).
 
+### Fixed
+- `/blog/rss.xml` (default-locale feed, linked from the blog page and its metadata) was a 404: the proxy matcher skipped paths with a dot, so the locale rewrite never ran. It is now matched explicitly.
+- Blog routes export `generateStaticParams` only for file posts (a static route cannot use request-time APIs).
+
 ## [1.5.2] - 2026-10-06
 
 ### Security

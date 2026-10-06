@@ -23,5 +23,6 @@ export default function proxy(request: NextRequest) {
 
 export const config = {
   // `icon$`: the generated favicon (app/icon.tsx) is served at /icon, without a locale.
-  matcher: "/((?!api|_next|_vercel|icon$|.*\\..*).*)",
+  // Paths with a dot are files, except the default-locale blog feed, which needs the locale rewrite (/blog/rss.xml).
+  matcher: ["/((?!api|_next|_vercel|icon$|.*\\..*).*)", "/blog/rss.xml"],
 };
