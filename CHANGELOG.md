@@ -4,6 +4,8 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-10-06
+
 ### Added — content validation
 - `contentTypes[type].validate(data)` (problem fields; empty = complete): the content module refuses submit, approve and scheduled publishing of an incomplete draft (`VALIDATION_ERROR`, `details.problems`); drafts may stay incomplete. The workflow panel shows `?result=incomplete` (content key `admin.content.incomplete`).
 
