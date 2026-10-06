@@ -90,7 +90,7 @@ export async function sitemapPaths({ content }: SitemapContext): Promise<string[
     tourSource === "content" && content
       ? (await content.listPublished(TOUR_CONTENT_TYPE)).map((t) => t.slug)
       : getTourCatalog().slugs();
-  return ["/about", "/cancellation", "/payment", "/tours", ...DESTINATIONS.map((d) => `/tours/${d}`), ...slugs.map((slug) => `/tours/${slug}`)];
+  return ["/about", "/contact", "/cancellation", "/payment", "/tours", ...DESTINATIONS.map((d) => `/tours/${d}`), ...slugs.map((slug) => `/tours/${slug}`)];
 }
 
 /** Admin menu entries (starter rc.11). */
