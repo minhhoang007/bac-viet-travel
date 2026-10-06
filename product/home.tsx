@@ -158,7 +158,7 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
           </h2>
           <div className="mt-8 grid gap-6 md:grid-cols-3">
             {DESTINATIONS.map((d) => (
-              <a key={d} href={localePath(locale, `/tours#${d}`)} className="group relative block aspect-[4/5] overflow-hidden rounded-2xl" data-destination-card={d}>
+              <a key={d} href={localePath(locale, `/tours/${d}`)} className="group relative block aspect-[4/5] overflow-hidden rounded-2xl" data-destination-card={d}>
                 <Image src={DESTINATION_IMAGE[d]} alt={c.destinations[d].name} fill sizes="(min-width: 768px) 33vw, 100vw" className="object-cover transition duration-700 group-hover:scale-105" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
                 <div className="absolute inset-x-0 bottom-0 p-6 text-white">

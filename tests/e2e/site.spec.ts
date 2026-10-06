@@ -42,10 +42,10 @@ test("English pages put WhatsApp first and show USD prices", async ({ page }) =>
   await expect(page.locator("[data-destination=sapa]").getByText("$95")).toBeVisible();
 });
 
-test("tours page groups by destination; tour page has itinerary, TouristTrip JSON-LD and prefilled WhatsApp", async ({ page }) => {
+test("tours page lists every tour; tour page has itinerary, TouristTrip JSON-LD and prefilled WhatsApp", async ({ page }) => {
   await page.goto("/tours");
-  for (const d of ["ha-long", "ninh-binh", "sapa"]) await expect(page.locator(`section[data-destination=${d}] article`)).toHaveCount(2);
-  await page.locator("section[data-destination=ha-long]").getByRole("link", { name: "Du thuyền Hạ Long 2 ngày 1 đêm" }).first().click();
+  for (const d of ["ha-long", "ninh-binh", "sapa"]) await expect(page.locator(`[data-destination=${d}] article`)).toHaveCount(2);
+  await page.locator("[data-destination=ha-long]").getByRole("link", { name: "Du thuyền Hạ Long 2 ngày 1 đêm" }).first().click();
   await expect(page).toHaveURL(/\/tours\/ha-long-cruise-2d1n$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Du thuyền Hạ Long 2 ngày 1 đêm");
   await expect(page.getByTestId("itinerary").locator("li")).toHaveCount(2);
@@ -94,7 +94,7 @@ test("tour gallery, mobile menu and accessibility (axe) on travel pages", async 
   await page.goto("/tours/ha-long-cruise-2d1n");
   const gallery = page.getByTestId("gallery");
   await expect(gallery.locator("img")).toHaveCount(3);
-  for (const path of ["/", "/tours", "/tours/ha-long-cruise-2d1n"]) {
+  for (const path of ["/", "/tours", "/tours/ha-long", "/tours/ha-long-cruise-2d1n"]) {
     await page.goto(path);
     const result = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
     expect(result.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => `${path}: ${v.id}`)).toEqual([]);
@@ -103,7 +103,7 @@ test("tour gallery, mobile menu and accessibility (axe) on travel pages", async 
   await page.goto("/");
   await page.getByRole("button", { name: "Mở menu" }).click();
   await page.getByTestId("mobile-menu").getByRole("link", { name: "Sapa" }).click();
-  await expect(page).toHaveURL(/\/tours#sapa$/);
+  await expect(page).toHaveURL(/\/tours\/sapa$/);
 });
 
 test("company block, About and policy pages: legal details from config/contact.ts in both languages", async ({ page }) => {
@@ -128,4 +128,48 @@ test("company block, About and policy pages: legal details from config/contact.t
   await page.goto("/en/about");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("About Bắc Việt Travel");
   await expect(page.getByText("International tour operator licence").first()).toBeVisible();
+});
+
+test("tour filters: the home search lands on a filtered list; filters stay in the URL; destination pages list their tours", async ({ page }) => {
+  await page.goto("/tours?destination=sapa&date=2026-11-02&guests=3");
+  await expect(page.locator("[data-destination=sapa] article")).toHaveCount(2);
+  await expect(page.locator("[data-destination]:not([data-destination=sapa]) article")).toHaveCount(0);
+  await expect(page.getByTestId("tour-count")).toHaveText("2 tour · Ngày đi 02/11/2026 · 3 khách");
+  // Tour links carry the chosen date and group size to the tour page.
+  await expect(page.locator("[data-destination=sapa] article a").first()).toHaveAttribute("href", /\?date=2026-11-02&guests=3$/);
+
+  const filters = page.getByRole("form", { name: "Lọc tour" });
+  await filters.getByLabel("Điểm đến").selectOption("");
+  await filters.getByLabel("Số ngày").selectOption("1");
+  await filters.getByLabel("Sắp xếp").selectOption("price-asc");
+  await filters.getByRole("button", { name: "Áp dụng" }).click();
+  await expect(page).toHaveURL(/duration=1/);
+  await expect(page).toHaveURL(/sort=price-asc/);
+  await expect(page).toHaveURL(/guests=3/);
+  const prices = await page.locator("[data-destination] article .text-primary").allTextContents();
+  const values = prices.map((p) => Number(p.replace(/\D/g, "")));
+  expect(values.length).toBeGreaterThan(0);
+  expect(values).toEqual([...values].sort((a, b) => a - b));
+  // Clearing keeps the trip (date, group size) and drops the filters.
+  await page.getByRole("link", { name: "Xoá bộ lọc" }).click();
+  await expect(page).toHaveURL(/\/tours\?date=2026-11-02&guests=3$/);
+  await expect(page.locator("[data-destination] article")).not.toHaveCount(values.length);
+
+  await filters.getByLabel("Mức giá").selectOption("high");
+  await filters.getByLabel("Số ngày").selectOption("1");
+  await filters.getByRole("button", { name: "Áp dụng" }).click();
+  await expect(page.getByText("Chưa có tour phù hợp", { exact: false })).toBeVisible();
+
+  const res = await page.goto("/tours/ha-long");
+  expect(res?.status()).toBe(200);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Tour Vịnh Hạ Long");
+  // Only this destination's tours (other test files may publish more tours elsewhere).
+  await expect(page.locator("[data-destination=ha-long] article")).toHaveCount(2);
+  await expect(page.locator("[data-destination]:not([data-destination=ha-long]) article")).toHaveCount(0);
+  const ld = await page.locator('script[type="application/ld+json"]').allTextContents();
+  expect(ld.some((s) => s.includes('"@type":"ItemList"'))).toBe(true);
+  const sitemap = await (await page.request.get("/sitemap.xml")).text();
+  expect(sitemap).toContain("/tours/ha-long</loc>");
+  await page.goto("/en/tours/sapa");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Sapa tours");
 });

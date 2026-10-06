@@ -16,7 +16,7 @@ export function SiteFooter({ locale }: { locale: Locale }) {
   const columns = [
     {
       title: n.tours,
-      links: [...DESTINATIONS.map((d) => ({ label: c.destinations[d].name, href: `/tours#${d}` })), { label: c.header.privateTours, href: "/#contact" }],
+      links: [...DESTINATIONS.map((d) => ({ label: c.destinations[d].name, href: `/tours/${d}` })), { label: c.header.privateTours, href: "/#contact" }],
     },
     {
       title: n.company,

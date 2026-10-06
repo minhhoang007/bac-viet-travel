@@ -24,14 +24,18 @@ import { PreviewBanner } from "@/components/content/preview-banner";
 import { Notice } from "@/components/feedback/notice";
 import { getAppContent } from "@/content";
 import { formatPrice } from "@/product/tours/format";
+import { parseTourFilters } from "@/product/tours/filters";
+import { isDestination } from "@/product/tours/model";
+import { DestinationPage, destinationMetadata } from "../_destination";
 import { getTourAdminContent, tourProblemLabel } from "@/product/tours/admin-content";
 
-type Props = { params: Promise<{ locale: Locale; slug: string }> };
+type Props = { params: Promise<{ locale: Locale; slug: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
 
 // Rendered per request from published tours (CMS, cached); unknown slugs end in notFound() below.
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale, slug } = await params;
+  if (isDestination(slug)) return destinationMetadata(locale, slug);
   const page = await getTourPage(locale, slug);
   if (!page || !("tour" in page)) return {};
   const { tour } = page;
@@ -44,8 +48,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   });
 }
 
-export default async function TourPage({ params }: Props) {
+export default async function TourPage({ params, searchParams }: Props) {
   const { locale, slug } = await params;
+  // Destination landing pages share the /tours/<slug> segment (tour slugs cannot be destination names).
+  if (isDestination(slug)) {
+    setRequestLocale(locale);
+    return <DestinationPage locale={locale} destination={slug} tours={(await getTours()).list(locale)} filters={parseTourFilters(await searchParams)} />;
+  }
   setRequestLocale(locale);
   const page = await getTourPage(locale, slug);
   if (!page) notFound();
@@ -109,7 +118,7 @@ export default async function TourPage({ params }: Props) {
         <Image src={tour.images[0]!} alt={tour.title} fill priority sizes="100vw" className="object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
         <Container className="absolute inset-x-0 bottom-0 pb-8 text-white">
-          <a href={localePath(locale, `/tours#${tour.destination}`)} className="text-sm opacity-90 hover:underline">
+          <a href={localePath(locale, `/tours/${tour.destination}`)} className="text-sm opacity-90 hover:underline">
             {c.destinations[tour.destination].name}
           </a>
           <h1 className="mt-1 max-w-3xl text-3xl font-bold sm:text-4xl">{tour.title}</h1>
