@@ -224,7 +224,7 @@ export function buildContainer(features: Features, env: Env, overrides: Containe
   if (content) periodic["content.publish_due"] = async () => void (await content.publishDue());
 
   const productContext: ProductContext | undefined = db
-    ? { db, logger, mail, rateLimiter, payments, jobs, audit: admin, now: overrides.now ?? (() => new Date()) }
+    ? { db, logger, mail, rateLimiter, payments, jobs, audit: admin, content, now: overrides.now ?? (() => new Date()) }
     : undefined;
   const app =
     features.profile === "app" && productContext
