@@ -27,6 +27,7 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
   const found = await container.app!.product.bookingAdmin.get(code);
   if (!found) notFound();
   const { booking: b, departure: d, payments } = found;
+  const feedback = await container.app!.product.feedback.forBooking(b.id);
   const { rows: history } = await admin.listAudit({ targetId: b.code, pageSize: 50 });
   const c = getBookingAdminContent(locale);
   const g = getBookingContent(locale);
@@ -99,6 +100,18 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
           </dl>
         </section>
       </div>
+
+      <section className="rounded-lg border border-border p-4" data-testid="admin-feedback">
+        <h2 className="font-semibold">{g.feedback.staffTitle}</h2>
+        {feedback ? (
+          <p className="mt-1 text-sm">
+            <span aria-label={`${feedback.rating}/5`}>{"★".repeat(feedback.rating)}{"☆".repeat(5 - feedback.rating)}</span> {g.feedback.stars[feedback.rating as 1 | 2 | 3 | 4 | 5]}
+            {feedback.comment && <span className="mt-1 block whitespace-pre-line text-muted-foreground">{feedback.comment}</span>}
+          </p>
+        ) : (
+          <p className="mt-1 text-sm text-muted-foreground">{g.feedback.staffNone}</p>
+        )}
+      </section>
 
       <section className="rounded-lg border border-border p-4" data-testid="admin-travellers">
         <h2 className="font-semibold">{g.travellers.title}</h2>

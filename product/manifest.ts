@@ -7,6 +7,7 @@ import { tourSource } from "@/config/tours";
 import type { Db } from "@/db/client";
 import { createBookingAdmin } from "./booking/admin";
 import { createDepositService } from "./booking/deposits";
+import { createFeedbackService } from "./booking/feedback";
 import { createDiscountAdmin } from "./booking/discounts";
 import { DEFAULT_TOUR_PRICING } from "./booking/rules";
 import { bankTransferConfig } from "@/config/bank-transfer";
@@ -65,12 +66,24 @@ export function createProduct(db: Db, ctx: ProductContext) {
     now: ctx.now,
   });
 
+  // Post-trip feedback (E4): links signed with the auth secret (server-only, already required in profile app).
+  const feedback = createFeedbackService({
+    db,
+    logger: ctx.logger,
+    mail: ctx.mail,
+    secret: () => getEnv().extra.BETTER_AUTH_SECRET ?? "",
+    siteUrl: () => getEnv().NEXT_PUBLIC_SITE_URL,
+    tourTitle,
+    now: ctx.now,
+  });
+
   // Guests have no account: bookings are not part of a user's data export.
   const exporters: AccountDataExporter[] = [];
   // Run on every jobs tick (Vercel Cron, daily): reminder emails, tidy expired holds.
   const jobs: ProductJobs = {
     periodic: {
       "booking.reminders": async () => void (await bookingAdmin.sendReminders()),
+      "booking.feedback_requests": async () => void (await feedback.sendRequests()),
       // Ask VNPay first: a paid deposit whose IPN was lost must not expire with its hold.
       "booking.expire_holds": async () => {
         const env = getEnv();
@@ -81,7 +94,7 @@ export function createProduct(db: Db, ctx: ProductContext) {
   };
 
   const discounts = createDiscountAdmin({ db, audit: ctx.audit, now: ctx.now });
-  return { services: { tours, booking, deposits, bookingAdmin, discounts, paymentsSandbox: ctx.payments.vnpay?.sandbox ?? false }, exporters, jobs };
+  return { services: { tours, booking, deposits, bookingAdmin, feedback, discounts, paymentsSandbox: ctx.payments.vnpay?.sandbox ?? false }, exporters, jobs };
 }
 
 export interface ProductNavItem {

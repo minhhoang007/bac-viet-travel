@@ -27,6 +27,9 @@ export const contactConfig = {
   city: "Hà Nội",
   /** Ministry of Industry and Trade e-commerce notice (online.gov.vn): set the link once the website is notified. */
   moitNoticeUrl: null as string | null,
+  /** Google review link of the business (Google Business Profile → "Ask for reviews"): guests who rate 4–5 after a
+   * trip are invited there. null = not shown. */
+  googleReviewUrl: null as string | null,
 };
 
 export const zaloUrl = (number = contactConfig.zalo) => `https://zalo.me/${number}`;
