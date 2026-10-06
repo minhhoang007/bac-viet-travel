@@ -193,6 +193,7 @@ export const app: AppContent = {
       restoreAsk: "Chép phiên bản này vào bản nháp? Bản nháp hiện tại sẽ bị thay thế.",
       events: { submitted: "Gửi duyệt", published: "Công khai" },
       conflict: "Nội dung vừa được người khác thay đổi. Tải lại trang để xem bản mới nhất.",
+      incomplete: "Nội dung chưa đủ để gửi duyệt hoặc công khai. Điền các mục còn thiếu rồi thử lại.",
     },
     done: "Đã thực hiện.",
     failed: "Không thực hiện được.",

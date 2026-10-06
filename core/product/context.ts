@@ -62,6 +62,8 @@ export interface ContentTypeDefinition {
   adminPath(id: string): string;
   /** Public page for a slug (Draft Mode preview opens it). */
   publicPath(slug: string): string;
+  /** Problems that stop submit / publish (e.g. zod issue paths); empty = complete. Drafts may be incomplete. */
+  validate?(data: Record<string, unknown>): string[];
   /** After a publish, hide or unhide (also from the scheduled-publish job): e.g. revalidateTag(...). */
   onChange?(item: { id: string; type: string; slug: string; publishedSlug: string | null }): Promise<void> | void;
 }
