@@ -6,12 +6,19 @@ import type { OneTimePaymentProvider } from "@/core/ports/payments";
 import type { Db } from "@/db/client";
 import { bookingPayments, bookings, departures, type Booking, type BookingPayment, type Departure } from "../schema/booking";
 import { depositEmails } from "./emails";
+import { vietnamToday } from "./rules";
 import type { BookingService } from "./service";
 
 /** VNPay IPN answer (https://sandbox.vnpayment.vn/apis/docs/thanh-toan-pay/pay.html#code-returnurl). */
 export type IpnResult = { RspCode: "00" | "01" | "02" | "04" | "97" | "99"; Message: string };
 
 export type StartDepositResult = { status: "redirect"; url: string } | { status: "not_found" } | { status: "not_payable" };
+/** Rest of the total still owed online (D5): paid bookings before departure, not yet settled. */
+export function balanceDue(booking: Pick<Booking, "status" | "totalVnd" | "depositVnd" | "balancePaidAt">): number {
+  if ((booking.status !== "deposit_paid" && booking.status !== "confirmed") || booking.balancePaidAt) return 0;
+  return Math.max(0, booking.totalVnd - booking.depositVnd);
+}
+
 export type ChooseTransferResult = { status: "ok" } | { status: "not_found" } | { status: "not_payable" };
 /** deposit_paid / refund_due: recorded (and the guest emailed). too_little: less than the deposit, nothing recorded. */
 export type ReceiveTransferResult = "deposit_paid" | "refund_due" | "extra" | "not_found" | "not_payable" | "too_little";
@@ -29,6 +36,8 @@ export interface DepositService {
    * confirms the paid ones as the IPN would have (an IPN can be lost). Returns how many were confirmed.
    */
   reconcile(links: { siteUrl: string; teamEmail?: string }): Promise<number>;
+  /** VNPay payment of the rest of the total (D5) for a paid booking, until the departure day. */
+  startBalance(input: { code: string; token: string; ipAddr: string; returnUrl: string }): Promise<StartDepositResult>;
   /**
    * The guest pays by bank transfer (VietQR): records a pending transfer and holds the seats for the transfer hold
    * time, so staff have time to see the money arrive.
@@ -62,7 +71,7 @@ export function createDepositService(deps: {
   const { db, logger } = deps;
   const now = deps.now ?? (() => new Date());
 
-  const notify = async (booking: Booking, departure: Departure, link: { siteUrl: string; token: string | null; teamEmail?: string }, outcome: "paid" | "refund_due" | "extra", amountVnd?: number) => {
+  const notify = async (booking: Booking, departure: Departure, link: { siteUrl: string; token: string | null; teamEmail?: string }, outcome: "paid" | "refund_due" | "extra" | "balance", amountVnd?: number) => {
     const title = await deps.tourTitle(departure.tourSlug, booking.locale);
     const messages = depositEmails({ booking, departure, title, ...link, outcome, amountVnd });
     for (const message of messages) {
@@ -71,7 +80,7 @@ export function createDepositService(deps: {
     }
   };
 
-  type Settled = { kind: "duplicate" | "failed" } | { kind: "deposit_paid" | "refund_due" | "extra"; booking: Booking; departure: Departure; token: string | null };
+  type Settled = { kind: "duplicate" | "failed" } | { kind: "deposit_paid" | "refund_due" | "extra" | "balance_paid"; booking: Booking; departure: Departure; token: string | null };
 
   /**
    * Records the result of one pending attempt exactly once (VNPay IPN, querydr, or a transfer staff saw). Money that
@@ -97,6 +106,17 @@ export function createDepositService(deps: {
           .returning({ id: bookingPayments.id, linkToken: bookingPayments.linkToken });
         if (claimed.length === 0) return { kind: "duplicate" as const };
         if (!success) return { kind: "failed" as const };
+
+        // Balance (D5): settles the total of a live paid booking; anything else is money to give back.
+        if (payment.purpose === "balance") {
+          const live = (booking!.status === "deposit_paid" || booking!.status === "confirmed") && !booking!.balancePaidAt;
+          const [updated] = await tx
+            .update(bookings)
+            .set(live ? { balancePaidAt: at } : { refundDueVnd: sql`${bookings.refundDueVnd} + ${payment.amountVnd}` })
+            .where(eq(bookings.id, booking!.id))
+            .returning();
+          return { kind: live ? ("balance_paid" as const) : ("extra" as const), booking: updated!, departure: departure!, token: payment.linkToken };
+        }
 
         // Money arrived. Keep the seats if we still can; never lose the guest's payment.
         let status: Booking["status"] = "deposit_paid";
@@ -125,6 +145,7 @@ export function createDepositService(deps: {
     if (outcome.kind === "deposit_paid") await notify(outcome.booking, outcome.departure, { ...links, token: outcome.token }, "paid");
     if (outcome.kind === "refund_due") await notify(outcome.booking, outcome.departure, { ...links, token: outcome.token }, "refund_due");
     if (outcome.kind === "extra") await notify(outcome.booking, outcome.departure, { ...links, token: outcome.token }, "extra", payment.amountVnd);
+    if (outcome.kind === "balance_paid") await notify(outcome.booking, outcome.departure, { ...links, token: outcome.token }, "balance", payment.amountVnd);
     return outcome;
   }
 
@@ -187,6 +208,32 @@ export function createDepositService(deps: {
         expiresAt: booking.holdExpiresAt,
       });
       logger.info("booking.deposit_started", { code: booking.code, txnRef });
+      return { status: "redirect", url };
+    },
+
+    async startBalance({ code, token, ipAddr, returnUrl }) {
+      if (!deps.vnpay) return { status: "not_payable" };
+      const booking = await deps.bookings.getForGuest(code, token);
+      if (!booking) return { status: "not_found" };
+      const amount = balanceDue(booking);
+      const at = now();
+      if (amount <= 0 || booking.departure.date < vietnamToday(at)) return { status: "not_payable" };
+      const txnRef = `${booking.code.slice(3)}B${randomBytes(5).toString("hex").toUpperCase()}`;
+      const [attempt] = await db
+        .insert(bookingPayments)
+        .values({ bookingId: booking.id, purpose: "balance", txnRef, amountVnd: amount, linkToken: token })
+        .returning({ createdAt: bookingPayments.createdAt });
+      const url = deps.vnpay.buildPaymentUrl({
+        txnRef,
+        amount,
+        orderInfo: `Thanh toan con lai tour ${booking.code}`,
+        ipAddr,
+        returnUrl,
+        locale: booking.locale === "en" ? "en" : "vi",
+        createdAt: attempt!.createdAt,
+        expiresAt: new Date(at.getTime() + 15 * 60_000),
+      });
+      logger.info("booking.balance_started", { code: booking.code, txnRef });
       return { status: "redirect", url };
     },
 
@@ -260,7 +307,8 @@ export function createDepositService(deps: {
       if (!payment) return "not_payable"; // already recorded
       const outcome = await settle(payment, { success: true, providerTxnNo: bankRef.trim().slice(0, 100) || null, responseCode: null, bankCode: null }, links);
       logger.info("booking.transfer_received", { code, outcome: outcome.kind });
-      return outcome.kind === "duplicate" || outcome.kind === "failed" ? "not_payable" : outcome.kind;
+      // Transfers recorded here are deposits (purpose "deposit"), so "balance_paid" cannot happen.
+      return outcome.kind === "duplicate" || outcome.kind === "failed" || outcome.kind === "balance_paid" ? "not_payable" : outcome.kind;
     },
 
     async returnStatus(params) {

@@ -68,6 +68,8 @@ export const bookings = pgTable(
     totalVnd: integer("total_vnd").notNull(),
     depositVnd: integer("deposit_vnd").notNull(),
     depositPaidAt: timestamp("deposit_paid_at", { withTimezone: true }),
+    /** When the rest of the total was paid (online, or recorded by staff) (D5); null = still owed. */
+    balancePaidAt: timestamp("balance_paid_at", { withTimezone: true }),
     confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
     cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
     cancelReason: text("cancel_reason"),
@@ -105,6 +107,8 @@ export const bookingPayments = pgTable(
     id: id(),
     bookingId: uuid("booking_id").notNull().references(() => bookings.id, { onDelete: "cascade" }),
     method: text("method", { enum: PAYMENT_METHODS }).notNull().default("vnpay"),
+    /** deposit: the hold's deposit. balance: the rest of the total, paid online before departure (D5). */
+    purpose: text("purpose", { enum: ["deposit", "balance"] }).notNull().default("deposit"),
     /** vnp_TxnRef we send (unique per attempt); for a transfer, the booking code without "BV-" plus "CK". */
     txnRef: text("txn_ref").notNull(),
     amountVnd: integer("amount_vnd").notNull(),

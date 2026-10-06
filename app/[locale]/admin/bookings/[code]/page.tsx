@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
 import { requireAdmin } from "@/app/_lib/admin";
-import { cancelBooking, confirmBooking, markBookingRefunded, receiveTransfer, saveStaffNote } from "@/app/actions/booking-admin";
+import { cancelBooking, confirmBooking, markBalancePaid, markBookingRefunded, receiveTransfer, saveStaffNote } from "@/app/actions/booking-admin";
 import { Input } from "@/components/ui/input";
 import { transferNote } from "@/product/booking/deposits";
 import { Button } from "@/components/ui/button";
@@ -95,6 +95,7 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
             {row(c.detail.deposit, formatVnd(b.depositVnd, locale))}
             {row(c.detail.paidAt, time(b.depositPaidAt))}
             {row(c.detail.rest, formatVnd(b.totalVnd - b.depositVnd, locale))}
+            {b.balancePaidAt && row(c.detail.balancePaidAt, time(b.balancePaidAt))}
             {b.refundDueVnd > 0 && row(c.detail.refundDue, <strong className={refundOwed ? "text-danger" : ""}>{formatVnd(b.refundDueVnd, locale)}</strong>)}
             {b.refundedAt && row(c.detail.refundedAt, `${time(b.refundedAt)} · ${b.refundNote ?? ""}`)}
           </dl>
@@ -138,6 +139,12 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
       <section className="grid gap-4 rounded-lg border border-border p-4">
         <h2 className="font-semibold">{c.detail.actions}</h2>
         <div className="flex flex-wrap gap-3">
+          {(b.status === "deposit_paid" || b.status === "confirmed") && !b.balancePaidAt && b.totalVnd > b.depositVnd && (
+            <form action={markBalancePaid}>
+              {hidden}
+              <ConfirmButton question={c.detail.balanceAsk} variant="outline" data-testid="admin-balance">{c.detail.balanceMark}</ConfirmButton>
+            </form>
+          )}
           {b.status === "deposit_paid" && (
             <form action={confirmBooking}>
               {hidden}

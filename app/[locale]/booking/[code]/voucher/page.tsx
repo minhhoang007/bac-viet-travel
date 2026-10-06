@@ -87,7 +87,7 @@ export default async function VoucherPage({ params, searchParams }: Props) {
           {row(t.booking.contact, `${booking.name} · ${booking.phone}`)}
           {row(t.total, formatVnd(booking.totalVnd, locale))}
           {row(v.paid, formatVnd(booking.depositVnd, locale))}
-          {row(v.balance, formatVnd(booking.totalVnd - booking.depositVnd, locale))}
+          {row(v.balance, booking.balancePaidAt ? t.booking.balancePaid : formatVnd(booking.totalVnd - booking.depositVnd, locale))}
         </dl>
 
         <section className="mt-5">

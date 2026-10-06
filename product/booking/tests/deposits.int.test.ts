@@ -289,3 +289,41 @@ describe("booking deposits (paid twice)", () => {
     expect(await deposits.receiveTransfer(code, { amountVnd: 300_000, bankRef: "" }, LINKS)).toBe("not_payable");
   });
 });
+
+describe("balance payment (D5)", () => {
+  async function paid() {
+    const held = await holdOn(10, 2);
+    expect((await deposits.handleIpn(ipn(await startPayment(held.code, held.token)), LINKS)).RspCode).toBe("00");
+    sent = [];
+    return held;
+  }
+  async function startBalance(code: string, token: string) {
+    const result = await deposits.startBalance({ code, token, ipAddr: "1.2.3.4", returnUrl: "https://bacviet.example/booking/return" });
+    if (result.status !== "redirect") throw new Error(result.status);
+    return Object.fromEntries(new URL(result.url).searchParams);
+  }
+
+  it("pays the rest of the total online once; guest + team emailed; nothing more to pay", async () => {
+    const { code, token } = await paid();
+    const req = await startBalance(code, token);
+    expect(req.vnp_Amount).toBe(String(1_400_000 * 100)); // 2,000,000 − 600,000 deposit
+    expect(await deposits.handleIpn(ipn(req), LINKS)).toEqual({ RspCode: "00", Message: "Confirm Success" });
+    expect(await status(code)).toMatchObject({ status: "deposit_paid", balancePaidAt: clock, refundDueVnd: 0 });
+    expect(sent.map((m) => m.kind)).toEqual(["booking_balance_paid", "booking_team_balance"]);
+    expect((await deposits.startBalance({ code, token, ipAddr: "1", returnUrl: "https://x/r" })).status).toBe("not_payable");
+    expect((await deposits.handleIpn(ipn(req), LINKS)).RspCode).toBe("02"); // replay
+  });
+
+  it("a held booking has no balance to pay", async () => {
+    const held = await holdOn(10);
+    expect((await deposits.startBalance({ code: held.code, token: held.token, ipAddr: "1", returnUrl: "https://x/r" })).status).toBe("not_payable");
+  });
+
+  it("a balance paid after cancelling is owed back", async () => {
+    const { code, token } = await paid();
+    const req = await startBalance(code, token);
+    await db.update(bookings).set({ status: "cancelled" }).where(eq(bookings.code, code));
+    expect((await deposits.handleIpn(ipn(req), LINKS)).RspCode).toBe("00");
+    expect(await status(code)).toMatchObject({ status: "cancelled", balancePaidAt: null, refundDueVnd: 1_400_000 });
+  });
+});

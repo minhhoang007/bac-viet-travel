@@ -71,6 +71,13 @@
       "when": 1791308937056,
       "tag": "0009_dazzling_thunderball",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791309406641,
+      "tag": "0010_wet_moonstone",
+      "breakpoints": true
     }
   ]
 }
