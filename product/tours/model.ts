@@ -2,9 +2,8 @@ import { z } from "zod";
 
 // Tour types and schemas without Node APIs: safe to import from client components (admin form).
 
-export const DESTINATIONS = ["ha-long", "ninh-binh", "sapa"] as const;
-export type Destination = (typeof DESTINATIONS)[number];
-export const isDestination = (slug: string): slug is Destination => (DESTINATIONS as readonly string[]).includes(slug);
+import { DESTINATIONS } from "./destinations";
+export { DESTINATIONS, isDestination, type Destination } from "./destinations";
 
 /** Private tour (own vehicle, guide and date): price per person by group size. */
 export const privateTourSchema = z

@@ -1,4 +1,5 @@
-import { DESTINATIONS, type Destination, type Tour } from "./model";
+import { DESTINATIONS, type Destination } from "./destinations";
+import type { Tour } from "./model";
 
 // Tour list filters, read from the URL (/tours?destination=sapa&duration=2&price=mid&type=private&sort=price-asc)
 // so a filtered list can be shared. Unknown values are ignored, never an error.
