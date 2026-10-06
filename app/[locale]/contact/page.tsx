@@ -32,7 +32,7 @@ export default async function ContactPage({ params }: Props) {
   const c = p.contactPage;
   const m = getMarketingContent(locale);
   const chat = [
-    { key: "zalo", icon: MessageCircle, label: p.contact.zalo, value: `Zalo ${contactConfig.hotline}`, hint: c.zaloHint, href: zaloUrl() },
+    { key: "zalo", icon: MessageCircle, label: p.contact.zalo, value: contactConfig.hotline, hint: c.zaloHint, href: zaloUrl() },
     { key: "whatsapp", icon: MessageCircle, label: p.contact.whatsapp, value: contactConfig.hotline, hint: c.whatsappHint, href: whatsappUrl() },
   ];
   // Vietnamese visitors use Zalo first, international visitors WhatsApp.
@@ -91,7 +91,7 @@ export default async function ContactPage({ params }: Props) {
             <p className="mt-3 flex gap-2 text-sm">
               <MapPin aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-primary" />
               <span>
-                {contactConfig.address}, {contactConfig.city}
+                {contactConfig.address}
               </span>
             </p>
             <p className="mt-2 flex gap-2 text-sm">

@@ -3,7 +3,7 @@ import { test } from "@playwright/test";
 
 const out = process.env.SHOTS_DIR ?? "test-results/shots";
 
-for (const [path, slug] of [["/", "home"], ["/tours?destination=sapa&guests=3", "tours"], ["/tours/ha-long", "destination"], ["/tours/ninh-binh-day-tour", "tour"], ["/tours/ninh-binh-day-tour/book?guests=3", "book"]] as const)
+for (const [path, slug] of [["/", "home"], ["/tours?destination=sapa&guests=3", "tours"], ["/tours/ha-long", "destination"], ["/tours/ninh-binh-day-tour", "tour"], ["/tours/ninh-binh-day-tour/book?guests=3", "book"], ["/contact", "contact"], ["/about", "about"], ["/khong-ton-tai", "notfound"]] as const)
 for (const [name, viewport] of [
   ["desktop", { width: 1440, height: 900 }],
   ["phone", { width: 390, height: 844 }],
