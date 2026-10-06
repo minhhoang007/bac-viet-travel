@@ -23,6 +23,7 @@ export function SiteFooter({ locale }: { locale: Locale }) {
       links: [
         { label: f.about, href: "/about" },
         { label: c.contactPage.nav, href: "/contact" },
+        { label: c.faqPage.nav, href: "/faq" },
         ...(features.blog ? [{ label: c.header.guide, href: "/blog" }] : []),
         { label: c.credits.title, href: "/credits" },
       ],

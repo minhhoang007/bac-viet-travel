@@ -280,3 +280,17 @@ test("practical info: pick-up time and activity level in the facts, what to brin
   await page.goto("/tours/ha-long-day-trip");
   await expect(page.getByTestId("bring")).toHaveCount(0);
 });
+
+test("FAQ: questions open and close, answers follow the booking rules, FAQPage data for Google, linked from the footer", async ({ page }) => {
+  await page.goto("/");
+  await page.locator("footer").getByRole("link", { name: "Câu hỏi thường gặp" }).click();
+  await expect(page).toHaveURL(/\/faq$/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Câu hỏi thường gặp");
+  const q = page.getByText("Phải đặt cọc bao nhiêu?");
+  await q.click();
+  await expect(page.getByText("30% tổng tiền tour")).toBeVisible();
+  const ld = await page.locator('script[type="application/ld+json"]').allTextContents();
+  expect(ld.some((s) => s.includes('"@type":"FAQPage"') && s.includes("Phải đặt cọc bao nhiêu?"))).toBe(true);
+  await page.goto("/en/faq");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Frequently asked questions");
+});
