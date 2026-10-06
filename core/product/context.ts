@@ -29,7 +29,11 @@ export interface ProductContext {
    * Published staff-edited content, when the content module is on (ADR-0009): e.g. a catalog built from published
    * items. Cache it in the page layer and revalidate in `contentTypes[type].onChange`.
    */
-  content?: { listPublished(type: string): Promise<PublishedContent[]> };
+  content?: {
+    listPublished(type: string): Promise<PublishedContent[]>;
+    /** Old published slugs of live items → current slug (permanent redirects); cache it like listPublished. */
+    listMoved(type: string): Promise<{ from: string; to: string }[]>;
+  };
   now: () => Date;
 }
 

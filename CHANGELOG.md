@@ -7,7 +7,7 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 ## [1.5.1] - 2026-10-06
 
 ### Added
-- `content.listMoved(type)`: every old published slug of live items and its current slug in one query, for a cached redirect map (instead of one `findMoved` query per unknown URL).
+- `content.listMoved(type)`: every old published slug of live items and its current slug in one query, for a cached redirect map (instead of one `findMoved` query per unknown URL); also on `ProductContext.content`.
 
 ### Fixed
 - Draft Mode on a slug that only the live copy still uses (the draft was renamed) no longer flags the live copy as a preview: `getBySlug` returns `draft` and `readContent` sets `preview` from it.
