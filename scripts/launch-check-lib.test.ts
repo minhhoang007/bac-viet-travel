@@ -66,6 +66,11 @@ describe("checkLaunch", () => {
     expect(results.filter((r) => !r.ok)).toEqual([{ ok: false, name: "No demo content", detail: 'page has data-demo ("reviews"): replace it with real content' }]);
   });
 
+  it("does not mistake other attributes for demo content", async () => {
+    const results = await checkLaunch(ORIGIN, fakeFetch({ ...healthySite, "/": { body: HOME.replace("</head>", '</head><div data-demonstration="x" class="data-demo">'), headers: SECURE } }));
+    expect(results.filter((r) => !r.ok)).toEqual([]);
+  });
+
   it("robots.txt: blocking one bot is fine, blocking everyone is not", async () => {
     const robots = async (body: string) =>
       (await checkLaunch(ORIGIN, fakeFetch({ ...healthySite, "/robots.txt": { body } }))).find((r) => r.name === "robots.txt")!.ok;

@@ -16,6 +16,15 @@ const publishedPosts = unstable_cache(
   { tags: [BLOG_CACHE_TAG], revalidate: 3600 },
 );
 
+/** Old published slugs of posts → current ones (renamed in the admin); revalidated with the blog. */
+const movedPosts = unstable_cache(async () => (await getContainer().content?.listMoved(POST_CONTENT_TYPE)) ?? [], ["blog:moved"], { tags: [BLOG_CACHE_TAG], revalidate: 3600 });
+
+/** Current slug of a post once published under `slug` (permanent redirect); null for file posts and unknown slugs. */
+export async function movedPost(slug: string): Promise<string | null> {
+  if (blogConfig.source !== "content") return null;
+  return (await movedPosts()).find((r) => r.from === slug)?.to ?? null;
+}
+
 /**
  * The blog for pages, feeds and the sitemap; undefined when the module is off. Source "mdx": the files in the repo
  * (prerendered). Source "content": posts published in the admin, read at request time (builds have no database).

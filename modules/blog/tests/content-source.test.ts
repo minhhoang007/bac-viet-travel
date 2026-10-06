@@ -17,6 +17,11 @@ describe("posts stored in the content module", () => {
     expect(contentPostProblems({ locale: "vi", title: "", tags: ["Bad Tag"] })).toEqual(expect.arrayContaining(["title", "description", "date", "tags.0", "body"]));
   });
 
+  it("a cover must be a path on the site (the CSP blocks other hosts)", () => {
+    expect(contentPostProblems(data({ cover: "/blog/cover.jpg" }))).toEqual([]);
+    for (const cover of ["https://example.com/a.jpg", "//evil.example/a.jpg", "javascript:alert(1)"]) expect(contentPostProblems(data({ cover }))).toEqual(["cover"]);
+  });
+
   it("becomes a Markdown post (never MDX), with reading time", () => {
     const post = postFromContent("kinh-nghiem-di-ha-long", data());
     expect(post).toMatchObject({ slug: "kinh-nghiem-di-ha-long", locale: "vi", format: "markdown", draft: false, readingMinutes: 1 });

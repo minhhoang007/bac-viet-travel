@@ -4,6 +4,14 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.6.3] - 2026-10-06
+
+### Fixed
+- Blog source "content": the old URL of a renamed post redirects permanently to the new one (as the admin hint promised); cached map `movedPost()` under the tag `blog`.
+- Admin posts accept only a site path as cover (`/blog/cover.jpg`): external images were blocked by the CSP and next/image. Hint text updated.
+- New posts default to today's date in `appConfig.timeZone` (was UTC: posts created before 7:00 in Hanoi were dated the day before).
+- `launch:check` matches the `data-demo` attribute only (not `data-demonstration` or a class named data-demo).
+
 ## [1.6.2] - 2026-10-06
 
 ### Added
