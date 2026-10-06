@@ -1,6 +1,6 @@
 import type { MailMessage } from "@/core/ports/mail";
 import type { Booking, Departure } from "../schema/booking";
-import { formatDay, formatVnd } from "./content";
+import { formatDay, formatVnd, getBookingContent } from "./content";
 
 /** Plain-text emails after a deposit IPN (the email module adds the HTML version). Guest language = booking locale. */
 export function depositEmails(input: {
@@ -43,6 +43,7 @@ export function depositEmails(input: {
               `Tổng tiền: ${formatVnd(b.totalVnd, locale)} – còn lại ${rest}, thanh toán trước ngày đi.`,
               ``,
               link ? `Xem đơn của bạn: ${link}` : `Mã đơn của bạn: ${b.code}`,
+              ...(link && b.travellers.length === 0 ? [getBookingContent("vi").travellers.emailLine(`${link}#travellers-title`)] : []),
               ``,
               `Chúng tôi sẽ liên hệ xác nhận điểm đón trước ngày đi.`,
             ].join("\n"),
@@ -74,6 +75,7 @@ export function depositEmails(input: {
               `Total: ${formatVnd(b.totalVnd, locale)} – balance ${rest}, payable before departure.`,
               ``,
               link ? `View your booking: ${link}` : `Your booking code: ${b.code}`,
+              ...(link && b.travellers.length === 0 ? [getBookingContent("en").travellers.emailLine(`${link}#travellers-title`)] : []),
               ``,
               `We will contact you to confirm the pick-up point before departure.`,
             ].join("\n"),

@@ -1,0 +1,1 @@
+ALTER TABLE "bookings" ADD COLUMN "travellers" jsonb DEFAULT '[]'::jsonb NOT NULL;

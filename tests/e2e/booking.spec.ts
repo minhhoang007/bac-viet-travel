@@ -127,3 +127,35 @@ test("prices by traveller: the tour lists child / infant / single room prices; t
   await expect(page.locator("form[data-hydrated]")).toBeVisible();
   await expect(page.getByLabel("Phòng đơn (phụ thu)")).toHaveCount(0);
 });
+
+test("traveller details: the guest fills one row per person on the booking page; errors per row; staff see the list", async ({ page }) => {
+  await page.goto("/tours/sapa-fansipan-3d2n/book");
+  await expect(page.locator("form[data-hydrated]")).toBeVisible();
+  await page.getByLabel("Người lớn").fill("2");
+  await page.getByLabel("Họ tên").fill("Đỗ Hà");
+  await page.getByLabel("Email").fill("ha@example.com");
+  await page.getByLabel("Số điện thoại / WhatsApp").fill("0911222333");
+  await page.getByRole("checkbox", { name: /Tôi đồng ý/ }).check();
+  await page.getByRole("button", { name: "Giữ chỗ 15 phút" }).click();
+  const section = page.getByTestId("travellers");
+  await expect(section).toContainText("Chưa điền thông tin hành khách");
+  const form = page.getByTestId("travellers-form");
+  await expect(form.locator("fieldset")).toHaveCount(2);
+
+  await page.locator("#traveller-name-0").fill("Đỗ Thu Hà");
+  await page.locator("#traveller-year-0").fill("1991");
+  await page.getByTestId("travellers-save").click();
+  await expect(form.getByRole("status")).toContainText("Vui lòng sửa");
+  await expect(page.locator("#traveller-name-1")).toHaveAttribute("aria-invalid", "true");
+  await expect(page.locator("#traveller-name-0")).toHaveValue("Đỗ Thu Hà"); // kept
+
+  await page.locator("#traveller-name-1").fill("Lê Văn Nam");
+  await page.locator("#traveller-year-1").fill("1989");
+  await page.getByTestId("travellers-save").click();
+  await expect(form.getByRole("status")).toContainText("Đã lưu.");
+  await page.reload();
+  await expect(page.getByTestId("travellers")).toContainText("Đã điền đủ 2 hành khách");
+  await expect(page.locator("#traveller-name-1")).toHaveValue("Lê Văn Nam");
+  const a11y = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
+  expect(a11y.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id)).toEqual([]);
+});
