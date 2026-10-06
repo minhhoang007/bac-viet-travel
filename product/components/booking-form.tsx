@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,6 +41,8 @@ export interface BookingFormProps {
   privateTour?: PrivateTourOption;
 }
 
+const noopSubscribe = () => () => {};
+
 export function BookingForm({
   action,
   departures,
@@ -58,6 +60,8 @@ export function BookingForm({
   );
   const [adults, setAdults] = useState(2);
   const [children, setChildren] = useState(0);
+  // Prices and limits update only once React runs; tests wait for this marker before typing.
+  const hydrated = useSyncExternalStore(noopSubscribe, () => true, () => false);
   const [date, setDate] = useState(privateTour?.minDate ?? "");
   const group = departures.find((d) => d.id === departureId);
   // One shape for both modes: the chosen day, and the quote for it.
@@ -120,6 +124,7 @@ export function BookingForm({
       action={formAction}
       className="relative grid gap-8 lg:grid-cols-[1fr_340px]"
       noValidate
+      data-hydrated={hydrated || undefined}
     >
       <input type="hidden" name="locale" value={locale} />
       {privateTour ? (

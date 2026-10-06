@@ -26,6 +26,7 @@ test("tour page links to online booking; departures show live seats, sold-out da
 test("guest holds seats: live quote, then a private booking page with a 15-minute countdown", async ({ page }) => {
   await page.goto(`${TOUR}/book`);
   await page.getByTestId("departures").locator("button:not(:disabled)").nth(1).click();
+  await expect(page.locator("form[data-hydrated]")).toBeVisible();
   await page.getByLabel("Người lớn").fill("2");
   await page.getByLabel("Trẻ em (5–10 tuổi)").fill("1");
   const total = await page.getByTestId("total").textContent();
@@ -57,6 +58,7 @@ test("server validation keeps the guest on the form; asking for more seats than 
   await expect(page.getByText("Vui lòng nhập thông tin này.")).toBeVisible();
 
   await page.getByTestId("departures").getByRole("button", { name: /Chỉ còn 3 chỗ/ }).click();
+  await expect(page.locator("form[data-hydrated]")).toBeVisible();
   await page.getByLabel("Người lớn").fill("4");
   await page.getByLabel("Họ tên").fill("Tran B");
   await page.getByLabel("Email").fill("b@example.com");
@@ -79,6 +81,8 @@ test("private tour: tour page offer → guest picks the date and group size, pri
   await expect(page).toHaveURL(new RegExp(`${TOUR}/book[?]type=private$`));
   await expect(page.getByRole("main").getByRole("link", { name: "Tour riêng" })).toHaveAttribute("aria-current", "page");
   await expect(page.getByTestId("departures")).toHaveCount(0);
+
+  await expect(page.locator("form[data-hydrated]")).toBeVisible();
 
   await page.getByLabel("Người lớn").fill("1");
   await expect(page.getByTestId("private-range")).toBeVisible();
