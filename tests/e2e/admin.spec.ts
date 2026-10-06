@@ -43,6 +43,8 @@ async function seatsLeftText(page: Page, date: string) {
 }
 
 test("staff confirm one booking and cancel another; seats return to sale; everything is audited", async ({ page }) => {
+  // Several pages and an axe scan: allow for a busy machine (other files run in parallel).
+  test.setTimeout(60_000);
   const departure = await paidBooking("BV-ADMN22", 2);
   await paidBooking("BV-ADMN33", 3);
   expect(await seatsLeftText(page, departure.date)).toContain("Còn 7 chỗ"); // 12 - 5

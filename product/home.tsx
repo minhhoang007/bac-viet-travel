@@ -2,7 +2,7 @@ import Image from "next/image";
 import { BadgeCheck, CalendarDays, Car, Check, CreditCard, MapPin, MessageCircle, Star, Users } from "lucide-react";
 import { submitContact } from "@/app/actions/contact";
 import { loadBlog } from "@/app/_lib/blog";
-import { getTours } from "@/app/_lib/tours";
+import { getPublicTours } from "@/app/_lib/tours";
 import { ContactForm } from "@/components/marketing/contact-form";
 import { Faq } from "@/components/marketing/faq";
 import { ButtonLink } from "@/components/ui/button";
@@ -59,7 +59,7 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
   const c = getProductContent(locale);
   const h = c.home;
   const m = getMarketingContent(locale);
-  const catalog = await getTours();
+  const catalog = await getPublicTours();
   const posts = (await loadBlog())?.list(locale).slice(0, 3) ?? [];
   const agencyLd = {
     "@context": "https://schema.org",

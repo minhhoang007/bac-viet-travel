@@ -89,11 +89,16 @@ test("marketing writes a post, previews it, submits; an admin publishes; it is o
     await visitor.goto("/blog");
     await expect(visitor.getByRole("link", { name: "Mùa lúa chín Mù Cang Chải" })).toBeVisible({ timeout: 1_000 });
   }).toPass({ timeout: 15_000 });
-  await visitor.goto("/blog/mua-lua-chin-mu-cang-chai");
-  await expect(visitor.getByRole("heading", { level: 1 })).toHaveText("Mùa lúa chín Mù Cang Chải");
+  // Static pages (ISR): the 404 cached before publishing is regenerated; the first visit may still get the old copy.
+  await expect(async () => {
+    await visitor.goto("/blog/mua-lua-chin-mu-cang-chai");
+    await expect(visitor.getByRole("heading", { level: 1 })).toHaveText("Mùa lúa chín Mù Cang Chải", { timeout: 1_000 });
+  }).toPass({ timeout: 15_000 });
   await expect(visitor.getByRole("status").filter({ hasText: "Đang xem trước" })).toHaveCount(0);
-  await visitor.goto("/blog/tag/mu-cang-chai");
-  await expect(visitor.getByRole("link", { name: "Mùa lúa chín Mù Cang Chải" })).toBeVisible();
+  await expect(async () => {
+    await visitor.goto("/blog/tag/mu-cang-chai");
+    await expect(visitor.getByRole("link", { name: "Mùa lúa chín Mù Cang Chải" })).toBeVisible({ timeout: 1_000 });
+  }).toPass({ timeout: 15_000 });
   // Renamed after publishing: once the new version is live, the old URL redirects permanently.
   await editor.goto(edit);
   await editor.getByLabel("Đường dẫn (slug)").fill("mua-lua-chin-mu-cang-chai-2026");
