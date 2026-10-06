@@ -50,7 +50,7 @@ describe("blog module", { timeout: 30_000 }, () => {
   it("on: feed and sitemap include the posts", async () => {
     withFeatures(true);
     const dir = fixtureDir();
-    vi.doMock("@/config/blog", () => ({ blogConfig: { ...blogConfig, dir } }));
+    vi.doMock("@/config/blog", () => ({ blogConfig: { ...blogConfig, source: "mdx", dir } }));
     const rss = await import("@/app/[locale]/blog/rss.xml/route");
     const res = await rss.GET(new Request("http://x"), { params: Promise.resolve({ locale: "en" }) });
     expect(res.headers.get("content-type")).toContain("application/rss+xml");
