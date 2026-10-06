@@ -265,3 +265,27 @@ describe("booking deposits (bank transfer, VietQR)", () => {
     expect(await deposits.reconcile(LINKS)).toBe(0); // no querydr for the pending transfer (vnpay.query would throw)
   });
 });
+
+describe("booking deposits (paid twice)", () => {
+  it("a transfer arriving after a VNPay deposit is recorded as extra money owed back; the guest gets the right email", async () => {
+    const { code, token } = await holdOn(10);
+    await deposits.chooseTransfer({ code, token });
+    expect((await deposits.handleIpn(ipn(await startPayment(code, token)), LINKS)).RspCode).toBe("00");
+    expect((await status(code)).status).toBe("deposit_paid");
+    sent = [];
+
+    expect(await deposits.receiveTransfer(code, { amountVnd: 300_000, bankRef: "FT7" }, LINKS)).toBe("extra");
+    expect(await status(code)).toMatchObject({ status: "deposit_paid", refundDueVnd: 300_000 });
+    expect(sent.map((m) => m.kind)).toEqual(["booking_refund_due", "booking_team_refund"]);
+    expect(sent[0]!.text).toContain("không còn chờ đặt cọc");
+    expect(sent[0]!.text).not.toContain("không còn đủ chỗ");
+    // Recorded once.
+    expect(await deposits.receiveTransfer(code, { amountVnd: 300_000, bankRef: "FT7" }, LINKS)).toBe("not_payable");
+  });
+
+  it("a paid booking without a chosen transfer cannot take a staff-recorded transfer (nothing to match)", async () => {
+    const { code, token } = await holdOn(10);
+    await deposits.handleIpn(ipn(await startPayment(code, token)), LINKS);
+    expect(await deposits.receiveTransfer(code, { amountVnd: 300_000, bankRef: "" }, LINKS)).toBe("not_payable");
+  });
+});

@@ -35,6 +35,7 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
   const time = (t: Date | null) => (t ? t.toLocaleString(locale === "vi" ? "vi-VN" : "en-GB", { timeZone: "Asia/Ho_Chi_Minh" }) : "—");
   const refundOwed = b.refundDueVnd > 0 && !b.refundedAt;
   const transferChosen = payments.some((p) => p.method === "transfer" && p.status === "pending");
+  const waitingDeposit = b.status === "held" || b.status === "expired";
   const hidden = (
     <>
       <input type="hidden" name="locale" value={locale} />
@@ -57,8 +58,8 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
         <span className="font-mono">{b.code}</span> · <span data-admin-status={b.status}>{c.filters[b.status]}</span>
       </h1>
       {result && (
-        <p role="status" className={`rounded-md border p-3 text-sm ${result === "done" ? "border-success/40 bg-success/10 text-foreground" : result === "refund_due" ? "border-warning/40 bg-warning/10 text-foreground" : "border-danger/40 bg-danger/10 text-foreground"}`}>
-          {result === "done" ? c.result.done : result === "too_little" ? c.detail.transferTooLittle : result === "refund_due" ? c.detail.transferRefundDue : c.result.failed}
+        <p role="status" className={`rounded-md border p-3 text-sm ${result === "done" ? "border-success/40 bg-success/10 text-foreground" : result === "refund_due" || result === "extra" ? "border-warning/40 bg-warning/10 text-foreground" : "border-danger/40 bg-danger/10 text-foreground"}`}>
+          {result === "done" ? c.result.done : result === "too_little" ? c.detail.transferTooLittle : result === "refund_due" ? c.detail.transferRefundDue : result === "extra" ? c.detail.transferExtra : c.result.failed}
         </p>
       )}
 
@@ -114,14 +115,15 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
             </form>
           )}
         </div>
-        {(b.status === "held" || b.status === "expired") && (
+        {(waitingDeposit || transferChosen) && (
           <form action={receiveTransfer} className="grid max-w-lg gap-2 rounded-md border border-border p-3" data-testid="admin-transfer">
             {hidden}
             <p className="text-sm font-medium">{c.detail.transferTitle}</p>
             {transferChosen && <p className="text-xs font-medium text-primary">{c.detail.transferChosen}</p>}
             <p className="text-xs text-muted-foreground">{c.detail.transferHint(transferNote(b.code))}</p>
+            {!waitingDeposit && <p className="text-xs font-medium text-warning">{c.detail.transferExtraHint}</p>}
             <label htmlFor="transfer-amount" className="text-sm">{c.detail.transferAmount}</label>
-            <Input id="transfer-amount" name="amountVnd" inputMode="numeric" required defaultValue={String(b.depositVnd)} className="max-w-48" />
+            <Input id="transfer-amount" name="amountVnd" inputMode="numeric" required defaultValue={waitingDeposit ? String(b.depositVnd) : ""} className="max-w-48" />
             <label htmlFor="transfer-ref" className="text-sm">{c.detail.transferRef}</label>
             <Input id="transfer-ref" name="bankRef" maxLength={100} className="max-w-xs" />
             <ConfirmButton question={c.detail.transferAsk} className="w-fit" data-testid="admin-transfer-save">{c.detail.transferSave}</ConfirmButton>

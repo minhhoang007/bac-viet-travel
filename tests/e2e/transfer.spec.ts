@@ -48,6 +48,9 @@ test("bank transfer: VietQR with amount and reference, seats held 2 hours, staff
   await expect(panel).toContainText(code.replace("-", "")); // transfer note: code without the dash
   await expect(panel).toContainText(deposit);
   await expect(panel.locator('[data-demo="bank-account"]')).toContainText("KHÔNG chuyển tiền thật");
+  // The hold text follows the transfer hold (not "15 phút").
+  await expect(page.getByText(/Chỗ được giữ đến \d{2}:\d{2} để bạn chuyển khoản/)).toBeVisible();
+  await expect(page.getByText("Chỗ được giữ trong 15 phút")).toHaveCount(0);
   // Seats held for the transfer (2 hours), not 15 minutes.
   const [row] = await sql<{ minutes: number }[]>`select extract(epoch from hold_expires_at - now()) / 60 as minutes from bookings where code = ${code}`;
   expect(Number(row!.minutes)).toBeGreaterThan(100);
@@ -79,4 +82,16 @@ test("bank transfer: VietQR with amount and reference, seats held 2 hours, staff
   await page.reload();
   await expect(page.getByTestId("paid")).toBeVisible();
   await expect(page.getByTestId("transfer")).toHaveCount(0);
+});
+
+test("tour page: when the seats cannot load, the guest is offered a retry (not \"no departures\")", async ({ page }) => {
+  let fail = true;
+  await page.route("**/api/tours/*/departures", (route) => (fail ? route.fulfill({ status: 503, body: "{}" }) : route.fallback()));
+  await page.goto(TOUR);
+  const failed = page.getByTestId("departures-failed");
+  await expect(failed).toContainText("Chưa tải được lịch khởi hành");
+  fail = false;
+  await failed.getByRole("button", { name: "Thử lại" }).click();
+  await expect(page.getByTestId("tour-departures").locator("[data-loaded]")).toBeVisible();
+  await expect(page.getByTestId("tour-departures").locator("[data-departure]").first()).toBeVisible();
 });

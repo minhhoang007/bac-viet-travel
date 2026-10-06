@@ -73,5 +73,5 @@ export async function chooseTransfer(formData: FormData): Promise<void> {
     ok = false;
   }
   const back = `/booking/${encodeURIComponent(code)}?t=${encodeURIComponent(token)}`;
-  redirect(localePath(locale, ok ? back : `${back}&pay=failed`));
+  redirect(localePath(locale, ok ? back : `${back}&pay=transfer_failed`));
 }

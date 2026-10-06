@@ -14,7 +14,7 @@ export type IpnResult = { RspCode: "00" | "01" | "02" | "04" | "97" | "99"; Mess
 export type StartDepositResult = { status: "redirect"; url: string } | { status: "not_found" } | { status: "not_payable" };
 export type ChooseTransferResult = { status: "ok" } | { status: "not_found" } | { status: "not_payable" };
 /** deposit_paid / refund_due: recorded (and the guest emailed). too_little: less than the deposit, nothing recorded. */
-export type ReceiveTransferResult = "deposit_paid" | "refund_due" | "not_found" | "not_payable" | "too_little";
+export type ReceiveTransferResult = "deposit_paid" | "refund_due" | "extra" | "not_found" | "not_payable" | "too_little";
 
 /** The transfer note of a booking: its code without the dash (banking apps drop it). */
 export const transferNote = (code: string) => code.replace(/^BV-/, "BV");
@@ -62,16 +62,16 @@ export function createDepositService(deps: {
   const { db, logger } = deps;
   const now = deps.now ?? (() => new Date());
 
-  const notify = async (booking: Booking, departure: Departure, link: { siteUrl: string; token: string | null; teamEmail?: string }, outcome: "paid" | "refund_due") => {
+  const notify = async (booking: Booking, departure: Departure, link: { siteUrl: string; token: string | null; teamEmail?: string }, outcome: "paid" | "refund_due" | "extra", amountVnd?: number) => {
     const title = await deps.tourTitle(departure.tourSlug, booking.locale);
-    const messages = depositEmails({ booking, departure, title, ...link, outcome });
+    const messages = depositEmails({ booking, departure, title, ...link, outcome, amountVnd });
     for (const message of messages) {
       // A failed email must not fail the IPN (VNPay would retry and we would answer "already confirmed").
       await deps.mail.send(message).catch((error) => logger.error("booking.email_failed", { code: booking.code, kind: message.kind, error }));
     }
   };
 
-  type Settled = { kind: "duplicate" | "failed" } | { kind: "deposit_paid" | "refund_due"; booking: Booking; departure: Departure; token: string | null };
+  type Settled = { kind: "duplicate" | "failed" } | { kind: "deposit_paid" | "refund_due" | "extra"; booking: Booking; departure: Departure; token: string | null };
 
   /**
    * Records the result of one pending attempt exactly once (VNPay IPN, querydr, or a transfer staff saw). Money that
@@ -100,7 +100,8 @@ export function createDepositService(deps: {
 
         // Money arrived. Keep the seats if we still can; never lose the guest's payment.
         let status: Booking["status"] = "deposit_paid";
-        if (booking!.status !== "held" && booking!.status !== "expired") status = "refund_due"; // already paid by another attempt, or cancelled
+        const extra = booking!.status !== "held" && booking!.status !== "expired"; // already paid by another attempt, or cancelled
+        if (extra) status = "refund_due";
         else if (booking!.status === "expired" || booking!.holdExpiresAt <= at) {
           const [row] = await tx
             .select({ taken: sql<number>`coalesce(sum(${bookings.seats}), 0)::int` })
@@ -119,10 +120,11 @@ export function createDepositService(deps: {
           .set(status === "deposit_paid" ? { status, depositPaidAt: at } : { ...(booking!.status === "held" || booking!.status === "expired" ? { status } : {}), refundDueVnd: sql`${bookings.refundDueVnd} + ${payment.amountVnd}` })
           .where(eq(bookings.id, booking!.id))
           .returning();
-        return { kind: status, booking: updated ?? booking!, departure: departure!, token: payment.linkToken };
+        return { kind: extra ? "extra" : status, booking: updated ?? booking!, departure: departure!, token: payment.linkToken };
       });
     if (outcome.kind === "deposit_paid") await notify(outcome.booking, outcome.departure, { ...links, token: outcome.token }, "paid");
     if (outcome.kind === "refund_due") await notify(outcome.booking, outcome.departure, { ...links, token: outcome.token }, "refund_due");
+    if (outcome.kind === "extra") await notify(outcome.booking, outcome.departure, { ...links, token: outcome.token }, "extra", payment.amountVnd);
     return outcome;
   }
 
@@ -149,6 +151,15 @@ export function createDepositService(deps: {
       logger.error("booking.deposit_ipn_failed", { error });
       return { RspCode: "99", Message: "Unknown error" };
     }
+  }
+
+  /** Whether the booking has a bank transfer the guest chose that staff have not recorded yet. */
+  async function transferPending(bookingId: string): Promise<boolean> {
+    const [row] = await db
+      .select({ id: bookingPayments.id })
+      .from(bookingPayments)
+      .where(and(eq(bookingPayments.bookingId, bookingId), eq(bookingPayments.method, "transfer"), eq(bookingPayments.status, "pending")));
+    return Boolean(row);
   }
 
   return {
@@ -229,20 +240,16 @@ export function createDepositService(deps: {
       return { status: "ok" };
     },
 
-    async transferPending(bookingId) {
-      const [row] = await db
-        .select({ id: bookingPayments.id })
-        .from(bookingPayments)
-        .where(and(eq(bookingPayments.bookingId, bookingId), eq(bookingPayments.method, "transfer"), eq(bookingPayments.status, "pending")));
-      return Boolean(row);
-    },
+    transferPending,
 
     async receiveTransfer(code, { amountVnd, bankRef }, links) {
       const [booking] = await db.select().from(bookings).where(eq(bookings.code, code));
       if (!booking) return "not_found";
-      if (booking.status !== "held" && booking.status !== "expired") return "not_payable";
-      if (!Number.isInteger(amountVnd) || amountVnd < booking.depositVnd) return "too_little";
       const txnRef = `${transferNote(booking.code)}CK`;
+      const waiting = booking.status === "held" || booking.status === "expired";
+      // After another payment (or a cancellation), only a transfer the guest chose can still arrive: it is owed back.
+      if (!waiting && !(await transferPending(booking.id))) return "not_payable";
+      if (!Number.isInteger(amountVnd) || amountVnd <= 0 || (waiting && amountVnd < booking.depositVnd)) return "too_little";
       // The guest may have transferred without choosing it on the site: staff record it all the same.
       await db.insert(bookingPayments).values({ bookingId: booking.id, method: "transfer", txnRef, amountVnd }).onConflictDoNothing();
       const [payment] = await db
@@ -253,7 +260,7 @@ export function createDepositService(deps: {
       if (!payment) return "not_payable"; // already recorded
       const outcome = await settle(payment, { success: true, providerTxnNo: bankRef.trim().slice(0, 100) || null, responseCode: null, bankCode: null }, links);
       logger.info("booking.transfer_received", { code, outcome: outcome.kind });
-      return outcome.kind === "deposit_paid" || outcome.kind === "refund_due" ? outcome.kind : "not_payable";
+      return outcome.kind === "duplicate" || outcome.kind === "failed" ? "not_payable" : outcome.kind;
     },
 
     async returnStatus(params) {

@@ -112,7 +112,7 @@ export async function receiveTransfer(formData: FormData): Promise<void> {
   let result = "failed";
   try {
     const outcome = await service(ctx).receiveTransfer(ctx.user, c, { amountVnd, bankRef });
-    result = outcome === "deposit_paid" ? "done" : outcome === "too_little" || outcome === "refund_due" ? outcome : "failed";
+    result = outcome === "deposit_paid" ? "done" : outcome === "too_little" || outcome === "refund_due" || outcome === "extra" ? outcome : "failed";
   } catch (error) {
     unstable_rethrow(error);
     ctx.container.logger.warn("booking_admin.action_failed", { error });
