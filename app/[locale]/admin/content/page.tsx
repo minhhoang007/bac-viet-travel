@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
 import { requireStaff } from "@/app/_lib/admin";
-import { productContentTypes } from "@/bootstrap/container";
+import { allContentTypes } from "@/bootstrap/container";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { formatContentDate } from "@/app/_components/workflow-panel";
 import { localePath } from "@/core/i18n/routing";
@@ -30,7 +30,7 @@ export default async function ContentQueuePage({ params, searchParams }: Props) 
   const raw = (await searchParams).status;
   const status = raw === "all" ? undefined : CONTENT_STATUSES.includes(raw as ContentStatus) ? (raw as ContentStatus) : raw === undefined ? "pending" : undefined;
   const { rows } = await content.list({ status, pageSize: 100 });
-  const types = productContentTypes();
+  const types = allContentTypes();
   const filters: { key: string; label: string }[] = [...CONTENT_STATUSES.map((s) => ({ key: s, label: c.statuses[s] })), { key: "all", label: c.all }];
   const current = status ?? "all";
 

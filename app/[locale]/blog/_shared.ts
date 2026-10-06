@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getBlog } from "@/bootstrap/blog";
+import { loadBlog } from "@/app/_lib/blog";
 import type { PostListItem } from "@/components/blog/post-list";
 import { localePath } from "@/core/i18n/routing";
 import type { Locale } from "@/config/app";
@@ -7,8 +7,8 @@ import { getAppContent } from "@/content";
 import type { Blog, PostSummary } from "@/modules/blog";
 
 /** The blog or a 404 when the module is off. */
-export function requireBlog(): Blog {
-  const blog = getBlog();
+export async function requireBlog(): Promise<Blog> {
+  const blog = await loadBlog();
   if (!blog) notFound();
   return blog;
 }

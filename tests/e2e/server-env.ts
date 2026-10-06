@@ -13,7 +13,9 @@ if (!process.env.TEST_WORKER_INDEX) {
   rmSync(".next/cache/fetch-cache", { recursive: true, force: true });
   for (const args of [["scripts/db-reset-test.ts"], ["scripts/db-migrate.ts"], ["scripts/seed-departures.ts", "--demo-full"],
     // Tours come from the CMS (config/tours.ts): publish the MDX tours into the empty test database.
-    ["--import", "./scripts/ts-alias.mjs", "scripts/import-tours.ts", "--as", "e2e-importer@example.com", "--apply", "--create-actor"]]) {
+    ["--import", "./scripts/ts-alias.mjs", "scripts/import-tours.ts", "--as", "e2e-importer@example.com", "--apply", "--create-actor"],
+    // Blog posts too (config/blog.ts source "content").
+    ["--import", "./scripts/ts-alias.mjs", "scripts/import-blog.ts", "--as", "e2e-importer@example.com", "--apply", "--create-actor"]]) {
     execFileSync(process.execPath, args, { env: { ...process.env, DATABASE_URL }, stdio: "pipe" });
   }
 }

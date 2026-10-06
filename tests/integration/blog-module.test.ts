@@ -35,14 +35,14 @@ Hi
 
 const withFeatures = (blog: boolean) => vi.doMock("@/config/features", () => ({ features: { ...featureDefaults, blog } }));
 
-describe("blog module", () => {
+// First imports of the app routes (container, auth, MDX) take seconds on a busy machine.
+describe("blog module", { timeout: 30_000 }, () => {
   it("off: getBlog() is undefined, the feed is 404, the sitemap has no blog entries", async () => {
     withFeatures(false);
     const { getBlog } = await import("@/bootstrap/blog");
     expect(getBlog()).toBeUndefined();
     const rss = await import("@/app/[locale]/blog/rss.xml/route");
     expect((await rss.GET(new Request("http://x"), { params: Promise.resolve({ locale: "vi" }) })).status).toBe(404);
-    expect(rss.generateStaticParams()).toEqual([]);
     const sitemap = await (await import("@/app/sitemap")).default();
     expect(sitemap.some((e) => e.url.includes("/blog"))).toBe(false);
   });
@@ -50,7 +50,7 @@ describe("blog module", () => {
   it("on: feed and sitemap include the posts", async () => {
     withFeatures(true);
     const dir = fixtureDir();
-    vi.doMock("@/config/blog", () => ({ blogConfig: { ...blogConfig, dir } }));
+    vi.doMock("@/config/blog", () => ({ blogConfig: { ...blogConfig, source: "mdx", dir } }));
     const rss = await import("@/app/[locale]/blog/rss.xml/route");
     const res = await rss.GET(new Request("http://x"), { params: Promise.resolve({ locale: "en" }) });
     expect(res.headers.get("content-type")).toContain("application/rss+xml");

@@ -4,6 +4,27 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.6.1] - 2026-10-06
+
+### Fixed
+- `tests/integration/blog-module.test.ts` pins `source: "mdx"` (it failed in projects using blog source "content").
+
+## [1.6.0] - 2026-10-06
+
+### Added — blog posts written in the admin (ADR-0007 amendment)
+- `blogConfig.source: "mdx" | "content"` (default "mdx", unchanged). With "content" (needs `features.content`): content type `post` registered by the starter (`bootstrap/content-types.ts`, `allContentTypes()`), admin pages `/admin/posts` (list, new, edit; menu "Bài viết"), review workflow, Draft Mode preview, old-URL redirects; posts render with `MarkdownContent`.
+- `app/_lib/blog.ts`: `loadBlog()` (async; cached published posts under tag `blog`) and `fileBlog()` for static params. `modules/blog`: `blogFromPosts`, `postFromContent`, `contentPostSchema`, `contentPostProblems`; `Post.format` ("mdx" | "markdown").
+- `pnpm blog:import --as <admin> [--apply]`: copies the MDX posts into the content module.
+- Content keys `admin.nav.posts`, `admin.posts.*`.
+
+### Changed
+- Blog pages read the blog through `loadBlog()` (`requireBlog()` is async). `/blog/rss.xml` renders per request with `cache-control: s-maxage=600` instead of `force-static`.
+- `productContentTypes()` callers use `allContentTypes()` (starter + project types).
+
+### Fixed
+- `/blog/rss.xml` (default-locale feed, linked from the blog page and its metadata) was a 404: the proxy matcher skipped paths with a dot, so the locale rewrite never ran. It is now matched explicitly.
+- Blog routes export `generateStaticParams` only for file posts (a static route cannot use request-time APIs).
+
 ## [1.5.2] - 2026-10-06
 
 ### Security

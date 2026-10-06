@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
-import { getBlog } from "@/bootstrap/blog";
+import { fileBlog, loadBlog } from "@/app/_lib/blog";
+import { readContent } from "@/app/_lib/content";
+import { POST_CONTENT_TYPE } from "@/bootstrap/content-types";
+import { PreviewBanner } from "@/components/content/preview-banner";
+import { MarkdownContent } from "@/components/blog/markdown";
 import { getPublicEnv } from "@/bootstrap/env";
 import { MdxContent } from "@/components/blog/mdx";
 import { Container } from "@/components/ui/container";
@@ -11,22 +15,41 @@ import { seoSite } from "@/core/seo/site";
 import { appConfig, type Locale } from "@/config/app";
 import { blogConfig } from "@/config/blog";
 import { getAppContent } from "@/content";
+import { postFromContent, type Blog, type Post } from "@/modules/blog";
 import { formatDate, requireBlog } from "../_shared";
 
 type Props = { params: Promise<{ locale: Locale; slug: string }> };
 
-// Every post is prerendered; unknown slugs are 404 without touching the file system at request time.
+// File posts are prerendered; database posts (blog source "content") render on demand from a cached copy.
 // Unknown params render on demand and end in notFound() below (dynamicParams = false logs a NoFallbackError per 404).
 
-export function generateStaticParams({ params }: { params: { locale: string } }) {
-  return (getBlog()?.list(params.locale) ?? []).map((p) => ({ slug: p.slug }));
+// Exported only for file posts: database posts (blog source "content") render per request, and a route with
+// generateStaticParams is static (request-time APIs would fail there).
+export const generateStaticParams = fileBlog()
+  ? ({ params }: { params: { locale: string } }) => (fileBlog()?.list(params.locale) ?? []).map((p) => ({ slug: p.slug }))
+  : undefined;
+
+/** The published post, or in Draft Mode (staff preview of a database post) the working copy. */
+async function findPost(locale: string, slug: string): Promise<{ blog: Blog; post: Post; preview: boolean } | null> {
+  const blog = await loadBlog();
+  if (!blog) return null;
+  if (blogConfig.source === "content") {
+    const item = await readContent(POST_CONTENT_TYPE, slug);
+    if (item?.preview) {
+      const post = postFromContent(item.slug, item.data, blogConfig.wordsPerMinute);
+      if (post) return { blog, post, preview: true };
+    }
+  }
+  const post = blog.get(locale, slug);
+  return post ? { blog, post, preview: false } : null;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale, slug } = await params;
-  const post = getBlog()?.get(locale, slug);
-  if (!post) return {};
-  const translations = getBlog()!.translations(post);
+  const found = await findPost(locale, slug);
+  if (!found) return {};
+  const { post } = found;
+  const translations = found.blog.translations(post);
   return createMetadata(seoSite(getPublicEnv().NEXT_PUBLIC_SITE_URL), {
     title: post.title,
     description: post.description,
@@ -46,10 +69,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function BlogPostPage({ params }: Props) {
   const { locale, slug } = await params;
   setRequestLocale(locale);
-  const blog = requireBlog();
-  const post = blog.get(locale, slug);
-  if (!post) notFound();
+  await requireBlog();
+  const found = await findPost(locale, slug);
+  if (!found) notFound();
+  const { blog, post, preview } = found;
   const c = getAppContent(locale).blog;
+  const w = getAppContent(locale).admin.content;
   const site = seoSite(getPublicEnv().NEXT_PUBLIC_SITE_URL);
   const translations = Object.entries(blog.translations(post));
   const author = post.author ?? (blogConfig.defaultAuthor || undefined);
@@ -66,6 +91,8 @@ export default async function BlogPostPage({ params }: Props) {
   });
 
   return (
+    <>
+    {preview && <PreviewBanner label={w.previewing} exit={w.exitPreview} href={`/api/content/preview?exit=1&locale=${locale}`} />}
     <Container className="max-w-3xl py-16">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
       <a href={localePath(locale, "/blog")} className="text-sm text-muted-foreground hover:underline">
@@ -87,7 +114,7 @@ export default async function BlogPostPage({ params }: Props) {
           ))}
         </header>
         <div className="prose-blog mt-8">
-          <MdxContent source={post.body} />
+          {post.format === "mdx" ? <MdxContent source={post.body} /> : <MarkdownContent source={post.body} />}
         </div>
         {post.tags.length > 0 && (
           <ul className="mt-10 flex flex-wrap gap-2 text-sm">
@@ -102,5 +129,6 @@ export default async function BlogPostPage({ params }: Props) {
         )}
       </article>
     </Container>
+    </>
   );
 }

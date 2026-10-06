@@ -8,6 +8,8 @@ import { sidebarDefaultOpen } from "@/app/_lib/sidebar";
 import { localePath } from "@/core/i18n/routing";
 import type { Locale } from "@/config/app";
 import { getAppContent } from "@/content";
+import { blogConfig } from "@/config/blog";
+import { features } from "@/config/features";
 
 // Default title for pages without their own (documents need a <title>, WCAG 2.4.2).
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
@@ -29,6 +31,7 @@ export default async function AdminLayout({ children, params }: { children: Reac
   const contentNav = [
     ...(container.content ? [{ label: c.nav.content, href: href("/admin/content") }] : []),
     ...(container.media ? [{ label: c.nav.media, href: href("/admin/media") }] : []),
+    ...(container.content && features.blog && blogConfig.source === "content" ? [{ label: c.nav.posts, href: href("/admin/posts") }] : []),
   ];
   const product = [...productAdminNavFor(user).map((item) => ({ label: item.label[locale as Locale], href: href(item.href) })), ...contentNav];
   const nav = isAdmin

@@ -1,21 +1,17 @@
-import { getBlog } from "@/bootstrap/blog";
+import { loadBlog } from "@/app/_lib/blog";
 import { getPublicEnv } from "@/bootstrap/env";
 import { localizedUrl } from "@/core/seo";
 import { seoSite } from "@/core/seo/site";
 import { appConfig, type Locale } from "@/config/app";
 import { getAppContent } from "@/content";
 
-export const dynamic = "force-static";
-
-export function generateStaticParams() {
-  return getBlog() ? appConfig.locales.map((locale) => ({ locale })) : [];
-}
+// Built per request from the loaded blog (files are traced into the function; database posts are cached), CDN-cached.
 
 const xml = (s: string) => s.replace(/[<>&'"]/g, (ch) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", "'": "&apos;", '"': "&quot;" })[ch]!);
 
 /** RSS 2.0 feed per locale: the 20 newest posts. */
 export async function GET(_request: Request, { params }: { params: Promise<{ locale: string }> }): Promise<Response> {
-  const blog = getBlog();
+  const blog = await loadBlog();
   if (!blog) return new Response("Not found", { status: 404 });
   const { locale } = await params;
   if (!appConfig.locales.includes(locale as Locale)) return new Response("Not found", { status: 404 });
@@ -47,5 +43,5 @@ ${items}
   </channel>
 </rss>
 `;
-  return new Response(body, { headers: { "content-type": "application/rss+xml; charset=utf-8" } });
+  return new Response(body, { headers: { "content-type": "application/rss+xml; charset=utf-8", "cache-control": "public, s-maxage=600, stale-while-revalidate=3600" } });
 }
