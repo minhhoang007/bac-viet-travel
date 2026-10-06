@@ -20,10 +20,15 @@ export interface ContentModule {
   list(options?: { type?: string; status?: ContentStatus; page?: number; pageSize?: number }): Promise<{ rows: ContentItem[]; total: number }>;
   /** Live copies of a type (published and not hidden), newest first. */
   listPublished(type: string): Promise<{ id: string; slug: string; data: Record<string, unknown>; publishedAt: Date | null }[]>;
-  /** The live copy by its public slug; with `draft` (Draft Mode, staff only) the working copy by its draft slug. */
-  getBySlug(type: string, slug: string, options?: { draft?: boolean }): Promise<{ id: string; slug: string; data: Record<string, unknown> } | null>;
+  /**
+   * The live copy by its public slug; with `draft` (Draft Mode, staff only) the working copy by its draft slug, else
+   * the live copy. `draft` in the result tells which one came back.
+   */
+  getBySlug(type: string, slug: string, options?: { draft?: boolean }): Promise<{ id: string; slug: string; data: Record<string, unknown>; draft: boolean } | null>;
   /** Current public slug of a live item once published under `slug` (for a permanent redirect of an old URL); null otherwise. */
   findMoved(type: string, slug: string): Promise<string | null>;
+  /** Every old published slug of live items of a type and its current slug (one query; cache it per type). */
+  listMoved(type: string): Promise<{ from: string; to: string }[]>;
   /**
    * Saves the working copy. `revision` is the one the editor loaded: CONFLICT when someone saved in between.
    * Editing sends the item back to "draft" (a pending or approved draft must be reviewed again); the live copy stays.
@@ -207,13 +212,13 @@ export function createContentModule(deps: ContentDeps): ContentModule {
     async getBySlug(type, slug, { draft = false } = {}) {
       if (draft) {
         const [row] = await db.select().from(contentItems).where(and(eq(contentItems.type, type), eq(contentItems.slug, slug)));
-        if (row) return { id: row.id, slug: row.slug, data: row.draft };
+        if (row) return { id: row.id, slug: row.slug, data: row.draft, draft: true };
       }
       const [row] = await db
         .select()
         .from(contentItems)
         .where(and(eq(contentItems.type, type), eq(contentItems.publishedSlug, slug), isNotNull(contentItems.published), eq(contentItems.hidden, false)));
-      return row ? { id: row.id, slug: row.publishedSlug!, data: row.published! } : null;
+      return row ? { id: row.id, slug: row.publishedSlug!, data: row.published!, draft: false } : null;
     },
 
     async findMoved(type, slug) {
@@ -225,6 +230,16 @@ export function createContentModule(deps: ContentDeps): ContentModule {
         .orderBy(desc(contentVersions.createdAt))
         .limit(1);
       return row?.slug ?? null;
+    },
+
+    async listMoved(type) {
+      const rows = await db
+        .selectDistinctOn([contentVersions.slug], { from: contentVersions.slug, to: contentItems.publishedSlug })
+        .from(contentVersions)
+        .innerJoin(contentItems, eq(contentVersions.itemId, contentItems.id))
+        .where(and(eq(contentVersions.event, "published"), eq(contentItems.type, type), isNotNull(contentItems.published), eq(contentItems.hidden, false), ne(contentItems.publishedSlug, contentVersions.slug)))
+        .orderBy(contentVersions.slug, desc(contentVersions.createdAt));
+      return rows.map((r) => ({ from: r.from, to: r.to! }));
     },
 
     async saveDraft(actor, id, { revision, slug, data }) {
