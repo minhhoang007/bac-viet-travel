@@ -43,7 +43,7 @@ describe("blog module", () => {
     const rss = await import("@/app/[locale]/blog/rss.xml/route");
     expect((await rss.GET(new Request("http://x"), { params: Promise.resolve({ locale: "vi" }) })).status).toBe(404);
     expect(rss.generateStaticParams()).toEqual([]);
-    const sitemap = (await import("@/app/sitemap")).default();
+    const sitemap = await (await import("@/app/sitemap")).default();
     expect(sitemap.some((e) => e.url.includes("/blog"))).toBe(false);
   });
 
@@ -55,7 +55,7 @@ describe("blog module", () => {
     const res = await rss.GET(new Request("http://x"), { params: Promise.resolve({ locale: "en" }) });
     expect(res.headers.get("content-type")).toContain("application/rss+xml");
     expect(await res.text()).toContain("<title>Welcome to the blog</title>");
-    const sitemap = (await import("@/app/sitemap")).default();
+    const sitemap = await (await import("@/app/sitemap")).default();
     // Locale-agnostic: projects may change the default locale (no prefix) in config/app.ts.
     const url = (locale: string, slug: string) => `http://localhost:3000${localePath(locale, `/blog/${slug}`)}`;
     expect(sitemap.find((e) => e.url === url("en", "welcome-to-the-blog"))?.alternates?.languages).toEqual({

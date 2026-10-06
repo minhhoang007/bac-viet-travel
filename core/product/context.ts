@@ -25,7 +25,24 @@ export interface ProductContext {
       action: () => Promise<boolean>,
     ): Promise<boolean>;
   };
+  /**
+   * Published staff-edited content, when the content module is on (ADR-0009): e.g. a catalog built from published
+   * items. Cache it in the page layer and revalidate in `contentTypes[type].onChange`.
+   */
+  content?: { listPublished(type: string): Promise<PublishedContent[]> };
   now: () => Date;
+}
+
+export interface PublishedContent {
+  id: string;
+  slug: string;
+  data: Record<string, unknown>;
+  publishedAt: Date | null;
+}
+
+/** Context for a dynamic `sitemapPaths` function (product/manifest.ts). */
+export interface SitemapContext {
+  content?: ProductContext["content"];
 }
 
 /** Optional jobs a product registers (needs the jobs module). Names should be prefixed, e.g. "booking.". */

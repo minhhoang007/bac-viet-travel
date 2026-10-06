@@ -40,4 +40,5 @@ export const productAdminNav: ProductNavItem[] = [];
 export type Product = ReturnType<typeof createProduct>;
 
 /** Public product pages for sitemap.xml (paths without locale prefix). The notes example is private: none. */
+// Or a function for paths read from the database: async ({ content }) => (await content?.listPublished("post") ?? []).map(...)
 export const sitemapPaths: string[] = [];
