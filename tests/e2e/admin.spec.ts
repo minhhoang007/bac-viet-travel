@@ -12,19 +12,19 @@ test.describe.configure({ mode: "serial" });
 const STAFF = "staff@bacviet.example";
 const TOUR = "sapa-trekking-2d1n";
 
-async function signInAsAdmin(page: Page) {
+async function signInAsAdmin(page: Page, email = STAFF) {
   await page.goto("/login");
-  await page.fill("#login-email", STAFF);
+  await page.fill("#login-email", email);
   await page.getByRole("button", { name: "Gửi liên kết đăng nhập" }).click();
   let token: string | undefined;
   for (let i = 0; i < 30 && !token; i++) {
     [{ identifier: token } = { identifier: undefined }] = await sql<{ identifier: string }[]>`
-      select regexp_replace(identifier, '^magic-link:', '') as identifier from verifications where value like ${`%"${STAFF}"%`} order by created_at desc limit 1`;
+      select regexp_replace(identifier, '^magic-link:', '') as identifier from verifications where value like ${`%"${email}"%`} order by created_at desc limit 1`;
     if (!token) await new Promise((r) => setTimeout(r, 300));
   }
   await page.goto(`/api/auth/magic-link/verify?token=${token}&callbackURL=%2Fdashboard`);
   await expect(page).toHaveURL(/\/dashboard$/);
-  await sql`update users set role = 'admin' where email = ${STAFF}`;
+  await sql`update users set role = 'admin' where email = ${email}`;
 }
 
 /** A paid booking on the first open Sapa departure (as if the VNPay IPN had arrived). */
@@ -123,6 +123,34 @@ test("staff enter an OTA booking: seats shared with the website, source shown, n
 
   await page.goto("/admin/bookings?filter=all&source=klook");
   await expect(page.getByTestId("booking-source").first()).toContainText("KL-E2E-1");
+  const result = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
+  expect(result.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id)).toEqual([]);
+});
+
+test("passenger list per departure: one row per named traveller, unnamed parties flagged; print and CSV for staff only", async ({ page, request }) => {
+  const d = await paidBooking("BV-PAXA22", 2);
+  await sql`update bookings set adults = 2, travellers = ${sql.json([{ name: "Phạm Lan", birthYear: 1990 }, { name: "=HYPERLINK(1)", birthYear: 1985 }])} where code = 'BV-PAXA22'`;
+  await sql`insert into bookings (code, token_hash, departure_id, status, hold_expires_at, deposit_paid_at, name, email, phone, locale, adults, seats, unit_price_vnd, total_vnd, deposit_vnd)
+    values ('BV-PAXB33', 'e2e', ${d.id}, 'confirmed', now(), now(), 'Khách Chưa Điền', 'b@example.com', '0900000002', 'vi', 3, 3, 1000000, 3000000, 900000)`;
+  expect((await request.get(`/api/admin/departures/${d.id}/passengers`)).status()).toBe(404);
+
+  await signInAsAdmin(page, "pax-staff@bacviet.example");
+  await page.goto(`/admin/departures?tour=${TOUR}&month=${d.date.slice(0, 7)}`);
+  await page.locator(`[data-departure-row="${TOUR}:${d.date}"]`).getByTestId("passengers-link").click();
+  const table = page.getByTestId("passengers");
+  // The first test confirmed a booking on the same departure: count this test's bookings only.
+  await expect(table.locator("tbody tr", { hasText: "BV-PAXA22" })).toHaveCount(2);
+  await expect(table.locator("tbody tr", { hasText: "BV-PAXB33" })).toHaveCount(1);
+  await expect(table).toContainText("Phạm Lan");
+  await expect(table).toContainText("chưa điền tên 3 khách");
+  await expect(page.getByTestId("passengers-summary")).toContainText("khách");
+
+  const csv = await page.request.get((await page.getByTestId("passengers-csv").getAttribute("href"))!);
+  expect(csv.headers()["content-type"]).toContain("text/csv");
+  const text = await csv.text();
+  expect(text.charCodeAt(0)).toBe(0xfeff);
+  expect(text).toContain('"Phạm Lan","1990","NL","BV-PAXA22"');
+  expect(text).toContain(`"'=HYPERLINK(1)"`); // no formula injection
   const result = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
   expect(result.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id)).toEqual([]);
 });
