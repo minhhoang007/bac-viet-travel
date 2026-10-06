@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
 import { setRequestLocale } from "next-intl/server";
 import { getPublicEnv } from "@/bootstrap/env";
 import { Container } from "@/components/ui/container";
@@ -7,11 +6,9 @@ import { localePath } from "@/core/i18n/routing";
 import { createMetadata } from "@/core/seo";
 import { seoSite } from "@/core/seo/site";
 import type { Locale } from "@/config/app";
-import { TourListing } from "@/product/components/tour-listing";
 import { TourListingFromUrl } from "@/product/components/tour-listing-url";
 import { getProductContent } from "@/product/content";
 import { DESTINATIONS } from "@/product/tours/catalog";
-import { parseTourFilters } from "@/product/tours/filters";
 import { getPublicTours } from "@/app/_lib/tours";
 
 type Props = { params: Promise<{ locale: Locale }> };
@@ -45,9 +42,7 @@ export default async function ToursPage({ params }: Props) {
         ))}
       </nav>
       <div className="mt-8">
-        <Suspense fallback={<TourListing locale={locale} tours={tours} filters={parseTourFilters({})} />}>
-          <TourListingFromUrl locale={locale} tours={tours} />
-        </Suspense>
+        <TourListingFromUrl locale={locale} tours={tours} />
       </div>
     </Container>
   );

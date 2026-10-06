@@ -1,16 +1,13 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import { Suspense } from "react";
 import { getPublicEnv } from "@/bootstrap/env";
 import { Container } from "@/components/ui/container";
 import { localePath } from "@/core/i18n/routing";
 import { createMetadata, serializeJsonLd, localizedUrl } from "@/core/seo";
 import { seoSite } from "@/core/seo/site";
 import type { Locale } from "@/config/app";
-import { TourListing } from "@/product/components/tour-listing";
 import { TourListingFromUrl } from "@/product/components/tour-listing-url";
 import { getProductContent } from "@/product/content";
-import { parseTourFilters } from "@/product/tours/filters";
 import type { Destination, Tour } from "@/product/tours/model";
 
 export const DESTINATION_IMAGE: Record<Destination, string> = {
@@ -59,9 +56,7 @@ export function DestinationPage({ locale, destination, tours }: { locale: Locale
         </Container>
       </section>
       <Container className="py-10">
-        <Suspense fallback={<TourListing locale={locale} tours={tours} filters={parseTourFilters({})} destination={destination} />}>
-          <TourListingFromUrl locale={locale} tours={tours} destination={destination} />
-        </Suspense>
+        <TourListingFromUrl locale={locale} tours={tours} destination={destination} />
       </Container>
     </>
   );

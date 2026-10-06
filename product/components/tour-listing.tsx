@@ -4,7 +4,8 @@ import type { Locale } from "@/config/app";
 import { getProductContent } from "../content";
 import { activeFilterCount, applyTourFilters, DURATIONS, PRICE_BANDS, SORTS, TOUR_TYPES, tourFilterQuery, type TourFilters } from "../tours/filters";
 import { formatPrice } from "../tours/format";
-import { DESTINATIONS, type Destination, type Tour } from "../tours/model";
+import { DESTINATIONS, type Destination } from "../tours/destinations";
+import type { Tour } from "../tours/model";
 import { TourCard } from "./tour-card";
 
 const select = "h-10 w-full rounded-md border border-border bg-background px-3 text-sm";
