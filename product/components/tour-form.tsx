@@ -92,6 +92,8 @@ export function TourForm({
       <ItineraryList values={(section(s).itinerary as { title: string; description: string }[]) ?? []} onChange={(v) => set(s, "itinerary", v)} c={c} />
       <StringList label={c.fields.includes} values={(section(s).includes as string[]) ?? []} onChange={(v) => set(s, "includes", v)} c={c} />
       <StringList label={c.fields.excludes} values={(section(s).excludes as string[]) ?? []} onChange={(v) => set(s, "excludes", v)} c={c} />
+      {textField(s, "pickupTime")}
+      <StringList label={c.fields.bring} values={(section(s).bring as string[]) ?? []} onChange={(v) => set(s, "bring", v)} c={c} />
       {textField(s, "body", true, c.fields.bodyHint)}
     </div>
   );
@@ -187,6 +189,17 @@ export function TourForm({
             {(id) => <input id={id} type="number" min={0} step={1000} className={input} value={pricing.singleSupplementVnd ?? ""} onChange={(e) => setPricing({ singleSupplementVnd: toNum(e.target.value) })} />}
           </Field>
         </div>
+        <Field label={c.fields.activity}>
+          {(id) => (
+            <select id={id} className={cn(input, "max-w-60")} value={(section("shared").activity as string) ?? ""} onChange={(e) => set("shared", "activity", e.target.value || undefined)}>
+              {(["", "easy", "moderate", "challenging"] as const).map((v) => (
+                <option key={v} value={v}>
+                  {c.activityLevels[v]}
+                </option>
+              ))}
+            </select>
+          )}
+        </Field>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={section("shared").featured === true} onChange={(e) => set("shared", "featured", e.target.checked)} />
           {c.fields.featured}

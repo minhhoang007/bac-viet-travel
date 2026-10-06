@@ -28,6 +28,9 @@ export const addonSchema = z.object({
 });
 export type Addon = z.infer<typeof addonSchema>;
 
+/** Activity levels of a tour (B7). */
+export const ACTIVITY_LEVELS = ["easy", "moderate", "challenging"] as const;
+
 /** Private tour (own vehicle, guide and date): price per person by group size. */
 export const privateTourSchema = z
   .object({
@@ -55,6 +58,12 @@ export const tourSchema = z.object({
   includes: z.array(z.string().min(1)).min(1),
   excludes: z.array(z.string().min(1)).default([]),
   featured: z.boolean().default(false),
+  /** How physical the tour is (B7); absent = not shown. */
+  activity: z.enum(ACTIVITY_LEVELS).optional(),
+  /** Pick-up time, e.g. "7:30–8:00 tại khách sạn phố cổ" (B7). */
+  pickupTime: z.string().max(100).default(""),
+  /** What to bring (B7). */
+  bring: z.array(z.string().min(1)).default([]),
   /** Display order inside a destination (lower first). */
   order: z.number().int().default(100),
   /** Private tour (own vehicle, guide and date): price per person by group size. Absent = group tours only. */
