@@ -193,6 +193,7 @@ export const app: AppContent = {
       restoreAsk: "Copy this version into the draft? The current draft will be replaced.",
       events: { submitted: "Submitted", published: "Published" },
       conflict: "Someone else just changed this content. Reload the page to see the latest version.",
+      incomplete: "This content is not complete enough to submit or publish. Fill in the missing parts and try again.",
     },
     done: "Done.",
     failed: "Could not complete the action.",

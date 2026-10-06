@@ -217,6 +217,7 @@ export function buildContainer(features: Features, env: Env, overrides: Containe
           types: Object.keys(contentTypes),
           mail: email ? mail : undefined,
           adminUrl: (item) => new URL(localePath(appConfig.defaultLocale, contentTypes[item.type]?.adminPath(item.id) ?? "/admin/content"), env.NEXT_PUBLIC_SITE_URL).toString(),
+          validate: (type, data) => contentTypes[type]?.validate?.(data) ?? [],
           onChange: (item) => contentTypes[item.type]?.onChange?.(item),
           now: overrides.now,
         })

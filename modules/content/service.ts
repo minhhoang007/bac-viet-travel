@@ -51,6 +51,11 @@ export interface ContentDeps {
   mail?: MailPort;
   /** Absolute URL of the admin page for an item (links in emails). */
   adminUrl: (item: ContentItem) => string;
+  /**
+   * Project check of a complete item (e.g. its zod schema), run before submit, approve and scheduled publishing:
+   * returns the problem fields, empty when the item may go live. Drafts may stay incomplete.
+   */
+  validate?: (type: string, data: Record<string, unknown>) => string[];
   /** Project hook after every publish, hide or unhide (e.g. revalidate cached pages). Errors are logged, not thrown. */
   onChange?: (item: ContentItem) => Promise<void> | void;
   now?: () => Date;
@@ -134,6 +139,12 @@ export function createContentModule(deps: ContentDeps): ContentModule {
   };
 
   // Going live and its snapshot commit together; the cache hook runs only after the commit.
+  /** VALIDATION_ERROR (details.problems) when the project says the draft cannot go live yet. */
+  const requireComplete = (row: ContentItem) => {
+    const problems = deps.validate?.(row.type, row.draft) ?? [];
+    if (problems.length > 0) throw new AppError("VALIDATION_ERROR", "Content is incomplete", { details: { problems } });
+  };
+
   const publish = async (row: ContentItem, actorId: string | null) => {
     const updated = await db.transaction(async (tx) => {
       const [item] = await tx
@@ -218,6 +229,9 @@ export function createContentModule(deps: ContentDeps): ContentModule {
     },
 
     async submit(actor, id, revision) {
+      const current = await load(id);
+      if (current.revision !== revision) throw new AppError("CONFLICT", "Changed by someone else");
+      requireComplete(current);
       const updated = await db.transaction(async (tx) => {
         const item = await transition(id, revision, ["draft"], { status: "pending", submittedBy: actor.id, reviewNote: null }, tx);
         await snapshot(item, "submitted", actor.id, tx);
@@ -237,6 +251,7 @@ export function createContentModule(deps: ContentDeps): ContentModule {
     async approve(actor, id, { revision, publishAt }) {
       const row = await load(id);
       if (row.revision !== revision) throw new AppError("CONFLICT", "Changed by someone else");
+      requireComplete(row);
       // Admins may publish their own draft directly.
       if (row.status !== "pending" && row.status !== "draft") throw new AppError("CONFLICT", `Not allowed from ${row.status}`);
       if (publishAt && publishAt.getTime() > now().getTime()) {
@@ -317,6 +332,7 @@ export function createContentModule(deps: ContentDeps): ContentModule {
       let done = 0;
       for (const row of due) {
         try {
+          requireComplete(row);
           await publish(row, null);
           done++;
         } catch (error) {
