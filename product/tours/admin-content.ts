@@ -28,6 +28,10 @@ const vi = {
     nights: "Số đêm",
     priceVnd: "Giá người lớn (VND)",
     priceUsd: "Giá người lớn (USD)",
+    childPercent: "Giá trẻ em (% giá người lớn, mặc định 75)",
+    infantVnd: "Giá em bé (VND, mặc định 0 = miễn phí)",
+    singleSupplementVnd: "Phụ thu phòng đơn (VND/phòng, 0 = không áp dụng; chỉ tour có đêm)",
+    pricing: "Giá theo đối tượng",
     featured: "Hiện ở mục \"Tour được đặt nhiều\" trên trang chủ",
     order: "Thứ tự trong điểm đến (nhỏ đứng trước)",
     title: "Tên tour",
@@ -111,6 +115,10 @@ const en: TourAdminContent = {
     nights: "Nights",
     priceVnd: "Adult price (VND)",
     priceUsd: "Adult price (USD)",
+    childPercent: "Child price (% of adult, default 75)",
+    infantVnd: "Infant price (VND, default 0 = free)",
+    singleSupplementVnd: "Single room supplement (VND per room, 0 = none; tours with nights only)",
+    pricing: "Prices by traveller",
     featured: "Show in \"Popular tours\" on the home page",
     order: "Order within the destination (lower first)",
     title: "Tour name",
@@ -165,7 +173,8 @@ export function tourProblemLabel(path: string, c: TourAdminContent): string {
   const labels: Record<string, string> = { ...c.fields, price: c.fields.priceVnd, private: c.tabs.private };
   const [section, key, index] = path.split(".");
   const field = key ? (labels[key] ?? key) : "—";
-  return `${c.problemLabels[section!] ?? section} › ${field}${index !== undefined && /^d+$/.test(index) ? ` #${Number(index) + 1}` : ""}`;
+  const detail = index === undefined ? "" : /^\d+$/.test(index) ? ` #${Number(index) + 1}` : labels[index] ? ` › ${labels[index]}` : "";
+  return `${c.problemLabels[section!] ?? section} › ${field}${detail}`;
 }
 
 export function getTourAdminContent(locale: Locale): TourAdminContent {

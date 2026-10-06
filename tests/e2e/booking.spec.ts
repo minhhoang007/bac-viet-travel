@@ -106,3 +106,24 @@ test("private tour: tour page offer → guest picks the date and group size, pri
   await page.getByRole("button", { name: "Giữ chỗ 15 phút" }).click();
   await expect(page).toHaveURL(/\/booking\/BV-[A-Z2-9]{6}\?t=[\w-]{20,}$/);
 });
+
+test("prices by traveller: the tour lists child / infant / single room prices; the quote adds single rooms", async ({ page }) => {
+  await page.goto("/tours/ha-long-cruise-2d1n");
+  const prices = page.getByTestId("price-by-traveller");
+  await expect(prices).toContainText("Trẻ em 5–10 tuổi");
+  await expect(prices).toContainText("Em bé dưới 5 tuổi: miễn phí");
+  await expect(prices).toContainText("Phụ thu phòng đơn: 900.000");
+
+  await page.goto("/tours/ha-long-cruise-2d1n/book");
+  await expect(page.locator("form[data-hydrated]")).toBeVisible();
+  const total = page.getByTestId("total");
+  const before = Number((await total.innerText()).replace(/\D/g, ""));
+  await page.getByLabel("Phòng đơn (phụ thu)").fill("1");
+  await expect(page.getByTestId("quote")).toContainText("1 phòng đơn");
+  await expect(total).toHaveText(new RegExp((before + 900_000).toLocaleString("vi-VN").replace(/\./g, "\.")));
+
+  // A day tour has no single room option.
+  await page.goto("/tours/ninh-binh-day-tour/book");
+  await expect(page.locator("form[data-hydrated]")).toBeVisible();
+  await expect(page.getByLabel("Phòng đơn (phụ thu)")).toHaveCount(0);
+});

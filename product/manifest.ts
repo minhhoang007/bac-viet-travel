@@ -7,6 +7,7 @@ import { tourSource } from "@/config/tours";
 import type { Db } from "@/db/client";
 import { createBookingAdmin } from "./booking/admin";
 import { createDepositService } from "./booking/deposits";
+import { DEFAULT_TOUR_PRICING } from "./booking/rules";
 import { bankTransferConfig } from "@/config/bank-transfer";
 import { createBookingService } from "./booking/service";
 import { DESTINATIONS, getTourCatalog } from "./tours/catalog";
@@ -35,6 +36,7 @@ export function createProduct(db: Db, ctx: ProductContext) {
     rateLimiter: ctx.rateLimiter("booking-hold", { max: 10, windowMs: 10 * 60_000 }),
     tourPrice: async (slug) => (await tour(slug))?.price.vnd ?? null,
     tourPrivate: async (slug) => (await tour(slug))?.private ?? null,
+    tourPricing: async (slug) => ({ ...DEFAULT_TOUR_PRICING, ...(await tour(slug))?.pricing }),
     now: ctx.now,
   });
   const deposits = createDepositService({

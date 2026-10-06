@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { DESTINATIONS, privateTourSchema, type Tour } from "./model";
+import { DESTINATIONS, privateTourSchema, tourPricingSchema, type Tour } from "./model";
 
 /**
  * A tour as stored in the content module (content type "tour", one item per tour, slug shared by every locale).
@@ -49,8 +49,10 @@ export const tourSharedSchema = z
     /** Display order inside a destination (lower first). */
     order: z.number().int().min(0).max(1000).default(100),
     private: privateTourSchema.optional(),
+    pricing: tourPricingSchema.optional(),
   })
-  .refine((s) => s.nights <= s.days, { message: "nights cannot exceed days", path: ["nights"] });
+  .refine((s) => s.nights <= s.days, { message: "nights cannot exceed days", path: ["nights"] })
+  .refine((s) => !s.pricing?.singleSupplementVnd || s.nights > 0, { message: "single supplement needs nights", path: ["pricing", "singleSupplementVnd"] });
 
 /** Complete tour: required to submit for review and to publish. */
 export const tourDocumentSchema = z.object({ shared: tourSharedSchema, vi: tourTextSchema, en: tourTextSchema });
@@ -103,6 +105,7 @@ export function toTour(doc: TourDocument, slug: string, locale: TourLocale, imag
     featured: shared.featured,
     order: shared.order,
     private: shared.private,
+    pricing: shared.pricing,
   };
 }
 
@@ -132,6 +135,7 @@ export function fromMdxTours(byLocale: Record<TourLocale, Tour>): TourDocument {
       featured: vi.featured,
       order: vi.order,
       private: vi.private,
+      pricing: vi.pricing,
     },
     vi: pick(vi),
     en: pick(byLocale.en),
