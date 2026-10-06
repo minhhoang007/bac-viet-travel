@@ -10,7 +10,7 @@ import type { Locale } from "@/config/app";
 import { getBookingAdminContent } from "@/product/booking/admin-content";
 import { formatDay, formatVnd, getBookingContent } from "@/product/booking/content";
 import { ConfirmButton } from "@/product/components/confirm-button";
-import { getTourCatalog } from "@/product/tours/catalog";
+import { getTours } from "@/app/_lib/tours";
 
 type Props = { params: Promise<{ locale: Locale; code: string }>; searchParams: Promise<{ result?: string }> };
 
@@ -29,7 +29,7 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
   const c = getBookingAdminContent(locale);
   const g = getBookingContent(locale);
   const { result } = await searchParams;
-  const title = getTourCatalog().get(locale, d.tourSlug)?.title ?? d.tourSlug;
+  const title = (await getTours()).get(locale, d.tourSlug)?.title ?? d.tourSlug;
   const time = (t: Date | null) => (t ? t.toLocaleString(locale === "vi" ? "vi-VN" : "en-GB", { timeZone: "Asia/Ho_Chi_Minh" }) : "—");
   const refundOwed = b.refundDueVnd > 0 && !b.refundedAt;
   const hidden = (

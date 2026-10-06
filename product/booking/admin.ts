@@ -73,8 +73,8 @@ export function createBookingAdmin(deps: {
   logger: Logger;
   mail: MailPort;
   audit?: ProductContext["audit"];
-  tourTitle: (slug: string, locale: string) => string;
-  tourExists: (slug: string) => boolean;
+  tourTitle: (slug: string, locale: string) => Promise<string>;
+  tourExists: (slug: string) => Promise<boolean>;
   now?: () => Date;
 }): BookingAdmin {
   const { db, logger } = deps;
@@ -166,7 +166,7 @@ export function createBookingAdmin(deps: {
       });
       if (updated) {
         const row = (await load(code))!;
-        await sendToGuest(updated, bookingStatusEmail({ booking: updated, departure: row.d, title: deps.tourTitle(row.d.tourSlug, updated.locale), kind: "confirmed" }));
+        await sendToGuest(updated, bookingStatusEmail({ booking: updated, departure: row.d, title: await deps.tourTitle(row.d.tourSlug, updated.locale), kind: "confirmed" }));
       }
       return changed;
     },
@@ -191,7 +191,7 @@ export function createBookingAdmin(deps: {
       });
       if (updated) {
         const row = (await load(code))!;
-        await sendToGuest(updated, bookingStatusEmail({ booking: updated, departure: row.d, title: deps.tourTitle(row.d.tourSlug, updated.locale), kind: "cancelled" }));
+        await sendToGuest(updated, bookingStatusEmail({ booking: updated, departure: row.d, title: await deps.tourTitle(row.d.tourSlug, updated.locale), kind: "cancelled" }));
       }
       return changed;
     },
@@ -291,7 +291,7 @@ export function createBookingAdmin(deps: {
     },
 
     async addDepartures(actor, { tourSlug, dates, capacity, priceVnd }) {
-      if (!deps.tourExists(tourSlug)) throw new AppError("VALIDATION_ERROR", "Unknown tour");
+      if (!(await deps.tourExists(tourSlug))) throw new AppError("VALIDATION_ERROR", "Unknown tour");
       if (!Number.isInteger(capacity) || capacity < 1 || capacity > 100) throw new AppError("VALIDATION_ERROR", "Invalid capacity");
       if (priceVnd !== null && (!Number.isInteger(priceVnd) || priceVnd < 10_000 || priceVnd > 100_000_000)) throw new AppError("VALIDATION_ERROR", "Invalid price");
       const today = vietnamToday(now());
@@ -379,7 +379,7 @@ export function createBookingAdmin(deps: {
         .returning();
       for (const b of claimed) {
         const [d] = await db.select().from(departures).where(eq(departures.id, b.departureId));
-        await send(reminderEmail({ booking: b, departure: d!, title: deps.tourTitle(d!.tourSlug, b.locale) }), b.code);
+        await send(reminderEmail({ booking: b, departure: d!, title: await deps.tourTitle(d!.tourSlug, b.locale) }), b.code);
       }
       if (claimed.length) logger.info("booking.reminders_sent", { count: claimed.length });
       return claimed.length;

@@ -1,23 +1,37 @@
-import { revalidateTag } from "next/cache";
+import { revalidateTag, unstable_cache } from "next/cache";
 import { getEnv } from "@/bootstrap/env";
 import type { AccountDataExporter } from "@/core/account";
 import type { Locale } from "@/config/app";
-import type { ContentTypeDefinition, ProductContext, ProductJobs } from "@/core/product/context";
+import type { ContentTypeDefinition, ProductContext, ProductJobs, SitemapContext } from "@/core/product/context";
+import { tourSource } from "@/config/tours";
 import type { Db } from "@/db/client";
 import { createBookingAdmin } from "./booking/admin";
 import { createDepositService } from "./booking/deposits";
 import { createBookingService } from "./booking/service";
 import { getTourCatalog } from "./tours/catalog";
+import { createTourSource, TOUR_CONTENT_TYPE, TOURS_CACHE_TAG } from "./tours/source";
 
 /** The only file bootstrap/ imports from product/. Declares product services, menu, exporters and jobs. */
 export function createProduct(db: Db, ctx: ProductContext) {
-  const catalog = getTourCatalog();
+  // Published tours (CMS) or the MDX files (config/tours.ts). Cached for an hour and on every publish (onChange).
+  const tours = createTourSource({
+    listPublished: tourSource === "content" ? ctx.content?.listPublished : undefined,
+    cache: (load) => unstable_cache(load, ["tours:published"], { tags: [TOURS_CACHE_TAG], revalidate: 3600 }),
+    fallback: getTourCatalog,
+    logger: ctx.logger,
+  });
+  const tour = async (slug: string, locale = "vi") => {
+    const catalog = await tours.catalog();
+    return catalog.get(locale, slug) ?? catalog.get("vi", slug);
+  };
+  const tourTitle = async (slug: string, locale: string) => (await tour(slug, locale))?.title ?? slug;
+
   const booking = createBookingService({
     db,
     logger: ctx.logger,
     rateLimiter: ctx.rateLimiter("booking-hold", { max: 10, windowMs: 10 * 60_000 }),
-    tourPrice: (slug) => catalog.get("vi", slug)?.price.vnd ?? null,
-    tourPrivate: (slug) => catalog.get("vi", slug)?.private ?? null,
+    tourPrice: async (slug) => (await tour(slug))?.price.vnd ?? null,
+    tourPrivate: async (slug) => (await tour(slug))?.private ?? null,
     now: ctx.now,
   });
   const deposits = createDepositService({
@@ -26,7 +40,7 @@ export function createProduct(db: Db, ctx: ProductContext) {
     mail: ctx.mail,
     bookings: booking,
     vnpay: ctx.payments.vnpay,
-    tourTitle: (slug, locale) => catalog.get(locale, slug)?.title ?? catalog.get("vi", slug)?.title ?? slug,
+    tourTitle,
     now: ctx.now,
   });
 
@@ -35,8 +49,8 @@ export function createProduct(db: Db, ctx: ProductContext) {
     logger: ctx.logger,
     mail: ctx.mail,
     audit: ctx.audit,
-    tourTitle: (slug, locale) => catalog.get(locale, slug)?.title ?? catalog.get("vi", slug)?.title ?? slug,
-    tourExists: (slug) => catalog.get("vi", slug) !== null,
+    tourTitle,
+    tourExists: async (slug) => (await tour(slug)) !== null,
     now: ctx.now,
   });
 
@@ -55,7 +69,7 @@ export function createProduct(db: Db, ctx: ProductContext) {
     },
   };
 
-  return { services: { booking, deposits, bookingAdmin, paymentsSandbox: ctx.payments.vnpay?.sandbox ?? false }, exporters, jobs };
+  return { services: { tours, booking, deposits, bookingAdmin, paymentsSandbox: ctx.payments.vnpay?.sandbox ?? false }, exporters, jobs };
 }
 
 export interface ProductNavItem {
@@ -68,8 +82,14 @@ export interface ProductNavItem {
 /** Dashboard menu entries for product pages (href without locale prefix). */
 export const productNav: ProductNavItem[] = [];
 
-/** Public product pages for sitemap.xml (paths without locale prefix). */
-export const sitemapPaths: string[] = ["/about", "/cancellation", "/payment", "/tours", ...getTourCatalog().slugs().map((slug) => `/tours/${slug}`)];
+/** Public product pages for sitemap.xml (paths without locale prefix): fixed pages and every published tour. */
+export async function sitemapPaths({ content }: SitemapContext): Promise<string[]> {
+  const slugs =
+    tourSource === "content" && content
+      ? (await content.listPublished(TOUR_CONTENT_TYPE)).map((t) => t.slug)
+      : getTourCatalog().slugs();
+  return ["/about", "/cancellation", "/payment", "/tours", ...slugs.map((slug) => `/tours/${slug}`)];
+}
 
 /** Admin menu entries (starter rc.11). */
 export const productAdminNav: ProductNavItem[] = [
@@ -78,9 +98,6 @@ export const productAdminNav: ProductNavItem[] = [
 ];
 
 export type Product = ReturnType<typeof createProduct>;
-
-/** Cache tag of every page reading published tours (P2): revalidated whenever a tour is published, hidden or shown. */
-export const TOURS_CACHE_TAG = "tours";
 
 /** Staff-edited content types (content module, starter ADR-0009). */
 export const contentTypes: Record<string, ContentTypeDefinition> = {

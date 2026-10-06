@@ -7,7 +7,7 @@ import { localePath } from "@/core/i18n/routing";
 import type { Locale } from "@/config/app";
 import { getBookingAdminContent } from "@/product/booking/admin-content";
 import { bookingRules, vietnamToday } from "@/product/booking/rules";
-import { getTourCatalog } from "@/product/tours/catalog";
+import { getTours } from "@/app/_lib/tours";
 
 type Props = { params: Promise<{ locale: Locale }>; searchParams: Promise<{ tour?: string; month?: string; result?: string }> };
 
@@ -24,7 +24,7 @@ export default async function AdminDeparturesPage({ params, searchParams }: Prop
   const { container } = await requireAdmin();
   const c = getBookingAdminContent(locale);
   const sp = await searchParams;
-  const tours = getTourCatalog().list(locale);
+  const tours = (await getTours()).list(locale);
   const tour = tours.some((t) => t.slug === sp.tour) ? sp.tour : undefined;
   const today = vietnamToday(new Date());
   const month = sp.month && MONTH.test(sp.month) ? sp.month : today.slice(0, 7);

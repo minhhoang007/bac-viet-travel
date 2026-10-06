@@ -17,8 +17,8 @@ const service = (max = 1_000) =>
     db,
     logger,
     rateLimiter: createMemoryRateLimiter({ max, windowMs: 60_000 }),
-    tourPrice: (slug) => (slug === "ha-long-cruise-2d1n" ? 2_000_000 : null),
-    tourPrivate: (slug) => (slug === "ha-long-cruise-2d1n" ? PRIVATE : null),
+    tourPrice: async (slug) => (slug === "ha-long-cruise-2d1n" ? 2_000_000 : null),
+    tourPrivate: async (slug) => (slug === "ha-long-cruise-2d1n" ? PRIVATE : null),
     now: () => clock,
   });
 

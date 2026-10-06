@@ -60,10 +60,10 @@ export function createBookingService(deps: {
   db: Db;
   logger: Logger;
   rateLimiter: RateLimiter;
-  /** Adult list price of a tour (VND), null if the tour does not exist. */
-  tourPrice: (slug: string) => number | null;
+  /** Adult list price of a tour (VND), null if the tour does not exist (async: tours come from the CMS). */
+  tourPrice: (slug: string) => Promise<number | null>;
   /** Private tour pricing of a tour, null if it has none. */
-  tourPrivate?: (slug: string) => PrivatePricing | null;
+  tourPrivate?: (slug: string) => Promise<PrivatePricing | null>;
   now?: () => Date;
 }): BookingService {
   const { db } = deps;
@@ -77,8 +77,8 @@ export function createBookingService(deps: {
       and (b.status in ('deposit_paid', 'confirmed') or (b.status = 'held' and b.hold_expires_at > ${at.toISOString()}))
   ), 0)::int`;
 
-  const view = (d: Departure, taken: number, at: Date): DepartureView | null => {
-    const listPrice = deps.tourPrice(d.tourSlug);
+  const view = async (d: Departure, taken: number, at: Date): Promise<DepartureView | null> => {
+    const listPrice = await deps.tourPrice(d.tourSlug);
     if (listPrice === null) return null;
     const seatsLeft = Math.max(0, d.capacity - taken);
     return { ...d, seatsLeft, unitPriceVnd: d.priceVnd ?? listPrice, bookable: d.status === "open" && seatsLeft > 0 && isBookableDate(d.date, at) };
@@ -124,14 +124,14 @@ export function createBookingService(deps: {
         .from(departures)
         .where(and(eq(departures.tourSlug, tourSlug), eq(departures.kind, "group"), gte(departures.date, today), lte(departures.date, addDays(today, 366))))
         .orderBy(asc(departures.date));
-      return rows.map((r) => view(r.d, r.taken, at)).filter((v) => v !== null);
+      return (await Promise.all(rows.map((r) => view(r.d, r.taken, at)))).filter((v) => v !== null);
     },
 
     async getDeparture(id) {
       if (!UUID.test(id)) return null;
       const at = now();
       const [row] = await db.select({ d: departures, taken: takenSql(at) }).from(departures).where(and(eq(departures.id, id), eq(departures.kind, "group")));
-      return row ? view(row.d, row.taken, at) : null;
+      return row ? await view(row.d, row.taken, at) : null;
     },
 
     async hold(raw, clientKey) {
@@ -150,7 +150,7 @@ export function createBookingService(deps: {
         const at = now();
         // Row lock: concurrent holds on the same departure run one after another, so seats are never oversold.
         const [departure] = await tx.select().from(departures).where(eq(departures.id, input.departureId)).for("update");
-        const listPrice = departure ? deps.tourPrice(departure.tourSlug) : null;
+        const listPrice = departure ? await deps.tourPrice(departure.tourSlug) : null;
         if (!departure || departure.kind !== "group" || listPrice === null || departure.status !== "open" || !isBookableDate(departure.date, at)) return { status: "unavailable" };
 
         await tx
@@ -181,8 +181,8 @@ export function createBookingService(deps: {
       if (!parsed.success) return invalid(parsed.error.issues);
       const input = parsed.data;
       const at = now();
-      const pricing = deps.tourPrivate?.(input.tourSlug) ?? null;
-      if (!pricing || deps.tourPrice(input.tourSlug) === null) return { status: "unavailable" };
+      const pricing = (await deps.tourPrivate?.(input.tourSlug)) ?? null;
+      if (!pricing || (await deps.tourPrice(input.tourSlug)) === null) return { status: "unavailable" };
       if (!isBookableDate(input.date, at) || input.date > addDays(vietnamToday(at), 366)) return { status: "invalid", fieldErrors: { date: "invalid" } };
       const q = privateQuote(pricing, input);
       if (!q) return { status: "invalid", fieldErrors: { adults: input.adults + input.children > pricing.maxGuests ? "too_many" : "invalid" } };

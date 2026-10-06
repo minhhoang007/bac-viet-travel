@@ -6,7 +6,8 @@ import type { Locale } from "@/config/app";
 import { contactConfig } from "@/config/contact";
 import { TourCard } from "./components/tour-card";
 import { getProductContent } from "./content";
-import { DESTINATIONS, getTourCatalog, type Destination } from "./tours/catalog";
+import { DESTINATIONS, type Destination } from "./tours/catalog";
+import { getTours } from "@/app/_lib/tours";
 import { formatPrice } from "./tours/format";
 
 const DESTINATION_IMAGE: Record<Destination, string> = {
@@ -16,9 +17,9 @@ const DESTINATION_IMAGE: Record<Destination, string> = {
 };
 
 /** Travel sections on the home page (after the starter's "how it works" block). */
-export function ProductHomeSections({ locale }: { locale: Locale }) {
+export async function ProductHomeSections({ locale }: { locale: Locale }) {
   const c = getProductContent(locale);
-  const catalog = getTourCatalog();
+  const catalog = (await getTours());
   const agencyLd = {
     "@context": "https://schema.org",
     "@type": "TravelAgency",
