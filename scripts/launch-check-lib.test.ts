@@ -61,6 +61,11 @@ describe("checkLaunch", () => {
     ]);
   });
 
+  it("blocks a home page that still shows demo content (data-demo)", async () => {
+    const results = await checkLaunch(ORIGIN, fakeFetch({ ...healthySite, "/": { body: HOME.replace("</head>", '</head><section data-demo="reviews">'), headers: SECURE } }));
+    expect(results.filter((r) => !r.ok)).toEqual([{ ok: false, name: "No demo content", detail: 'page has data-demo ("reviews"): replace it with real content' }]);
+  });
+
   it("robots.txt: blocking one bot is fine, blocking everyone is not", async () => {
     const robots = async (body: string) =>
       (await checkLaunch(ORIGIN, fakeFetch({ ...healthySite, "/robots.txt": { body } }))).find((r) => r.name === "robots.txt")!.ok;
