@@ -4,6 +4,11 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-10-06
+
+### Fixed
+- `app/sitemap.ts` loads the container only for a dynamic `sitemapPaths` (importing it eagerly pulled in the database and auth and made the blog sitemap test time out).
+
 ## [1.3.0] - 2026-10-06
 
 ### Security
