@@ -11,7 +11,8 @@ export async function readContent(type: string, slug: string): Promise<{ id: str
   if (!content) return null;
   const preview = (await draftMode()).isEnabled && Boolean(app && (await staff(app)));
   const item = await content.getBySlug(type, slug, { draft: preview });
-  return item && { ...item, preview };
+  // "preview" only when the working copy came back (a draft renamed away from this slug shows the live copy).
+  return item && { id: item.id, slug: item.slug, data: item.data, preview: item.draft };
 }
 
 async function staff(app: NonNullable<ReturnType<typeof getContainer>["app"]>) {

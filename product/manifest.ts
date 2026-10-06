@@ -17,7 +17,8 @@ export function createProduct(db: Db, ctx: ProductContext) {
   // Published tours (CMS) or the MDX files (config/tours.ts). Cached for an hour and on every publish (onChange).
   const tours = createTourSource({
     listPublished: tourSource === "content" ? ctx.content?.listPublished : undefined,
-    cache: (load) => unstable_cache(load, ["tours:published"], { tags: [TOURS_CACHE_TAG], revalidate: 3600 }),
+    listMoved: ctx.content?.listMoved,
+    cache: (key, load) => unstable_cache(load, [key], { tags: [TOURS_CACHE_TAG], revalidate: 3600 }),
     fallback: getTourCatalog,
     logger: ctx.logger,
   });

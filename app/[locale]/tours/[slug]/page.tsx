@@ -24,6 +24,7 @@ import { PreviewBanner } from "@/components/content/preview-banner";
 import { Notice } from "@/components/feedback/notice";
 import { getAppContent } from "@/content";
 import { formatPrice } from "@/product/tours/format";
+import { getTourAdminContent, tourProblemLabel } from "@/product/tours/admin-content";
 
 type Props = { params: Promise<{ locale: Locale; slug: string }> };
 
@@ -31,7 +32,7 @@ type Props = { params: Promise<{ locale: Locale; slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale, slug } = await params;
-  const page = await getTourPage(locale, slug, await getTours());
+  const page = await getTourPage(locale, slug);
   if (!page || !("tour" in page)) return {};
   const { tour } = page;
   return createMetadata(seoSite(getPublicEnv().NEXT_PUBLIC_SITE_URL), {
@@ -46,8 +47,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function TourPage({ params }: Props) {
   const { locale, slug } = await params;
   setRequestLocale(locale);
-  const catalog = await getTours();
-  const page = await getTourPage(locale, slug, catalog);
+  const page = await getTourPage(locale, slug);
   if (!page) notFound();
   // An old URL of a renamed tour (permanent redirect keeps links and Google ranking).
   if ("moved" in page) permanentRedirect(localePath(locale, `/tours/${page.moved}`));
@@ -55,21 +55,22 @@ export default async function TourPage({ params }: Props) {
   const banner = page.preview && <PreviewBanner label={w.previewing} exit={w.exitPreview} href={`/api/content/preview?exit=1&locale=${locale}`} />;
   if (!("tour" in page)) {
     return (
-      <>
-        {banner}
-        <Container className="py-10">
-          <Notice tone="warning" title={w.incomplete}>
-            <ul className="list-disc pl-5">
-              {page.problems.slice(0, 12).map((p) => (
-                <li key={p}>{p}</li>
-              ))}
-            </ul>
-          </Notice>
-        </Container>
-      </>
+        <>
+          {banner}
+          <Container className="py-10">
+            <Notice tone="warning" title={w.incomplete}>
+              <ul className="list-disc pl-5">
+                {page.problems.slice(0, 12).map((p) => (
+                  <li key={p}>{tourProblemLabel(p, getTourAdminContent(locale))}</li>
+                ))}
+              </ul>
+            </Notice>
+          </Container>
+        </>
     );
   }
   const { tour } = page;
+  const catalog = await getTours();
   const c = getProductContent(locale);
   const b = getBookingContent(locale);
   const site = seoSite(getPublicEnv().NEXT_PUBLIC_SITE_URL);
@@ -218,6 +219,12 @@ export default async function TourPage({ params }: Props) {
           <p className="text-sm text-muted-foreground">
             {c.tours.from} <span className="text-2xl font-bold text-primary">{price}</span> {c.tours.perPerson}
           </p>
+          {page.preview ? (
+            <p className="mt-3 rounded-md bg-muted p-3 text-sm" data-testid="preview-no-booking">
+              {getTourAdminContent(locale).previewNoBooking}
+            </p>
+          ) : (
+          <>
           <ButtonLink href={localePath(locale, `/tours/${slug}/book`)} className="mt-3 w-full" data-testid="book-online">
             {b.cta}
           </ButtonLink>
@@ -238,6 +245,8 @@ export default async function TourPage({ params }: Props) {
               <InquiryForm action={submitTourInquiry} labels={c.inquiry} tour={tour.title} locale={locale} />
             ) : null}
           </div>
+          </>
+          )}
           <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
             <a href={whatsappUrl(c.contact.whatsappText(tour.title))} target="_blank" rel="noopener noreferrer" className="rounded-md bg-[#25d366] px-3 py-2 text-center font-medium text-[#052e16]">
               {c.contact.whatsapp}
