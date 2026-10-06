@@ -15,4 +15,5 @@ export function ProductLayoutExtras({ locale }: { locale: Locale }) {
  *   variable: "--brand-font-sans" / "--brand-font-heading" (headings h1–h3 use the heading font).
  * Optional: export ProductFooter({ locale }) to replace the starter footer entirely (one footer with your own columns,
  * legal block and policy links). Keep the terms and privacy links in it.
+ * Optional: export ProductNotFound({ locale }) to add content under the 404 message (e.g. popular pages).
  */
