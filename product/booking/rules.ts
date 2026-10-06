@@ -62,6 +62,18 @@ export function privateTier(pricing: PrivatePricing, guests: number) {
   return [...pricing.tiers].reverse().find((t) => guests >= t.minGuests) ?? null;
 }
 
+/** A discount as the quote needs it (D6). */
+export type Discount = { code: string; kind: "percent" | "amount"; value: number };
+
+/** The quote with a discount taken off the total (at most 90%), deposit recomputed on the new total. */
+export function applyDiscount(q: Quote, discount: Discount | null): Quote & { discountVnd: number; discountCode: string | null } {
+  if (!discount) return { ...q, discountVnd: 0, discountCode: null };
+  // At most 90% off (as percent codes): a deposit is still paid, so VNPay and the hold rules keep working.
+  const off = Math.min(Math.floor((q.totalVnd * 0.9) / 1000) * 1000, discount.kind === "percent" ? roundUp1000((q.totalVnd * discount.value) / 100) : discount.value);
+  const totalVnd = q.totalVnd - off;
+  return { ...q, totalVnd, depositVnd: roundUp1000(totalVnd * bookingRules.depositRate), discountVnd: off, discountCode: discount.code };
+}
+
 /** Quote for a private tour: tier price per adult, the tour's child / infant / single room prices. */
 export function privateQuote(pricing: PrivatePricing, party: Party, tourPricing: TourPricing = DEFAULT_TOUR_PRICING): Quote | null {
   const tier = privateTier(pricing, party.adults + party.children);

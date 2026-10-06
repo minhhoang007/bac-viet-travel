@@ -3,11 +3,11 @@ import { and, asc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import type { Logger } from "@/core/logger";
 import type { RateLimiter } from "@/core/security/rate-limit";
 import type { Db } from "@/db/client";
-import { bookings, departures, type Booking, type Departure } from "../schema/booking";
-import { addDays, bookingRules, DEFAULT_TOUR_PRICING, isBookableDate, privateQuote, privateTier, quote, vietnamToday, type PrivatePricing, type TourPricing } from "./rules";
-import { bookingInputSchema, parseTravellers, privateBookingInputSchema } from "./validations";
+import { bookings, departures, discountCodes, type Booking, type Departure } from "../schema/booking";
+import { addDays, applyDiscount, bookingRules, DEFAULT_TOUR_PRICING, type Discount, isBookableDate, privateQuote, privateTier, quote, vietnamToday, type PrivatePricing, type TourPricing } from "./rules";
+import { bookingInputSchema, discountCodeField, parseTravellers, privateBookingInputSchema } from "./validations";
 
-export type BookingField = "departureId" | "tourSlug" | "date" | "name" | "email" | "phone" | "adults" | "children" | "infants" | "singleRooms" | "note" | "agree";
+export type BookingField = "departureId" | "tourSlug" | "date" | "name" | "email" | "phone" | "adults" | "children" | "infants" | "singleRooms" | "discountCode" | "note" | "agree";
 export type BookingFieldError = "required" | "invalid" | "too_long" | "too_many" | "must_agree";
 
 export type HoldResult =
@@ -51,6 +51,8 @@ export interface BookingService {
   holdPrivate(raw: Record<string, unknown>, clientKey: string): Promise<HoldResult>;
   /** Guest lookup: a wrong code or token both give null (indistinguishable). */
   getForGuest(code: string, token: string): Promise<BookingView | null>;
+  /** Live preview in the booking form: the discount a code gives on this tour and total today, or null. */
+  checkDiscount(code: string, tourSlug: string, totalVnd: number): Promise<Discount | null>;
   /**
    * The guest's traveller list (D7): one row per person. Editable until the booking cutoff before departure, on
    * live bookings only (held, paid, confirmed).
@@ -105,11 +107,31 @@ export function createBookingService(deps: {
   };
 
   type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
-  type Party = { name: string; email: string; phone: string; note: string; locale: string; adults: number; children: number; infants: number; singleRooms: number };
+  type Party = { name: string; email: string; phone: string; note: string; locale: string; adults: number; children: number; infants: number; singleRooms: number; discountCode: string };
+
+  /**
+   * The discount a code gives on this tour and total today, or null (unknown, inactive, outside its dates, other
+   * tour, total too low, used up). In a hold, the code row is locked so two guests never take its last use.
+   */
+  const findDiscount = async (q: Db | Tx, code: string, tourSlug: string, totalVnd: number, at: Date, lock: boolean): Promise<Discount | null> => {
+    if (!code) return null;
+    const query = q.select().from(discountCodes).where(eq(discountCodes.code, code));
+    const [row] = lock ? await query.for("update") : await query;
+    const today = vietnamToday(at);
+    if (!row || !row.active || today < row.validFrom || today > row.validTo || (row.tourSlug && row.tourSlug !== tourSlug) || totalVnd < row.minTotalVnd) return null;
+    if (row.maxUses !== null) {
+      const [used] = await q
+        .select({ n: sql<number>`count(*)::int` })
+        .from(bookings)
+        .where(and(eq(bookings.discountCode, code), sql`(${bookings.status} in ('deposit_paid', 'confirmed') or (${bookings.status} = 'held' and ${bookings.holdExpiresAt} > ${at.toISOString()}))`));
+      if ((used?.n ?? 0) >= row.maxUses) return null;
+    }
+    return { code: row.code, kind: row.kind, value: row.value };
+  };
   const pricingOf = async (slug: string) => (await deps.tourPricing?.(slug)) ?? DEFAULT_TOUR_PRICING;
   /** Single rooms only on tours with a supplement. */
   const singleRoomsAllowed = (input: Party, pricing: TourPricing) => input.singleRooms === 0 || pricing.singleSupplementVnd > 0;
-  const insertHeld = async (tx: Tx, departureId: string, input: Party, q: ReturnType<typeof quote>, token: string, at: Date): Promise<HoldResult> => {
+  const insertHeld = async (tx: Tx, departureId: string, input: Party, q: ReturnType<typeof applyDiscount>, token: string, at: Date): Promise<HoldResult> => {
     const code = newCode();
     await tx.insert(bookings).values({
       code,
@@ -125,6 +147,8 @@ export function createBookingService(deps: {
       children: input.children,
       infants: input.infants,
       singleRooms: q.singleRooms,
+      discountCode: q.discountCode,
+      discountVnd: q.discountVnd,
       seats: q.seats,
       unitPriceVnd: q.unitPriceVnd,
       totalVnd: q.totalVnd,
@@ -195,9 +219,12 @@ export function createBookingService(deps: {
           .from(bookings)
           .where(and(eq(bookings.departureId, departure.id), inArray(bookings.status, ["held", "deposit_paid", "confirmed"])));
 
-        const q = quote(departure.priceVnd ?? listPrice, input, pricing);
+        const base = quote(departure.priceVnd ?? listPrice, input, pricing);
         const seatsLeft = departure.capacity - (row?.taken ?? 0);
-        if (q.seats > seatsLeft) return { status: "sold_out", seatsLeft: Math.max(0, seatsLeft) };
+        if (base.seats > seatsLeft) return { status: "sold_out", seatsLeft: Math.max(0, seatsLeft) };
+        const discount = await findDiscount(tx, input.discountCode, departure.tourSlug, base.totalVnd, at, true);
+        if (input.discountCode && !discount) return { status: "invalid", fieldErrors: { discountCode: "invalid" } };
+        const q = applyDiscount(base, discount);
 
         return insertHeld(tx, departure.id, input, q, token, at);
       });
@@ -225,17 +252,24 @@ export function createBookingService(deps: {
       const token = randomBytes(24).toString("base64url");
 
       const result = await db.transaction(async (tx): Promise<HoldResult> => {
+        const discount = await findDiscount(tx, input.discountCode, input.tourSlug, q.totalVnd, at, true);
+        if (input.discountCode && !discount) return { status: "invalid", fieldErrors: { discountCode: "invalid" } };
         const [departure] = await tx
           .insert(departures)
           .values({ tourSlug: input.tourSlug, date: input.date, capacity: q.seats, priceVnd: privateTier(pricing, q.seats)!.vnd, kind: "private" })
           .returning({ id: departures.id });
-        return insertHeld(tx, departure!.id, input, q, token, at);
+        return insertHeld(tx, departure!.id, input, applyDiscount(q, discount), token, at);
       });
       if (result.status === "held") deps.logger.info("booking.held_private", { code: result.code });
       return result;
     },
 
     getForGuest,
+
+    async checkDiscount(code, tourSlug, totalVnd) {
+      const parsed = discountCodeField.safeParse(code);
+      return parsed.success ? findDiscount(db, parsed.data, tourSlug, totalVnd, now(), false) : null;
+    },
 
     async saveTravellers(code, token, raw) {
       const booking = await getForGuest(code, token);

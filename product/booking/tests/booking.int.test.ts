@@ -3,8 +3,9 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { createLogger } from "@/core/logger";
 import { createMemoryRateLimiter } from "@/core/security/rate-limit";
 import { testDb } from "@/tests/integration/setup/db";
-import { bookings, departures } from "../../schema/booking";
+import { bookings, departures, discountCodes } from "../../schema/booking";
 import { createBookingService } from "../service";
+import { createDiscountAdmin } from "../discounts";
 
 const { db, close } = testDb();
 const logger = createLogger({ write: () => {} });
@@ -193,5 +194,62 @@ describe("traveller details (D7)", () => {
     await db.update(bookings).set({ status: "deposit_paid" });
     clock = new Date("2026-10-09T03:00:00Z");
     expect((await service().saveTravellers(held.code, held.token, { name_0: "A B", year_0: "1990" })).status).toBe("locked");
+  });
+});
+
+describe("discount codes (D6)", () => {
+  const code = (values: Partial<typeof discountCodes.$inferInsert> = {}) =>
+    db.insert(discountCodes).values({ code: "TET2027", kind: "percent", value: 10, validFrom: "2026-09-01", validTo: "2026-12-31", ...values });
+
+  beforeEach(async () => {
+    await db.execute(sql`TRUNCATE discount_codes RESTART IDENTITY CASCADE`);
+  });
+
+  it("takes the discount off the total before the deposit; the code is stored; case and spaces do not matter", async () => {
+    await code();
+    const d = await departure();
+    const result = await service().hold(guest(d.id, { adults: "2", discountCode: " tet2027 " }), "ip");
+    expect(result.status).toBe("held");
+    const [b] = await db.select().from(bookings);
+    // 2 × 2,000,000 = 4,000,000 − 10% = 3,600,000; deposit 30% = 1,080,000
+    expect(b).toMatchObject({ discountCode: "TET2027", discountVnd: 400_000, totalVnd: 3_600_000, depositVnd: 1_080_000 });
+    expect(await service().checkDiscount("tet2027", "ha-long-cruise-2d1n", 4_000_000)).toEqual({ code: "TET2027", kind: "percent", value: 10 });
+  });
+
+  it("refuses unknown, inactive, expired, other-tour, too-small and used-up codes (nothing held)", async () => {
+    await code({ code: "OFF", active: false });
+    await code({ code: "OLD", validTo: "2026-09-30" });
+    await code({ code: "SAPA", tourSlug: "sapa-trekking-2d1n" });
+    await code({ code: "BIG", kind: "amount", value: 500_000, minTotalVnd: 5_000_000 });
+    await code({ code: "ONCE", maxUses: 1 });
+    const d = await departure({ capacity: 10 });
+    for (const c of ["NOPE", "OFF", "OLD", "SAPA", "BIG"]) {
+      expect(await service().hold(guest(d.id, { discountCode: c }), "ip"), c).toEqual({ status: "invalid", fieldErrors: { discountCode: "invalid" } });
+    }
+    expect((await service().hold(guest(d.id, { discountCode: "ONCE" }), "ip")).status).toBe("held");
+    expect(await service().hold(guest(d.id, { discountCode: "ONCE" }), "ip")).toEqual({ status: "invalid", fieldErrors: { discountCode: "invalid" } });
+    // The first hold expires: the use comes back.
+    clock = new Date(clock.getTime() + 20 * 60_000);
+    expect((await service().hold(guest(d.id, { discountCode: "ONCE" }), "ip")).status).toBe("held");
+  });
+
+  it("an amount code takes at most 90% off (a deposit is still paid)", async () => {
+    await code({ code: "HUGE", kind: "amount", value: 9_000_000 });
+    const d = await departure();
+    await service().hold(guest(d.id, { discountCode: "HUGE" }), "ip");
+    const [b] = await db.select().from(bookings);
+    expect(b).toMatchObject({ discountVnd: 1_800_000, totalVnd: 200_000, depositVnd: 60_000 });
+  });
+});
+
+describe("discount admin (D6)", () => {
+  it("lists live uses per code (held, paid, confirmed), not other bookings", async () => {
+    await db.execute(sql`TRUNCATE discount_codes RESTART IDENTITY CASCADE`);
+    await db.insert(discountCodes).values({ code: "LIST10", kind: "percent", value: 10, validFrom: "2026-09-01", validTo: "2026-12-31" });
+    const d = await departure({ capacity: 10 });
+    await service().hold(guest(d.id, { discountCode: "LIST10" }), "ip");
+    await service().hold(guest(d.id), "ip");
+    const admin = createDiscountAdmin({ db, now: () => clock });
+    expect((await admin.list()).map((r) => [r.code, r.used])).toEqual([["LIST10", 1]]);
   });
 });
