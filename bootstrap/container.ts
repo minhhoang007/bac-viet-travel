@@ -37,6 +37,7 @@ import { billingConfig } from "@/config/billing";
 import { features } from "@/config/features";
 import { mediaConfig } from "@/config/media";
 import { storageConfig } from "@/config/storage";
+import { starterContentTypes } from "./content-types";
 import { getEnv, type Env } from "./env";
 
 /** Services available only in profile "app". */
@@ -208,7 +209,7 @@ export function buildContainer(features: Features, env: Env, overrides: Containe
 
   const admin = features.admin && db ? createAdminModule({ db, logger }) : undefined;
 
-  const contentTypes = productContentTypes();
+  const contentTypes = allContentTypes();
   const content =
     features.content && db
       ? createContentModule({
@@ -254,6 +255,11 @@ export function buildContainer(features: Features, env: Env, overrides: Containe
 /** Manifest `contentTypes` (optional export; `in` first because test mocks of the manifest throw on missing exports). */
 export function productContentTypes(): Record<string, ContentTypeDefinition> {
   return "contentTypes" in productManifest ? ((productManifest as { contentTypes?: Record<string, ContentTypeDefinition> }).contentTypes ?? {}) : {};
+}
+
+/** Starter content types (blog posts when blog source is "content") and the project's. */
+export function allContentTypes(): Record<string, ContentTypeDefinition> {
+  return { ...starterContentTypes(), ...productContentTypes() };
 }
 
 function buildBilling(

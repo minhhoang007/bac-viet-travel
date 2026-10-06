@@ -35,6 +35,14 @@ Tạo `content/blog/en/<slug-tieng-anh>.mdx` với **cùng `translationKey`**. H
 - Ảnh tối ưu: `<Figure src="/blog/a.jpg" alt="…" width={1200} height={630} caption="…" />` (ảnh Markdown `![]()` cũng được, nhưng không tối ưu).
 - Link ra ngoài tự mở tab mới với `rel="noopener noreferrer"`.
 
+## Viết bài trong trang quản trị (không cần sửa code)
+Đặt `source: "content"` trong `config/blog.ts` và bật `content` trong `config/features.ts`:
+- Biên tập viên viết bài ở **/admin/posts**: tiêu đề, đường dẫn, mô tả, ngày, thẻ, ảnh bìa, nội dung Markdown.
+- Quy trình duyệt như mọi nội dung: gửi duyệt → admin duyệt ngay, hẹn giờ hoặc trả lại; có xem trước, lịch sử phiên
+  bản, đổi đường dẫn thì link cũ tự chuyển.
+- Nội dung là Markdown thường cộng `<Callout>`; không chạy code (an toàn với mọi thứ biên tập viên gõ).
+- Chuyển các bài .mdx đang có vào: `pnpm blog:import --as <email admin>` (chạy thử), rồi thêm `--apply`.
+
 ## Cấu hình
 `config/blog.ts`: số bài mỗi trang, tác giả mặc định, tốc độ đọc.
 

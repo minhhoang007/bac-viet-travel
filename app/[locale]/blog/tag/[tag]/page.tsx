@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
-import { getBlog } from "@/bootstrap/blog";
+import { fileBlog } from "@/app/_lib/blog";
 import { getPublicEnv } from "@/bootstrap/env";
 import { PostList } from "@/components/blog/post-list";
 import { Container } from "@/components/ui/container";
@@ -17,7 +17,7 @@ type Props = { params: Promise<{ locale: Locale; tag: string }> };
 // Unknown params render on demand and end in notFound() below (dynamicParams = false logs a NoFallbackError per 404).
 
 export function generateStaticParams({ params }: { params: { locale: string } }) {
-  return (getBlog()?.tags(params.locale) ?? []).map((t) => ({ tag: t.tag }));
+  return (fileBlog()?.tags(params.locale) ?? []).map((t) => ({ tag: t.tag }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -36,7 +36,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function BlogTagPage({ params }: Props) {
   const { locale, tag } = await params;
   setRequestLocale(locale);
-  const blog = requireBlog();
+  const blog = await requireBlog();
   const posts = blog.list(locale, { tag });
   if (posts.length === 0) notFound();
   const c = getAppContent(locale).blog;
