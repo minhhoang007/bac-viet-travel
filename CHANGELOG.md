@@ -4,6 +4,11 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-10-07
+
+### Added — VietQR bank transfer QR
+- `core/payments/vietqr.ts`: `vietQrPayload()` builds the NAPAS/EMVCo VietQR string (bank BIN, account, amount, note, CRC-16) and `vietQrSvg()` renders it as an inline SVG on the server (no outside image service; fits `img-src 'self'`). Dependency: `uqr` (MIT, no dependencies).
+
 ## [1.7.0] - 2026-10-07
 
 ### Changed — static blog with blog source "content"
