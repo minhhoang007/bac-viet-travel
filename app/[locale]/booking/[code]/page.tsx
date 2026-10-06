@@ -52,6 +52,7 @@ export default async function BookingPage({ params, searchParams }: Props) {
   const sandbox = isPaymentsSandbox();
   const transferOffered = status === "held" && isTransferAvailable();
   const transfer = transferOffered && (await getDeposits().transferPending(booking.id));
+  const holdUntil = booking.holdExpiresAt.toLocaleTimeString(locale === "vi" ? "vi-VN" : "en-GB", { timeZone: "Asia/Ho_Chi_Minh", hour: "2-digit", minute: "2-digit" });
   // Back from VNPay with a success code, but the IPN has not arrived yet.
   const confirming = status === "held" && pay === "pending";
   const rebook = localePath(locale, `/tours/${booking.departure.tourSlug}/book?d=${booking.departure.id}`);
@@ -99,13 +100,13 @@ export default async function BookingPage({ params, searchParams }: Props) {
       {status === "held" && !confirming && (
         <section className="mt-6 rounded-xl border border-primary/40 bg-primary/5 p-5">
           <h2 className="text-lg font-semibold">{t.booking.heldTitle}</h2>
-          <p className="mt-1 text-sm">{t.booking.heldText}</p>
+          <p className="mt-1 text-sm">{transfer ? t.booking.transferHeldText(holdUntil) : t.booking.heldText}</p>
           <p className="mt-4 text-sm">
             {t.booking.remaining}: <HoldCountdown expiresAt={booking.holdExpiresAt.toISOString()} />
           </p>
-          {pay === "failed" && (
+          {(pay === "failed" || pay === "transfer_failed") && (
             <p role="alert" className="mt-3 text-sm text-danger">
-              {t.booking.payFailed}
+              {pay === "failed" ? t.booking.payFailed : t.booking.transferFailed}
             </p>
           )}
           {transfer && <TransferPanel locale={locale} code={booking.code} amountVnd={booking.depositVnd} />}

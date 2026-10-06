@@ -10,7 +10,10 @@ export function depositEmails(input: {
   siteUrl: string;
   /** Guest link token; null when unknown (the email then gives the booking code only). */
   token: string | null;
-  outcome: "paid" | "refund_due";
+  /** refund_due: seats gone when late money arrived. extra: the booking no longer waited for a deposit (paid twice). */
+  outcome: "paid" | "refund_due" | "extra";
+  /** The amount that arrived (for "extra"). */
+  amountVnd?: number;
   teamEmail?: string;
 }): MailMessage[] {
   const { booking: b, departure: d, title, outcome } = input;
@@ -20,6 +23,7 @@ export function depositEmails(input: {
   const day = formatDay(d.date, locale);
   const guests = b.adults + b.children + b.infants;
   const rest = formatVnd(b.totalVnd - b.depositVnd, locale);
+  const received = formatVnd(input.amountVnd ?? b.depositVnd, locale);
 
   const guest: MailMessage =
     locale === "vi"
@@ -86,7 +90,32 @@ export function depositEmails(input: {
             ].join("\n"),
           };
 
-  const messages = [guest];
+  const extra: MailMessage =
+    locale === "vi"
+      ? {
+          kind: "booking_refund_due",
+          to: b.email,
+          subject: `Đơn ${b.code}: chúng tôi sẽ hoàn khoản thanh toán thừa`,
+          text: [
+            `Chào ${b.name},`,
+            ``,
+            `Chúng tôi đã nhận thêm ${received} cho đơn ${b.code}, trong khi đơn này không còn chờ đặt cọc (đã cọc trước đó hoặc đã huỷ).`,
+            `Bắc Việt Travel sẽ hoàn lại khoản này và liên hệ với bạn.`,
+          ].join("\n"),
+        }
+      : {
+          kind: "booking_refund_due",
+          to: b.email,
+          subject: `Booking ${b.code}: we will refund an extra payment`,
+          text: [
+            `Hello ${b.name},`,
+            ``,
+            `We received another ${received} for booking ${b.code}, which was no longer waiting for a deposit (already paid, or cancelled).`,
+            `We will refund this amount and contact you.`,
+          ].join("\n"),
+        };
+
+  const messages = [outcome === "extra" ? extra : guest];
   if (input.teamEmail) {
     messages.push({
       kind: outcome === "paid" ? "booking_team_paid" : "booking_team_refund",
@@ -94,7 +123,11 @@ export function depositEmails(input: {
       replyTo: b.email,
       subject: outcome === "paid" ? `[Đặt cọc] ${b.code} – ${title} – ${d.date}` : `[CẦN HOÀN TIỀN] ${b.code} – ${title} – ${d.date}`,
       text: [
-        outcome === "paid" ? `Đơn mới đã đặt cọc.` : `Tiền cọc về sau khi hết giữ chỗ và không còn đủ chỗ: cần hoàn tiền hoặc đổi ngày.`,
+        outcome === "paid"
+          ? `Đơn mới đã đặt cọc.`
+          : outcome === "extra"
+            ? `Khách trả thêm ${formatVnd(input.amountVnd ?? 0, "vi")} cho đơn không còn chờ cọc (trả hai lần hoặc đã huỷ): cần hoàn khoản này.`
+            : `Tiền cọc về sau khi hết giữ chỗ và không còn đủ chỗ: cần hoàn tiền hoặc đổi ngày.`,
         ``,
         `Mã đơn: ${b.code}`,
         `Tour: ${title} – ${d.date}`,

@@ -44,7 +44,8 @@ test("English pages put WhatsApp first and show USD prices", async ({ page }) =>
 
 test("tours page lists every tour; tour page has itinerary, TouristTrip JSON-LD and prefilled WhatsApp", async ({ page }) => {
   await page.goto("/tours");
-  for (const d of ["ha-long", "ninh-binh", "sapa"]) await expect(page.locator(`[data-destination=${d}] article`)).toHaveCount(2);
+  // At least the two imported tours per destination (tours-admin.spec may publish a copy meanwhile: the list is regenerated on publish).
+  for (const d of ["ha-long", "ninh-binh", "sapa"]) await expect(page.locator(`[data-destination=${d}] article`).nth(1)).toBeVisible();
   await page.locator("[data-destination=ha-long]").getByRole("link", { name: "Du thuyền Hạ Long 2 ngày 1 đêm" }).first().click();
   await expect(page).toHaveURL(/\/tours\/ha-long-cruise-2d1n$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Du thuyền Hạ Long 2 ngày 1 đêm");

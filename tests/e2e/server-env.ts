@@ -9,8 +9,10 @@ const DATABASE_URL = process.env.E2E_DATABASE_URL ?? "postgres://postgres:postgr
 
 // Playwright also loads the config in each worker: prepare the database only once, in the main process.
 if (!process.env.TEST_WORKER_INDEX) {
-  // The Next.js data cache (published tours) belongs to the previous database: drop it with the reset.
+  // The Next.js data cache (published tours) and the pages generated at run time (ISR) belong to the previous
+  // database: drop them with the reset (a tour page published in the last run would otherwise still answer 200).
   rmSync(".next/cache/fetch-cache", { recursive: true, force: true });
+  rmSync(".next/server/route-cache", { recursive: true, force: true });
   for (const args of [["scripts/db-reset-test.ts"], ["scripts/db-migrate.ts"], ["scripts/seed-departures.ts", "--demo-full"],
     // Tours come from the CMS (config/tours.ts): publish the MDX tours into the empty test database.
     ["--import", "./scripts/ts-alias.mjs", "scripts/import-tours.ts", "--as", "e2e-importer@example.com", "--apply", "--create-actor"],

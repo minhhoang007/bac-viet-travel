@@ -13,7 +13,7 @@ import { formatPrice } from "../tours/format";
 /** One departure as /api/tours/<slug>/departures returns it (live seats). */
 export type PublicDeparture = { id: string; date: string; status: string; seatsLeft: number; unitPriceVnd: number; bookable: boolean };
 
-type State = { departures: PublicDeparture[] | null; chosen?: PublicDeparture; bookHref: (departureId?: string) => string };
+type State = { departures: PublicDeparture[] | null; failed: boolean; retry: () => void; chosen?: PublicDeparture; bookHref: (departureId?: string) => string };
 const TourBookingContext = createContext<State | null>(null);
 const useTourBooking = () => useContext(TourBookingContext)!;
 
@@ -21,24 +21,32 @@ const useTourBooking = () => useContext(TourBookingContext)!;
  * Live part of a static tour page: departures and seats are fetched in the browser (never cached), and the date
  * and group size from the search (?date=&guests=) preselect a departure for the booking page.
  */
-export function TourBookingProvider({ locale, slug, children }: { locale: Locale; slug: string; children: ReactNode }) {
-  // Departures and the trip from the URL arrive together (one render once loaded).
-  const [loaded, setLoaded] = useState<{ departures: PublicDeparture[]; trip: { date?: string; guests?: number } } | null>(null);
+export function TourBookingProvider({ locale, slug, live = true, children }: { locale: Locale; slug: string; live?: boolean; children: ReactNode }) {
+  // Departures and the trip from the URL arrive together (one render once loaded). failed: the request failed (not
+  // "no departures"), so the page offers a retry instead of saying the tour has no dates.
+  const [loaded, setLoaded] = useState<{ departures: PublicDeparture[] | null; failed: boolean; trip: { date?: string; guests?: number } } | null>(null);
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
-    let live = true;
+    if (!live) return; // staff preview: no departures shown
+    let current = true;
     fetch(`/api/tours/${encodeURIComponent(slug)}/departures`, { cache: "no-store" })
-      .then((res) => (res.ok ? res.json() : { departures: [] }))
-      .catch(() => ({ departures: [] }))
-      .then((body: { departures: PublicDeparture[] }) => {
+      .then(async (res) => (res.ok ? ((await res.json()) as { departures: PublicDeparture[] }).departures : null))
+      .catch(() => null)
+      .then((departures) => {
         const { date, guests } = parseTourFilters(Object.fromEntries(new URLSearchParams(window.location.search)));
-        if (live) setLoaded({ departures: body.departures, trip: { date, guests } });
+        if (current) setLoaded({ departures, failed: departures === null, trip: { date, guests } });
       });
     return () => {
-      live = false;
+      current = false;
     };
-  }, [slug]);
+  }, [slug, live, attempt]);
 
   const departures = loaded?.departures ?? null;
+  const failed = loaded?.failed ?? false;
+  const retry = () => {
+    setLoaded(null);
+    setAttempt((n) => n + 1);
+  };
   const trip = loaded?.trip ?? {};
   const chosen = trip.date ? departures?.find((d) => d.date === trip.date && d.bookable) : undefined;
   const bookHref = (departureId?: string) => {
@@ -48,14 +56,24 @@ export function TourBookingProvider({ locale, slug, children }: { locale: Locale
     const qs = q.toString();
     return `${localePath(locale, `/tours/${slug}/book`)}${qs ? `?${qs}` : ""}`;
   };
-  return <TourBookingContext.Provider value={{ departures, chosen, bookHref }}>{children}</TourBookingContext.Provider>;
+  return <TourBookingContext.Provider value={{ departures, failed, retry, chosen, bookHref }}>{children}</TourBookingContext.Provider>;
 }
 
 /** Upcoming departures with live seats (first 8), each linking to the booking page with that date. */
 export function TourDepartureList({ locale, price }: { locale: Locale; price: { vnd: number; usd: number } }) {
-  const { departures, chosen, bookHref } = useTourBooking();
+  const { departures, failed, retry, chosen, bookHref } = useTourBooking();
   const c = getProductContent(locale);
   const b = getBookingContent(locale);
+  if (failed) {
+    return (
+      <div className="mt-4 rounded-2xl border border-warning/40 bg-warning/10 p-4 text-sm" role="alert" data-testid="departures-failed">
+        <p>{c.tours.departuresFailed}</p>
+        <button type="button" onClick={retry} className="mt-2 font-medium text-primary underline underline-offset-4">
+          {c.tours.departuresRetry}
+        </button>
+      </div>
+    );
+  }
   if (!departures) {
     return (
       <p className="mt-4 min-h-40 rounded-2xl border border-border p-4 text-sm text-muted-foreground" role="status">

@@ -121,7 +121,7 @@ export default async function TourPage({ params }: Props) {
   };
 
   return (
-    <TourBookingProvider locale={locale} slug={slug}>
+    <TourBookingProvider locale={locale} slug={slug} live={!page.preview}>
       {banner}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
       <Container className="pt-6 lg:pt-10">
