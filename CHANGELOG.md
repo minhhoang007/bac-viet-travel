@@ -4,6 +4,11 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-10-06
+
+### Fixed
+- Admin and dashboard pages no longer render the public site header, footer and `ProductLayoutExtras` (floating contact buttons) around their AppShell (`components/layout/site-chrome.tsx`, client-side path check; public pages stay static).
+
 ## [1.4.0] - 2026-10-06
 
 ### Added — content validation
