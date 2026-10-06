@@ -9,7 +9,7 @@ import { cn } from "@/components/ui/cn";
 import type { Locale } from "@/config/app";
 import { getProductContent } from "../content";
 import { DESTINATIONS } from "../tours/model";
-import { getTourAdminContent } from "../tours/admin-content";
+import { getTourAdminContent, tourProblemLabel } from "../tours/admin-content";
 import { tourProblems, type TourDraft } from "../tours/document";
 
 const TABS = ["general", "vi", "en", "seo", "images", "private"] as const;
@@ -57,13 +57,7 @@ export function TourForm({
   const tabLabel: Record<Tab, string> = c.tabs;
   const tabHasProblem = (t: Tab) =>
     problems.some((p) => (t === "seo" ? /^(vi|en).seo/.test(p) : t === "vi" || t === "en" ? p.startsWith(`${t}.`) && !p.startsWith(`${t}.seo`) : t === "images" ? p.startsWith("shared.images") : t === "private" ? p.startsWith("shared.private") : p.startsWith("shared.") && !/^shared\.(images|private)/.test(p)));
-  // "en.itinerary.0.title" → "English › Lịch trình #1": the same words as the form labels, not field names.
-  const fieldLabels: Record<string, string> = { ...c.fields, price: c.fields.priceVnd, private: c.tabs.private };
-  const problemLabel = (path: string) => {
-    const [s, key, index] = path.split(".");
-    const field = key ? (fieldLabels[key] ?? key) : "—";
-    return `${c.problemLabels[s!] ?? s} › ${field}${index !== undefined && /^\d+$/.test(index) ? ` #${Number(index) + 1}` : ""}`;
-  };
+  const problemLabel = (path: string) => tourProblemLabel(path, c);
 
   const textField = (s: Section, key: keyof typeof c.fields, multiline = false, hint?: string) => (
     <Field label={c.fields[key]} hint={hint}>

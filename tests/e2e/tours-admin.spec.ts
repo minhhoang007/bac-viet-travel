@@ -108,6 +108,13 @@ test("an incomplete new tour lists what is missing and cannot be submitted", asy
     expect(result.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => `${path}: ${v.id}`)).toEqual([]);
   }
   const [row] = await sql<{ id: string }[]>`select id from content_items where slug = 'ha-giang-3-ngay'`;
+  // Previewing the incomplete draft lists the missing fields in form words.
+  await editor.goto(`/api/content/preview?id=${row!.id}&locale=vi`);
+  await expect(editor).toHaveURL(/\/tours\/ha-giang-3-ngay$/);
+  await expect(editor.getByRole("status").filter({ hasText: "Đang xem trước bản nháp" })).toBeVisible();
+  await expect(editor.getByText("Chung › Điểm đến")).toBeVisible();
+  await editor.goto("/api/content/preview?exit=1&locale=vi");
+
   await editor.goto(`/admin/tours/${row!.id}`);
   const result = await new AxeBuilder({ page: editor }).withTags(["wcag2a", "wcag2aa"]).analyze();
   expect(result.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id)).toEqual([]);
@@ -132,6 +139,13 @@ test("marketing previews a draft on the tour page; a renamed tour redirects its 
   await expect(editor).toHaveURL(/\/tours\/ninh-binh-e2e$/);
   await expect(editor.getByRole("status").filter({ hasText: "Đang xem trước bản nháp" })).toBeVisible();
   await expect(editor.getByRole("heading", { level: 1 })).toHaveText("Ninh Bình bản nháp");
+  // No booking or inquiry on a draft.
+  await expect(editor.getByTestId("preview-no-booking")).toBeVisible();
+  await expect(editor.getByTestId("book-online")).toHaveCount(0);
+  // Still in preview, the old URL shows the live copy without a "draft" banner (the draft moved to the new URL).
+  await editor.goto("/tours/ninh-binh-day-tour-copy");
+  await expect(editor.getByRole("heading", { level: 1 })).toHaveText("Ninh Bình E2E");
+  await expect(editor.getByRole("status").filter({ hasText: "Đang xem trước" })).toHaveCount(0);
   const visitor = await (await browser.newContext()).newPage();
   await visitor.goto("/tours/ninh-binh-day-tour-copy");
   await expect(visitor.getByRole("heading", { level: 1 })).toHaveText("Ninh Bình E2E");

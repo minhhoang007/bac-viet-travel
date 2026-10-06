@@ -1,5 +1,5 @@
+import { cache } from "react";
 import { draftMode } from "next/headers";
-import { getContainer } from "@/bootstrap/container";
 import type { Tour, TourCatalog } from "@/product/tours/catalog";
 import { toTour, tourDocumentSchema, tourProblems, type TourLocale } from "@/product/tours/document";
 import { TOUR_CONTENT_TYPE } from "@/product/tours/source";
@@ -19,9 +19,10 @@ export type TourPageData = { tour: Tour; preview: boolean } | { preview: true; p
 
 /**
  * The tour of a public page: in Draft Mode (staff preview from the admin) the working copy, otherwise the published
- * tour; an old slug of a live tour gives `moved` (permanent redirect).
+ * tour; an old slug of a live tour gives `moved` (permanent redirect, from a cached map). Once per request
+ * (metadata and page share it).
  */
-export async function getTourPage(locale: TourLocale, slug: string, catalog: TourCatalog): Promise<TourPageData> {
+export const getTourPage = cache(async (locale: TourLocale, slug: string): Promise<TourPageData> => {
   if ((await draftMode()).isEnabled) {
     const item = await readContent(TOUR_CONTENT_TYPE, slug);
     if (item?.preview) {
@@ -29,8 +30,9 @@ export async function getTourPage(locale: TourLocale, slug: string, catalog: Tou
       return parsed.success ? { tour: toTour(parsed.data, item.slug, locale), preview: true } : { preview: true, problems: tourProblems(item.data) };
     }
   }
-  const tour = catalog.get(locale, slug);
+  const tours = (await requireAppServices()).product.tours;
+  const tour = (await tours.catalog()).get(locale, slug);
   if (tour) return { tour, preview: false };
-  const moved = await getContainer().content?.findMoved(TOUR_CONTENT_TYPE, slug);
+  const moved = await tours.moved(slug);
   return moved ? { moved } : null;
-}
+});

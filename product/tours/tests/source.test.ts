@@ -34,15 +34,23 @@ describe("tour source", () => {
     const { logger } = capture();
     expect((await createTourSource({ fallback: () => mdx, logger }).catalog()).slugs()).toEqual(mdx.slugs());
     let reads = 0;
-    let cached: { slug: string; data: Record<string, unknown> }[] | undefined;
+    let movedReads = 0;
+    const store = new Map<string, unknown>();
     const source = createTourSource({
       listPublished: async () => (reads++, published),
-      cache: (load) => async () => (cached ??= await load()),
+      listMoved: async () => (movedReads++, [{ from: "ha-long-old", to: "ha-long-cruise-2d1n" }]),
+      cache: <T,>(key: string, load: () => Promise<T>) => async () => (store.has(key) ? (store.get(key) as T) : (store.set(key, await load()), store.get(key) as T)),
       fallback: () => mdx,
       logger,
     });
     await source.catalog();
     await source.catalog();
     expect(reads).toBe(1);
+    // Old URLs: one cached read for every lookup, unknown slugs included.
+    expect(await source.moved("ha-long-old")).toBe("ha-long-cruise-2d1n");
+    expect(await source.moved("random-bot-path")).toBeNull();
+    expect(await source.moved("another")).toBeNull();
+    expect(movedReads).toBe(1);
+    expect(await createTourSource({ fallback: () => mdx, logger }).moved("ha-long-old")).toBeNull();
   });
 });

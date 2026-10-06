@@ -66,6 +66,7 @@ const vi = {
   saving: "Đang lưu…",
   slugLocked: "Đã công khai. Nếu đổi đường dẫn, link cũ sẽ tự chuyển sang link mới khi bản này được công khai.",
   problemsTitle: "Còn thiếu trước khi gửi duyệt:",
+  previewNoBooking: "Đang xem trước: đặt tour và hỏi tour bị tắt trên bản nháp.",
   problemLabels: {
     shared: "Chung",
     vi: "Tiếng Việt",
@@ -148,6 +149,7 @@ const en: TourAdminContent = {
   saving: "Saving…",
   slugLocked: "Published. If you change the URL, the old link redirects to the new one once this version is published.",
   problemsTitle: "Missing before you can submit:",
+  previewNoBooking: "Previewing: booking and inquiries are off on a draft.",
   problemLabels: { shared: "General", vi: "Tiếng Việt", en: "English" },
   result: {
     saved: "Draft saved.",
@@ -157,6 +159,14 @@ const en: TourAdminContent = {
     invalid: "Invalid data. Please check the fields.",
   },
 };
+
+/** "en.itinerary.0.title" → "English › Lịch trình #1": the words of the form labels, not field names. */
+export function tourProblemLabel(path: string, c: TourAdminContent): string {
+  const labels: Record<string, string> = { ...c.fields, price: c.fields.priceVnd, private: c.tabs.private };
+  const [section, key, index] = path.split(".");
+  const field = key ? (labels[key] ?? key) : "—";
+  return `${c.problemLabels[section!] ?? section} › ${field}${index !== undefined && /^d+$/.test(index) ? ` #${Number(index) + 1}` : ""}`;
+}
 
 export function getTourAdminContent(locale: Locale): TourAdminContent {
   return locale === "en" ? en : vi;
