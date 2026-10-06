@@ -9,6 +9,7 @@ import { siteNavigation } from "@/config/navigation";
 import { getAppContent, getMarketingContent } from "@/content";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
+import { SiteChrome } from "@/components/layout/site-chrome";
 import { themeCss } from "@/components/ui/theme";
 import { AnalyticsTracker } from "@/components/analytics/tracker";
 import { ConsentBanner } from "@/components/analytics/consent-banner";
@@ -53,35 +54,40 @@ export default async function LocaleLayout({
       </head>
       <body className="flex min-h-screen flex-col">
         <NextIntlClientProvider>
-          {ProductHeader ? (
-            <ProductHeader locale={locale as Locale} />
-          ) : (
-            <SiteHeader
-              logoText={brand.logoText}
-              homeHref={home}
-              links={[
-                ...siteNavigation.map((l) => ({ label: l.label[locale as Locale], href: localePath(locale, l.href) })),
-                ...(features.blog ? [{ label: blog.nav, href: localePath(locale, "/blog") }] : []),
-              ]}
-              localeSwitch={{ label: c.nav.switchLocale, href: localePath(other), hrefLang: other }}
-              menu={{ open: c.nav.menu, close: c.nav.close }}
-            />
-          )}
+          {/* Admin and dashboard render their own AppShell. */}
+          <SiteChrome>
+            {ProductHeader ? (
+              <ProductHeader locale={locale as Locale} />
+            ) : (
+              <SiteHeader
+                logoText={brand.logoText}
+                homeHref={home}
+                links={[
+                  ...siteNavigation.map((l) => ({ label: l.label[locale as Locale], href: localePath(locale, l.href) })),
+                  ...(features.blog ? [{ label: blog.nav, href: localePath(locale, "/blog") }] : []),
+                ]}
+                localeSwitch={{ label: c.nav.switchLocale, href: localePath(other), hrefLang: other }}
+                menu={{ open: c.nav.menu, close: c.nav.close }}
+              />
+            )}
+          </SiteChrome>
           <main className="flex-1">{children}</main>
-          {ProductFooter ? (
-            <ProductFooter locale={locale as Locale} />
-          ) : (
-            <SiteFooter
-              name={appConfig.name}
-              rights={c.footer.rights}
-              year={new Date().getFullYear()}
-              links={[
-                { label: legal.terms, href: localePath(locale, "/terms") },
-                { label: legal.privacy, href: localePath(locale, "/privacy") },
-              ]}
-            />
-          )}
-          <ProductLayoutExtras locale={locale as Locale} />
+          <SiteChrome>
+            {ProductFooter ? (
+              <ProductFooter locale={locale as Locale} />
+            ) : (
+              <SiteFooter
+                name={appConfig.name}
+                rights={c.footer.rights}
+                year={new Date().getFullYear()}
+                links={[
+                  { label: legal.terms, href: localePath(locale, "/terms") },
+                  { label: legal.privacy, href: localePath(locale, "/privacy") },
+                ]}
+              />
+            )}
+            <ProductLayoutExtras locale={locale as Locale} />
+          </SiteChrome>
           <Toaster />
           {features.analytics && (
             <>
