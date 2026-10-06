@@ -7,7 +7,7 @@ import { getEnv } from "@/bootstrap/env";
 import { clientKeyFrom } from "@/app/_lib/client-ip";
 import { createMemoryRateLimiter } from "@/core/security/rate-limit";
 import { features } from "@/config/features";
-import { getTourCatalog } from "@/product/tours/catalog";
+import { getTours } from "@/app/_lib/tours";
 import { createInquiryService, type InquiryResult, type InquiryService } from "@/product/tours/inquiry";
 
 // Same budget as the starter contact form: 5 requests / 10 minutes per client (per instance).
@@ -23,7 +23,7 @@ export async function submitTourInquiry(_prev: InquiryResult | null, formData: F
     logger,
     rateLimiter: limiter,
     to: getEnv().extra.CONTACT_TO_EMAIL!,
-    tourTitles: (locale) => getTourCatalog().list(locale).map((t) => t.title),
+    tourTitles: async (locale) => (await getTours()).list(locale).map((t) => t.title),
   });
   return service.submit(Object.fromEntries(formData), clientKeyFrom(await headers()));
 }

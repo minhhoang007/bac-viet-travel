@@ -7,7 +7,7 @@ import type { Locale } from "@/config/app";
 import { getBookingAdminContent } from "@/product/booking/admin-content";
 import { addDays, vietnamToday } from "@/product/booking/rules";
 import { ManualBookingForm } from "@/product/components/manual-booking-form";
-import { getTourCatalog } from "@/product/tours/catalog";
+import { getTours } from "@/app/_lib/tours";
 
 type Props = { params: Promise<{ locale: Locale }> };
 
@@ -23,7 +23,7 @@ export default async function NewManualBookingPage({ params }: Props) {
   const { container } = await requireAdmin();
   const c = getBookingAdminContent(locale);
   const today = vietnamToday(new Date());
-  const tours = getTourCatalog().list(locale);
+  const tours = (await getTours()).list(locale);
   const title = (slug: string) => tours.find((t) => t.slug === slug)?.title ?? slug;
   const rows = await container.app!.product.bookingAdmin.listDepartures({ from: today, to: addDays(today, 180) });
   const departures = rows

@@ -11,13 +11,13 @@ import { getBookingContent } from "@/product/booking/content";
 import { addDays, bookingRules, vietnamToday } from "@/product/booking/rules";
 import { BookingForm } from "@/product/components/booking-form";
 import { getProductContent } from "@/product/content";
-import { getTourCatalog } from "@/product/tours/catalog";
+import { getTours } from "@/app/_lib/tours";
 
 type Props = { params: Promise<{ locale: Locale; slug: string }>; searchParams: Promise<{ d?: string; type?: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale, slug } = await params;
-  const tour = getTourCatalog().get(locale, slug);
+  const tour = (await getTours()).get(locale, slug);
   return tour ? { title: getBookingContent(locale).pageTitle(tour.title), robots: { index: false } } : {};
 }
 
@@ -26,7 +26,7 @@ export default async function BookTourPage({ params, searchParams }: Props) {
   await connection();
   const { locale, slug } = await params;
   setRequestLocale(locale);
-  const tour = getTourCatalog().get(locale, slug);
+  const tour = (await getTours()).get(locale, slug);
   if (!tour) notFound();
   const t = getBookingContent(locale);
   const { d, type } = await searchParams;

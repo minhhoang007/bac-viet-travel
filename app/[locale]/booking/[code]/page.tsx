@@ -11,7 +11,7 @@ import { formatDay, formatVnd, getBookingContent } from "@/product/booking/conte
 import { AutoRefresh } from "@/product/components/auto-refresh";
 import { DepositButton } from "@/product/components/deposit-button";
 import { HoldCountdown } from "@/product/components/hold-countdown";
-import { getTourCatalog } from "@/product/tours/catalog";
+import { getTours } from "@/app/_lib/tours";
 
 type Props = { params: Promise<{ locale: Locale; code: string }>; searchParams: Promise<{ t?: string; pay?: string }> };
 
@@ -40,7 +40,7 @@ export default async function BookingPage({ params, searchParams }: Props) {
     );
   }
 
-  const tour = getTourCatalog().get(locale, booking.departure.tourSlug);
+  const tour = (await getTours()).get(locale, booking.departure.tourSlug);
   const status = booking.isExpired ? "expired" : booking.status;
   const sandbox = isPaymentsSandbox();
   // Back from VNPay with a success code, but the IPN has not arrived yet.

@@ -7,7 +7,7 @@ import type { BookingFilter } from "@/product/booking/admin";
 import { getBookingAdminContent } from "@/product/booking/admin-content";
 import { formatVnd } from "@/product/booking/content";
 import { BOOKING_SOURCES, type BookingSource } from "@/product/booking/sources";
-import { getTourCatalog } from "@/product/tours/catalog";
+import { getTours } from "@/app/_lib/tours";
 
 const PAGE_SIZE = 25;
 const FILTERS = ["attention", "all", "held", "deposit_paid", "refund_due", "confirmed", "cancelled", "expired"] as const satisfies readonly BookingFilter[];
@@ -31,7 +31,7 @@ export default async function AdminBookingsPage({ params, searchParams }: Props)
   const sp = await searchParams;
   const filter = (FILTERS as readonly string[]).includes(sp.filter ?? "") ? (sp.filter as BookingFilter) : "attention";
   const page = Math.max(1, Number.parseInt(sp.page ?? "1", 10) || 1);
-  const tours = getTourCatalog().list(locale);
+  const tours = (await getTours()).list(locale);
   const tour = tours.some((t) => t.slug === sp.tour) ? sp.tour : undefined;
   const source = (BOOKING_SOURCES as readonly string[]).includes(sp.source ?? "") ? (sp.source as BookingSource) : undefined;
   const [{ rows, total }, stats] = await Promise.all([

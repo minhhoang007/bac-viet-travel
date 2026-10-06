@@ -36,14 +36,14 @@ export function createDepositService(deps: {
   mail: MailPort;
   bookings: BookingService;
   vnpay?: OneTimePaymentProvider;
-  tourTitle: (slug: string, locale: string) => string;
+  tourTitle: (slug: string, locale: string) => Promise<string>;
   now?: () => Date;
 }): DepositService {
   const { db, logger } = deps;
   const now = deps.now ?? (() => new Date());
 
   const notify = async (booking: Booking, departure: Departure, link: { siteUrl: string; token: string | null; teamEmail?: string }, outcome: "paid" | "refund_due") => {
-    const title = deps.tourTitle(departure.tourSlug, booking.locale);
+    const title = await deps.tourTitle(departure.tourSlug, booking.locale);
     const messages = depositEmails({ booking, departure, title, ...link, outcome });
     for (const message of messages) {
       // A failed email must not fail the IPN (VNPay would retry and we would answer "already confirmed").

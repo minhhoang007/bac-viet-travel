@@ -61,7 +61,7 @@ export function createInquiryService(deps: {
   to: string;
   logger: Logger;
   /** Known tour titles; anything else is rejected (no free text in the subject line). */
-  tourTitles: (locale: string) => string[];
+  tourTitles: (locale: string) => Promise<string[]>;
   today?: () => string;
 }): InquiryService {
   const today = deps.today ?? (() => new Date().toISOString().slice(0, 10));
@@ -84,7 +84,7 @@ export function createInquiryService(deps: {
       const date = typeof raw.date === "string" ? raw.date : "";
       if (!fieldErrors.date && /^\d{4}-\d{2}-\d{2}$/.test(date) && date < today()) fieldErrors.date = "past_date";
       const locale = raw.locale === "en" ? "en" : "vi";
-      if (!fieldErrors.tour && !deps.tourTitles(locale).includes(String(raw.tour ?? ""))) fieldErrors.tour = "required";
+      if (!fieldErrors.tour && !(await deps.tourTitles(locale)).includes(String(raw.tour ?? ""))) fieldErrors.tour = "required";
       if (!parsed.success || Object.keys(fieldErrors).length > 0) return { status: "invalid", fieldErrors };
 
       try {

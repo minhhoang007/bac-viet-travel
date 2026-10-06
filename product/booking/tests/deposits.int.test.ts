@@ -29,7 +29,7 @@ const bookingService = createBookingService({
   db,
   logger,
   rateLimiter: createMemoryRateLimiter({ max: 1000, windowMs: 60_000 }),
-  tourPrice: () => 1_000_000,
+  tourPrice: async () => 1_000_000,
   now: () => clock,
 });
 const deposits = createDepositService({
@@ -38,7 +38,7 @@ const deposits = createDepositService({
   mail: { send: async (m) => void sent.push(m) },
   bookings: bookingService,
   vnpay,
-  tourTitle: () => "Ninh Bình 1 ngày",
+  tourTitle: async () => "Ninh Bình 1 ngày",
   now: () => clock,
 });
 const LINKS = { siteUrl: "https://bacviet.example", teamEmail: "team@example.com" };
@@ -180,7 +180,7 @@ describe("booking deposits (VNPay)", () => {
             : { status: "unpaid" };
         },
       },
-      tourTitle: () => "Ninh Bình 1 ngày",
+      tourTitle: async () => "Ninh Bình 1 ngày",
       now: () => clock,
     });
 

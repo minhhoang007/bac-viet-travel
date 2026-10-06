@@ -19,20 +19,16 @@ import { formatVnd, getBookingContent } from "@/product/booking/content";
 import { InquiryForm } from "@/product/components/inquiry-form";
 import { TourCard } from "@/product/components/tour-card";
 import { getProductContent } from "@/product/content";
-import { getTourCatalog } from "@/product/tours/catalog";
+import { getTours } from "@/app/_lib/tours";
 import { formatPrice } from "@/product/tours/format";
 
 type Props = { params: Promise<{ locale: Locale; slug: string }> };
 
-// Unknown slugs end in notFound() below (dynamicParams = false logs a NoFallbackError per 404).
-
-export function generateStaticParams() {
-  return getTourCatalog().slugs().map((slug) => ({ slug }));
-}
+// Rendered per request from published tours (CMS, cached); unknown slugs end in notFound() below.
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale, slug } = await params;
-  const tour = getTourCatalog().get(locale, slug);
+  const tour = (await getTours()).get(locale, slug);
   if (!tour) return {};
   return createMetadata(seoSite(getPublicEnv().NEXT_PUBLIC_SITE_URL), {
     title: tour.title,
@@ -46,7 +42,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function TourPage({ params }: Props) {
   const { locale, slug } = await params;
   setRequestLocale(locale);
-  const catalog = getTourCatalog();
+  const catalog = (await getTours());
   const tour = catalog.get(locale, slug);
   if (!tour) notFound();
   const c = getProductContent(locale);

@@ -24,6 +24,7 @@
     "admin:grant": "node --env-file-if-exists=.env.local scripts/admin-grant.ts",
     "storage:up": "docker compose up -d storage",
     "launch:check": "node --import ./scripts/ts-alias.mjs scripts/launch-check.ts",
+    "tours:import": "node --env-file-if-exists=.env.local --import ./scripts/ts-alias.mjs scripts/import-tours.ts",
     "setup:check": "node --env-file-if-exists=.env.local --import ./scripts/ts-alias.mjs scripts/setup-check.ts"
   },
   "dependencies": {

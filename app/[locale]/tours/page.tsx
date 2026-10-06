@@ -8,7 +8,8 @@ import { seoSite } from "@/core/seo/site";
 import type { Locale } from "@/config/app";
 import { TourCard } from "@/product/components/tour-card";
 import { getProductContent } from "@/product/content";
-import { DESTINATIONS, getTourCatalog } from "@/product/tours/catalog";
+import { DESTINATIONS } from "@/product/tours/catalog";
+import { getTours } from "@/app/_lib/tours";
 import { formatPrice } from "@/product/tours/format";
 
 type Props = { params: Promise<{ locale: Locale }> };
@@ -24,7 +25,7 @@ export default async function ToursPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
   const c = getProductContent(locale);
-  const catalog = getTourCatalog();
+  const catalog = (await getTours());
 
   return (
     <Container className="py-14">

@@ -4,6 +4,20 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-10-06
+
+### Fixed
+- `app/sitemap.ts` loads the container only for a dynamic `sitemapPaths` (importing it eagerly pulled in the database and auth and made the blog sitemap test time out).
+
+## [1.3.0] - 2026-10-06
+
+### Security
+- `source-map-js` forced to >= 1.2.2 (GHSA-68fv-2mgg-jv7q, high; build-time via next > postcss) with a pnpm override in `pnpm-workspace.yaml`.
+
+### Added — published content for products
+- `ProductContext.content.listPublished(type)` (content module on): product services can build catalogs from published items.
+- `sitemapPaths` may be an async function `({ content }) => paths`; the sitemap is then rendered per request (builds have no database).
+
 ## [1.2.0] - 2026-10-06
 
 ### Added — project header and fonts

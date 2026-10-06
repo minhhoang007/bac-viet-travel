@@ -80,11 +80,27 @@ export function createTourCatalog(dir: string, locales: readonly string[]): Tour
   for (const locale of locales) {
     const folder = path.join(dir, locale);
     const files = existsSync(folder) ? readdirSync(folder).filter((f) => f.endsWith(".mdx")) : [];
-    const tours = files
-      .map((f) => parseTour(path.join(folder, f), readFileSync(path.join(folder, f), "utf8"), locale))
-      .sort((a, b) => DESTINATIONS.indexOf(a.destination) - DESTINATIONS.indexOf(b.destination) || a.order - b.order || a.slug.localeCompare(b.slug));
-    byLocale.set(locale, tours);
+    byLocale.set(
+      locale,
+      files.map((f) => parseTour(path.join(folder, f), readFileSync(path.join(folder, f), "utf8"), locale)),
+    );
   }
+  return catalogFromTours(byLocale, locales);
+}
+
+/**
+ * Catalog over tours already loaded per locale (MDX files or published content). Sorts by destination, then order;
+ * every tour must exist in every locale (the language switch and hreflang link to the same slug).
+ */
+export function catalogFromTours(loaded: Map<string, Tour[]>, locales: readonly string[]): TourCatalog {
+  const byLocale = new Map(
+    locales.map((locale) => [
+      locale,
+      [...(loaded.get(locale) ?? [])].sort(
+        (a, b) => DESTINATIONS.indexOf(a.destination) - DESTINATIONS.indexOf(b.destination) || a.order - b.order || a.slug.localeCompare(b.slug),
+      ),
+    ]),
+  );
   // A tour must exist in every locale: the language switch and hreflang link to the same slug.
   const [first, ...others] = locales;
   const firstSlugs = new Set((byLocale.get(first!) ?? []).map((t) => t.slug));
@@ -106,7 +122,7 @@ export function createTourCatalog(dir: string, locales: readonly string[]): Tour
 
 let cached: TourCatalog | undefined;
 
-/** Project catalog (read once; tour pages are prerendered). */
+/** Catalog from the MDX files (read once): the source before the CMS, and the fallback (config/tours.ts). */
 export function getTourCatalog(): TourCatalog {
   return (cached ??= createTourCatalog("content/tours", ["vi", "en"]));
 }

@@ -37,6 +37,14 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
+### v1.3.1 (2026-10-06) — sitemap import fix
+- No migration, nothing required.
+
+### v1.3.0 (2026-10-06) — published content for products, security
+- No migration. Run `pnpm install` (new pnpm override for `source-map-js`, GHSA-68fv-2mgg-jv7q, in `pnpm-workspace.yaml`).
+- `app/sitemap.ts` is now async and rendered per request. `sitemapPaths` may be an async function `({ content }) => paths`.
+- `ProductContext.content` (content module on): `listPublished(type)`.
+
 ### v1.2.0 (2026-10-06) — project header and fonts
 - No migration, nothing required. Optional exports in `product/layout.tsx`: `ProductHeader`, `productFontVariables`.
   `app/globals.css` now sets `body` and h1–h3 fonts through `--font-sans` / `--font-heading` (same system fonts by default).
