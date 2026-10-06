@@ -1,7 +1,9 @@
+// Type only: rules run in the browser (booking form) and must not pull zod in.
+import type { TourPricing } from "../tours/model";
+
 /** Booking rules (Phase 1 defaults approved by the owner). Pure functions: no DB, no clock. */
 export const bookingRules = {
   depositRate: 0.3,
-  childRate: 0.75,
   maxSeatsPerBooking: 10,
   maxInfants: 4,
   /** Departures must be at least this many days after today (Vietnam time). */
@@ -12,18 +14,40 @@ export const bookingRules = {
 
 const roundUp1000 = (n: number) => Math.ceil(n / 1000) * 1000;
 
+export type { TourPricing };
+/** Prices by traveller type when a tour sets none (tourPricingSchema defaults): children 75%, infants free, no single supplement. */
+export const DEFAULT_TOUR_PRICING: TourPricing = { childPercent: 75, infantVnd: 0, singleSupplementVnd: 0 };
+
 export interface Quote {
   seats: number;
   unitPriceVnd: number;
   childPriceVnd: number;
+  infantPriceVnd: number;
+  /** Per single room (whole tour); 0 = not offered. */
+  singleSupplementVnd: number;
+  singleRooms: number;
   totalVnd: number;
   depositVnd: number;
 }
 
-export function quote(unitPriceVnd: number, party: { adults: number; children: number }): Quote {
-  const childPriceVnd = roundUp1000(unitPriceVnd * bookingRules.childRate);
-  const totalVnd = party.adults * unitPriceVnd + party.children * childPriceVnd;
-  return { seats: party.adults + party.children, unitPriceVnd, childPriceVnd, totalVnd, depositVnd: roundUp1000(totalVnd * bookingRules.depositRate) };
+export type Party = { adults: number; children: number; infants?: number; singleRooms?: number };
+
+/** Child price = adult price × childPercent (rounded up to 1,000 VND); infants and single rooms at the tour's price. */
+export function quote(unitPriceVnd: number, party: Party, pricing: TourPricing = DEFAULT_TOUR_PRICING): Quote {
+  const childPriceVnd = roundUp1000((unitPriceVnd * pricing.childPercent) / 100);
+  const infants = party.infants ?? 0;
+  const singleRooms = pricing.singleSupplementVnd > 0 ? (party.singleRooms ?? 0) : 0;
+  const totalVnd = party.adults * unitPriceVnd + party.children * childPriceVnd + infants * pricing.infantVnd + singleRooms * pricing.singleSupplementVnd;
+  return {
+    seats: party.adults + party.children,
+    unitPriceVnd,
+    childPriceVnd,
+    infantPriceVnd: pricing.infantVnd,
+    singleSupplementVnd: pricing.singleSupplementVnd,
+    singleRooms,
+    totalVnd,
+    depositVnd: roundUp1000(totalVnd * bookingRules.depositRate),
+  };
 }
 
 /** Private tour price per person by group size: the tier with the largest minGuests ≤ guests applies. */
@@ -38,10 +62,10 @@ export function privateTier(pricing: PrivatePricing, guests: number) {
   return [...pricing.tiers].reverse().find((t) => guests >= t.minGuests) ?? null;
 }
 
-/** Quote for a private tour: tier price per adult, children at the usual child rate. */
-export function privateQuote(pricing: PrivatePricing, party: { adults: number; children: number }): Quote | null {
+/** Quote for a private tour: tier price per adult, the tour's child / infant / single room prices. */
+export function privateQuote(pricing: PrivatePricing, party: Party, tourPricing: TourPricing = DEFAULT_TOUR_PRICING): Quote | null {
   const tier = privateTier(pricing, party.adults + party.children);
-  return tier ? quote(tier.vnd, party) : null;
+  return tier ? quote(tier.vnd, party, tourPricing) : null;
 }
 
 /** Today's date in Vietnam (UTC+7, no DST) as YYYY-MM-DD. */

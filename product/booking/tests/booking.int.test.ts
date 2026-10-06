@@ -141,3 +141,31 @@ describe("booking holds", () => {
     });
   });
 });
+
+describe("prices by traveller type (B2)", () => {
+  const priced = createBookingService({
+    db,
+    logger,
+    rateLimiter: createMemoryRateLimiter({ max: 1_000, windowMs: 60_000 }),
+    tourPrice: async (slug) => (slug === "ha-long-cruise-2d1n" ? 2_000_000 : 1_000_000),
+    tourPricing: async (slug) => (slug === "ha-long-cruise-2d1n" ? { childPercent: 50, infantVnd: 100_000, singleSupplementVnd: 900_000 } : { childPercent: 75, infantVnd: 0, singleSupplementVnd: 0 }),
+    now: () => clock,
+  });
+
+  it("charges the tour's child, infant and single room prices and stores the single rooms", async () => {
+    const d = await departure();
+    const result = await priced.hold(guest(d.id, { adults: "2", children: "1", infants: "1", singleRooms: "1" }), "ip");
+    expect(result.status).toBe("held");
+    const [b] = await db.select().from(bookings);
+    // 2 × 2,000,000 + 1,000,000 + 100,000 + 900,000
+    expect(b).toMatchObject({ seats: 3, singleRooms: 1, totalVnd: 6_000_000, depositVnd: 1_800_000 });
+  });
+
+  it("refuses single rooms on a tour without a supplement, and more rooms than travellers", async () => {
+    const d = await departure({ tourSlug: "ninh-binh-day-tour" });
+    expect(await priced.hold(guest(d.id, { singleRooms: "1" }), "ip")).toEqual({ status: "invalid", fieldErrors: { singleRooms: "invalid" } });
+    const cruise = await departure({ date: "2026-10-11" });
+    expect(await priced.hold(guest(cruise.id, { adults: "1", singleRooms: "2" }), "ip")).toEqual({ status: "invalid", fieldErrors: { singleRooms: "too_many" } });
+    expect(await db.select().from(bookings)).toHaveLength(0);
+  });
+});

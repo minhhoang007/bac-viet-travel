@@ -83,6 +83,7 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
             {row(g.adults, b.adults)}
             {row(g.children, b.children)}
             {row(g.infants, b.infants)}
+            {b.singleRooms > 0 && row(g.singleRooms, b.singleRooms)}
           </dl>
         </section>
         <section className="rounded-lg border border-border p-4">

@@ -52,6 +52,12 @@ export function TourForm({
   const num = (s: Section, key: string) => (typeof section(s)[key] === "number" ? String(section(s)[key]) : "");
   const toNum = (v: string) => (v.trim() === "" ? undefined : Number(v));
   const price = (section("shared").price ?? {}) as { vnd?: number; usd?: number };
+  const pricing = (section("shared").pricing ?? {}) as { childPercent?: number; infantVnd?: number; singleSupplementVnd?: number };
+  // An all-empty pricing block is left out (the tour then uses the defaults).
+  const setPricing = (patch: Partial<typeof pricing>) => {
+    const next = { ...pricing, ...patch };
+    set("shared", "pricing", Object.values(next).some((v) => v !== undefined) ? next : undefined);
+  };
   const priv = section("shared").private as { maxGuests?: number; tiers?: { minGuests?: number; vnd?: number; usd?: number }[] } | undefined;
 
   const tabLabel: Record<Tab, string> = c.tabs;
@@ -167,6 +173,15 @@ export function TourForm({
           </Field>
           <Field label={c.fields.priceUsd}>
             {(id) => <input id={id} type="number" min={0} step={1} className={input} value={price.usd ?? ""} onChange={(e) => set("shared", "price", { ...price, usd: toNum(e.target.value) })} />}
+          </Field>
+          <Field label={c.fields.childPercent}>
+            {(id) => <input id={id} type="number" min={0} max={100} className={input} value={pricing.childPercent ?? ""} onChange={(e) => setPricing({ childPercent: toNum(e.target.value) })} />}
+          </Field>
+          <Field label={c.fields.infantVnd}>
+            {(id) => <input id={id} type="number" min={0} step={1000} className={input} value={pricing.infantVnd ?? ""} onChange={(e) => setPricing({ infantVnd: toNum(e.target.value) })} />}
+          </Field>
+          <Field label={c.fields.singleSupplementVnd}>
+            {(id) => <input id={id} type="number" min={0} step={1000} className={input} value={pricing.singleSupplementVnd ?? ""} onChange={(e) => setPricing({ singleSupplementVnd: toNum(e.target.value) })} />}
           </Field>
         </div>
         <label className="flex items-center gap-2 text-sm">

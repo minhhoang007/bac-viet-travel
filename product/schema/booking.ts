@@ -51,6 +51,8 @@ export const bookings = pgTable(
     adults: integer("adults").notNull(),
     children: integer("children").notNull().default(0),
     infants: integer("infants").notNull().default(0),
+    /** Single rooms booked (supplement per room, B2). */
+    singleRooms: integer("single_rooms").notNull().default(0),
     /** Seats taken: adults + children (infants share a seat). */
     seats: integer("seats").notNull(),
     unitPriceVnd: integer("unit_price_vnd").notNull(),

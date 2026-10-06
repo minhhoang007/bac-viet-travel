@@ -14,6 +14,7 @@ import type { Locale } from "@/config/app";
 import { contactConfig, whatsappUrl, zaloUrl } from "@/config/contact";
 import { features } from "@/config/features";
 import { formatVnd, getBookingContent } from "@/product/booking/content";
+import { DEFAULT_TOUR_PRICING } from "@/product/booking/rules";
 import { TourBookButton, TourBookingProvider, TourDepartureList } from "@/product/components/tour-departures";
 import { TourGallery } from "@/product/components/tour-gallery";
 import { InquiryForm } from "@/product/components/inquiry-form";
@@ -89,6 +90,9 @@ export default async function TourPage({ params }: Props) {
   const site = seoSite(getPublicEnv().NEXT_PUBLIC_SITE_URL);
   const url = localizedUrl(site, locale, `/tours/${slug}`);
   const price = formatPrice(tour, locale);
+  const pricing = { ...DEFAULT_TOUR_PRICING, ...tour.pricing };
+  // VND amounts in the tour's display currency (USD pages convert at the tour's own VND/USD ratio).
+  const money = (vnd: number) => (locale === "vi" ? formatVnd(vnd, locale) : formatPrice({ price: { vnd, usd: Math.round((tour.price.usd * vnd) / tour.price.vnd) } }, locale));
   const duration = c.tours.days(tour.days, tour.nights);
   const related = catalog.related(tour);
   const facts = [
@@ -237,6 +241,11 @@ export default async function TourPage({ params }: Props) {
           <p className="text-sm text-muted-foreground">
             {c.tours.from} <span className="text-2xl font-bold text-primary">{price}</span> {c.tours.perPerson}
           </p>
+          <ul className="mt-2 grid gap-0.5 text-xs text-muted-foreground" data-testid="price-by-traveller">
+            <li>{c.tours.priceChild(pricing.childPercent, money(Math.ceil((tour.price.vnd * pricing.childPercent) / 100 / 1000) * 1000))}</li>
+            <li>{c.tours.priceInfant(pricing.infantVnd > 0 ? money(pricing.infantVnd) : null)}</li>
+            {pricing.singleSupplementVnd > 0 && <li>{c.tours.priceSingle(money(pricing.singleSupplementVnd))}</li>}
+          </ul>
           {page.preview ? (
             <p className="mt-3 rounded-md bg-muted p-3 text-sm" data-testid="preview-no-booking">
               {getTourAdminContent(locale).previewNoBooking}

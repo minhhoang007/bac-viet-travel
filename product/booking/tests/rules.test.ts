@@ -8,9 +8,30 @@ describe("booking rules", () => {
       seats: 3,
       unitPriceVnd: 1_890_000,
       childPriceVnd: 1_418_000,
+      infantPriceVnd: 0,
+      singleSupplementVnd: 0,
+      singleRooms: 0,
       totalVnd: 5_198_000,
       depositVnd: 1_560_000,
     });
+  });
+
+  it("per-tour prices: child %, paid infants, single rooms only when the tour has a supplement", () => {
+    const pricing = { childPercent: 50, infantVnd: 200_000, singleSupplementVnd: 900_000 };
+    expect(quote(2_000_000, { adults: 2, children: 1, infants: 1, singleRooms: 1 }, pricing)).toEqual({
+      seats: 3,
+      unitPriceVnd: 2_000_000,
+      childPriceVnd: 1_000_000,
+      infantPriceVnd: 200_000,
+      singleSupplementVnd: 900_000,
+      singleRooms: 1,
+      totalVnd: 4_000_000 + 1_000_000 + 200_000 + 900_000,
+      depositVnd: 1_830_000,
+    });
+    // No supplement on the tour: single rooms are ignored (the service refuses them).
+    expect(quote(2_000_000, { adults: 1, children: 0, singleRooms: 1 }).totalVnd).toBe(2_000_000);
+    // Infants are not seats.
+    expect(quote(2_000_000, { adults: 1, children: 0, infants: 2 }, pricing).seats).toBe(1);
   });
 
   it("private tours: price per guest by group size (adults + children), children at 75%, limits enforced", () => {
@@ -19,7 +40,7 @@ describe("booking rules", () => {
     expect(privateTier(pricing, 3)?.vnd).toBe(3_000_000);
     expect(privateTier(pricing, 4)?.vnd).toBe(2_000_000);
     expect(privateTier(pricing, 9)).toBeNull();
-    expect(privateQuote(pricing, { adults: 3, children: 1 })).toEqual({ seats: 4, unitPriceVnd: 2_000_000, childPriceVnd: 1_500_000, totalVnd: 7_500_000, depositVnd: 2_250_000 });
+    expect(privateQuote(pricing, { adults: 3, children: 1 })).toMatchObject({ seats: 4, unitPriceVnd: 2_000_000, childPriceVnd: 1_500_000, totalVnd: 7_500_000, depositVnd: 2_250_000 });
     expect(privateQuote(pricing, { adults: 1, children: 0 })).toBeNull();
   });
 

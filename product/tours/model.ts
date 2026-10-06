@@ -5,6 +5,17 @@ import { z } from "zod";
 import { DESTINATIONS } from "./destinations";
 export { DESTINATIONS, isDestination, type Destination } from "./destinations";
 
+/**
+ * Prices by traveller type (B2). Absent = the defaults: children 75% of the adult price, infants free, no single
+ * room supplement. The supplement (per single room, whole tour) only makes sense for tours with nights.
+ */
+export const tourPricingSchema = z.object({
+  childPercent: z.number().int().min(0).max(100).default(75),
+  infantVnd: z.number().int().min(0).max(100_000_000).default(0),
+  singleSupplementVnd: z.number().int().min(0).max(100_000_000).default(0),
+});
+export type TourPricing = z.infer<typeof tourPricingSchema>;
+
 /** Private tour (own vehicle, guide and date): price per person by group size. */
 export const privateTourSchema = z
   .object({
@@ -36,6 +47,7 @@ export const tourSchema = z.object({
   order: z.number().int().default(100),
   /** Private tour (own vehicle, guide and date): price per person by group size. Absent = group tours only. */
   private: privateTourSchema.optional(),
+  pricing: tourPricingSchema.optional(),
 });
 
 export type TourData = z.infer<typeof tourSchema>;

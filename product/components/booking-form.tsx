@@ -11,7 +11,7 @@ import { ShieldCheck } from "lucide-react";
 import type { Locale } from "@/config/app";
 import { localePath } from "@/core/i18n/routing";
 import { formatDay, formatVnd, getBookingContent } from "../booking/content";
-import { privateQuote, privateTier, quote, type PrivatePricing } from "../booking/rules";
+import { DEFAULT_TOUR_PRICING, privateQuote, privateTier, quote, type PrivatePricing, type TourPricing } from "../booking/rules";
 import type { BookingField, HoldResult } from "../booking/service";
 
 export interface DepartureOption {
@@ -45,6 +45,8 @@ export interface BookingFormProps {
   locale: Locale;
   /** Set: private tour form (no departure list). */
   privateTour?: PrivateTourOption;
+  /** Child %, infant price, single room supplement of the tour (defaults when absent). */
+  pricing?: TourPricing;
 }
 
 const noopSubscribe = () => () => {};
@@ -57,6 +59,7 @@ export function BookingForm({
   tour,
   locale,
   privateTour,
+  pricing = DEFAULT_TOUR_PRICING,
 }: BookingFormProps) {
   const t = getBookingContent(locale);
   const [state, formAction, pending] = useActionState(action, null);
@@ -68,6 +71,9 @@ export function BookingForm({
   );
   const [adults, setAdults] = useState(initialAdults ?? 2);
   const [children, setChildren] = useState(0);
+  const [infants, setInfants] = useState(0);
+  const [singleRooms, setSingleRooms] = useState(0);
+  const party = { adults, children, infants, singleRooms };
   // Prices and limits update only once React runs; tests wait for this marker before typing.
   const hydrated = useSyncExternalStore(noopSubscribe, () => true, () => false);
   // The date list scrolls inside its box: bring the preselected date (from the tour page) into view, once.
@@ -82,9 +88,9 @@ export function BookingForm({
   // One shape for both modes: the chosen day, and the quote for it.
   const chosen = privateTour ? (date ? { date } : undefined) : group;
   const q = privateTour
-    ? privateQuote(privateTour.pricing, { adults, children })
+    ? privateQuote(privateTour.pricing, party, pricing)
     : group
-      ? quote(group.unitPriceVnd, { adults, children })
+      ? quote(group.unitPriceVnd, party, pricing)
       : null;
   const guestsOutOfRange = Boolean(privateTour) && q === null;
 
@@ -281,11 +287,28 @@ export function BookingForm({
                 type="number"
                 min={0}
                 max={4}
-                defaultValue={0}
+                value={infants}
+                onChange={(e) => setInfants(Math.max(0, Number(e.target.value) || 0))}
                 className="mt-1"
               />
               {message("infants")}
             </div>
+            {pricing.singleSupplementVnd > 0 && (
+              <div>
+                <Label htmlFor="booking-singleRooms">{t.singleRooms}</Label>
+                <Input
+                  {...aria("singleRooms")}
+                  type="number"
+                  min={0}
+                  max={adults + children}
+                  value={singleRooms}
+                  onChange={(e) => setSingleRooms(Math.max(0, Number(e.target.value) || 0))}
+                  className="mt-1"
+                />
+                <span className="mt-1 block text-xs text-muted-foreground">{t.singleRoomsHint(formatVnd(pricing.singleSupplementVnd, locale))}</span>
+                {message("singleRooms")}
+              </div>
+            )}
           </div>
         </fieldset>
 
@@ -361,8 +384,20 @@ export function BookingForm({
               </div>
               {children > 0 && (
                 <div className="flex justify-between">
-                  <dt>{t.childLine(children)}</dt>
+                  <dt>{t.childLine(children, pricing.childPercent)}</dt>
                   <dd>{formatVnd(children * q.childPriceVnd, locale)}</dd>
+                </div>
+              )}
+              {infants > 0 && (
+                <div className="flex justify-between">
+                  <dt>{t.infantLine(infants, q.infantPriceVnd === 0)}</dt>
+                  <dd>{formatVnd(infants * q.infantPriceVnd, locale)}</dd>
+                </div>
+              )}
+              {q.singleRooms > 0 && (
+                <div className="flex justify-between">
+                  <dt>{t.singleLine(q.singleRooms)}</dt>
+                  <dd>{formatVnd(q.singleRooms * q.singleSupplementVnd, locale)}</dd>
                 </div>
               )}
               <div className="flex justify-between border-t border-border pt-2 font-semibold">

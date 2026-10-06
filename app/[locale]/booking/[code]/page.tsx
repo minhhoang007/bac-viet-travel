@@ -59,7 +59,14 @@ export default async function BookingPage({ params, searchParams }: Props) {
   const step = status === "held" ? 2 : status === "deposit_paid" || status === "confirmed" ? 3 : null;
   const next = status === "held" ? t.booking.nextHeld : status === "deposit_paid" || status === "confirmed" ? t.booking.nextPaid : null;
   const chat = locale === "vi" ? { href: zaloUrl(), label: "Zalo" } : { href: whatsappUrl(), label: "WhatsApp" };
-  const guests = [booking.adults && `${booking.adults} ${t.adults.toLowerCase()}`, booking.children && `${booking.children} ${t.children.toLowerCase()}`, booking.infants && `${booking.infants} ${t.infants.toLowerCase()}`].filter(Boolean).join(", ");
+  const guests = [
+    booking.adults && `${booking.adults} ${t.adults.toLowerCase()}`,
+    booking.children && `${booking.children} ${t.children.toLowerCase()}`,
+    booking.infants && `${booking.infants} ${t.infants.toLowerCase()}`,
+    booking.singleRooms && t.singleLine(booking.singleRooms),
+  ]
+    .filter(Boolean)
+    .join(", ");
 
   return (
     <Container className="max-w-2xl py-12">
