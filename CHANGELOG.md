@@ -4,6 +4,8 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-10-06
+
 ### Security
 - `source-map-js` forced to >= 1.2.2 (GHSA-68fv-2mgg-jv7q, high; build-time via next > postcss) with a pnpm override in `pnpm-workspace.yaml`.
 
