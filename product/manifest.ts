@@ -9,6 +9,7 @@ import { createBookingAdmin } from "./booking/admin";
 import { createDepositService } from "./booking/deposits";
 import { createBookingService } from "./booking/service";
 import { getTourCatalog } from "./tours/catalog";
+import { tourProblems } from "./tours/document";
 import { createTourSource, TOUR_CONTENT_TYPE, TOURS_CACHE_TAG } from "./tours/source";
 
 /** The only file bootstrap/ imports from product/. Declares product services, menu, exporters and jobs. */
@@ -93,6 +94,8 @@ export async function sitemapPaths({ content }: SitemapContext): Promise<string[
 
 /** Admin menu entries (starter rc.11). */
 export const productAdminNav: ProductNavItem[] = [
+  // Content: marketing (editor role) writes tours; publishing stays with admins (content workflow).
+  { href: "/admin/tours", label: { vi: "Tour", en: "Tours" }, roles: ["editor"] },
   { href: "/admin/bookings", label: { vi: "Đơn đặt tour", en: "Bookings" } },
   { href: "/admin/departures", label: { vi: "Lịch khởi hành", en: "Departures" } },
 ];
@@ -105,6 +108,8 @@ export const contentTypes: Record<string, ContentTypeDefinition> = {
     label: { vi: "Tour", en: "Tour" },
     adminPath: (id) => `/admin/tours/${id}`,
     publicPath: (slug) => `/tours/${slug}`,
+    // A tour can be submitted and published only when complete (both languages, prices, images).
+    validate: tourProblems,
     onChange: () => revalidateTag(TOURS_CACHE_TAG, "max"),
   },
 };

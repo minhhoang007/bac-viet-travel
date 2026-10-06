@@ -142,6 +142,17 @@ describe("content workflow", () => {
     await expect(content.restore(editor, b.id, { revision: b.revision, versionId: va!.id })).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 
+  it("an incomplete item cannot be submitted, approved or scheduled (the project's validate)", async () => {
+    const strict = createContentModule({ db, logger, types: ["tour"], adminUrl: () => "", validate: (_type, data) => (data.title ? [] : ["title"]) });
+    const item = await strict.create(editor, { type: "tour", slug: "ha-long", data: {} });
+    await expect(strict.submit(editor, item.id, item.revision)).rejects.toMatchObject({ code: "VALIDATION_ERROR", details: { problems: ["title"] } });
+    await expect(strict.approve(admin, item.id, { revision: item.revision })).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    await expect(strict.approve(admin, item.id, { revision: item.revision, publishAt: new Date("2026-10-06T01:00:00Z") })).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    expect(await strict.get(item.id)).toMatchObject({ status: "draft", published: null });
+    const fixed = await strict.saveDraft(editor, item.id, { revision: item.revision, slug: "ha-long", data: { title: "Hạ Long" } });
+    expect((await strict.submit(editor, item.id, fixed.revision)).status).toBe("pending");
+  });
+
   it("a failed email does not undo the submit", async () => {
     const failing = createContentModule({ db, logger, types: ["tour"], mail: { send: async () => { throw new Error("smtp down"); } }, adminUrl: () => "" });
     const item = await failing.create(editor, { type: "tour", slug: "ha-long", data: {} });

@@ -37,6 +37,11 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
+### v1.4.0 (2026-10-06) — content validation
+- No migration. New content key `admin.content.incomplete` (projects overriding `content/` must add it).
+- Optional `validate(data)` on each `contentTypes` entry: return the problem fields; incomplete drafts can no longer be
+  submitted or published.
+
 ### v1.3.1 (2026-10-06) — sitemap import fix
 - No migration, nothing required.
 
