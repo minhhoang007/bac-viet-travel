@@ -94,10 +94,30 @@ test("marketing writes a post, previews it, submits; an admin publishes; it is o
   await expect(visitor.getByRole("status").filter({ hasText: "Đang xem trước" })).toHaveCount(0);
   await visitor.goto("/blog/tag/mu-cang-chai");
   await expect(visitor.getByRole("link", { name: "Mùa lúa chín Mù Cang Chải" })).toBeVisible();
+  // Renamed after publishing: once the new version is live, the old URL redirects permanently.
+  await editor.goto(edit);
+  await editor.getByLabel("Đường dẫn (slug)").fill("mua-lua-chin-mu-cang-chai-2026");
+  await editor.getByRole("button", { name: "Lưu bản nháp" }).click();
+  await expect(editor.getByText("Đã lưu bản nháp.")).toBeVisible();
+  await admin.goto(edit);
+  await admin.getByRole("button", { name: "Duyệt và công khai ngay" }).first().click();
+  await expect(status(admin)).toHaveAttribute("data-status", "published");
+  await expect(async () => {
+    const res = await visitor.request.get("/blog/mua-lua-chin-mu-cang-chai", { maxRedirects: 0 });
+    expect(res.status()).toBe(308);
+    expect(res.headers().location).toMatch(/\/blog\/mua-lua-chin-mu-cang-chai-2026$/);
+  }).toPass({ timeout: 15_000 });
+
   // The default-locale feed path works (proxy matcher) and serves the new post once the cache refreshed.
   await expect(async () => {
     const feed = await visitor.request.get("/blog/rss.xml");
     expect(feed.status()).toBe(200);
     expect(await feed.text()).toContain("<title>Mùa lúa chín Mù Cang Chải</title>");
   }).toPass({ timeout: 15_000 });
+
+  // Covers: only a path on the site (external images are blocked by the CSP).
+  await editor.goto(edit);
+  await editor.getByLabel("Ảnh bìa", { exact: false }).fill("https://example.com/cover.jpg");
+  await editor.getByRole("button", { name: "Lưu bản nháp" }).click();
+  await expect(editor.getByTestId("post-problems")).toContainText("Ảnh bìa");
 });
