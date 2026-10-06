@@ -129,5 +129,6 @@ export function WorkflowPanel({ item, versions, locale, isAdmin, returnTo }: { i
 export function ContentResult({ result, locale }: { result?: string; locale: Locale }) {
   const content = getAppContent(locale).admin;
   if (result === "conflict") return <Notice tone="danger">{content.content.conflict}</Notice>;
+  if (result === "incomplete") return <Notice tone="danger">{content.content.incomplete}</Notice>;
   return <ResultNotice result={result} done={content.done} failed={content.failed} />;
 }

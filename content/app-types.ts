@@ -161,6 +161,7 @@ export interface AppContent {
       restoreAsk: string;
       events: { submitted: string; published: string };
       conflict: string;
+      incomplete: string;
     };
     done: string;
     failed: string;

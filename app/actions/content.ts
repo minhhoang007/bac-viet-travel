@@ -39,7 +39,7 @@ async function run(formData: FormData, role: Role, action: string, step: (conten
     else await work();
   } catch (error) {
     unstable_rethrow(error);
-    result = error instanceof AppError && error.code === "CONFLICT" ? "conflict" : "failed";
+    result = error instanceof AppError && error.code === "CONFLICT" ? "conflict" : error instanceof AppError && error.code === "VALIDATION_ERROR" ? "incomplete" : "failed";
     if (result === "failed") container.logger.warn("content.action_failed", { action, id, error });
   }
   redirect(localePath(l, `${back}?result=${result}`));
