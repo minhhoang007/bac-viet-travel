@@ -6,6 +6,7 @@ import { requireStaff } from "@/app/_lib/admin";
 import { AppError } from "@/core/errors";
 import { localePath } from "@/core/i18n/routing";
 import { tourDraftSchema } from "@/product/tours/document";
+import { isDestination } from "@/product/tours/model";
 import { TOUR_CONTENT_TYPE } from "@/product/tours/source";
 
 const locale = z.enum(["vi", "en"]).catch("vi");
@@ -30,7 +31,8 @@ export async function createTour(formData: FormData): Promise<void> {
   const slug = String(formData.get("slug") ?? "").trim().toLowerCase();
   const title = String(formData.get("titleVi") ?? "").trim().slice(0, 120);
   let target = `/admin/tours/new?result=invalid`;
-  if (SLUG.test(slug) && title) {
+  if (isDestination(slug)) target = "/admin/tours/new?result=slug_taken";
+  else if (SLUG.test(slug) && title) {
     try {
       const item = await content.create(user, { type: TOUR_CONTENT_TYPE, slug, data: { shared: { images: [] }, vi: { title }, en: {} } });
       target = `/admin/tours/${item.id}?result=created`;
@@ -75,6 +77,7 @@ export async function saveTour(formData: FormData): Promise<void> {
   try {
     const data = tourDraftSchema.parse(JSON.parse(String(formData.get("data") ?? "{}")));
     const slug = String(formData.get("slug") ?? item.slug).trim().toLowerCase();
+    if (isDestination(slug)) throw new AppError("CONFLICT", "Slug reserved for a destination page");
     await content.saveDraft(user, id, { revision: revision.parse(formData.get("revision")), slug, data });
   } catch (error) {
     unstable_rethrow(error);

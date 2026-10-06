@@ -4,6 +4,7 @@ import { z } from "zod";
 
 export const DESTINATIONS = ["ha-long", "ninh-binh", "sapa"] as const;
 export type Destination = (typeof DESTINATIONS)[number];
+export const isDestination = (slug: string): slug is Destination => (DESTINATIONS as readonly string[]).includes(slug);
 
 /** Private tour (own vehicle, guide and date): price per person by group size. */
 export const privateTourSchema = z

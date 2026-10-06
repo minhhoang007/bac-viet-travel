@@ -3,13 +3,14 @@ import { test } from "@playwright/test";
 
 const out = process.env.SHOTS_DIR ?? "test-results/shots";
 
+for (const [path, slug] of [["/", "home"], ["/tours?destination=sapa&guests=3", "tours"], ["/tours/ha-long", "destination"]] as const)
 for (const [name, viewport] of [
   ["desktop", { width: 1440, height: 900 }],
   ["phone", { width: 390, height: 844 }],
 ] as const) {
-  test(`home ${name}`, async ({ browser }) => {
+  test(`${slug} ${name}`, async ({ browser }) => {
     const page = await (await browser.newContext({ viewport })).newPage();
-    await page.goto("/");
+    await page.goto(path);
     await page.waitForLoadState("networkidle");
     await page.evaluate(async () => {
       for (let y = 0; y < document.body.scrollHeight; y += 600) {
@@ -19,6 +20,6 @@ for (const [name, viewport] of [
       window.scrollTo(0, 0);
       await Promise.all([...document.images].map((img) => img.decode().catch(() => {})));
     });
-    await page.screenshot({ path: `${out}/home-${name}.png`, fullPage: name === "desktop" });
+    await page.screenshot({ path: `${out}/${slug}-${name}.png`, fullPage: name === "desktop" });
   });
 }

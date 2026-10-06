@@ -8,7 +8,7 @@ import type { Db } from "@/db/client";
 import { createBookingAdmin } from "./booking/admin";
 import { createDepositService } from "./booking/deposits";
 import { createBookingService } from "./booking/service";
-import { getTourCatalog } from "./tours/catalog";
+import { DESTINATIONS, getTourCatalog } from "./tours/catalog";
 import { tourProblems } from "./tours/document";
 import { createTourSource, TOUR_CONTENT_TYPE, TOURS_CACHE_TAG } from "./tours/source";
 
@@ -90,7 +90,7 @@ export async function sitemapPaths({ content }: SitemapContext): Promise<string[
     tourSource === "content" && content
       ? (await content.listPublished(TOUR_CONTENT_TYPE)).map((t) => t.slug)
       : getTourCatalog().slugs();
-  return ["/about", "/cancellation", "/payment", "/tours", ...slugs.map((slug) => `/tours/${slug}`)];
+  return ["/about", "/cancellation", "/payment", "/tours", ...DESTINATIONS.map((d) => `/tours/${d}`), ...slugs.map((slug) => `/tours/${slug}`)];
 }
 
 /** Admin menu entries (starter rc.11). */

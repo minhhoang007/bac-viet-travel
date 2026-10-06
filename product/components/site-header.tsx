@@ -19,7 +19,7 @@ export function SiteHeader({ locale }: { locale: Locale }) {
   const href = (path: string) => localePath(locale, path);
   const other = appConfig.locales.find((l) => l !== locale) ?? appConfig.defaultLocale;
   const switchLabel = getMarketingContent(locale).nav.switchLocale;
-  const destinations = DESTINATIONS.map((d) => ({ label: c.destinations[d].name, href: href(`/tours#${d}`) }));
+  const destinations = DESTINATIONS.map((d) => ({ label: c.destinations[d].name, href: href(`/tours/${d}`) }));
   // Links from config/navigation.ts (starter contract); the blog entry only while the blog is on.
   const links = siteNavigation.filter((l) => features.blog || l.href !== "/blog").map((l) => ({ label: l.label[locale], href: href(l.href) }));
   const m = getMarketingContent(locale).nav;
