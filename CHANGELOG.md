@@ -4,6 +4,21 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.6.6] - 2026-10-06
+
+### Fixed
+- The localized 404 for unknown URLs has a translated `<title>` (WCAG 2.4.2) and is not indexed.
+
+## [1.6.5] - 2026-10-06
+
+### Fixed
+- Unknown URLs rendered the framework's bare English 404 (no header, footer or translation): `app/[locale]/[...rest]/page.tsx` now sends them to the localized `not-found.tsx`.
+
+## [1.6.4] - 2026-10-06
+
+### Added
+- Optional `ProductNotFound({ locale })` export in `product/layout.tsx`: content under the 404 message (e.g. popular tours).
+
 ## [1.6.3] - 2026-10-06
 
 ### Fixed

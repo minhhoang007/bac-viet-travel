@@ -223,3 +223,32 @@ test("tour page on a phone: booking bar at the bottom, contact buttons above it,
   await page.setViewportSize({ width: 1440, height: 900 });
   await expect(bar).toBeHidden();
 });
+
+test("contact page: chat first per language, office with a map link, the form; About shows the licence; 404 suggests destinations", async ({ page }) => {
+  await page.goto("/contact");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Liên hệ Bắc Việt Travel");
+  const channels = page.getByTestId("contact-channels").locator("a");
+  await expect(channels).toHaveCount(4);
+  await expect(channels.first()).toHaveAttribute("data-channel", "zalo");
+  await expect(page.getByTestId("map-link")).toHaveAttribute("href", /^https:\/\/www\.google\.com\/maps\/search\/\?api=1&query=/);
+  await expect(page.locator("main form")).toBeVisible();
+  await page.goto("/en/contact");
+  await expect(page.getByTestId("contact-channels").locator("a").first()).toHaveAttribute("data-channel", "whatsapp");
+
+  await page.goto("/about");
+  await expect(page.getByTestId("licence")).toContainText("Giấy phép kinh doanh lữ hành quốc tế");
+  await expect(page.getByRole("link", { name: "Liên hệ tư vấn" })).toHaveAttribute("href", "/contact");
+
+  const res = await page.goto("/khong-ton-tai");
+  expect(res?.status()).toBe(404);
+  const suggestions = page.getByTestId("not-found-suggestions");
+  await expect(suggestions.locator('a[href^="/tours/"]')).toHaveCount(3);
+  await suggestions.getByRole("link", { name: "Xem tất cả tour" }).click();
+  await expect(page).toHaveURL(/\/tours$/);
+
+  for (const path of ["/contact", "/about", "/khong-ton-tai"]) {
+    await page.goto(path);
+    const result = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
+    expect(result.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => `${path}: ${v.id}`)).toEqual([]);
+  }
+});

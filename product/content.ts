@@ -177,6 +177,25 @@ const vi = {
     moit: "Đã thông báo Bộ Công Thương",
   },
   credits: { title: "Nguồn ảnh", text: "Ảnh minh hoạ từ Unsplash (Unsplash License)." },
+  contactPage: {
+    nav: "Liên hệ",
+    title: "Liên hệ Bắc Việt Travel",
+    description: "Tư vấn tour Hạ Long, Ninh Bình, Sapa qua Zalo, WhatsApp, hotline hoặc email. Văn phòng tại phố cổ Hà Nội.",
+    intro: "Nhắn Zalo để được trả lời nhanh nhất. Bạn cũng có thể gọi hotline, gửi email hoặc ghé văn phòng của chúng tôi ở phố cổ.",
+    channelsTitle: "Kênh liên hệ",
+    zaloHint: "Trả lời trong vài phút, 8:00 – 21:00",
+    whatsappHint: "Cho khách quốc tế",
+    hotlineHint: "Gọi trực tiếp tư vấn viên",
+    emailHint: "Báo giá đoàn, hoá đơn, hợp tác",
+    officeTitle: "Văn phòng",
+    openMap: "Mở bản đồ",
+    formTitle: "Gửi câu hỏi",
+    formHint: "Chúng tôi phản hồi qua email trong giờ làm việc.",
+  },
+  notFound: {
+    text: "Có thể đường dẫn đã thay đổi. Bạn thử bắt đầu từ một điểm đến:",
+    search: "Xem tất cả tour",
+  },
 };
 
 type ProductContent = typeof vi;
@@ -341,6 +360,25 @@ const en: ProductContent = {
     email: "Email",
     whatsappText: (tour?: string) => (tour ? `Hello, I would like to ask about the tour "${tour}".` : "Hello, I would like some advice on a tour."),
     license: "Tour operator licence",
+  },
+  contactPage: {
+    nav: "Contact",
+    title: "Contact Bắc Việt Travel",
+    description: "Ask us about Ha Long Bay, Ninh Binh and Sapa tours on WhatsApp, Zalo, by phone or email. Office in Hanoi Old Quarter.",
+    intro: "WhatsApp is the fastest way to reach us. You can also call, email or visit our office in the Old Quarter.",
+    channelsTitle: "Ways to reach us",
+    zaloHint: "Replies within minutes, 8:00 – 21:00",
+    whatsappHint: "Best for international travellers",
+    hotlineHint: "Talk to a travel consultant",
+    emailHint: "Group quotes, invoices, partnerships",
+    officeTitle: "Office",
+    openMap: "Open in Maps",
+    formTitle: "Send us a question",
+    formHint: "We reply by email during business hours.",
+  },
+  notFound: {
+    text: "The link may have changed. Try starting from a destination:",
+    search: "See all tours",
   },
   footer: {
     nav: "Company and policies",
