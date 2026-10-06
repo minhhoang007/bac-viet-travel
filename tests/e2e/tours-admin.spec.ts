@@ -256,3 +256,22 @@ test("an admin returns a tour with a note, schedules the fix, and restores an ol
   await visitor.goto("/tours/ninh-binh-e2e");
   await expect(visitor.getByRole("heading", { level: 1 })).toHaveText("Ninh Bình 1 ngày bản 3");
 });
+
+test("text typed in the admin is shown as text: no code runs, no secret leaks", async ({ browser }) => {
+  const [row] = await sql<{ id: string }[]>`select id from content_items where slug = 'ninh-binh-day-tour-copy'`;
+  const editor = await signIn(browser, EDITOR, "editor");
+  await editor.goto(`/admin/tours/${row!.id}`);
+  await formReady(editor);
+  await editor.getByRole("tab", { name: "Tiếng Việt" }).click();
+  await panel(editor).getByLabel("Giới thiệu (Markdown)").fill('**Đón khách** {process.env.BETTER_AUTH_SECRET}\n\n<script>window.pwned=1</script>\n\n<Callout tone="warning">Mang áo ấm</Callout>');
+  await editor.getByRole("button", { name: "Lưu bản nháp" }).click();
+  await expect(editor.getByText("Đã lưu bản nháp.")).toBeVisible();
+
+  await editor.goto(`/api/content/preview?id=${row!.id}&locale=vi`);
+  await expect(editor.getByText("{process.env.BETTER_AUTH_SECRET}")).toBeVisible();
+  expect(await editor.content()).not.toContain(e2eServerEnv.BETTER_AUTH_SECRET!);
+  expect(await editor.evaluate(() => (window as { pwned?: number }).pwned)).toBeUndefined();
+  await expect(editor.locator("strong", { hasText: "Đón khách" })).toBeVisible();
+  await expect(editor.locator("aside", { hasText: "Mang áo ấm" })).toBeVisible();
+  await editor.goto("/api/content/preview?exit=1&locale=vi");
+});

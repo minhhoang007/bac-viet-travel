@@ -4,6 +4,11 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.5.2] - 2026-10-06
+
+### Security
+- `MarkdownContent` (components/blog/markdown.tsx): renders staff-edited text (content module, database) as plain Markdown plus `<Callout>` blocks, with no JSX, expressions, ESM or raw HTML, and only http(s)/mailto/tel/relative links. `MdxContent` evaluates JavaScript: a project that rendered database text with it let any editor read server secrets or run code on the server (e.g. `{process.env.DATABASE_URL}` in a draft preview). **Projects: render every database-stored body with `MarkdownContent`.**
+
 ## [1.5.1] - 2026-10-06
 
 ### Added

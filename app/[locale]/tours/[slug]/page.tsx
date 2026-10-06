@@ -5,7 +5,7 @@ import { setRequestLocale } from "next-intl/server";
 import { getPublicEnv } from "@/bootstrap/env";
 import { submitTourInquiry } from "@/app/actions/tour-inquiry";
 import { Check, X } from "lucide-react";
-import { MdxContent } from "@/components/blog/mdx";
+import { MarkdownContent } from "@/components/blog/markdown";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { ButtonLink } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
@@ -151,7 +151,7 @@ export default async function TourPage({ params }: Props) {
 
           {tour.body.trim() && (
             <div className="prose-blog mt-8">
-              <MdxContent source={tour.body} />
+              <MarkdownContent source={tour.body} />
             </div>
           )}
 

@@ -11,6 +11,8 @@ const STORAGE_ENDPOINT = process.env.E2E_STORAGE_ENDPOINT ?? "http://localhost:5
 export default defineConfig({
   testDir: "tests/e2e-app",
   timeout: 120_000,
+  // next dev compiles each route on first visit (slow on CI): give assertions time to see the result.
+  expect: { timeout: 20_000 },
   workers: 1,
   use: { baseURL: `http://localhost:${PORT}` },
   webServer: {
