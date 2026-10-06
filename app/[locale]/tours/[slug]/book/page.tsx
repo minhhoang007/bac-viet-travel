@@ -13,7 +13,7 @@ import { BookingForm } from "@/product/components/booking-form";
 import { getProductContent } from "@/product/content";
 import { getTours } from "@/app/_lib/tours";
 
-type Props = { params: Promise<{ locale: Locale; slug: string }>; searchParams: Promise<{ d?: string; type?: string }> };
+type Props = { params: Promise<{ locale: Locale; slug: string }>; searchParams: Promise<{ d?: string; type?: string; guests?: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale, slug } = await params;
@@ -29,7 +29,8 @@ export default async function BookTourPage({ params, searchParams }: Props) {
   const tour = (await getTours()).get(locale, slug);
   if (!tour) notFound();
   const t = getBookingContent(locale);
-  const { d, type } = await searchParams;
+  const { d, type, guests } = await searchParams;
+  const adults = Number(guests);
   const isPrivate = type === "private" && Boolean(tour.private);
   const departures = isPrivate ? [] : await getBooking().listDepartures(slug);
   const today = vietnamToday(new Date());
@@ -62,6 +63,7 @@ export default async function BookTourPage({ params, searchParams }: Props) {
           locale={locale}
           privateTour={isPrivate ? { tourSlug: slug, pricing: tour.private!, minDate: addDays(today, bookingRules.cutoffDays), maxDate: addDays(today, 366) } : undefined}
           initialDepartureId={d}
+          initialAdults={Number.isInteger(adults) && adults >= 1 && adults <= 50 ? adults : undefined}
           departures={departures.map((x) => ({ id: x.id, date: x.date, seatsLeft: x.seatsLeft, unitPriceVnd: x.unitPriceVnd, bookable: x.bookable, status: x.status }))}
         />
       </div>

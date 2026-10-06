@@ -3,7 +3,7 @@ import { test } from "@playwright/test";
 
 const out = process.env.SHOTS_DIR ?? "test-results/shots";
 
-for (const [path, slug] of [["/", "home"], ["/tours?destination=sapa&guests=3", "tours"], ["/tours/ha-long", "destination"]] as const)
+for (const [path, slug] of [["/", "home"], ["/tours?destination=sapa&guests=3", "tours"], ["/tours/ha-long", "destination"], ["/tours/ninh-binh-day-tour", "tour"]] as const)
 for (const [name, viewport] of [
   ["desktop", { width: 1440, height: 900 }],
   ["phone", { width: 390, height: 844 }],
@@ -18,7 +18,7 @@ for (const [name, viewport] of [
         await new Promise((r) => setTimeout(r, 60));
       }
       window.scrollTo(0, 0);
-      await Promise.all([...document.images].map((img) => img.decode().catch(() => {})));
+      await Promise.race([Promise.all([...document.images].map((img) => img.decode().catch(() => {}))), new Promise((r) => setTimeout(r, 3000))]);
     });
     await page.screenshot({ path: `${out}/${slug}-${name}.png`, fullPage: name === "desktop" });
   });
