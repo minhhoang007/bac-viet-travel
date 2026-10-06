@@ -4,6 +4,12 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.6.2] - 2026-10-06
+
+### Added
+- Optional `ProductHomePage({ locale })` export in `product/home.tsx`: replaces the starter home page body (hero, marketing blocks); metadata unchanged.
+- `launch:check` fails when the home page has `data-demo` markup (placeholder reviews, sample figures): mark demo content with `data-demo="<what>"`.
+
 ## [1.6.1] - 2026-10-06
 
 ### Fixed

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { hasLocale } from "next-intl";
@@ -20,7 +21,11 @@ import { Testimonials } from "@/components/marketing/testimonials";
 import { Pricing } from "@/components/marketing/pricing";
 import { features } from "@/config/features";
 import { submitContact } from "@/app/actions/contact";
+import * as productHome from "@/product/home";
 import { ProductHomeSections } from "@/product/home";
+
+// Optional project home page (product/home.tsx `ProductHomePage`) replacing every starter block below the metadata.
+const ProductHomePage = "ProductHomePage" in productHome ? (productHome as { ProductHomePage?: (p: { locale: Locale }) => Promise<ReactNode> | ReactNode }).ProductHomePage : undefined;
 
 type Props = { params: Promise<{ locale: Locale }> };
 
@@ -50,6 +55,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function HomePage({ params }: Props) {
   const locale = knownLocale((await params).locale);
   setRequestLocale(locale);
+  if (ProductHomePage) return <ProductHomePage locale={locale} />;
   const c = getMarketingContent(locale);
 
   return (
