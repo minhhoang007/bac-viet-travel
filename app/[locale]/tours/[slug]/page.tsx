@@ -21,6 +21,7 @@ import { InquiryForm } from "@/product/components/inquiry-form";
 import { TourCard } from "@/product/components/tour-card";
 import { getProductContent } from "@/product/content";
 import { getPublicTours, getTourPage } from "@/app/_lib/tours";
+import { breadcrumbLd } from "@/product/seo";
 import { PreviewBanner } from "@/components/content/preview-banner";
 import { Notice } from "@/components/feedback/notice";
 import { getAppContent } from "@/content";
@@ -129,7 +130,7 @@ export default async function TourPage({ params }: Props) {
   return (
     <TourBookingProvider locale={locale} slug={slug} live={!page.preview}>
       {banner}
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd([jsonLd, breadcrumbLd(site, locale, [{ path: "/tours", name: c.tours.title }, { path: `/tours/${tour.destination}`, name: c.destinations[tour.destination].name }, { path: `/tours/${slug}`, name: tour.title }])]) }} />
       <Container className="pt-6 lg:pt-10">
         <nav aria-label="breadcrumb" className="text-sm text-muted-foreground">
           <a href={localePath(locale, "/tours")} className="hover:underline">

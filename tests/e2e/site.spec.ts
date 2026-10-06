@@ -294,3 +294,13 @@ test("FAQ: questions open and close, answers follow the booking rules, FAQPage d
   await page.goto("/en/faq");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Frequently asked questions");
 });
+
+test("structured data: tour and destination pages carry a BreadcrumbList for Google", async ({ page }) => {
+  for (const [path, last] of [["/tours/sapa-trekking-2d1n", 4], ["/tours/sapa", 3]] as const) {
+    await page.goto(path);
+    const blocks = (await page.locator('script[type="application/ld+json"]').allTextContents()).flatMap((s) => [JSON.parse(s)].flat());
+    const crumbs = blocks.find((b) => b["@type"] === "BreadcrumbList");
+    expect(crumbs.itemListElement).toHaveLength(last);
+    expect(crumbs.itemListElement.at(-1).item).toMatch(new RegExp(`${path}$`));
+  }
+});
