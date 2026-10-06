@@ -53,8 +53,12 @@ test("mobile: menu opens in a sheet and closes after navigating", async ({ brows
   const page = await signedIn(browser, { width: 390, height: 844 });
   expect(await noHorizontalScroll(page)).toBe(true);
 
-  await page.getByRole("button", { name: "Ẩn/hiện menu" }).click();
+  // The toggle is a client component: a click before hydration is lost, so click until the sheet opens.
   const sheet = page.getByRole("dialog", { name: "Menu" });
+  await expect(async () => {
+    if (!(await sheet.isVisible())) await page.getByRole("button", { name: "Ẩn/hiện menu" }).click();
+    await expect(sheet).toBeVisible({ timeout: 1_000 });
+  }).toPass();
   await sheet.getByRole("link", { name: "Tài khoản", exact: true }).click();
   await expect(page).toHaveURL(/\/dashboard\/account$/);
   await expect(sheet).toBeHidden();
