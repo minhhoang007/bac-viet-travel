@@ -4,6 +4,11 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-10-06
+
+### Added
+- `content.findMoved(type, slug)`: the current public slug of a live item that was published under an older slug (from the version history), so public pages can permanently redirect old URLs. No migration.
+
 ## [1.4.1] - 2026-10-06
 
 ### Fixed
