@@ -23,9 +23,11 @@ type Props = { params: Promise<{ locale: Locale; slug: string }> };
 // File posts are prerendered; database posts (blog source "content") render on demand from a cached copy.
 // Unknown params render on demand and end in notFound() below (dynamicParams = false logs a NoFallbackError per 404).
 
-export function generateStaticParams({ params }: { params: { locale: string } }) {
-  return (fileBlog()?.list(params.locale) ?? []).map((p) => ({ slug: p.slug }));
-}
+// Exported only for file posts: database posts (blog source "content") render per request, and a route with
+// generateStaticParams is static (request-time APIs would fail there).
+export const generateStaticParams = fileBlog()
+  ? ({ params }: { params: { locale: string } }) => (fileBlog()?.list(params.locale) ?? []).map((p) => ({ slug: p.slug }))
+  : undefined;
 
 /** The published post, or in Draft Mode (staff preview of a database post) the working copy. */
 async function findPost(locale: string, slug: string): Promise<{ blog: Blog; post: Post; preview: boolean } | null> {
