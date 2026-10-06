@@ -6,6 +6,16 @@ import { z } from "zod";
 export const DESTINATIONS = ["ha-long", "ninh-binh", "sapa"] as const;
 export type Destination = (typeof DESTINATIONS)[number];
 
+/** Private tour (own vehicle, guide and date): price per person by group size. */
+export const privateTourSchema = z
+  .object({
+    tiers: z
+      .array(z.object({ minGuests: z.number().int().min(1), vnd: z.number().int().positive(), usd: z.number().positive() }))
+      .min(1)
+      .refine((t) => t.every((x, i) => i === 0 || x.minGuests > t[i - 1]!.minGuests), "tiers must be sorted by minGuests"),
+    maxGuests: z.number().int().min(1).max(50),
+  });
+
 /** Tour files: content/tours/<locale>/<slug>.mdx. The same slug in every locale = the same tour (shared URL). */
 const tourSchema = z.object({
   title: z.string().min(1).max(120),
@@ -26,15 +36,7 @@ const tourSchema = z.object({
   /** Display order inside a destination (lower first). */
   order: z.number().int().default(100),
   /** Private tour (own vehicle, guide and date): price per person by group size. Absent = group tours only. */
-  private: z
-    .object({
-      tiers: z
-        .array(z.object({ minGuests: z.number().int().min(1), vnd: z.number().int().positive(), usd: z.number().positive() }))
-        .min(1)
-        .refine((t) => t.every((x, i) => i === 0 || x.minGuests > t[i - 1]!.minGuests), "tiers must be sorted by minGuests"),
-      maxGuests: z.number().int().min(1).max(50),
-    })
-    .optional(),
+  private: privateTourSchema.optional(),
 });
 
 export type TourData = z.infer<typeof tourSchema>;

@@ -1,7 +1,8 @@
+import { revalidateTag } from "next/cache";
 import { getEnv } from "@/bootstrap/env";
 import type { AccountDataExporter } from "@/core/account";
 import type { Locale } from "@/config/app";
-import type { ProductContext, ProductJobs } from "@/core/product/context";
+import type { ContentTypeDefinition, ProductContext, ProductJobs } from "@/core/product/context";
 import type { Db } from "@/db/client";
 import { createBookingAdmin } from "./booking/admin";
 import { createDepositService } from "./booking/deposits";
@@ -77,3 +78,16 @@ export const productAdminNav: ProductNavItem[] = [
 ];
 
 export type Product = ReturnType<typeof createProduct>;
+
+/** Cache tag of every page reading published tours (P2): revalidated whenever a tour is published, hidden or shown. */
+export const TOURS_CACHE_TAG = "tours";
+
+/** Staff-edited content types (content module, starter ADR-0009). */
+export const contentTypes: Record<string, ContentTypeDefinition> = {
+  tour: {
+    label: { vi: "Tour", en: "Tour" },
+    adminPath: (id) => `/admin/tours/${id}`,
+    publicPath: (slug) => `/tours/${slug}`,
+    onChange: () => revalidateTag(TOURS_CACHE_TAG, "max"),
+  },
+};

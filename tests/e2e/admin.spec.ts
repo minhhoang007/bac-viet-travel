@@ -74,7 +74,7 @@ test("staff confirm one booking and cancel another; seats return to sale; everyt
 
   expect(await seatsLeftText(page, departure.date)).toContain("Còn 10 chỗ");
 
-  for (const path of ["/admin/bookings", "/admin/bookings/BV-ADMN22", "/admin/departures"]) {
+  for (const path of ["/admin/bookings", "/admin/bookings/BV-ADMN22", "/admin/departures", "/admin/content?status=all"]) {
     await page.goto(path);
     const result = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
     expect(result.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => `${path}: ${v.id}`)).toEqual([]);

@@ -9,4 +9,6 @@ export const features: Features = {
   blog: true,
   jobs: true,
   admin: true,
+  // Editorial workflow for tours (CMS): drafts, review, versions, scheduled publishing.
+  content: true,
 };
