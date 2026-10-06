@@ -17,7 +17,8 @@ export function starterContentTypes(): Record<string, ContentTypeDefinition> {
       adminPath: (id) => `/admin/posts/${id}`,
       publicPath: (slug) => `/blog/${slug}`,
       validate: contentPostProblems,
-      onChange: () => revalidateTag(BLOG_CACHE_TAG, "max"),
+      // Expire at once (not stale-while-revalidate): static pages regenerate from fresh posts on the next visit.
+      onChange: () => revalidateTag(BLOG_CACHE_TAG, { expire: 0 }),
     },
   };
 }

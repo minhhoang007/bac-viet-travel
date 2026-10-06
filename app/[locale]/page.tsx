@@ -29,6 +29,10 @@ const ProductHomePage = "ProductHomePage" in productHome ? (productHome as { Pro
 
 type Props = { params: Promise<{ locale: Locale }> };
 
+// Static, served from the CDN. Project sections that read cached data (tags) are regenerated when it changes;
+// hourly revalidation is the safety net.
+export const revalidate = 3600;
+
 /** Anchors stay on the page; paths get the locale prefix. */
 /**
  * Paths with a dot skip proxy.ts, so /favicon.ico or /x.txt arrive here as the "locale". The layout's notFound()

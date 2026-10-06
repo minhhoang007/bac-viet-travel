@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
+import { connection } from "next/server";
 import { setRequestLocale } from "next-intl/server";
 import { fileBlog, loadBlog, movedPost } from "@/app/_lib/blog";
 import { readContent } from "@/app/_lib/content";
@@ -23,14 +24,16 @@ type Props = { params: Promise<{ locale: Locale; slug: string }> };
 // File posts are prerendered; database posts (blog source "content") render on demand from a cached copy.
 // Unknown params render on demand and end in notFound() below (dynamicParams = false logs a NoFallbackError per 404).
 
-// Exported only for file posts: database posts (blog source "content") render per request, and a route with
-// generateStaticParams is static (request-time APIs would fail there).
+// File posts are prerendered. Database posts (blog source "content") render per request from the cached posts: a
+// static copy of an unknown URL would keep its 404 after the post is published. No static params then (a route with
+// generateStaticParams is static, and request-time APIs would fail there).
 export const generateStaticParams = fileBlog()
   ? ({ params }: { params: { locale: string } }) => (fileBlog()?.list(params.locale) ?? []).map((p) => ({ slug: p.slug }))
   : undefined;
 
 /** The published post, or in Draft Mode (staff preview of a database post) the working copy. */
 async function findPost(locale: string, slug: string): Promise<{ blog: Blog; post: Post; preview: boolean } | null> {
+  if (blogConfig.source === "content") await connection();
   const blog = await loadBlog();
   if (!blog) return null;
   if (blogConfig.source === "content") {

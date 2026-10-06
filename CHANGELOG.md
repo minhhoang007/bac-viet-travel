@@ -4,6 +4,14 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-10-07
+
+### Changed — static blog with blog source "content"
+- `loadBlog()` no longer forces request-time rendering: posts come from the data cache (tag `blog`), so blog pages and the home page are static (CDN) and regenerate on publish; `revalidate = 3600` on the home and blog pages as a safety net. Database posts are generated on first request (ISR).
+- A build without runtime secrets (no database) renders the repo's MDX posts in their place, still under the `blog` tag so the first publish refreshes them.
+- Publishing expires the `blog` tag at once (`{ expire: 0 }`, not stale-while-revalidate), so regenerated static pages never keep old posts.
+- Post pages with blog source "content" stay request-time (a static copy of a URL visited before publishing would keep its 404).
+
 ## [1.6.6] - 2026-10-06
 
 ### Fixed
