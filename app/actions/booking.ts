@@ -3,7 +3,7 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { clientKeyFrom } from "@/app/_lib/client-ip";
-import { BOOKING_COOKIE, getBooking, getDeposits } from "@/app/_lib/booking";
+import { BOOKING_COOKIE, getBooking, getDeposits, isTransferAvailable } from "@/app/_lib/booking";
 import { getPublicEnv } from "@/bootstrap/env";
 import { localePath } from "@/core/i18n/routing";
 import type { HoldResult } from "@/product/booking/service";
@@ -59,4 +59,19 @@ export async function startDeposit(_prev: DepositFormState, formData: FormData):
   }
   (await cookies()).set(BOOKING_COOKIE(code), token, { httpOnly: true, secure: true, sameSite: "lax", path: "/", maxAge: 60 * 60 });
   redirect(url);
+}
+
+/** The guest pays by bank transfer: records it, holds the seats longer, back to the booking page with the QR. */
+export async function chooseTransfer(formData: FormData): Promise<void> {
+  const code = String(formData.get("code") ?? "");
+  const token = String(formData.get("token") ?? "");
+  const locale = localeOf(formData);
+  let ok = false;
+  try {
+    ok = isTransferAvailable() && (await getDeposits().chooseTransfer({ code, token })).status === "ok";
+  } catch {
+    ok = false;
+  }
+  const back = `/booking/${encodeURIComponent(code)}?t=${encodeURIComponent(token)}`;
+  redirect(localePath(locale, ok ? back : `${back}&pay=failed`));
 }

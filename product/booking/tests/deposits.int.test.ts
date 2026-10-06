@@ -38,6 +38,7 @@ const deposits = createDepositService({
   mail: { send: async (m) => void sent.push(m) },
   bookings: bookingService,
   vnpay,
+  transferHoldMinutes: 120,
   tourTitle: async () => "Ninh Bình 1 ngày",
   now: () => clock,
 });
@@ -171,6 +172,7 @@ describe("booking deposits (VNPay)", () => {
       logger,
       mail: { send: async (m) => void sent.push(m) },
       bookings: bookingService,
+      transferHoldMinutes: 120,
       vnpay: {
         ...vnpay,
         query: async (input) => {
@@ -207,5 +209,59 @@ describe("booking deposits (VNPay)", () => {
     await deposits.handleIpn(ipn(req), LINKS);
     expect(await deposits.returnStatus(ipn(req))).toEqual({ valid: true, code, status: "paid" });
     expect((await deposits.returnStatus({ ...ipn(req), vnp_Amount: "1" })).valid).toBe(false);
+  });
+});
+
+describe("booking deposits (bank transfer, VietQR)", () => {
+  it("choosing a transfer holds the seats for the transfer time; staff record it once; guest + team emailed", async () => {
+    const { code, token } = await holdOn(10, 2);
+    expect(await deposits.chooseTransfer({ code, token })).toEqual({ status: "ok" });
+    expect(await deposits.chooseTransfer({ code, token })).toEqual({ status: "ok" }); // twice: still one attempt
+    expect((await status(code)).holdExpiresAt).toEqual(new Date(clock.getTime() + 120 * 60_000));
+    const [booking] = await db.select().from(bookings).where(eq(bookings.code, code));
+    expect(await deposits.transferPending(booking!.id)).toBe(true);
+    expect(await db.select().from(bookingPayments)).toHaveLength(1);
+
+    // 1 hour later (past the 15-minute online hold): still held.
+    clock = new Date(clock.getTime() + 60 * 60_000);
+    expect((await bookingService.listDepartures("ninh-binh-day-tour"))[0]!.seatsLeft).toBe(8);
+
+    expect(await deposits.receiveTransfer(code, { amountVnd: 599_000, bankRef: "FT1" }, LINKS)).toBe("too_little");
+    expect(await deposits.receiveTransfer(code, { amountVnd: 600_000, bankRef: " FT26100112345 " }, LINKS)).toBe("deposit_paid");
+    expect(await status(code)).toMatchObject({ status: "deposit_paid", depositPaidAt: clock });
+    const [payment] = await db.select().from(bookingPayments);
+    expect(payment).toMatchObject({ method: "transfer", status: "paid", amountVnd: 600_000, providerTxnNo: "FT26100112345", linkToken: null });
+    expect(sent.map((m) => m.kind)).toEqual(["booking_deposit_paid", "booking_team_paid"]);
+    expect(sent[0]!.text).toContain(`https://bacviet.example/booking/${code}?t=${token}`);
+    expect(await deposits.transferPending(booking!.id)).toBe(false);
+
+    // Recorded once: a second click changes nothing.
+    expect(await deposits.receiveTransfer(code, { amountVnd: 600_000, bankRef: "FT2" }, LINKS)).toBe("not_payable");
+    expect(sent).toHaveLength(2);
+  });
+
+  it("a transfer the guest never chose on the site (and after the hold expired) is still recorded", async () => {
+    const { code } = await holdOn(10);
+    clock = new Date(clock.getTime() + 60 * 60_000);
+    expect(await deposits.receiveTransfer(code, { amountVnd: 300_000, bankRef: "" }, LINKS)).toBe("deposit_paid");
+    expect((await status(code)).status).toBe("deposit_paid");
+  });
+
+  it("late transfer with the seats gone: refund due, nothing oversold", async () => {
+    const first = await holdOn(1);
+    clock = new Date(clock.getTime() + 20 * 60_000); // first hold expired
+    const second = await bookingService.hold({ departureId: first.departure.id, name: "Minh", email: "m@example.com", phone: "0912345679", adults: "1", locale: "vi", agree: "on" }, "ip");
+    expect(second.status).toBe("held");
+    expect(await deposits.receiveTransfer(first.code, { amountVnd: 300_000, bankRef: "FT9" }, LINKS)).toBe("refund_due");
+    expect(await status(first.code)).toMatchObject({ status: "refund_due", refundDueVnd: 300_000 });
+  });
+
+  it("refuses an expired hold, a wrong token, and a paid booking; VNPay reconcile ignores transfers", async () => {
+    const { code, token } = await holdOn(10);
+    expect((await deposits.chooseTransfer({ code, token: "x".repeat(32) })).status).toBe("not_found");
+    await deposits.chooseTransfer({ code, token });
+    clock = new Date(clock.getTime() + 3 * 60 * 60_000);
+    expect((await deposits.chooseTransfer({ code, token })).status).toBe("not_payable");
+    expect(await deposits.reconcile(LINKS)).toBe(0); // no querydr for the pending transfer (vnpay.query would throw)
   });
 });

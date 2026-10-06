@@ -7,6 +7,7 @@ import type { Db } from "@/db/client";
 import { createHash, randomBytes, randomInt } from "node:crypto";
 import { bookingPayments, bookings, departures, type Booking, type BookingPayment, type BookingSource, type BookingStatus, type Departure } from "../schema/booking";
 import { bookingStatusEmail, reminderEmail } from "./emails";
+import type { ReceiveTransferResult } from "./deposits";
 import { addDays, bookingRules, vietnamToday } from "./rules";
 import { manualBookingSchema } from "./validations";
 
@@ -15,7 +16,7 @@ export interface Actor {
   email: string;
 }
 
-/** "attention" = what staff must act on: refunds owed and paid deposits not yet confirmed. */
+/** "attention" = what staff must act on: refunds owed, paid deposits not yet confirmed, bank transfers to check. */
 export type BookingFilter = BookingStatus | "attention" | "all";
 
 export interface AdminBookingRow extends Pick<Booking, "id" | "code" | "status" | "name" | "email" | "phone" | "seats" | "totalVnd" | "depositVnd" | "refundDueVnd" | "refundedAt" | "createdAt" | "source" | "externalRef"> {
@@ -38,6 +39,8 @@ export interface BookingAdmin {
   cancel(actor: Actor, code: string, input: { reason: string; refund: boolean }): Promise<boolean>;
   markRefunded(actor: Actor, code: string, input: { note: string }): Promise<boolean>;
   setStaffNote(actor: Actor, code: string, note: string): Promise<boolean>;
+  /** Staff saw the bank transfer for a held (or just expired) booking: records the deposit. Audited. */
+  receiveTransfer(actor: Actor, code: string, input: { amountVnd: number; bankRef: string }): Promise<ReceiveTransferResult>;
   /**
    * Staff-entered booking (phone, Zalo, OTA), paid outside the website. Takes seats under the same departure lock as
    * online holds, so the website and OTAs never oversell. Audited.
@@ -66,6 +69,17 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/;
 export const REMINDER_DAYS = 3;
 const ACTIVE = ["deposit_paid", "confirmed"] as const;
 
+/** Paid deposits to confirm, refunds owed, and transfers the guest chose that staff have not recorded yet. */
+const needsAttention = () =>
+  or(
+    eq(bookings.status, "deposit_paid"),
+    and(sql`${bookings.refundDueVnd} > 0`, isNull(bookings.refundedAt)),
+    and(
+      inArray(bookings.status, ["held", "expired"]),
+      sql`exists (select 1 from ${bookingPayments} p where p.booking_id = ${bookings.id} and p.method = 'transfer' and p.status = 'pending')`,
+    ),
+  )!;
+
 const like = (q: string) => `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
 
 export function createBookingAdmin(deps: {
@@ -75,6 +89,8 @@ export function createBookingAdmin(deps: {
   audit?: ProductContext["audit"];
   tourTitle: (slug: string, locale: string) => Promise<string>;
   tourExists: (slug: string) => Promise<boolean>;
+  /** Deposit service's receiveTransfer with the site links bound (emails). */
+  receiveTransfer?: (code: string, input: { amountVnd: number; bankRef: string }) => Promise<ReceiveTransferResult>;
   now?: () => Date;
 }): BookingAdmin {
   const { db, logger } = deps;
@@ -107,7 +123,7 @@ export function createBookingAdmin(deps: {
   return {
     async list({ filter = "attention", source, tourSlug, from, to, query, page = 1, pageSize = 25 } = {}) {
       const where: SQL[] = [];
-      if (filter === "attention") where.push(or(eq(bookings.status, "deposit_paid"), and(sql`${bookings.refundDueVnd} > 0`, isNull(bookings.refundedAt)))!);
+      if (filter === "attention") where.push(needsAttention());
       else if (filter !== "all") where.push(eq(bookings.status, filter));
       if (tourSlug) where.push(eq(departures.tourSlug, tourSlug));
       if (source) where.push(eq(bookings.source, source));
@@ -194,6 +210,17 @@ export function createBookingAdmin(deps: {
         await sendToGuest(updated, bookingStatusEmail({ booking: updated, departure: row.d, title: await deps.tourTitle(row.d.tourSlug, updated.locale), kind: "cancelled" }));
       }
       return changed;
+    },
+
+    async receiveTransfer(actor, code, input) {
+      if (!deps.receiveTransfer || !CODE.test(code)) return "not_found";
+      const receive = deps.receiveTransfer;
+      let result: ReceiveTransferResult = "not_found"; // set inside the audited work
+      await audited(actor, "booking.transfer_received", code, { amountVnd: input.amountVnd, bankRef: input.bankRef.trim().slice(0, 100) }, async () => {
+        result = await receive(code, input);
+        return result === "deposit_paid" || result === "refund_due";
+      });
+      return result;
     },
 
     async markRefunded(actor, code, { note }) {
@@ -350,7 +377,7 @@ export function createBookingAdmin(deps: {
       const [attention] = await db
         .select({ n: count() })
         .from(bookings)
-        .where(or(eq(bookings.status, "deposit_paid"), and(sql`${bookings.refundDueVnd} > 0`, isNull(bookings.refundedAt))));
+        .where(needsAttention());
       const upcoming = await db
         .select({ date: departures.date, tourSlug: departures.tourSlug, seats: sql<number>`sum(${bookings.seats})::int` })
         .from(bookings)

@@ -48,6 +48,19 @@ Neon hiện ở `us-east-1` (Mỹ), mỗi truy vấn đi vòng nửa vòng trái
 
 Một file duy nhất: `config/contact.ts`. Gửi dev: tên pháp nhân, MST, số và loại giấy phép lữ hành, người đại diện, địa chỉ, hotline, Zalo, WhatsApp, email, giờ làm việc. Sau khi thông báo website với Bộ Công Thương: link xác nhận (`moitNoticeUrl`) để hiện logo.
 
+## 7. Chuyển khoản VietQR (nhận cọc qua ngân hàng)
+
+**Trước khi bán thật:** sửa `config/bank-transfer.ts`: mã BIN ngân hàng, số tài khoản, tên chủ tài khoản (viết hoa, không dấu, đúng như ngân hàng hiển thị), rồi đặt `demo: false`. Khi còn `demo: true`, lựa chọn chuyển khoản chỉ hiện ở chế độ VNPay sandbox, kèm cảnh báo "KHÔNG chuyển tiền thật".
+
+**Hằng ngày (nhân viên):**
+1. Khách chọn "Chuyển khoản ngân hàng" trên trang booking: chỗ được giữ 2 giờ; đơn hiện ở mục **Cần xử lý** trong /admin/bookings.
+2. Khi tiền vào tài khoản, tìm đơn theo **nội dung chuyển khoản** (mã đơn không có gạch ngang, ví dụ `BV7K3Q9X` = đơn `BV-7K3Q9X`).
+3. Mở đơn → khung **Đã nhận chuyển khoản** → kiểm tra số tiền, nhập mã giao dịch ngân hàng → **Ghi nhận tiền cọc**. Khách nhận email xác nhận cọc ngay; thao tác được ghi lịch sử.
+4. Tiền ít hơn tiền cọc: hệ thống không ghi nhận, liên hệ khách chuyển thêm. Tiền đến muộn khi chỗ đã hết: đơn chuyển sang **Chờ hoàn tiền**.
+5. Khách chuyển khoản mà không bấm chọn trên web (hoặc sau khi hết giờ giữ chỗ): vẫn ghi nhận được ở trang đơn như trên.
+
+Tự động xác nhận qua webhook ngân hàng (Casso, SePay…) có thể thêm sau khi đăng ký dịch vụ.
+
 ## Chi phí cố định ước tính
 
 | Hạng mục | Ước tính/tháng |

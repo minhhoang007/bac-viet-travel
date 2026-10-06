@@ -82,18 +82,21 @@ export const bookings = pgTable(
 );
 
 export const PAYMENT_STATUSES = ["pending", "paid", "failed"] as const;
+/** vnpay: online payment (IPN). transfer: bank transfer by VietQR, confirmed by staff. */
+export const PAYMENT_METHODS = ["vnpay", "transfer"] as const;
 
-/** One VNPay attempt for a booking deposit. A guest may retry after a failed attempt. */
+/** One deposit attempt for a booking (VNPay, or a bank transfer the guest chose). A guest may retry after a failure. */
 export const bookingPayments = pgTable(
   "booking_payments",
   {
     id: id(),
     bookingId: uuid("booking_id").notNull().references(() => bookings.id, { onDelete: "cascade" }),
-    /** vnp_TxnRef we send (unique per attempt). */
+    method: text("method", { enum: PAYMENT_METHODS }).notNull().default("vnpay"),
+    /** vnp_TxnRef we send (unique per attempt); for a transfer, the booking code without "BV-" plus "CK". */
     txnRef: text("txn_ref").notNull(),
     amountVnd: integer("amount_vnd").notNull(),
     status: text("status", { enum: PAYMENT_STATUSES }).notNull().default("pending"),
-    /** VNPay transaction number and response code from the IPN. */
+    /** VNPay transaction number and response code from the IPN; for a transfer, the bank reference staff entered. */
     providerTxnNo: text("provider_txn_no"),
     responseCode: text("response_code"),
     bankCode: text("bank_code"),

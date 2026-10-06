@@ -4,7 +4,7 @@ import type { Logger } from "@/core/logger";
 import type { MailPort } from "@/core/ports/mail";
 import type { OneTimePaymentProvider } from "@/core/ports/payments";
 import type { Db } from "@/db/client";
-import { bookingPayments, bookings, departures, type Booking, type Departure } from "../schema/booking";
+import { bookingPayments, bookings, departures, type Booking, type BookingPayment, type Departure } from "../schema/booking";
 import { depositEmails } from "./emails";
 import type { BookingService } from "./service";
 
@@ -12,6 +12,12 @@ import type { BookingService } from "./service";
 export type IpnResult = { RspCode: "00" | "01" | "02" | "04" | "97" | "99"; Message: string };
 
 export type StartDepositResult = { status: "redirect"; url: string } | { status: "not_found" } | { status: "not_payable" };
+export type ChooseTransferResult = { status: "ok" } | { status: "not_found" } | { status: "not_payable" };
+/** deposit_paid / refund_due: recorded (and the guest emailed). too_little: less than the deposit, nothing recorded. */
+export type ReceiveTransferResult = "deposit_paid" | "refund_due" | "not_found" | "not_payable" | "too_little";
+
+/** The transfer note of a booking: its code without the dash (banking apps drop it). */
+export const transferNote = (code: string) => code.replace(/^BV-/, "BV");
 
 export interface DepositService {
   /** Creates a payment attempt for a held booking and returns the VNPay URL. */
@@ -23,6 +29,18 @@ export interface DepositService {
    * confirms the paid ones as the IPN would have (an IPN can be lost). Returns how many were confirmed.
    */
   reconcile(links: { siteUrl: string; teamEmail?: string }): Promise<number>;
+  /**
+   * The guest pays by bank transfer (VietQR): records a pending transfer and holds the seats for the transfer hold
+   * time, so staff have time to see the money arrive.
+   */
+  chooseTransfer(input: { code: string; token: string }): Promise<ChooseTransferResult>;
+  /** Whether the guest chose a bank transfer that staff have not recorded yet. */
+  transferPending(bookingId: string): Promise<boolean>;
+  /**
+   * Staff saw the transfer on the bank account: records the deposit exactly once, like a VNPay IPN (late money with
+   * the seats gone becomes refund_due). Callers audit it.
+   */
+  receiveTransfer(code: string, input: { amountVnd: number; bankRef: string }, links: { siteUrl: string; teamEmail?: string }): Promise<ReceiveTransferResult>;
   /** Return URL (display only): signature check + what we know about that attempt. */
   returnStatus(params: Record<string, string>): Promise<{ valid: boolean; code?: string; status: "paid" | "failed" | "pending" | "unknown" }>;
 }
@@ -36,6 +54,8 @@ export function createDepositService(deps: {
   mail: MailPort;
   bookings: BookingService;
   vnpay?: OneTimePaymentProvider;
+  /** Seats stay held this long once the guest chooses a bank transfer. */
+  transferHoldMinutes: number;
   tourTitle: (slug: string, locale: string) => Promise<string>;
   now?: () => Date;
 }): DepositService {
@@ -51,16 +71,19 @@ export function createDepositService(deps: {
     }
   };
 
-  /** The IPN once its signature is checked (or a querydr result): confirms the attempt exactly once. */
-  async function confirm(params: Record<string, string>, links: { siteUrl: string; teamEmail?: string }): Promise<IpnResult> {
-    try {
-      const [payment] = await db.select().from(bookingPayments).where(eq(bookingPayments.txnRef, params.vnp_TxnRef ?? ""));
-      if (!payment) return { RspCode: "01", Message: "Order not found" };
-      if (Number(params.vnp_Amount) !== payment.amountVnd * 100) return { RspCode: "04", Message: "Invalid amount" };
-      if (payment.status !== "pending") return { RspCode: "02", Message: "Order already confirmed" };
-      const success = params.vnp_ResponseCode === "00" && params.vnp_TransactionStatus === "00";
+  type Settled = { kind: "duplicate" | "failed" } | { kind: "deposit_paid" | "refund_due"; booking: Booking; departure: Departure; token: string | null };
 
-      const outcome = await db.transaction(async (tx) => {
+  /**
+   * Records the result of one pending attempt exactly once (VNPay IPN, querydr, or a transfer staff saw). Money that
+   * arrived keeps the seats when it still can; otherwise it is owed back (refund_due). Emails the guest and the team.
+   */
+  async function settle(
+    payment: BookingPayment,
+    result: { success: boolean; providerTxnNo: string | null; responseCode: string | null; bankCode: string | null },
+    links: { siteUrl: string; teamEmail?: string },
+  ): Promise<Settled> {
+    const { success, ...fields } = result;
+    const outcome: Settled = await db.transaction(async (tx) => {
         const at = now();
         const [b] = await tx.select().from(bookings).where(eq(bookings.id, payment.bookingId));
         // Same lock order as holds (departure first), so the two never deadlock.
@@ -69,14 +92,7 @@ export function createDepositService(deps: {
         // Claim the attempt exactly once (a duplicate IPN loses this race and changes nothing).
         const claimed = await tx
           .update(bookingPayments)
-          .set({
-            status: success ? "paid" : "failed",
-            providerTxnNo: params.vnp_TransactionNo ?? null,
-            responseCode: params.vnp_ResponseCode ?? null,
-            bankCode: params.vnp_BankCode ?? null,
-            paidAt: success ? at : null,
-            linkToken: null,
-          })
+          .set({ status: success ? "paid" : "failed", ...fields, paidAt: success ? at : null, linkToken: null })
           .where(and(eq(bookingPayments.id, payment.id), eq(bookingPayments.status, "pending")))
           .returning({ id: bookingPayments.id, linkToken: bookingPayments.linkToken });
         if (claimed.length === 0) return { kind: "duplicate" as const };
@@ -105,11 +121,29 @@ export function createDepositService(deps: {
           .returning();
         return { kind: status, booking: updated ?? booking!, departure: departure!, token: payment.linkToken };
       });
+    if (outcome.kind === "deposit_paid") await notify(outcome.booking, outcome.departure, { ...links, token: outcome.token }, "paid");
+    if (outcome.kind === "refund_due") await notify(outcome.booking, outcome.departure, { ...links, token: outcome.token }, "refund_due");
+    return outcome;
+  }
 
+  /** The IPN once its signature is checked (or a querydr result): confirms the attempt exactly once. */
+  async function confirm(params: Record<string, string>, links: { siteUrl: string; teamEmail?: string }): Promise<IpnResult> {
+    try {
+      const [payment] = await db
+        .select()
+        .from(bookingPayments)
+        .where(and(eq(bookingPayments.txnRef, params.vnp_TxnRef ?? ""), eq(bookingPayments.method, "vnpay")));
+      if (!payment) return { RspCode: "01", Message: "Order not found" };
+      if (Number(params.vnp_Amount) !== payment.amountVnd * 100) return { RspCode: "04", Message: "Invalid amount" };
+      if (payment.status !== "pending") return { RspCode: "02", Message: "Order already confirmed" };
+      const success = params.vnp_ResponseCode === "00" && params.vnp_TransactionStatus === "00";
+      const outcome = await settle(
+        payment,
+        { success, providerTxnNo: params.vnp_TransactionNo ?? null, responseCode: params.vnp_ResponseCode ?? null, bankCode: params.vnp_BankCode ?? null },
+        links,
+      );
       if (outcome.kind === "duplicate") return { RspCode: "02", Message: "Order already confirmed" };
       logger.info("booking.deposit_ipn", { txnRef: payment.txnRef, outcome: outcome.kind });
-      if (outcome.kind === "deposit_paid") await notify(outcome.booking, outcome.departure, { ...links, token: outcome.token }, "paid");
-      if (outcome.kind === "refund_due") await notify(outcome.booking, outcome.departure, { ...links, token: outcome.token }, "refund_due");
       return OK("Confirm Success");
     } catch (error) {
       logger.error("booking.deposit_ipn_failed", { error });
@@ -158,7 +192,7 @@ export function createDepositService(deps: {
         .select({ txnRef: bookingPayments.txnRef, createdAt: bookingPayments.createdAt })
         .from(bookingPayments)
         .innerJoin(bookings, eq(bookings.id, bookingPayments.bookingId))
-        .where(and(eq(bookingPayments.status, "pending"), lte(bookings.holdExpiresAt, at), gt(bookingPayments.createdAt, new Date(at.getTime() - DAY_MS))))
+        .where(and(eq(bookingPayments.method, "vnpay"), eq(bookingPayments.status, "pending"), lte(bookings.holdExpiresAt, at), gt(bookingPayments.createdAt, new Date(at.getTime() - DAY_MS))))
         .limit(50);
       let confirmed = 0;
       for (const payment of pending) {
@@ -171,6 +205,55 @@ export function createDepositService(deps: {
       }
       if (confirmed) logger.warn("booking.deposit_reconciled", { count: confirmed }); // an IPN was lost
       return confirmed;
+    },
+
+    async chooseTransfer({ code, token }) {
+      const booking = await deps.bookings.getForGuest(code, token);
+      if (!booking) return { status: "not_found" };
+      if (booking.status !== "held" || booking.isExpired) return { status: "not_payable" };
+      const at = now();
+      const until = new Date(at.getTime() + deps.transferHoldMinutes * 60_000);
+      await db.transaction(async (tx) => {
+        // One transfer attempt per booking; choosing again keeps it (and its token for the paid email).
+        await tx
+          .insert(bookingPayments)
+          .values({ bookingId: booking.id, method: "transfer", txnRef: `${transferNote(booking.code)}CK`, amountVnd: booking.depositVnd, linkToken: token })
+          .onConflictDoNothing();
+        // Extend only a live hold, never shorten it.
+        await tx
+          .update(bookings)
+          .set({ holdExpiresAt: sql`greatest(${bookings.holdExpiresAt}, ${until.toISOString()}::timestamptz)` })
+          .where(and(eq(bookings.id, booking.id), eq(bookings.status, "held"), gt(bookings.holdExpiresAt, at)));
+      });
+      logger.info("booking.transfer_chosen", { code: booking.code });
+      return { status: "ok" };
+    },
+
+    async transferPending(bookingId) {
+      const [row] = await db
+        .select({ id: bookingPayments.id })
+        .from(bookingPayments)
+        .where(and(eq(bookingPayments.bookingId, bookingId), eq(bookingPayments.method, "transfer"), eq(bookingPayments.status, "pending")));
+      return Boolean(row);
+    },
+
+    async receiveTransfer(code, { amountVnd, bankRef }, links) {
+      const [booking] = await db.select().from(bookings).where(eq(bookings.code, code));
+      if (!booking) return "not_found";
+      if (booking.status !== "held" && booking.status !== "expired") return "not_payable";
+      if (!Number.isInteger(amountVnd) || amountVnd < booking.depositVnd) return "too_little";
+      const txnRef = `${transferNote(booking.code)}CK`;
+      // The guest may have transferred without choosing it on the site: staff record it all the same.
+      await db.insert(bookingPayments).values({ bookingId: booking.id, method: "transfer", txnRef, amountVnd }).onConflictDoNothing();
+      const [payment] = await db
+        .update(bookingPayments)
+        .set({ amountVnd })
+        .where(and(eq(bookingPayments.txnRef, txnRef), eq(bookingPayments.status, "pending")))
+        .returning();
+      if (!payment) return "not_payable"; // already recorded
+      const outcome = await settle(payment, { success: true, providerTxnNo: bankRef.trim().slice(0, 100) || null, responseCode: null, bankCode: null }, links);
+      logger.info("booking.transfer_received", { code, outcome: outcome.kind });
+      return outcome.kind === "deposit_paid" || outcome.kind === "refund_due" ? outcome.kind : "not_payable";
     },
 
     async returnStatus(params) {
