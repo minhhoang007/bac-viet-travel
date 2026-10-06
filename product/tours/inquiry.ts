@@ -4,7 +4,7 @@ import type { MailPort } from "@/core/ports/mail";
 import type { RateLimiter } from "@/core/security/rate-limit";
 
 /** Booking request from a tour page. The team confirms availability and price by phone / Zalo / WhatsApp / email. */
-export const inquirySchema = z.object({
+const inquirySchema = z.object({
   tour: z.string().min(1, "required").max(120, "too_long"),
   name: z.string().trim().min(1, "required").max(100, "too_long"),
   email: z.email("invalid_email").max(200, "too_long"),

@@ -25,7 +25,7 @@ import { breadcrumbLd } from "@/product/seo";
 import { PreviewBanner } from "@/components/content/preview-banner";
 import { Notice } from "@/components/feedback/notice";
 import { getAppContent } from "@/content";
-import { formatPrice } from "@/product/tours/format";
+import { formatAmount, formatPrice } from "@/product/tours/format";
 import { isDestination } from "@/product/tours/model";
 import { DestinationPage, destinationMetadata } from "../_destination";
 import { getTourAdminContent, tourProblemLabel } from "@/product/tours/admin-content";
@@ -92,8 +92,7 @@ export default async function TourPage({ params }: Props) {
   const url = localizedUrl(site, locale, `/tours/${slug}`);
   const price = formatPrice(tour, locale);
   const pricing = { ...DEFAULT_TOUR_PRICING, ...tour.pricing };
-  // VND amounts in the tour's display currency (USD pages convert at the tour's own VND/USD ratio).
-  const money = (vnd: number) => (locale === "vi" ? formatVnd(vnd, locale) : formatPrice({ price: { vnd, usd: Math.round((tour.price.usd * vnd) / tour.price.vnd) } }, locale));
+  const money = (vnd: number) => formatAmount(vnd, tour.price, locale);
   const duration = c.tours.days(tour.days, tour.nights);
   const related = catalog.related(tour);
   const facts = [

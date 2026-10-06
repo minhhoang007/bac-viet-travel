@@ -49,7 +49,7 @@ export interface PassengerRow {
 }
 
 /** Rows of one booking, travellers in party order (adults, children, infants). */
-export function passengerRows(b: Booking): PassengerRow[] {
+function passengerRows(b: Booking): PassengerRow[] {
   const base = { code: b.code, contact: b.name, phone: b.phone, note: b.note, status: b.status };
   const people = b.adults + b.children + b.infants;
   if (b.travellers.length === 0) return [{ ...base, name: b.name, birthYear: null, kind: null, missing: people }];
@@ -95,7 +95,7 @@ const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 const CODE = /^BV-[A-Z2-9]{6}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
-export const REMINDER_DAYS = 3;
+const REMINDER_DAYS = 3;
 const ACTIVE = ["deposit_paid", "confirmed"] as const;
 
 /** Paid deposits to confirm, refunds owed, and transfers the guest chose that staff have not recorded yet. */
@@ -456,9 +456,12 @@ export function createBookingAdmin(deps: {
           ),
         )
         .returning();
+      const byId = new Map(
+        claimed.length ? (await db.select().from(departures).where(inArray(departures.id, [...new Set(claimed.map((b) => b.departureId))]))).map((d) => [d.id, d]) : [],
+      );
       for (const b of claimed) {
-        const [d] = await db.select().from(departures).where(eq(departures.id, b.departureId));
-        await send(reminderEmail({ booking: b, departure: d!, title: await deps.tourTitle(d!.tourSlug, b.locale) }), b.code);
+        const d = byId.get(b.departureId)!;
+        await send(reminderEmail({ booking: b, departure: d, title: await deps.tourTitle(d.tourSlug, b.locale) }), b.code);
       }
       if (claimed.length) logger.info("booking.reminders_sent", { count: claimed.length });
       return claimed.length;

@@ -3,30 +3,19 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import postgres from "postgres";
 import { e2eServerEnv } from "./server-env";
+import { signInStaff } from "./staff";
 
 const sql = postgres(e2eServerEnv.DATABASE_URL!, { max: 1, onnotice: () => {} });
 test.afterAll(() => sql.end());
 test.describe.configure({ mode: "serial" });
 
 const sessions = new Map<string, Page>();
-let ip = 70;
 
 async function signIn(browser: Browser, email: string, role: "editor" | "admin"): Promise<Page> {
   const existing = sessions.get(email);
   if (existing) return existing;
-  const page = await (await browser.newContext({ extraHTTPHeaders: { "x-forwarded-for": `198.51.100.${ip++}` } })).newPage();
-  await page.goto("/login");
-  await page.fill("#login-email", email);
-  await page.getByRole("button", { name: "Gửi liên kết đăng nhập" }).click();
-  let token: string | undefined;
-  for (let i = 0; i < 30 && !token; i++) {
-    [{ identifier: token } = { identifier: undefined }] = await sql<{ identifier: string }[]>`
-      select regexp_replace(identifier, '^magic-link:', '') as identifier from verifications where value like ${`%"${email}"%`} order by created_at desc limit 1`;
-    if (!token) await new Promise((r) => setTimeout(r, 300));
-  }
-  await page.goto(`/api/auth/magic-link/verify?token=${token}&callbackURL=%2Fdashboard`);
-  await expect(page).toHaveURL(/\/dashboard$/);
-  await sql`update users set role = ${role} where email = ${email}`;
+  const page = await (await browser.newContext()).newPage();
+  await signInStaff(page, sql, email, role);
   sessions.set(email, page);
   return page;
 }
