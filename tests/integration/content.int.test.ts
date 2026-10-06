@@ -62,6 +62,9 @@ describe("content workflow", () => {
     expect(edited.status).toBe("draft");
     expect(await content.getBySlug("tour", "ha-long")).toMatchObject({ slug: "ha-long", data: { title: "Hạ Long" } });
     expect(await content.getBySlug("tour", "vinh-ha-long")).toBeNull();
+    // Draft Mode: the working copy by its new slug; the old slug gives the live copy, flagged as not a draft.
+    expect(await content.getBySlug("tour", "vinh-ha-long", { draft: true })).toMatchObject({ draft: true, data: { title: "Vịnh Hạ Long" } });
+    expect(await content.getBySlug("tour", "ha-long", { draft: true })).toMatchObject({ draft: false, data: { title: "Hạ Long" } });
     // The old live slug stays reserved: another item cannot take it.
     await expect(content.create(editor, { type: "tour", slug: "ha-long", data: {} })).rejects.toMatchObject({ code: "CONFLICT" });
 
@@ -73,6 +76,8 @@ describe("content workflow", () => {
     expect(await content.findMoved("tour", "vinh-ha-long")).toBeNull();
     expect(await content.findMoved("tour", "sapa")).toBeNull();
     expect(await content.findMoved("blog", "ha-long")).toBeNull();
+    expect(await content.listMoved("tour")).toEqual([{ from: "ha-long", to: "vinh-ha-long" }]);
+    expect(await content.listMoved("blog")).toEqual([]);
   });
 
   it("a hidden item has no redirect from its old URL", async () => {
@@ -82,6 +87,7 @@ describe("content workflow", () => {
     const moved = await content.approve(admin, item.id, { revision: edited.revision });
     await content.setHidden(admin, item.id, { revision: moved.revision, hidden: true });
     expect(await content.findMoved("tour", "ha-long")).toBeNull();
+    expect(await content.listMoved("tour")).toEqual([]);
   });
 
   it("rejects a stale revision (two people editing) with CONFLICT", async () => {
