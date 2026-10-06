@@ -20,6 +20,7 @@ export function depositEmails(input: {
   const locale = b.locale === "en" ? "en" : "vi";
   const prefix = locale === "en" ? "/en" : "";
   const link = input.token ? `${input.siteUrl}${prefix}/booking/${b.code}?t=${input.token}` : null;
+  const voucher = input.token ? `${input.siteUrl}${prefix}/booking/${b.code}/voucher?t=${input.token}` : null;
   const day = formatDay(d.date, locale);
   const guests = b.adults + b.children + b.infants;
   const rest = formatVnd(b.totalVnd - b.depositVnd, locale);
@@ -44,6 +45,7 @@ export function depositEmails(input: {
               ``,
               link ? `Xem đơn của bạn: ${link}` : `Mã đơn của bạn: ${b.code}`,
               ...(link && b.travellers.length === 0 ? [getBookingContent("vi").travellers.emailLine(`${link}#travellers-title`)] : []),
+              ...(voucher ? [getBookingContent("vi").voucher.emailLine(voucher)] : []),
               ``,
               `Chúng tôi sẽ liên hệ xác nhận điểm đón trước ngày đi.`,
             ].join("\n"),
@@ -76,6 +78,7 @@ export function depositEmails(input: {
               ``,
               link ? `View your booking: ${link}` : `Your booking code: ${b.code}`,
               ...(link && b.travellers.length === 0 ? [getBookingContent("en").travellers.emailLine(`${link}#travellers-title`)] : []),
+              ...(voucher ? [getBookingContent("en").voucher.emailLine(voucher)] : []),
               ``,
               `We will contact you to confirm the pick-up point before departure.`,
             ].join("\n"),
