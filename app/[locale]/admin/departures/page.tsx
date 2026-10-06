@@ -41,7 +41,7 @@ export default async function AdminDeparturesPage({ params, searchParams }: Prop
     <div className="grid gap-6">
       <h1 className="text-2xl font-bold">{c.departures}</h1>
       {sp.result && (
-        <p role="status" className={`rounded-md border p-3 text-sm ${sp.result === "done" ? "border-green-300 bg-green-50 text-green-900" : "border-red-300 bg-red-50 text-red-900"}`}>
+        <p role="status" className={`rounded-md border p-3 text-sm ${sp.result === "done" ? "border-success/40 bg-success/10 text-foreground" : "border-danger/40 bg-danger/10 text-foreground"}`}>
           {sp.result === "done" ? c.result.done : c.result.failed}
         </p>
       )}

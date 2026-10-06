@@ -1,11 +1,13 @@
 "use client";
 
-import { useActionState, useState, useSyncExternalStore } from "react";
+import { useActionState, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/components/ui/cn";
+import Image from "next/image";
+import { ShieldCheck } from "lucide-react";
 import type { Locale } from "@/config/app";
 import { localePath } from "@/core/i18n/routing";
 import { formatDay, formatVnd, getBookingContent } from "../booking/content";
@@ -38,6 +40,8 @@ export interface BookingFormProps {
   initialDepartureId?: string;
   /** Adults preselected from the search (?guests=). */
   initialAdults?: number;
+  /** Shown at the top of the summary. */
+  tour?: { title: string; image: string; duration: string };
   locale: Locale;
   /** Set: private tour form (no departure list). */
   privateTour?: PrivateTourOption;
@@ -50,6 +54,7 @@ export function BookingForm({
   departures,
   initialDepartureId,
   initialAdults,
+  tour,
   locale,
   privateTour,
 }: BookingFormProps) {
@@ -65,6 +70,13 @@ export function BookingForm({
   const [children, setChildren] = useState(0);
   // Prices and limits update only once React runs; tests wait for this marker before typing.
   const hydrated = useSyncExternalStore(noopSubscribe, () => true, () => false);
+  // The date list scrolls inside its box: bring the preselected date (from the tour page) into view, once.
+  const list = useRef<HTMLUListElement>(null);
+  useEffect(() => {
+    const box = list.current;
+    const picked = box?.querySelector<HTMLElement>('[aria-pressed="true"]');
+    if (box && picked) box.scrollTop = picked.offsetTop - box.offsetTop - 8;
+  }, []);
   const [date, setDate] = useState(privateTour?.minDate ?? "");
   const group = departures.find((d) => d.id === departureId);
   // One shape for both modes: the chosen day, and the quote for it.
@@ -101,7 +113,7 @@ export function BookingForm({
     error(name) && (
       <span
         id={`booking-${name}-error`}
-        className="mt-1 block text-sm text-red-700"
+        className="mt-1 block text-sm text-danger"
       >
         {error(name)}
       </span>
@@ -142,7 +154,7 @@ export function BookingForm({
       <div className="grid gap-8">
 {privateTour ? (
         <fieldset>
-          <legend className="text-lg font-semibold">{t.privateDateTitle}</legend>
+          <legend className="flex items-center text-lg font-semibold"><span className="mr-2 inline-grid size-7 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground" aria-hidden="true">1</span>{t.privateDateTitle}</legend>
           <div className="mt-3 grid gap-4 sm:grid-cols-[220px_1fr]">
             <div>
               <Label htmlFor="booking-date">{t.privateDate}</Label>
@@ -177,10 +189,11 @@ export function BookingForm({
 
         ) : (
         <fieldset>
-          <legend className="text-lg font-semibold">{t.departuresTitle}</legend>
+          <legend className="flex items-center text-lg font-semibold"><span className="mr-2 inline-grid size-7 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground" aria-hidden="true">1</span>{t.departuresTitle}</legend>
           <ul
-            className="mt-3 grid gap-2 sm:grid-cols-2"
+            className="mt-3 grid max-h-[28rem] gap-2 overflow-y-auto rounded-lg p-0.5 sm:grid-cols-2"
             data-testid="departures"
+            ref={list}
           >
             {departures.map((d) => {
               const selected = d.id === departureId;
@@ -209,7 +222,7 @@ export function BookingForm({
                         className={cn(
                           "text-xs",
                           d.bookable && d.seatsLeft <= 5
-                            ? "font-semibold text-red-700"
+                            ? "font-semibold text-danger"
                             : "text-muted-foreground",
                         )}
                       >
@@ -229,42 +242,8 @@ export function BookingForm({
         )}
 
         <fieldset className="grid gap-4">
-          <legend className="text-lg font-semibold">{t.formTitle}</legend>
-          <div>
-            <Label htmlFor="booking-name">{t.name}</Label>
-            <Input
-              {...aria("name")}
-              autoComplete="name"
-              className="mt-1"
-              required
-            />
-            {message("name")}
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <Label htmlFor="booking-email">{t.email}</Label>
-              <Input
-                {...aria("email")}
-                type="email"
-                autoComplete="email"
-                className="mt-1"
-                required
-              />
-              {message("email")}
-            </div>
-            <div>
-              <Label htmlFor="booking-phone">{t.phone}</Label>
-              <Input
-                {...aria("phone")}
-                type="tel"
-                autoComplete="tel"
-                className="mt-1"
-                required
-              />
-              {message("phone")}
-            </div>
-          </div>
-          <div className="grid grid-cols-3 gap-4">
+          <legend className="flex items-center text-lg font-semibold"><span className="mr-2 inline-grid size-7 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground" aria-hidden="true">2</span>{t.guestsTitle}</legend>
+          <div className="grid grid-cols-3 items-end gap-4">
             <div>
               <Label htmlFor="booking-adults">{t.adults}</Label>
               <Input
@@ -308,6 +287,44 @@ export function BookingForm({
               {message("infants")}
             </div>
           </div>
+        </fieldset>
+
+        <fieldset className="grid gap-4">
+          <legend className="flex items-center text-lg font-semibold"><span className="mr-2 inline-grid size-7 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground" aria-hidden="true">3</span>{t.formTitle}</legend>
+          <div>
+            <Label htmlFor="booking-name">{t.name}</Label>
+            <Input
+              {...aria("name")}
+              autoComplete="name"
+              className="mt-1"
+              required
+            />
+            {message("name")}
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <Label htmlFor="booking-email">{t.email}</Label>
+              <Input
+                {...aria("email")}
+                type="email"
+                autoComplete="email"
+                className="mt-1"
+                required
+              />
+              {message("email")}
+            </div>
+            <div>
+              <Label htmlFor="booking-phone">{t.phone}</Label>
+              <Input
+                {...aria("phone")}
+                type="tel"
+                autoComplete="tel"
+                className="mt-1"
+                required
+              />
+              {message("phone")}
+            </div>
+          </div>
           <div>
             <Label htmlFor="booking-note">{t.note}</Label>
             <Textarea {...aria("note")} rows={3} className="mt-1" />
@@ -320,6 +337,17 @@ export function BookingForm({
         className="h-fit rounded-xl border border-border p-5 shadow-sm lg:sticky lg:top-6"
         aria-live="polite"
       >
+        {tour && (
+          <div className="mb-4 flex gap-3 border-b border-border pb-4">
+            <div className="relative size-16 shrink-0 overflow-hidden rounded-lg">
+              <Image src={tour.image} alt="" fill sizes="64px" className="object-cover" />
+            </div>
+            <div className="min-w-0 text-sm">
+              <p className="font-semibold leading-snug">{tour.title}</p>
+              <p className="mt-1 text-muted-foreground">{tour.duration}</p>
+            </div>
+          </div>
+        )}
         <h2 className="font-semibold">{t.summary}</h2>
         {chosen && q && (
           <div className="mt-3 grid gap-2 text-sm" data-testid="quote">
@@ -351,6 +379,22 @@ export function BookingForm({
             </p>
           </div>
         )}
+        <section className="mt-4 rounded-lg bg-muted p-3 text-xs" aria-labelledby="booking-policy" data-testid="booking-policy">
+          <h3 id="booking-policy" className="font-semibold">
+            {t.policyTitle}
+          </h3>
+          <ul className="mt-2 grid gap-1.5">
+            {t.policy.map((line) => (
+              <li key={line} className="flex gap-2">
+                <ShieldCheck aria-hidden="true" className="size-4 shrink-0 text-primary" />
+                {line}
+              </li>
+            ))}
+          </ul>
+          <a href={localePath(locale, "/cancellation")} target="_blank" className="mt-2 inline-block underline">
+            {t.policyLink}
+          </a>
+        </section>
         <div className="mt-4 text-sm">
           <label className="flex items-start gap-2">
             <input
@@ -374,14 +418,14 @@ export function BookingForm({
           {message("agree")}
         </div>
         {guestsOutOfRange && privateTour && (
-          <p className="mt-4 text-sm text-red-700" data-testid="private-range">
+          <p className="mt-4 text-sm text-danger" data-testid="private-range">
             {t.privateRange(privateTour.pricing.tiers[0]!.minGuests, privateTour.pricing.maxGuests)}
           </p>
         )}
         {formError && (
           <p
             role="alert"
-            className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800"
+            className="mt-4 rounded-md border border-danger/40 bg-danger/10 p-3 text-sm text-danger"
           >
             {formError}
           </p>
@@ -393,6 +437,7 @@ export function BookingForm({
         >
           {pending ? t.sending : t.submit}
         </Button>
+        <p className="mt-2 text-center text-xs text-muted-foreground">{t.nextStep}</p>
       </aside>
     </form>
   );

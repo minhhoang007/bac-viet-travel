@@ -25,6 +25,11 @@ test("tour page links to online booking; departures show live seats, sold-out da
 
 test("guest holds seats: live quote, then a private booking page with a 15-minute countdown", async ({ page }) => {
   await page.goto(`${TOUR}/book`);
+  // Step 1 of 3; the summary names the tour and states the deposit and cancellation rules.
+  await expect(page.getByTestId("booking-steps").locator('[aria-current="step"]')).toContainText("Chọn ngày & số khách");
+  await expect(page.locator("aside").getByText("Ninh Bình trong ngày", { exact: false })).toBeVisible();
+  await expect(page.getByTestId("booking-policy").locator("li")).toHaveCount(4);
+  await expect(page.locator("legend")).toHaveText([/1\s*Chọn ngày khởi hành/, /2\s*Số khách/, /3\s*Thông tin người đặt/]);
   await page.getByTestId("departures").locator("button:not(:disabled)").nth(1).click();
   await expect(page.locator("form[data-hydrated]")).toBeVisible();
   await page.getByLabel("Người lớn").fill("2");
@@ -43,6 +48,10 @@ test("guest holds seats: live quote, then a private booking page with a 15-minut
   await expect(page.locator("[data-booking-status=held]")).toBeVisible();
   await expect(page.getByTestId("countdown")).toHaveText(/^1[45]:\d{2}$/);
   await expect(page.getByTestId("booking-deposit")).toHaveText(deposit!);
+  // Step 2: deposit; what happens next and how to reach us, with the booking code.
+  await expect(page.getByTestId("booking-steps").locator('[aria-current="step"]')).toContainText("Đặt cọc");
+  await expect(page.getByTestId("next-steps").locator("li")).toHaveCount(3);
+  await expect(page.getByText(/đọc mã đơn BV-[A-Z2-9]{6}/)).toBeVisible();
 
   // The secret token is the key: without it the booking is not shown.
   const url = new URL(page.url());

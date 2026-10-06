@@ -54,7 +54,7 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
         <span className="font-mono">{b.code}</span> · <span data-admin-status={b.status}>{c.filters[b.status]}</span>
       </h1>
       {result && (
-        <p role="status" className={`rounded-md border p-3 text-sm ${result === "done" ? "border-green-300 bg-green-50 text-green-900" : "border-red-300 bg-red-50 text-red-900"}`}>
+        <p role="status" className={`rounded-md border p-3 text-sm ${result === "done" ? "border-success/40 bg-success/10 text-foreground" : "border-danger/40 bg-danger/10 text-foreground"}`}>
           {result === "done" ? c.result.done : c.result.failed}
         </p>
       )}
@@ -69,7 +69,7 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
             {row("Locale", b.locale)}
             {row(c.source, <span data-testid="detail-source">{c.sources[b.source]}{b.externalRef && ` · ${b.externalRef}`}</span>)}
           </dl>
-          {!b.guestEmails && <p className="mt-2 text-xs font-medium text-amber-700">{c.noGuestEmails}</p>}
+          {!b.guestEmails && <p className="mt-2 text-xs font-medium text-warning">{c.noGuestEmails}</p>}
         </section>
         <section className="rounded-lg border border-border p-4">
           <h2 className="font-semibold">{c.detail.trip}</h2>
@@ -88,7 +88,7 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
             {row(c.detail.deposit, formatVnd(b.depositVnd, locale))}
             {row(c.detail.paidAt, time(b.depositPaidAt))}
             {row(c.detail.rest, formatVnd(b.totalVnd - b.depositVnd, locale))}
-            {b.refundDueVnd > 0 && row(c.detail.refundDue, <strong className={refundOwed ? "text-red-700" : ""}>{formatVnd(b.refundDueVnd, locale)}</strong>)}
+            {b.refundDueVnd > 0 && row(c.detail.refundDue, <strong className={refundOwed ? "text-danger" : ""}>{formatVnd(b.refundDueVnd, locale)}</strong>)}
             {b.refundedAt && row(c.detail.refundedAt, `${time(b.refundedAt)} · ${b.refundNote ?? ""}`)}
           </dl>
         </section>
