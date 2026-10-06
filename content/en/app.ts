@@ -217,7 +217,7 @@ export const app: AppContent = {
         tags: "Tags",
         tagsHint: "Comma separated, lowercase without accents, e.g. ha-long, tips.",
         cover: "Cover image (optional)",
-        coverHint: "A path on the site (/blog/cover.jpg) or an https link.",
+        coverHint: "A path on the site, e.g. /blog/cover.jpg.",
         author: "Author (optional)",
         translationKey: "Translation key (optional)",
         translationKeyHint: "The same key on a Vietnamese and an English post marks them as translations.",

@@ -25,6 +25,9 @@ async function context() {
 const resultOf = (error: unknown) =>
   error instanceof AppError && error.code === "CONFLICT" ? (/slug/i.test(error.message) ? "slug_taken" : "conflict") : error instanceof AppError && error.code === "VALIDATION_ERROR" ? "invalid" : "failed";
 
+/** YYYY-MM-DD in the site's time zone (appConfig.timeZone): a post created at 6:00 in Hanoi is dated today. */
+const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: appConfig.timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+
 const text = (formData: FormData, key: string, max: number) => String(formData.get(key) ?? "").trim().slice(0, max);
 
 /**
@@ -62,7 +65,7 @@ export async function createPost(formData: FormData): Promise<void> {
   let target = "/admin/posts/new?result=invalid";
   if (SLUG.test(slug) && text(formData, "title", 200)) {
     try {
-      const item = await content.create(user, { type: POST_CONTENT_TYPE, slug, data: { ...postData(formData), date: new Date().toISOString().slice(0, 10) } });
+      const item = await content.create(user, { type: POST_CONTENT_TYPE, slug, data: { ...postData(formData), date: today() } });
       target = `/admin/posts/${item.id}?result=created`;
     } catch (error) {
       unstable_rethrow(error);

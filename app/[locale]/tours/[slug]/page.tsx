@@ -15,6 +15,7 @@ import { contactConfig, whatsappUrl, zaloUrl } from "@/config/contact";
 import { features } from "@/config/features";
 import { formatDay, formatVnd, getBookingContent } from "@/product/booking/content";
 import { getBooking } from "@/app/_lib/booking";
+import { getContainer } from "@/bootstrap/container";
 import { TourGallery } from "@/product/components/tour-gallery";
 import { InquiryForm } from "@/product/components/inquiry-form";
 import { TourCard } from "@/product/components/tour-card";
@@ -89,7 +90,14 @@ export default async function TourPage({ params, searchParams }: Props) {
   const related = catalog.related(tour);
   // Date and group size chosen in the search (or the tour list) preselect the departure on the booking page.
   const trip = parseTourFilters(await searchParams);
-  const departures = page.preview ? [] : await getBooking().listDepartures(slug).catch(() => []);
+  const departures = page.preview
+    ? []
+    : await getBooking()
+        .listDepartures(slug)
+        .catch((error: unknown) => {
+          getContainer().logger.error("tours.departures_failed", { slug, error });
+          return [];
+        });
   const chosen = trip.date ? departures.find((d) => d.date === trip.date && d.bookable) : undefined;
   const bookHref = (departureId?: string) => {
     const q = new URLSearchParams();
@@ -197,9 +205,9 @@ export default async function TourPage({ params, searchParams }: Props) {
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="text-sm font-semibold">{locale === "vi" ? formatVnd(d.unitPriceVnd, locale) : price}</span>
+                        <span className="text-sm font-semibold">{locale === "vi" ? formatVnd(d.unitPriceVnd, locale) : formatPrice({ price: { vnd: d.unitPriceVnd, usd: Math.round((tour.price.usd * d.unitPriceVnd) / tour.price.vnd) } }, locale)}</span>
                         {d.bookable ? (
-                          <ButtonLink href={bookHref(d.id)} className="h-9 px-4" variant={chosen?.id === d.id ? "primary" : "outline"} aria-label={c.tours.bookDate(formatDay(d.date, locale))}>
+                          <ButtonLink href={bookHref(d.id)} className="h-9 px-4" variant={chosen?.id === d.id ? "primary" : "outline"} aria-label={c.tours.chooseDay(formatDay(d.date, locale))}>
                             {b.choose}
                           </ButtonLink>
                         ) : (

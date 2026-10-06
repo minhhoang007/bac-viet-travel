@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
-import { fileBlog, loadBlog } from "@/app/_lib/blog";
+import { fileBlog, loadBlog, movedPost } from "@/app/_lib/blog";
 import { readContent } from "@/app/_lib/content";
 import { POST_CONTENT_TYPE } from "@/bootstrap/content-types";
 import { PreviewBanner } from "@/components/content/preview-banner";
@@ -71,7 +71,12 @@ export default async function BlogPostPage({ params }: Props) {
   setRequestLocale(locale);
   await requireBlog();
   const found = await findPost(locale, slug);
-  if (!found) notFound();
+  if (!found) {
+    // A post renamed in the admin: its old URL keeps working (shared links, search ranking).
+    const moved = await movedPost(slug);
+    if (moved) permanentRedirect(localePath(locale, `/blog/${moved}`));
+    notFound();
+  }
   const { blog, post, preview } = found;
   const c = getAppContent(locale).blog;
   const w = getAppContent(locale).admin.content;

@@ -217,7 +217,7 @@ export const app: AppContent = {
         tags: "Thẻ",
         tagsHint: "Cách nhau bằng dấu phẩy, chữ thường không dấu, ví dụ: ha-long, kinh-nghiem.",
         cover: "Ảnh bìa (không bắt buộc)",
-        coverHint: "Đường dẫn ảnh trong website (/blog/anh.jpg) hoặc link https.",
+        coverHint: "Đường dẫn ảnh trong website, ví dụ /blog/anh-bia.jpg.",
         author: "Tác giả (không bắt buộc)",
         translationKey: "Mã bản dịch (không bắt buộc)",
         translationKeyHint: "Cùng mã ở bài tiếng Việt và bài tiếng Anh = hai bản dịch của nhau.",

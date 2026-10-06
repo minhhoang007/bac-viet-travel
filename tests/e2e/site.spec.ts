@@ -198,7 +198,7 @@ test("tour page: photo viewer, quick facts, departures with seats, the search's 
   // Departures: live seats; the date picked in the search is highlighted and preselected for booking.
   const rows = page.getByTestId("tour-departures").locator("[data-departure]");
   expect(await rows.count()).toBeGreaterThan(3);
-  const bookable = rows.filter({ has: page.getByRole("link", { name: /^Đặt ngày/ }) });
+  const bookable = rows.filter({ has: page.getByRole("link", { name: /^Chọn / }) });
   const date = (await bookable.nth(1).getAttribute("data-departure"))!;
   await page.goto(`${TOUR}?date=${date}&guests=3`);
   await expect(page.locator(`[data-departure="${date}"]`)).toHaveAttribute("aria-current", "true");

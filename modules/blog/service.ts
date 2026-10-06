@@ -80,6 +80,8 @@ function readingMinutes(body: string, wordsPerMinute: number): number {
 
 /** A post stored in the content module (type "post"): the frontmatter fields, its locale and a Markdown body. */
 export const contentPostSchema = frontmatterSchema.omit({ draft: true }).extend({
+  /** A path under public/ (the site's CSP and next/image allow the site's own images only). */
+  cover: z.string().regex(/^\/(?!\/)[\w./-]+$/, "path under public/").optional(),
   locale: z.string().min(2).max(10),
   body: z.string().trim().min(1).max(100_000),
 });
