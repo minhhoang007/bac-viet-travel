@@ -24,6 +24,8 @@ export async function movedPost(slug: string): Promise<string | null> {
   return (await movedPosts()).find((r) => r.from === slug)?.to ?? null;
 }
 
+const fileFallbackTag = unstable_cache(async () => true, ["blog:file-fallback"], { tags: [BLOG_CACHE_TAG] });
+
 /** The content module, or undefined where it cannot be built (a build without runtime secrets). */
 function reachableContent() {
   try {
@@ -42,7 +44,11 @@ function reachableContent() {
 export async function loadBlog(): Promise<Blog | undefined> {
   if (blogConfig.source !== "content") return getBlog();
   if (!isModuleEnabled(features, "blog")) return undefined;
-  if (!reachableContent()) return createBlog({ dir: blogConfig.dir, locales: appConfig.locales, postsPerPage: blogConfig.postsPerPage, wordsPerMinute: blogConfig.wordsPerMinute, includeDrafts: false });
+  if (!reachableContent()) {
+    // Still read through a "blog"-tagged cache entry, so the first publish regenerates this page with database posts.
+    await fileFallbackTag();
+    return createBlog({ dir: blogConfig.dir, locales: appConfig.locales, postsPerPage: blogConfig.postsPerPage, wordsPerMinute: blogConfig.wordsPerMinute, includeDrafts: false });
+  }
   const posts = (await publishedPosts()).map((r) => postFromContent(r.slug, r.data, blogConfig.wordsPerMinute)).filter((p): p is Post => p !== null);
   return blogFromPosts(posts, { locales: appConfig.locales, postsPerPage: blogConfig.postsPerPage });
 }
