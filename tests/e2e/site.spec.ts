@@ -196,6 +196,8 @@ test("tour page: photo viewer, quick facts, departures with seats, the search's 
   await expect(viewer).toBeHidden();
 
   // Departures: live seats; the date picked in the search is highlighted and preselected for booking.
+  // Seats load in the browser (the page itself is static).
+  await expect(page.getByTestId("tour-departures").locator("[data-loaded]")).toBeVisible();
   const rows = page.getByTestId("tour-departures").locator("[data-departure]");
   expect(await rows.count()).toBeGreaterThan(3);
   const bookable = rows.filter({ has: page.getByRole("link", { name: /^Chọn / }) });

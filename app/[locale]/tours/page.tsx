@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { setRequestLocale } from "next-intl/server";
 import { getPublicEnv } from "@/bootstrap/env";
 import { Container } from "@/components/ui/container";
@@ -7,12 +8,16 @@ import { createMetadata } from "@/core/seo";
 import { seoSite } from "@/core/seo/site";
 import type { Locale } from "@/config/app";
 import { TourListing } from "@/product/components/tour-listing";
+import { TourListingFromUrl } from "@/product/components/tour-listing-url";
 import { getProductContent } from "@/product/content";
 import { DESTINATIONS } from "@/product/tours/catalog";
 import { parseTourFilters } from "@/product/tours/filters";
-import { getTours } from "@/app/_lib/tours";
+import { getPublicTours } from "@/app/_lib/tours";
 
-type Props = { params: Promise<{ locale: Locale }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
+type Props = { params: Promise<{ locale: Locale }> };
+
+// Static (edge-cached), regenerated when a tour is published (tag "tours"); the filters apply in the browser.
+export const revalidate = 3600;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
@@ -22,12 +27,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 /** All tours with filters (?destination=&duration=&price=&type=&sort=), links to each destination page. */
-export default async function ToursPage({ params, searchParams }: Props) {
+export default async function ToursPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
   const c = getProductContent(locale);
-  const catalog = await getTours();
-  const filters = parseTourFilters(await searchParams);
+  const tours = (await getPublicTours()).list(locale);
 
   return (
     <Container className="py-12">
@@ -41,7 +45,9 @@ export default async function ToursPage({ params, searchParams }: Props) {
         ))}
       </nav>
       <div className="mt-8">
-        <TourListing locale={locale} tours={catalog.list(locale)} filters={filters} />
+        <Suspense fallback={<TourListing locale={locale} tours={tours} filters={parseTourFilters({})} />}>
+          <TourListingFromUrl locale={locale} tours={tours} />
+        </Suspense>
       </div>
     </Container>
   );

@@ -3,7 +3,7 @@ import { notFound, permanentRedirect } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
 import { getPublicEnv } from "@/bootstrap/env";
 import { submitTourInquiry } from "@/app/actions/tour-inquiry";
-import { CalendarDays, Check, Clock, Languages, MapPin, ShieldCheck, Users, X } from "lucide-react";
+import { Check, Clock, Languages, MapPin, ShieldCheck, Users, X } from "lucide-react";
 import { MarkdownContent } from "@/components/blog/markdown";
 import { ButtonLink } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
@@ -13,26 +13,29 @@ import { seoSite } from "@/core/seo/site";
 import type { Locale } from "@/config/app";
 import { contactConfig, whatsappUrl, zaloUrl } from "@/config/contact";
 import { features } from "@/config/features";
-import { formatDay, formatVnd, getBookingContent } from "@/product/booking/content";
-import { getBooking } from "@/app/_lib/booking";
-import { getContainer } from "@/bootstrap/container";
+import { formatVnd, getBookingContent } from "@/product/booking/content";
+import { TourBookButton, TourBookingProvider, TourDepartureList } from "@/product/components/tour-departures";
 import { TourGallery } from "@/product/components/tour-gallery";
 import { InquiryForm } from "@/product/components/inquiry-form";
 import { TourCard } from "@/product/components/tour-card";
 import { getProductContent } from "@/product/content";
-import { getTourPage, getTours } from "@/app/_lib/tours";
+import { getPublicTours, getTourPage } from "@/app/_lib/tours";
 import { PreviewBanner } from "@/components/content/preview-banner";
 import { Notice } from "@/components/feedback/notice";
 import { getAppContent } from "@/content";
 import { formatPrice } from "@/product/tours/format";
-import { parseTourFilters } from "@/product/tours/filters";
 import { isDestination } from "@/product/tours/model";
 import { DestinationPage, destinationMetadata } from "../_destination";
 import { getTourAdminContent, tourProblemLabel } from "@/product/tours/admin-content";
 
-type Props = { params: Promise<{ locale: Locale; slug: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
+type Props = { params: Promise<{ locale: Locale; slug: string }> };
 
-// Rendered per request from published tours (CMS, cached); unknown slugs end in notFound() below.
+// Static (edge-cached) from published tours, regenerated when a tour is published (tag "tours"); departures and seats
+// load in the browser (TourBookingProvider). Draft Mode (staff preview) renders per request.
+export const revalidate = 3600;
+export function generateStaticParams() {
+  return [];
+}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale, slug } = await params;
@@ -49,12 +52,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   });
 }
 
-export default async function TourPage({ params, searchParams }: Props) {
+export default async function TourPage({ params }: Props) {
   const { locale, slug } = await params;
   // Destination landing pages share the /tours/<slug> segment (tour slugs cannot be destination names).
   if (isDestination(slug)) {
     setRequestLocale(locale);
-    return <DestinationPage locale={locale} destination={slug} tours={(await getTours()).list(locale)} filters={parseTourFilters(await searchParams)} />;
+    return <DestinationPage locale={locale} destination={slug} tours={(await getPublicTours()).list(locale)} />;
   }
   setRequestLocale(locale);
   const page = await getTourPage(locale, slug);
@@ -80,7 +83,7 @@ export default async function TourPage({ params, searchParams }: Props) {
     );
   }
   const { tour } = page;
-  const catalog = await getTours();
+  const catalog = await getPublicTours();
   const c = getProductContent(locale);
   const b = getBookingContent(locale);
   const site = seoSite(getPublicEnv().NEXT_PUBLIC_SITE_URL);
@@ -88,26 +91,6 @@ export default async function TourPage({ params, searchParams }: Props) {
   const price = formatPrice(tour, locale);
   const duration = c.tours.days(tour.days, tour.nights);
   const related = catalog.related(tour);
-  // Date and group size chosen in the search (or the tour list) preselect the departure on the booking page.
-  const trip = parseTourFilters(await searchParams);
-  const departures = page.preview
-    ? []
-    : await getBooking()
-        .listDepartures(slug)
-        .catch((error: unknown) => {
-          getContainer().logger.error("tours.departures_failed", { slug, error });
-          return [];
-        });
-  const chosen = trip.date ? departures.find((d) => d.date === trip.date && d.bookable) : undefined;
-  const bookHref = (departureId?: string) => {
-    const q = new URLSearchParams();
-    if (departureId) q.set("d", departureId);
-    if (trip.guests) q.set("guests", String(trip.guests));
-    const qs = q.toString();
-    return `${localePath(locale, `/tours/${slug}/book`)}${qs ? `?${qs}` : ""}`;
-  };
-  const upcoming = departures.slice(0, 8);
-  const seatLabel = (d: (typeof departures)[number]) => (d.bookable ? b.seatsLeft(d.seatsLeft) : d.status === "closed" ? b.closed : d.seatsLeft <= 0 ? b.soldOut : b.tooSoon);
   const facts = [
     { icon: Clock, label: c.tours.duration, value: duration },
     { icon: MapPin, label: c.tours.departure, value: tour.departure },
@@ -138,7 +121,7 @@ export default async function TourPage({ params, searchParams }: Props) {
   };
 
   return (
-    <>
+    <TourBookingProvider locale={locale} slug={slug}>
       {banner}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
       <Container className="pt-6 lg:pt-10">
@@ -191,38 +174,7 @@ export default async function TourPage({ params, searchParams }: Props) {
                 {c.tours.departuresTitle}
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">{c.tours.departuresHint}</p>
-              {upcoming.length === 0 ? (
-                <p className="mt-4 rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">{b.noDepartures}</p>
-              ) : (
-                <ul className="mt-4 divide-y divide-border rounded-2xl border border-border">
-                  {upcoming.map((d) => (
-                    <li key={d.id} className={`flex flex-wrap items-center justify-between gap-3 px-4 py-3 ${chosen?.id === d.id ? "bg-primary/5" : ""}`} data-departure={d.date} aria-current={chosen?.id === d.id ? "true" : undefined}>
-                      <div className="flex items-center gap-3">
-                        <CalendarDays aria-hidden="true" className="size-4 text-muted-foreground" />
-                        <div>
-                          <p className="font-medium capitalize">{formatDay(d.date, locale)}</p>
-                          <p className={`text-xs ${d.bookable && d.seatsLeft <= 5 ? "font-medium text-warning" : "text-muted-foreground"}`}>{seatLabel(d)}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm font-semibold">{locale === "vi" ? formatVnd(d.unitPriceVnd, locale) : formatPrice({ price: { vnd: d.unitPriceVnd, usd: Math.round((tour.price.usd * d.unitPriceVnd) / tour.price.vnd) } }, locale)}</span>
-                        {d.bookable ? (
-                          <ButtonLink href={bookHref(d.id)} className="h-9 px-4" variant={chosen?.id === d.id ? "primary" : "outline"} aria-label={c.tours.chooseDay(formatDay(d.date, locale))}>
-                            {b.choose}
-                          </ButtonLink>
-                        ) : (
-                          <span className="w-16 text-center text-xs text-muted-foreground">—</span>
-                        )}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {departures.length > upcoming.length && (
-                <a href={bookHref(chosen?.id)} className="mt-3 inline-block text-sm font-medium text-primary underline underline-offset-4">
-                  {c.tours.departuresAll} →
-                </a>
-              )}
+              <TourDepartureList locale={locale} price={tour.price} />
             </section>
           )}
 
@@ -291,9 +243,7 @@ export default async function TourPage({ params, searchParams }: Props) {
             </p>
           ) : (
             <>
-              <ButtonLink href={bookHref(chosen?.id)} className="mt-3 w-full" data-testid="book-online">
-                {chosen ? c.tours.bookDate(formatDay(chosen.date, locale)) : c.tours.chooseDate}
-              </ButtonLink>
+              <TourBookButton locale={locale} place="aside" className="mt-3 w-full" />
               <ul className="mt-4 grid gap-1.5 text-xs text-muted-foreground" data-testid="booking-trust">
                 {c.tours.trust.map((t) => (
                   <li key={t} className="flex gap-2">
@@ -340,9 +290,7 @@ export default async function TourPage({ params, searchParams }: Props) {
               <span className="text-muted-foreground">{c.tours.from}</span> <span className="text-lg font-bold text-primary">{price}</span>
               <span className="block text-xs text-muted-foreground">{c.tours.perPerson}</span>
             </p>
-            <ButtonLink href={bookHref(chosen?.id)} data-testid="mobile-book">
-              {c.tours.chooseDate}
-            </ButtonLink>
+            <TourBookButton locale={locale} place="mobile" />
           </div>
         </div>
       )}
@@ -368,6 +316,6 @@ export default async function TourPage({ params, searchParams }: Props) {
           </div>
         </Container>
       )}
-    </>
+    </TourBookingProvider>
   );
 }
