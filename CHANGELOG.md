@@ -4,6 +4,11 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.6.1] - 2026-10-06
+
+### Fixed
+- `tests/integration/blog-module.test.ts` pins `source: "mdx"` (it failed in projects using blog source "content").
+
 ## [1.6.0] - 2026-10-06
 
 ### Added — blog posts written in the admin (ADR-0007 amendment)
