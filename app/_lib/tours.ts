@@ -32,10 +32,10 @@ export const getTourPage = cache(async (locale: TourLocale, slug: string): Promi
       return parsed.success ? { tour: toTour(parsed.data, item.slug, locale), preview: true } : { preview: true, problems: tourProblems(item.data) };
     }
   }
-  const tours = (await requireAppServices()).product.tours;
-  const tour = (await tours.catalog()).get(locale, slug);
+  // No request-time API here: the public tour page is static (edge-cached), regenerated on publish (tag "tours").
+  const tour = (await getPublicTours()).get(locale, slug);
   if (tour) return { tour, preview: false };
-  const moved = await tours.moved(slug);
+  const moved = await appServices()?.product.tours.moved(slug);
   return moved ? { moved } : null;
 });
 
@@ -45,16 +45,20 @@ export const getTourPage = cache(async (locale: TourLocale, slug: string): Promi
  * tours `tours:import` copies).
  */
 export async function getPublicTours(): Promise<TourCatalog> {
-  let app;
-  try {
-    app = getContainer().app;
-  } catch {
-    app = undefined;
-  }
+  const app = appServices();
   if (app) return app.product.tours.catalog();
   // Still read through a "tours"-tagged cache entry, so the first publish regenerates the page with database tours.
   await fileFallbackTag();
   return getTourCatalog();
+}
+
+/** App services when the database is configured; undefined in a build without one. */
+function appServices() {
+  try {
+    return getContainer().app;
+  } catch {
+    return undefined;
+  }
 }
 
 const fileFallbackTag = unstable_cache(async () => true, ["tours:file-fallback"], { tags: [TOURS_CACHE_TAG] });
