@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { DESTINATIONS, privateTourSchema, type Tour } from "./catalog";
+import { DESTINATIONS, privateTourSchema, type Tour } from "./model";
 
 /**
  * A tour as stored in the content module (content type "tour", one item per tour, slug shared by every locale).
