@@ -37,6 +37,10 @@ test("marketing duplicates and edits a tour, submits it; an admin publishes; vis
   const editor = await signIn(browser, EDITOR, "editor");
   await editor.goto("/admin/tours");
   await expect(editor.getByTestId("admin-tours").locator("tbody tr")).toHaveCount(6);
+  // The admin has its own shell: no public header, footer or floating contact buttons.
+  await expect(editor.getByRole("navigation", { name: "Menu chính" })).toHaveCount(0);
+  await expect(editor.locator("footer")).toHaveCount(0);
+  await expect(editor.getByRole("link", { name: /Zalo/ })).toHaveCount(0);
   // Content pages only: no bookings menu, and the page itself is a 404 for editors.
   await expect(editor.getByRole("link", { name: "Đơn đặt tour" })).toHaveCount(0);
   expect((await editor.goto("/admin/bookings"))?.status()).toBe(404);
