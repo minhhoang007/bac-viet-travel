@@ -16,11 +16,13 @@ type Props = { params: Promise<{ locale: Locale; tag: string }> };
 
 // Unknown params render on demand and end in notFound() below (dynamicParams = false logs a NoFallbackError per 404).
 
-// Exported only for file posts: database posts (blog source "content") render per request, and a route with
-// generateStaticParams is static (request-time APIs would fail there).
-export const generateStaticParams = fileBlog()
-  ? ({ params }: { params: { locale: string } }) => (fileBlog()?.tags(params.locale) ?? []).map((t) => ({ tag: t.tag }))
-  : undefined;
+// File posts are prerendered; database posts (blog source "content") are generated on first request and cached
+// until a publish revalidates the "blog" tag. Hourly revalidation is the safety net.
+export const revalidate = 3600;
+
+export function generateStaticParams({ params }: { params: { locale: string } }) {
+  return (fileBlog()?.tags(params.locale) ?? []).map((t) => ({ tag: t.tag }));
+}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale, tag } = await params;
