@@ -1,0 +1,1 @@
+ALTER TABLE "booking_payments" ADD COLUMN "method" text DEFAULT 'vnpay' NOT NULL;

@@ -101,3 +101,21 @@ export async function createManualBooking(_prev: ManualBookingState, formData: F
   if (result.status !== "created") return result;
   redirect(localePath(l, `/admin/bookings/${result.code}?result=done`));
 }
+
+/** Staff saw the bank transfer: records the deposit (audited); the page shows too_little / refund_due outcomes. */
+export async function receiveTransfer(formData: FormData): Promise<void> {
+  const c = bookingCode(formData);
+  const amountVnd = z.coerce.number().int().positive().catch(0).parse(String(formData.get("amountVnd") ?? "").replace(/\D/g, ""));
+  const bankRef = String(formData.get("bankRef") ?? "");
+  const ctx = await requireAdmin();
+  const l = locale.parse(formData.get("locale"));
+  let result = "failed";
+  try {
+    const outcome = await service(ctx).receiveTransfer(ctx.user, c, { amountVnd, bankRef });
+    result = outcome === "deposit_paid" ? "done" : outcome === "too_little" || outcome === "refund_due" ? outcome : "failed";
+  } catch (error) {
+    unstable_rethrow(error);
+    ctx.container.logger.warn("booking_admin.action_failed", { error });
+  }
+  redirect(localePath(l, `/admin/bookings/${c}?result=${result}`));
+}

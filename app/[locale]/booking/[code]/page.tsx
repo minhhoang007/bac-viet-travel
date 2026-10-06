@@ -1,8 +1,13 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import { setRequestLocale } from "next-intl/server";
-import { getBooking, isPaymentsSandbox } from "@/app/_lib/booking";
-import { startDeposit } from "@/app/actions/booking";
+import { getBooking, getDeposits, isPaymentsSandbox, isTransferAvailable } from "@/app/_lib/booking";
+import { chooseTransfer, startDeposit } from "@/app/actions/booking";
+import { bankTransferConfig } from "@/config/bank-transfer";
+import { vietQrSvg } from "@/core/payments/vietqr";
+import { transferNote } from "@/product/booking/deposits";
+import { CopyButton } from "@/product/components/copy-button";
+import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { localePath } from "@/core/i18n/routing";
@@ -45,6 +50,8 @@ export default async function BookingPage({ params, searchParams }: Props) {
   const tour = (await getTours()).get(locale, booking.departure.tourSlug);
   const status = booking.isExpired ? "expired" : booking.status;
   const sandbox = isPaymentsSandbox();
+  const transferOffered = status === "held" && isTransferAvailable();
+  const transfer = transferOffered && (await getDeposits().transferPending(booking.id));
   // Back from VNPay with a success code, but the IPN has not arrived yet.
   const confirming = status === "held" && pay === "pending";
   const rebook = localePath(locale, `/tours/${booking.departure.tourSlug}/book?d=${booking.departure.id}`);
@@ -101,8 +108,21 @@ export default async function BookingPage({ params, searchParams }: Props) {
               {t.booking.payFailed}
             </p>
           )}
+          {transfer && <TransferPanel locale={locale} code={booking.code} amountVnd={booking.depositVnd} />}
+          {transfer && <p className="mt-6 text-sm font-medium">{t.booking.transferOrPay}</p>}
           <DepositButton action={startDeposit} code={booking.code} token={token!} locale={locale} label={t.booking.pay(formatVnd(booking.depositVnd, locale))} errorText={t.booking.payUnavailable} />
           <p className="mt-2 text-xs text-muted-foreground">{t.booking.payHint}</p>
+          {transferOffered && !transfer && (
+            <form action={chooseTransfer} className="mt-4 border-t border-border pt-4">
+              <input type="hidden" name="code" value={booking.code} />
+              <input type="hidden" name="token" value={token} />
+              <input type="hidden" name="locale" value={locale} />
+              <Button type="submit" variant="outline" className="w-full sm:w-auto" data-testid="choose-transfer">
+                {t.booking.transferChoose}
+              </Button>
+              <p className="mt-2 text-xs text-muted-foreground">{t.booking.transferChooseHint}</p>
+            </form>
+          )}
         </section>
       )}
       {status === "expired" && (
@@ -163,5 +183,46 @@ export default async function BookingPage({ params, searchParams }: Props) {
         </p>
       </section>
     </Container>
+  );
+}
+
+/** VietQR and account details for a bank transfer of the deposit (staff confirm it in the admin). */
+function TransferPanel({ locale, code, amountVnd }: { locale: Locale; code: string; amountVnd: number }) {
+  const t = getBookingContent(locale).booking;
+  const bank = bankTransferConfig;
+  const note = transferNote(code);
+  const amount = formatVnd(amountVnd, locale);
+  const qr = vietQrSvg({ bankBin: bank.bankBin, accountNumber: bank.accountNumber, amountVnd, note });
+  const line = (label: string, value: string, copy?: string) => (
+    <div className="flex flex-wrap items-center justify-between gap-2 py-1.5">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="flex items-center gap-2 font-medium">
+        <span className={copy ? "font-mono" : ""}>{value}</span>
+        {copy && <CopyButton value={copy} label={t.transferCopy} copiedLabel={t.transferCopied} name={label} />}
+      </dd>
+    </div>
+  );
+  return (
+    <div className="mt-5 rounded-xl border border-border bg-background p-4" data-testid="transfer">
+      <h3 className="font-semibold">{t.transferTitle}</h3>
+      {bank.demo && (
+        <p className="mt-2 rounded-md border border-warning/40 bg-warning/10 p-2 text-sm font-medium" data-demo="bank-account">
+          {t.transferDemo}
+        </p>
+      )}
+      <p className="mt-2 text-sm text-muted-foreground">{t.transferText}</p>
+      <div className="mt-4 grid items-start gap-4 sm:grid-cols-[180px_1fr]">
+        <div role="img" aria-label={t.transferQrLabel(amount)} className="mx-auto w-44 bg-white p-1 sm:w-full [&>svg]:h-auto [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: qr }} />
+        <dl className="divide-y divide-border text-sm">
+          {line(t.transferBank, bank.bankName)}
+          {line(t.transferAccount, bank.accountNumber, bank.accountNumber)}
+          {line(t.transferName, bank.accountName)}
+          {line(t.transferAmount, amount, String(amountVnd))}
+          {line(t.transferNote, note, note)}
+        </dl>
+      </div>
+      <p className="mt-4 text-sm">{t.transferAfter}</p>
+      <AutoRefresh everyMs={30_000} maxTimes={240} />
+    </div>
   );
 }

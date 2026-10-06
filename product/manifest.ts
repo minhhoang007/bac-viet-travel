@@ -7,6 +7,7 @@ import { tourSource } from "@/config/tours";
 import type { Db } from "@/db/client";
 import { createBookingAdmin } from "./booking/admin";
 import { createDepositService } from "./booking/deposits";
+import { bankTransferConfig } from "@/config/bank-transfer";
 import { createBookingService } from "./booking/service";
 import { DESTINATIONS, getTourCatalog } from "./tours/catalog";
 import { tourProblems } from "./tours/document";
@@ -42,6 +43,7 @@ export function createProduct(db: Db, ctx: ProductContext) {
     mail: ctx.mail,
     bookings: booking,
     vnpay: ctx.payments.vnpay,
+    transferHoldMinutes: bankTransferConfig.holdMinutes,
     tourTitle,
     now: ctx.now,
   });
@@ -53,6 +55,10 @@ export function createProduct(db: Db, ctx: ProductContext) {
     audit: ctx.audit,
     tourTitle,
     tourExists: async (slug) => (await tour(slug)) !== null,
+    receiveTransfer: (code, input) => {
+      const env = getEnv();
+      return deposits.receiveTransfer(code, input, { siteUrl: env.NEXT_PUBLIC_SITE_URL, teamEmail: env.extra.CONTACT_TO_EMAIL });
+    },
     now: ctx.now,
   });
 
