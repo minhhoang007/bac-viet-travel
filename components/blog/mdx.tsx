@@ -37,7 +37,8 @@ export const mdxComponents = { a: Link, img: Img, Callout, Figure };
 
 /**
  * Renders trusted MDX (posts committed to the repo) on the server, at build time for prerendered pages.
- * Never pass user-submitted text: MDX can execute code.
+ * Never pass user-submitted text or anything stored in the database (staff-edited content): MDX can execute code.
+ * Use MarkdownContent (components/blog/markdown.tsx) for those.
  */
 export async function MdxContent({ source }: { source: string }) {
   const { default: Content } = await evaluate(source, { ...runtime, remarkPlugins: [remarkGfm] });
