@@ -12,7 +12,18 @@ const EDITOR = "marketing@bacviet.example";
 const ADMIN = "owner@bacviet.example";
 let ip = 40;
 
+// One session per person for the whole file: magic links are rate limited per email.
+const sessions = new Map<string, Page>();
+
 async function signIn(browser: Browser, email: string, role: "editor" | "admin"): Promise<Page> {
+  const existing = sessions.get(email);
+  if (existing) return existing;
+  const page = await newSession(browser, email, role);
+  sessions.set(email, page);
+  return page;
+}
+
+async function newSession(browser: Browser, email: string, role: "editor" | "admin"): Promise<Page> {
   const page = await (await browser.newContext({ extraHTTPHeaders: { "x-forwarded-for": `198.51.100.${ip++}` } })).newPage();
   await page.goto("/login");
   await page.fill("#login-email", email);
@@ -172,4 +183,76 @@ test("marketing previews a draft on the tour page; a renamed tour redirects its 
   // English: no SEO title, the tour name is used.
   await visitor.goto("/en/tours/ninh-binh-e2e");
   await expect(visitor).toHaveTitle(/Ninh Binh E2E/);
+});
+
+test("an admin returns a tour with a note, schedules the fix, and restores an older version", async ({ browser }) => {
+  const [row] = await sql<{ id: string }[]>`select id from content_items where slug = 'ninh-binh-e2e'`;
+  const edit = `/admin/tours/${row!.id}`;
+  const status = (page: Page) => page.locator("[data-status]").first();
+  const editor = await signIn(browser, EDITOR, "editor");
+  const admin = await signIn(browser, ADMIN, "admin");
+
+  // Marketing changes the name and submits.
+  await editor.goto(edit);
+  await formReady(editor);
+  await editor.getByRole("tab", { name: "Tiếng Việt" }).click();
+  await panel(editor).getByLabel("Tên tour", { exact: true }).fill("Ninh Bình bản 3");
+  await editor.getByRole("button", { name: "Lưu bản nháp" }).click();
+  await expect(editor.getByText("Đã lưu bản nháp.")).toBeVisible();
+  await editor.getByRole("button", { name: "Gửi duyệt" }).click();
+  await expect(status(editor)).toHaveAttribute("data-status", "pending");
+
+  // The admin sends it back with a note; marketing sees the note on the tour.
+  await admin.goto(edit);
+  await admin.getByLabel("Cần sửa gì?").fill("Tên tour cần có số ngày.");
+  await admin.getByRole("button", { name: "Trả lại để sửa" }).click();
+  await expect(status(admin)).toHaveAttribute("data-status", "draft");
+  await editor.goto(edit);
+  await expect(editor.getByRole("note").filter({ hasText: "Tên tour cần có số ngày." })).toBeVisible();
+
+  // Fixed and resubmitted; the admin schedules it for tomorrow. Visitors still see the live version.
+  await formReady(editor);
+  await editor.getByRole("tab", { name: "Tiếng Việt" }).click();
+  await panel(editor).getByLabel("Tên tour", { exact: true }).fill("Ninh Bình 1 ngày bản 3");
+  await editor.getByRole("button", { name: "Lưu bản nháp" }).click();
+  await expect(editor.getByText("Đã lưu bản nháp.")).toBeVisible();
+  await editor.getByRole("button", { name: "Gửi duyệt" }).click();
+  await expect(status(editor)).toHaveAttribute("data-status", "pending");
+
+  await admin.goto(edit);
+  const tomorrow = new Date(Date.now() + 24 * 3600_000 + 7 * 3600_000).toISOString().slice(0, 16); // Asia/Ho_Chi_Minh wall time
+  await admin.getByLabel("Thời điểm công khai").fill(tomorrow);
+  await admin.getByRole("button", { name: "Duyệt và hẹn giờ" }).click();
+  await expect(status(admin)).toHaveAttribute("data-status", "approved");
+  const visitor = await (await browser.newContext()).newPage();
+  await visitor.goto("/tours/ninh-binh-e2e");
+  await expect(visitor.getByRole("heading", { level: 1 })).toHaveText("Ninh Bình bản nháp");
+
+  // Time passes (moved in the database); the cron tick publishes it.
+  await sql`update content_items set publish_at = now() - interval '1 minute' where id = ${row!.id}`;
+  const tick = await visitor.request.post("/api/jobs/run", { headers: { authorization: `Bearer ${e2eServerEnv.CRON_SECRET}` } });
+  expect(tick.status()).toBe(200);
+  await admin.goto(edit);
+  await expect(status(admin)).toHaveAttribute("data-status", "published");
+  await expect(async () => {
+    await visitor.goto("/tours/ninh-binh-e2e");
+    await expect(visitor.getByRole("heading", { level: 1 })).toHaveText("Ninh Bình 1 ngày bản 3");
+  }).toPass({ timeout: 15_000 });
+
+  // Restoring the first published version copies it into the draft; the live tour waits for review.
+  await admin.getByText("Lịch sử phiên bản").click();
+  const dialog = admin.getByRole("dialog");
+  const oldest = admin.locator("details li").last();
+  await expect(async () => {
+    if (!(await dialog.isVisible())) await oldest.getByRole("button", { name: "Khôi phục" }).click();
+    await expect(dialog).toBeVisible({ timeout: 1_000 });
+  }).toPass();
+  await dialog.getByRole("button", { name: "Khôi phục" }).click();
+  await expect(status(admin)).toHaveAttribute("data-status", "draft");
+  await formReady(admin);
+  await admin.getByRole("tab", { name: "Tiếng Việt" }).click();
+  await expect(panel(admin).getByLabel("Tên tour", { exact: true })).toHaveValue("Ninh Bình E2E");
+  await expect(admin.getByLabel("Đường dẫn (slug)")).toHaveValue("ninh-binh-day-tour-copy");
+  await visitor.goto("/tours/ninh-binh-e2e");
+  await expect(visitor.getByRole("heading", { level: 1 })).toHaveText("Ninh Bình 1 ngày bản 3");
 });
