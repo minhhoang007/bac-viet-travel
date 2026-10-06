@@ -10,6 +10,9 @@ import { BlogIndex } from "./_index-view";
 
 type Props = { params: Promise<{ locale: Locale }> };
 
+// Static; regenerated when a post is published (tag "blog") or hourly.
+export const revalidate = 3600;
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
   const c = getAppContent(locale).blog;
