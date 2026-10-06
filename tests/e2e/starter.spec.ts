@@ -172,5 +172,6 @@ test("unknown URLs show the site's own 404 (translated, with the header), not th
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(getMarketingContent(locale).notFound.title);
     await expect(page.locator("header").first()).toBeVisible();
     await expect(page.locator("html")).toHaveAttribute("lang", locale);
+    await expect(page).toHaveTitle(new RegExp(getMarketingContent(locale).notFound.title));
   }
 });
