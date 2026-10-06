@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
-import { getBlog } from "@/bootstrap/blog";
+import { fileBlog } from "@/app/_lib/blog";
 import { getPublicEnv } from "@/bootstrap/env";
 import { createMetadata } from "@/core/seo";
 import { seoSite } from "@/core/seo/site";
@@ -14,7 +14,7 @@ type Props = { params: Promise<{ locale: Locale; n: string }> };
 // Unknown params render on demand and end in notFound() below (dynamicParams = false logs a NoFallbackError per 404).
 
 export function generateStaticParams({ params }: { params: { locale: string } }) {
-  const blog = getBlog();
+  const blog = fileBlog();
   if (!blog) return [];
   const { totalPages } = blog.page(params.locale, 1);
   return Array.from({ length: totalPages - 1 }, (_, i) => ({ n: String(i + 2) }));

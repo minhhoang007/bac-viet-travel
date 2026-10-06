@@ -1,5 +1,5 @@
 import { draftMode, headers } from "next/headers";
-import { getContainer, productContentTypes } from "@/bootstrap/container";
+import { allContentTypes, getContainer } from "@/bootstrap/container";
 import { hasRole } from "@/core/auth";
 import { localePath } from "@/core/i18n/routing";
 import { appConfig } from "@/config/app";
@@ -21,7 +21,7 @@ export async function GET(request: Request): Promise<Response> {
     return redirect(localePath(locale, "/admin/content"));
   }
   const item = await content.get(url.searchParams.get("id") ?? "");
-  const type = item && productContentTypes()[item.type];
+  const type = item && allContentTypes()[item.type];
   if (!item || !type) return new Response("Not found", { status: 404 });
   mode.enable();
   return redirect(localePath(locale, type.publicPath(item.slug)));

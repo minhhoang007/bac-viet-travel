@@ -71,7 +71,7 @@ export interface AppContent {
   admin: {
     title: string;
     backToApp: string;
-    nav: { overview: string; users: string; jobs: string; billing: string; audit: string; media: string; content: string };
+    nav: { overview: string; users: string; jobs: string; billing: string; audit: string; media: string; content: string; posts: string };
     overview: {
       newUsers: string;
       proUsers: string;
@@ -162,6 +162,43 @@ export interface AppContent {
       events: { submitted: string; published: string };
       conflict: string;
       incomplete: string;
+    };
+    /** Blog posts written in the admin (blog source "content"). */
+    posts: {
+      title: string;
+      description: string;
+      newPost: string;
+      edit: string;
+      back: string;
+      empty: string;
+      columns: { post: string; locale: string; status: string; live: string; updated: string };
+      yes: string;
+      no: string;
+      hidden: string;
+      fields: {
+        locale: string;
+        title: string;
+        slug: string;
+        slugHint: string;
+        description: string;
+        date: string;
+        updated: string;
+        tags: string;
+        tagsHint: string;
+        cover: string;
+        coverHint: string;
+        author: string;
+        translationKey: string;
+        translationKeyHint: string;
+        body: string;
+        bodyHint: string;
+      };
+      locales: Record<string, string>;
+      save: string;
+      create: string;
+      saving: string;
+      problemsTitle: string;
+      result: { saved: string; created: string; slug_taken: string; invalid: string };
     };
     done: string;
     failed: string;

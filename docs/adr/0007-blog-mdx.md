@@ -30,3 +30,19 @@ Markdown renderer instead.
 - Writing a post needs a git commit and a deploy (fine for a team that ships through Git; a CMS can be added later
   behind the same `Blog` interface).
 - Out of scope: comments, full-text search, scheduled publishing, author pages.
+
+## Amendment (v1.6.0): posts written in the admin
+`blogConfig.source = "content"` (needs `features.content`, ADR-0009) reads posts from the content module instead of
+files: content type `post` (registered by the starter, `bootstrap/content-types.ts`), one item per post and locale,
+edited at `/admin/posts`, with the same review workflow, Draft Mode preview, version history and old-URL redirects
+as project content.
+
+- **Same `Blog` interface:** `app/_lib/blog.ts` `loadBlog()` builds it from published items (`blogFromPosts`), cached
+  under the tag `blog` and revalidated on publish. Pages, tags, pagination, RSS, sitemap and SEO are unchanged.
+- **Request time:** with this source, blog pages render per request from the cached copy (builds have no database).
+  File posts stay prerendered. The RSS route now renders per request (CDN-cached) in both modes.
+- **Security:** admin posts are `format: "markdown"` and render with `MarkdownContent` (no JSX, expressions or raw
+  HTML; `<Callout>` kept). The MDX renderer stays for files in the repo only.
+- **Moving over:** `pnpm blog:import --as <admin> [--apply]` copies the MDX posts into the content module (published,
+  drafts as drafts; skips slugs already present). Other MDX tags than `<Callout>` are reported, since they would show
+  as text.
