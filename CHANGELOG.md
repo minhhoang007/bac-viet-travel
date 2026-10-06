@@ -4,6 +4,11 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.6.4] - 2026-10-06
+
+### Added
+- Optional `ProductNotFound({ locale })` export in `product/layout.tsx`: content under the 404 message (e.g. popular tours).
+
 ## [1.6.3] - 2026-10-06
 
 ### Fixed
