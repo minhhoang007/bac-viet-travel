@@ -12,7 +12,7 @@ const locale = z.enum(["vi", "en"]).catch("vi");
 const uuid = z.uuid();
 const revision = z.coerce.number().int().positive();
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-const TABS = ["general", "vi", "en", "images", "private"] as const;
+const TABS = ["general", "vi", "en", "seo", "images", "private"] as const;
 
 /** Editors and admins; the content module must be on. */
 async function context() {
@@ -63,7 +63,7 @@ export async function duplicateTour(formData: FormData): Promise<void> {
   redirect(localePath(l, target));
 }
 
-/** Saves the working copy (incomplete is fine). The slug is locked once the tour has been published. */
+/** Saves the working copy (incomplete is fine). A new slug of a live tour applies on publish; the old URL then redirects. */
 export async function saveTour(formData: FormData): Promise<void> {
   const { content, user, container } = await context();
   const l = locale.parse(formData.get("locale"));
@@ -74,8 +74,7 @@ export async function saveTour(formData: FormData): Promise<void> {
   let result = "saved";
   try {
     const data = tourDraftSchema.parse(JSON.parse(String(formData.get("data") ?? "{}")));
-    const wanted = String(formData.get("slug") ?? item.slug).trim().toLowerCase();
-    const slug = item.publishedSlug ? item.slug : wanted;
+    const slug = String(formData.get("slug") ?? item.slug).trim().toLowerCase();
     await content.saveDraft(user, id, { revision: revision.parse(formData.get("revision")), slug, data });
   } catch (error) {
     unstable_rethrow(error);

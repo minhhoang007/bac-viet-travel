@@ -12,7 +12,7 @@ import { DESTINATIONS } from "../tours/model";
 import { getTourAdminContent } from "../tours/admin-content";
 import { tourProblems, type TourDraft } from "../tours/document";
 
-const TABS = ["general", "vi", "en", "images", "private"] as const;
+const TABS = ["general", "vi", "en", "seo", "images", "private"] as const;
 type Tab = (typeof TABS)[number];
 type Section = "shared" | "vi" | "en";
 type Obj = Record<string, unknown>;
@@ -56,7 +56,7 @@ export function TourForm({
 
   const tabLabel: Record<Tab, string> = c.tabs;
   const tabHasProblem = (t: Tab) =>
-    problems.some((p) => (t === "vi" || t === "en" ? p.startsWith(`${t}.`) : t === "images" ? p.startsWith("shared.images") : t === "private" ? p.startsWith("shared.private") : p.startsWith("shared.") && !/^shared\.(images|private)/.test(p)));
+    problems.some((p) => (t === "seo" ? /^(vi|en).seo/.test(p) : t === "vi" || t === "en" ? p.startsWith(`${t}.`) && !p.startsWith(`${t}.seo`) : t === "images" ? p.startsWith("shared.images") : t === "private" ? p.startsWith("shared.private") : p.startsWith("shared.") && !/^shared\.(images|private)/.test(p)));
   // "en.itinerary.0.title" → "English › Lịch trình #1": the same words as the form labels, not field names.
   const fieldLabels: Record<string, string> = { ...c.fields, price: c.fields.priceVnd, private: c.tabs.private };
   const problemLabel = (path: string) => {
@@ -103,7 +103,7 @@ export function TourForm({
 
       <Field label={c.create.slug} hint={item.slugLocked ? c.slugLocked : c.create.slugHint}>
         {(id, describedBy) => (
-          <input id={id} name="slug" aria-describedby={describedBy} className={input} value={slug} readOnly={item.slugLocked} pattern="[a-z0-9]+(-[a-z0-9]+)*" onChange={(e) => setSlug(e.target.value.toLowerCase())} />
+          <input id={id} name="slug" aria-describedby={describedBy} className={input} value={slug} pattern="[a-z0-9]+(-[a-z0-9]+)*" onChange={(e) => setSlug(e.target.value.toLowerCase())} />
         )}
       </Field>
 
@@ -186,6 +186,31 @@ export function TourForm({
       </Panel>
       <Panel id={`${ids}-panel-en`} labelledBy={`${ids}-tab-en`} hidden={tab !== "en"}>
         {textPanel("en")}
+      </Panel>
+
+      <Panel id={`${ids}-panel-seo`} labelledBy={`${ids}-tab-seo`} hidden={tab !== "seo"}>
+        <p className="text-sm text-muted-foreground">{c.seo.intro}</p>
+        {(["vi", "en"] as const).map((s) => {
+          const title = text(s, "seoTitle");
+          const description = text(s, "seoDescription");
+          return (
+            <fieldset key={s} className="grid gap-4 rounded-lg border border-border p-4">
+              <legend className="px-1 text-sm font-medium">{c.tabs[s]}</legend>
+              <Field label={c.fields.seoTitle} hint={`${c.seo.titleHint} ${c.seo.chars(title.length, 70)}`}>
+                {(id, describedBy) => <input id={id} aria-describedby={describedBy} maxLength={70} className={input} value={title} onChange={(e) => set(s, "seoTitle", e.target.value)} />}
+              </Field>
+              <Field label={c.fields.seoDescription} hint={`${c.seo.descriptionHint} ${c.seo.chars(description.length, 160)}`}>
+                {(id, describedBy) => <textarea id={id} aria-describedby={describedBy} maxLength={160} rows={3} className={area} value={description} onChange={(e) => set(s, "seoDescription", e.target.value)} />}
+              </Field>
+              <div className="rounded-md bg-muted p-3 text-sm" aria-label={c.seo.previewTitle}>
+                <div className="text-xs text-muted-foreground">{c.seo.previewTitle}</div>
+                <div className="mt-1 truncate text-base text-primary">{title || text(s, "title") || "—"}</div>
+                <div className="text-xs text-muted-foreground">{`…/${s === "en" ? "en/" : ""}tours/${slug}`}</div>
+                <p className="mt-1 line-clamp-2">{description || text(s, "summary") || "—"}</p>
+              </div>
+            </fieldset>
+          );
+        })}
       </Panel>
 
       <Panel id={`${ids}-panel-images`} labelledBy={`${ids}-tab-images`} hidden={tab !== "images"}>

@@ -22,6 +22,8 @@ export interface ContentModule {
   listPublished(type: string): Promise<{ id: string; slug: string; data: Record<string, unknown>; publishedAt: Date | null }[]>;
   /** The live copy by its public slug; with `draft` (Draft Mode, staff only) the working copy by its draft slug. */
   getBySlug(type: string, slug: string, options?: { draft?: boolean }): Promise<{ id: string; slug: string; data: Record<string, unknown> } | null>;
+  /** Current public slug of a live item once published under `slug` (for a permanent redirect of an old URL); null otherwise. */
+  findMoved(type: string, slug: string): Promise<string | null>;
   /**
    * Saves the working copy. `revision` is the one the editor loaded: CONFLICT when someone saved in between.
    * Editing sends the item back to "draft" (a pending or approved draft must be reviewed again); the live copy stays.
@@ -212,6 +214,17 @@ export function createContentModule(deps: ContentDeps): ContentModule {
         .from(contentItems)
         .where(and(eq(contentItems.type, type), eq(contentItems.publishedSlug, slug), isNotNull(contentItems.published), eq(contentItems.hidden, false)));
       return row ? { id: row.id, slug: row.publishedSlug!, data: row.published! } : null;
+    },
+
+    async findMoved(type, slug) {
+      const [row] = await db
+        .select({ slug: contentItems.publishedSlug })
+        .from(contentVersions)
+        .innerJoin(contentItems, eq(contentVersions.itemId, contentItems.id))
+        .where(and(eq(contentVersions.slug, slug), eq(contentVersions.event, "published"), eq(contentItems.type, type), isNotNull(contentItems.published), eq(contentItems.hidden, false), ne(contentItems.publishedSlug, slug)))
+        .orderBy(desc(contentVersions.createdAt))
+        .limit(1);
+      return row?.slug ?? null;
     },
 
     async saveDraft(actor, id, { revision, slug, data }) {

@@ -112,3 +112,50 @@ test("an incomplete new tour lists what is missing and cannot be submitted", asy
   const result = await new AxeBuilder({ page: editor }).withTags(["wcag2a", "wcag2aa"]).analyze();
   expect(result.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id)).toEqual([]);
 });
+
+test("marketing previews a draft on the tour page; a renamed tour redirects its old URL; the SEO title is used", async ({ browser }) => {
+  const [row] = await sql<{ id: string }[]>`select id from content_items where slug = 'ninh-binh-day-tour-copy'`;
+  const editor = await signIn(browser, EDITOR, "editor");
+  await editor.goto(`/admin/tours/${row!.id}`);
+  await formReady(editor);
+  await editor.getByLabel("Đường dẫn (slug)").fill("ninh-binh-e2e");
+  await editor.getByRole("tab", { name: "Tiếng Việt" }).click();
+  await panel(editor).getByLabel("Tên tour", { exact: true }).fill("Ninh Bình bản nháp");
+  await editor.getByRole("tab", { name: "SEO" }).click();
+  await panel(editor).getByLabel("Tiêu đề trên Google").first().fill("Ninh Bình 1 ngày giá tốt");
+  await expect(panel(editor).getByLabel("Hiển thị trên Google (ước lượng)").first()).toContainText("Ninh Bình 1 ngày giá tốt");
+  await editor.getByRole("button", { name: "Lưu bản nháp" }).click();
+  await expect(editor.getByText("Đã lưu bản nháp.")).toBeVisible();
+
+  // Preview: the working copy on the real page, with a banner; visitors still see the live tour.
+  await editor.goto(`/api/content/preview?id=${row!.id}&locale=vi`);
+  await expect(editor).toHaveURL(/\/tours\/ninh-binh-e2e$/);
+  await expect(editor.getByRole("status").filter({ hasText: "Đang xem trước bản nháp" })).toBeVisible();
+  await expect(editor.getByRole("heading", { level: 1 })).toHaveText("Ninh Bình bản nháp");
+  const visitor = await (await browser.newContext()).newPage();
+  await visitor.goto("/tours/ninh-binh-day-tour-copy");
+  await expect(visitor.getByRole("heading", { level: 1 })).toHaveText("Ninh Bình E2E");
+  await expect(visitor.getByRole("status").filter({ hasText: "Đang xem trước" })).toHaveCount(0);
+  expect((await visitor.goto("/tours/ninh-binh-e2e"))?.status()).toBe(404);
+  await editor.goto(`/api/content/preview?exit=1&locale=vi`);
+  await editor.goto("/tours/ninh-binh-day-tour-copy");
+  await expect(editor.getByRole("heading", { level: 1 })).toHaveText("Ninh Bình E2E");
+
+  const admin = await signIn(browser, ADMIN, "admin");
+  await admin.goto(`/admin/tours/${row!.id}`);
+  await admin.getByRole("button", { name: "Duyệt và công khai ngay" }).first().click();
+  await expect(admin.locator("[data-status]").first()).toHaveAttribute("data-status", "published");
+
+  await expect(async () => {
+    const res = await visitor.request.get("/tours/ninh-binh-day-tour-copy", { maxRedirects: 0 });
+    expect(res.status()).toBe(308);
+    expect(res.headers().location).toMatch(/\/tours\/ninh-binh-e2e$/);
+  }).toPass({ timeout: 15_000 });
+  await visitor.goto("/tours/ninh-binh-day-tour-copy");
+  await expect(visitor).toHaveURL(/\/tours\/ninh-binh-e2e$/);
+  await expect(visitor.getByRole("heading", { level: 1 })).toHaveText("Ninh Bình bản nháp");
+  await expect(visitor).toHaveTitle(/Ninh Bình 1 ngày giá tốt/);
+  // English: no SEO title, the tour name is used.
+  await visitor.goto("/en/tours/ninh-binh-e2e");
+  await expect(visitor).toHaveTitle(/Ninh Binh E2E/);
+});

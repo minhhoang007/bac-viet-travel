@@ -31,6 +31,9 @@ export const tourTextSchema = z.object({
   excludes: list(200),
   /** Overview in Markdown (MDX components such as <Callout> allowed). */
   body: z.string().max(20_000).default(""),
+  /** Google title and description; empty = the tour name and summary. */
+  seoTitle: z.string().trim().max(70).default(""),
+  seoDescription: z.string().trim().max(160).default(""),
 });
 export type TourText = z.infer<typeof tourTextSchema>;
 
@@ -90,6 +93,8 @@ export function toTour(doc: TourDocument, slug: string, locale: TourLocale, imag
     includes: t.includes,
     excludes: t.excludes,
     body: t.body,
+    seoTitle: t.seoTitle || undefined,
+    seoDescription: t.seoDescription || undefined,
     destination: shared.destination,
     days: shared.days,
     nights: shared.nights,
@@ -114,6 +119,8 @@ export function fromMdxTours(byLocale: Record<TourLocale, Tour>): TourDocument {
     includes: t.includes,
     excludes: t.excludes,
     body: t.body.trim(),
+    seoTitle: "",
+    seoDescription: "",
   });
   return tourDocumentSchema.parse({
     shared: {

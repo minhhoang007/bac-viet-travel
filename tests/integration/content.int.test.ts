@@ -68,6 +68,20 @@ describe("content workflow", () => {
     await content.approve(admin, item.id, { revision: edited.revision });
     expect(await content.getBySlug("tour", "vinh-ha-long")).toMatchObject({ data: { title: "Vịnh Hạ Long" } });
     expect(await content.getBySlug("tour", "ha-long")).toBeNull();
+    // The old URL points to the new one (permanent redirect); unknown and current slugs do not.
+    expect(await content.findMoved("tour", "ha-long")).toBe("vinh-ha-long");
+    expect(await content.findMoved("tour", "vinh-ha-long")).toBeNull();
+    expect(await content.findMoved("tour", "sapa")).toBeNull();
+    expect(await content.findMoved("blog", "ha-long")).toBeNull();
+  });
+
+  it("a hidden item has no redirect from its old URL", async () => {
+    const item = await draft();
+    const live = await content.approve(admin, item.id, { revision: item.revision });
+    const edited = await content.saveDraft(editor, item.id, { revision: live.revision, slug: "vinh-ha-long", data: { title: "B" } });
+    const moved = await content.approve(admin, item.id, { revision: edited.revision });
+    await content.setHidden(admin, item.id, { revision: moved.revision, hidden: true });
+    expect(await content.findMoved("tour", "ha-long")).toBeNull();
   });
 
   it("rejects a stale revision (two people editing) with CONFLICT", async () => {

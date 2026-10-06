@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
 import { getPublicEnv } from "@/bootstrap/env";
 import { submitTourInquiry } from "@/app/actions/tour-inquiry";
@@ -19,7 +19,10 @@ import { formatVnd, getBookingContent } from "@/product/booking/content";
 import { InquiryForm } from "@/product/components/inquiry-form";
 import { TourCard } from "@/product/components/tour-card";
 import { getProductContent } from "@/product/content";
-import { getTours } from "@/app/_lib/tours";
+import { getTourPage, getTours } from "@/app/_lib/tours";
+import { PreviewBanner } from "@/components/content/preview-banner";
+import { Notice } from "@/components/feedback/notice";
+import { getAppContent } from "@/content";
 import { formatPrice } from "@/product/tours/format";
 
 type Props = { params: Promise<{ locale: Locale; slug: string }> };
@@ -28,11 +31,12 @@ type Props = { params: Promise<{ locale: Locale; slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale, slug } = await params;
-  const tour = (await getTours()).get(locale, slug);
-  if (!tour) return {};
+  const page = await getTourPage(locale, slug, await getTours());
+  if (!page || !("tour" in page)) return {};
+  const { tour } = page;
   return createMetadata(seoSite(getPublicEnv().NEXT_PUBLIC_SITE_URL), {
-    title: tour.title,
-    description: tour.summary,
+    title: tour.seoTitle ?? tour.title,
+    description: tour.seoDescription ?? tour.summary,
     path: `/tours/${slug}`,
     locale,
     image: tour.images[0],
@@ -42,9 +46,30 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function TourPage({ params }: Props) {
   const { locale, slug } = await params;
   setRequestLocale(locale);
-  const catalog = (await getTours());
-  const tour = catalog.get(locale, slug);
-  if (!tour) notFound();
+  const catalog = await getTours();
+  const page = await getTourPage(locale, slug, catalog);
+  if (!page) notFound();
+  // An old URL of a renamed tour (permanent redirect keeps links and Google ranking).
+  if ("moved" in page) permanentRedirect(localePath(locale, `/tours/${page.moved}`));
+  const w = getAppContent(locale).admin.content;
+  const banner = page.preview && <PreviewBanner label={w.previewing} exit={w.exitPreview} href={`/api/content/preview?exit=1&locale=${locale}`} />;
+  if (!("tour" in page)) {
+    return (
+      <>
+        {banner}
+        <Container className="py-10">
+          <Notice tone="warning" title={w.incomplete}>
+            <ul className="list-disc pl-5">
+              {page.problems.slice(0, 12).map((p) => (
+                <li key={p}>{p}</li>
+              ))}
+            </ul>
+          </Notice>
+        </Container>
+      </>
+    );
+  }
+  const { tour } = page;
   const c = getProductContent(locale);
   const b = getBookingContent(locale);
   const site = seoSite(getPublicEnv().NEXT_PUBLIC_SITE_URL);
@@ -77,6 +102,7 @@ export default async function TourPage({ params }: Props) {
 
   return (
     <>
+      {banner}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
       <div className="relative h-[42vh] min-h-72 w-full">
         <Image src={tour.images[0]!} alt={tour.title} fill priority sizes="100vw" className="object-cover" />

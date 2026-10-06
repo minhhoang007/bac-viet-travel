@@ -44,4 +44,7 @@ export interface Tour extends TourData {
   locale: string;
   /** MDX overview (body after the frontmatter). */
   body: string;
+  /** Google title and description when they differ from the title and summary (CMS tours). */
+  seoTitle?: string;
+  seoDescription?: string;
 }
