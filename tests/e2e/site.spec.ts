@@ -14,6 +14,28 @@ test("home: destinations, featured tours, TravelAgency JSON-LD, quick contact (Z
   await expect(contact.locator('[data-contact="zalo"]')).toHaveAttribute("href", /^https:\/\/zalo\.me\/\d+$/);
 });
 
+test("home: tour search, trust strip, demo reviews marked for launch:check, guides, FAQ and the contact anchor", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByTestId("trust-strip").locator("li")).toHaveCount(4);
+  // Sample reviews carry data-demo (launch:check blocks them) and say so on the page; no rating in structured data.
+  const reviews = page.locator('[data-demo="reviews"]');
+  await expect(reviews.getByTestId("review")).toHaveCount(3);
+  await expect(reviews.getByText("Đánh giá minh hoạ", { exact: false })).toBeVisible();
+  const ld = await page.locator('script[type="application/ld+json"]').allTextContents();
+  expect(ld.some((s) => s.includes('"@type":"FAQPage"'))).toBe(true);
+  expect(ld.some((s) => s.includes("aggregateRating") || s.includes('"@type":"Review"'))).toBe(false);
+  await expect(page.getByTestId("home-post")).toHaveCount(3);
+  await page.getByRole("button", { name: "Khi nào phải thanh toán?" }).click();
+  await expect(page.getByText("đặt cọc 30%", { exact: false })).toBeVisible();
+  await expect(page.locator("#contact form")).toBeVisible();
+
+  const search = page.getByRole("search", { name: "Tìm tour" });
+  await search.getByLabel("Điểm đến").selectOption("sapa");
+  await search.getByLabel("Số khách").fill("3");
+  await search.getByRole("button", { name: "Tìm tour" }).click();
+  await expect(page).toHaveURL(/\/tours\?destination=sapa&date=&guests=3$/);
+});
+
 test("English pages put WhatsApp first and show USD prices", async ({ page }) => {
   await page.goto("/en/tours");
   await expect(page.getByRole("navigation", { name: "Quick contact" }).locator("a").first()).toHaveAttribute("data-contact", "whatsapp");
