@@ -36,6 +36,8 @@ export interface BookingFormProps {
   action: (prev: State, formData: FormData) => Promise<State>;
   departures: DepartureOption[];
   initialDepartureId?: string;
+  /** Adults preselected from the search (?guests=). */
+  initialAdults?: number;
   locale: Locale;
   /** Set: private tour form (no departure list). */
   privateTour?: PrivateTourOption;
@@ -47,6 +49,7 @@ export function BookingForm({
   action,
   departures,
   initialDepartureId,
+  initialAdults,
   locale,
   privateTour,
 }: BookingFormProps) {
@@ -58,7 +61,7 @@ export function BookingForm({
       ? initialDepartureId
       : firstBookable,
   );
-  const [adults, setAdults] = useState(2);
+  const [adults, setAdults] = useState(initialAdults ?? 2);
   const [children, setChildren] = useState(0);
   // Prices and limits update only once React runs; tests wait for this marker before typing.
   const hydrated = useSyncExternalStore(noopSubscribe, () => true, () => false);

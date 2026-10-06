@@ -57,6 +57,8 @@ test("tours page lists every tour; tour page has itinerary, TouristTrip JSON-LD 
 
 test("inquiry form validates on the server and keeps the visitor on the page", async ({ page }) => {
   await page.goto("/tours/sapa-trekking-2d1n");
+  // The inquiry is a secondary option: folded under "Ask us before booking".
+  await page.getByTestId("inquiry").getByText("Hỏi tư vấn trước khi đặt").click();
   const form = page.locator("#book form");
   await form.getByLabel("Họ tên").fill("Nguyễn Văn A");
   await form.getByLabel("Email", { exact: true }).and(form.locator("input[type=email]")).fill("not-an-email");
@@ -172,4 +174,52 @@ test("tour filters: the home search lands on a filtered list; filters stay in th
   expect(sitemap).toContain("/tours/ha-long</loc>");
   await page.goto("/en/tours/sapa");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Sapa tours");
+});
+
+test("tour page: photo viewer, quick facts, departures with seats, the search's date and group size carried to booking", async ({ page }) => {
+  const TOUR = "/tours/ninh-binh-day-tour";
+  await page.goto(TOUR);
+  await expect(page.getByTestId("tour-facts").locator("dt")).toHaveText(["Thời gian", "Khởi hành", "Quy mô đoàn", "Ngôn ngữ"]);
+  await expect(page.getByTestId("booking-trust").locator("li")).toHaveCount(3);
+  // Itinerary: day 1 open, the others folded.
+  const days = page.getByTestId("itinerary").locator("details");
+  await expect(days.first()).toHaveAttribute("open", "");
+
+  // Photo viewer: opens on a photo, arrow keys move, Escape closes.
+  await page.getByRole("button", { name: /^Xem \d+ ảnh$/ }).click();
+  const viewer = page.getByRole("dialog", { name: "Ảnh tour" });
+  await expect(viewer).toBeVisible();
+  await expect(viewer.getByText(/^Ảnh 1\/\d+$/)).toBeVisible();
+  await page.keyboard.press("ArrowRight");
+  await expect(viewer.getByText(/^Ảnh 2\/\d+$/)).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(viewer).toBeHidden();
+
+  // Departures: live seats; the date picked in the search is highlighted and preselected for booking.
+  const rows = page.getByTestId("tour-departures").locator("[data-departure]");
+  expect(await rows.count()).toBeGreaterThan(3);
+  const bookable = rows.filter({ has: page.getByRole("link", { name: /^Đặt ngày/ }) });
+  const date = (await bookable.nth(1).getAttribute("data-departure"))!;
+  await page.goto(`${TOUR}?date=${date}&guests=3`);
+  await expect(page.locator(`[data-departure="${date}"]`)).toHaveAttribute("aria-current", "true");
+  await expect(page.getByTestId("book-online")).toHaveText(/^Đặt ngày /);
+  await page.getByTestId("book-online").click();
+  await expect(page).toHaveURL(/\/book\?d=[0-9a-f-]+&guests=3$/);
+  await expect(page.locator("form[data-hydrated]")).toBeVisible();
+  await expect(page.getByLabel("Người lớn")).toHaveValue("3");
+  await expect(page.getByTestId("departures").locator('button[aria-pressed="true"]')).toHaveCount(1);
+});
+
+test("tour page on a phone: booking bar at the bottom, contact buttons above it, no sideways scroll", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/tours/ha-long-cruise-2d1n");
+  const bar = page.locator("[data-mobile-book-bar]");
+  await expect(bar).toBeVisible();
+  await expect(bar.getByTestId("mobile-book")).toHaveAttribute("href", /\/tours\/ha-long-cruise-2d1n\/book$/);
+  const barBox = (await bar.boundingBox())!;
+  const contactBox = (await page.getByRole("navigation", { name: "Liên hệ nhanh" }).boundingBox())!;
+  expect(contactBox.y + contactBox.height).toBeLessThanOrEqual(barBox.y);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await expect(bar).toBeHidden();
 });

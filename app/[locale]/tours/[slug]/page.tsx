@@ -1,12 +1,10 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import { notFound, permanentRedirect } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
 import { getPublicEnv } from "@/bootstrap/env";
 import { submitTourInquiry } from "@/app/actions/tour-inquiry";
-import { Check, X } from "lucide-react";
+import { CalendarDays, Check, Clock, Languages, MapPin, ShieldCheck, Users, X } from "lucide-react";
 import { MarkdownContent } from "@/components/blog/markdown";
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { ButtonLink } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { localePath } from "@/core/i18n/routing";
@@ -15,7 +13,9 @@ import { seoSite } from "@/core/seo/site";
 import type { Locale } from "@/config/app";
 import { contactConfig, whatsappUrl, zaloUrl } from "@/config/contact";
 import { features } from "@/config/features";
-import { formatVnd, getBookingContent } from "@/product/booking/content";
+import { formatDay, formatVnd, getBookingContent } from "@/product/booking/content";
+import { getBooking } from "@/app/_lib/booking";
+import { TourGallery } from "@/product/components/tour-gallery";
 import { InquiryForm } from "@/product/components/inquiry-form";
 import { TourCard } from "@/product/components/tour-card";
 import { getProductContent } from "@/product/content";
@@ -87,6 +87,25 @@ export default async function TourPage({ params, searchParams }: Props) {
   const price = formatPrice(tour, locale);
   const duration = c.tours.days(tour.days, tour.nights);
   const related = catalog.related(tour);
+  // Date and group size chosen in the search (or the tour list) preselect the departure on the booking page.
+  const trip = parseTourFilters(await searchParams);
+  const departures = page.preview ? [] : await getBooking().listDepartures(slug).catch(() => []);
+  const chosen = trip.date ? departures.find((d) => d.date === trip.date && d.bookable) : undefined;
+  const bookHref = (departureId?: string) => {
+    const q = new URLSearchParams();
+    if (departureId) q.set("d", departureId);
+    if (trip.guests) q.set("guests", String(trip.guests));
+    const qs = q.toString();
+    return `${localePath(locale, `/tours/${slug}/book`)}${qs ? `?${qs}` : ""}`;
+  };
+  const upcoming = departures.slice(0, 8);
+  const seatLabel = (d: (typeof departures)[number]) => (d.bookable ? b.seatsLeft(d.seatsLeft) : d.status === "closed" ? b.closed : d.seatsLeft <= 0 ? b.soldOut : b.tooSoon);
+  const facts = [
+    { icon: Clock, label: c.tours.duration, value: duration },
+    { icon: MapPin, label: c.tours.departure, value: tour.departure },
+    { icon: Users, label: c.tours.groupSize, value: tour.groupSize },
+    { icon: Languages, label: c.tours.languages, value: c.tours.languagesValue },
+  ];
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -114,37 +133,37 @@ export default async function TourPage({ params, searchParams }: Props) {
     <>
       {banner}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
-      <div className="relative h-[42vh] min-h-72 w-full">
-        <Image src={tour.images[0]!} alt={tour.title} fill priority sizes="100vw" className="object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-        <Container className="absolute inset-x-0 bottom-0 pb-8 text-white">
-          <a href={localePath(locale, `/tours/${tour.destination}`)} className="text-sm opacity-90 hover:underline">
+      <Container className="pt-6 lg:pt-10">
+        <nav aria-label="breadcrumb" className="text-sm text-muted-foreground">
+          <a href={localePath(locale, "/tours")} className="hover:underline">
+            {c.tours.title}
+          </a>
+          {" / "}
+          <a href={localePath(locale, `/tours/${tour.destination}`)} className="hover:underline">
             {c.destinations[tour.destination].name}
           </a>
-          <h1 className="mt-1 max-w-3xl text-3xl font-bold sm:text-4xl">{tour.title}</h1>
-          <p className="mt-2 text-sm opacity-90">
-            {duration} · {c.tours.from} <strong className="text-lg">{price}</strong> {c.tours.perPerson}
-          </p>
-        </Container>
-      </div>
+        </nav>
+        <h1 className="mt-2 max-w-4xl text-3xl font-semibold [text-wrap:balance] sm:text-4xl">{tour.title}</h1>
+        <div className="mt-6">
+          <TourGallery images={tour.images} title={tour.title} locale={locale} />
+        </div>
+      </Container>
 
-      <Container className="grid gap-10 py-10 lg:grid-cols-[1fr_380px]">
+      <Container className="grid gap-10 pb-28 pt-8 lg:grid-cols-[minmax(0,1fr)_380px] lg:pb-16">
         <div className="min-w-0">
-          <p className="text-lg">{tour.summary}</p>
-          <dl className="mt-6 grid grid-cols-3 gap-4 rounded-lg border border-border p-4 text-sm">
-            <div>
-              <dt className="text-muted-foreground">{c.tours.duration}</dt>
-              <dd className="font-medium">{duration}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">{c.tours.departure}</dt>
-              <dd className="font-medium">{tour.departure}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">{c.tours.groupSize}</dt>
-              <dd className="font-medium">{tour.groupSize}</dd>
-            </div>
+          <dl className="grid grid-cols-2 gap-4 rounded-2xl border border-border p-4 text-sm sm:grid-cols-4" data-testid="tour-facts">
+            {facts.map(({ icon: Icon, label, value }) => (
+              <div key={label}>
+                <dt className="flex items-center gap-1.5 text-muted-foreground">
+                  <Icon aria-hidden="true" className="size-4 shrink-0 text-primary" />
+                  {label}
+                </dt>
+                <dd className="mt-0.5 font-medium">{value}</dd>
+              </div>
+            ))}
           </dl>
+
+          <p className="mt-6 text-lg">{tour.summary}</p>
 
           <section className="mt-8">
             <h2 className="text-xl font-semibold">{c.tours.highlights}</h2>
@@ -158,38 +177,68 @@ export default async function TourPage({ params, searchParams }: Props) {
             </ul>
           </section>
 
+          {!page.preview && (
+            <section id="departures" className="mt-10 scroll-mt-24" aria-labelledby="departures-title" data-testid="tour-departures">
+              <h2 id="departures-title" className="text-xl font-semibold">
+                {c.tours.departuresTitle}
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">{c.tours.departuresHint}</p>
+              {upcoming.length === 0 ? (
+                <p className="mt-4 rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">{b.noDepartures}</p>
+              ) : (
+                <ul className="mt-4 divide-y divide-border rounded-2xl border border-border">
+                  {upcoming.map((d) => (
+                    <li key={d.id} className={`flex flex-wrap items-center justify-between gap-3 px-4 py-3 ${chosen?.id === d.id ? "bg-primary/5" : ""}`} data-departure={d.date} aria-current={chosen?.id === d.id ? "true" : undefined}>
+                      <div className="flex items-center gap-3">
+                        <CalendarDays aria-hidden="true" className="size-4 text-muted-foreground" />
+                        <div>
+                          <p className="font-medium capitalize">{formatDay(d.date, locale)}</p>
+                          <p className={`text-xs ${d.bookable && d.seatsLeft <= 5 ? "font-medium text-warning" : "text-muted-foreground"}`}>{seatLabel(d)}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-semibold">{locale === "vi" ? formatVnd(d.unitPriceVnd, locale) : price}</span>
+                        {d.bookable ? (
+                          <ButtonLink href={bookHref(d.id)} className="h-9 px-4" variant={chosen?.id === d.id ? "primary" : "outline"} aria-label={c.tours.bookDate(formatDay(d.date, locale))}>
+                            {b.choose}
+                          </ButtonLink>
+                        ) : (
+                          <span className="w-16 text-center text-xs text-muted-foreground">—</span>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {departures.length > upcoming.length && (
+                <a href={bookHref(chosen?.id)} className="mt-3 inline-block text-sm font-medium text-primary underline underline-offset-4">
+                  {c.tours.departuresAll} →
+                </a>
+              )}
+            </section>
+          )}
+
           {tour.body.trim() && (
-            <div className="prose-blog mt-8">
+            <div className="prose-blog mt-10">
               <MarkdownContent source={tour.body} />
             </div>
           )}
 
-          {tour.images.length > 1 && (
-            <Carousel className="mt-8" opts={{ loop: true }} aria-label={c.tours.gallery} data-testid="gallery">
-              <CarouselContent>
-                {tour.images.map((src, i) => (
-                  <CarouselItem key={src} className="sm:basis-1/2">
-                    <div className="relative aspect-[4/3] overflow-hidden rounded-lg">
-                      <Image src={src} alt={`${tour.title} (${i + 1}/${tour.images.length})`} fill sizes="(min-width: 1024px) 400px, (min-width: 640px) 50vw, 100vw" className="object-cover" />
-                    </div>
-                  </CarouselItem>
-                ))}
-              </CarouselContent>
-              <CarouselPrevious className="left-2" />
-              <CarouselNext className="right-2" />
-            </Carousel>
-          )}
-
           <section className="mt-10" data-testid="itinerary">
             <h2 className="text-xl font-semibold">{c.tours.itinerary}</h2>
-            <ol className="mt-4 grid gap-4 border-l-2 border-primary/30 pl-6">
+            <ol className="mt-4 grid gap-3">
               {tour.itinerary.map((d, i) => (
-                <li key={d.title} className="relative">
-                  <span className="absolute -left-[2.1rem] flex h-7 w-7 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-                    {i + 1}
-                  </span>
-                  <h3 className="font-semibold">{d.title}</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">{d.description}</p>
+                <li key={d.title}>
+                  <details open={i === 0} className="group rounded-xl border border-border px-4 py-3">
+                    <summary className="flex cursor-pointer list-none items-center gap-3 font-semibold">
+                      <span className="flex h-7 shrink-0 items-center rounded-full bg-primary px-2.5 text-xs font-bold text-primary-foreground">{c.tours.itineraryDay(i + 1)}</span>
+                      <span className="flex-1">{d.title}</span>
+                      <span aria-hidden="true" className="text-lg text-muted-foreground transition group-open:rotate-45">
+                        +
+                      </span>
+                    </summary>
+                    <p className="mt-2 text-sm text-muted-foreground">{d.description}</p>
+                  </details>
                 </li>
               ))}
             </ol>
@@ -224,7 +273,7 @@ export default async function TourPage({ params, searchParams }: Props) {
           <p className="mt-6 text-xs text-muted-foreground">{c.tours.priceNote}</p>
         </div>
 
-        <aside id="book" className="h-fit rounded-xl border border-border p-5 shadow-sm lg:sticky lg:top-6">
+        <aside id="book" className="h-fit rounded-2xl border border-border p-5 shadow-sm lg:sticky lg:top-24">
           <p className="text-sm text-muted-foreground">
             {c.tours.from} <span className="text-2xl font-bold text-primary">{price}</span> {c.tours.perPerson}
           </p>
@@ -233,28 +282,37 @@ export default async function TourPage({ params, searchParams }: Props) {
               {getTourAdminContent(locale).previewNoBooking}
             </p>
           ) : (
-          <>
-          <ButtonLink href={localePath(locale, `/tours/${slug}/book`)} className="mt-3 w-full" data-testid="book-online">
-            {b.cta}
-          </ButtonLink>
-          <p className="mt-1 text-xs text-muted-foreground">{b.ctaHint}</p>
-          {tour.private && (
-            <div className="mt-4 border-t border-border pt-4" data-testid="private-offer">
-              <p className="text-sm font-medium">{b.privateFrom(formatVnd(tour.private.tiers.at(-1)!.vnd, locale))}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{b.privateHint}</p>
-              <ButtonLink href={localePath(locale, `/tours/${slug}/book?type=private`)} variant="outline" className="mt-2 w-full">
-                {b.privateCta}
+            <>
+              <ButtonLink href={bookHref(chosen?.id)} className="mt-3 w-full" data-testid="book-online">
+                {chosen ? c.tours.bookDate(formatDay(chosen.date, locale)) : c.tours.chooseDate}
               </ButtonLink>
-            </div>
-          )}
-          <h2 className="mt-5 border-t border-border pt-4 text-lg font-semibold">{c.inquiry.title}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{c.inquiry.subtitle}</p>
-          <div className="mt-4">
-            {features.email ? (
-              <InquiryForm action={submitTourInquiry} labels={c.inquiry} tour={tour.title} locale={locale} />
-            ) : null}
-          </div>
-          </>
+              <ul className="mt-4 grid gap-1.5 text-xs text-muted-foreground" data-testid="booking-trust">
+                {c.tours.trust.map((t) => (
+                  <li key={t} className="flex gap-2">
+                    <ShieldCheck aria-hidden="true" className="size-4 shrink-0 text-primary" />
+                    {t}
+                  </li>
+                ))}
+              </ul>
+              {tour.private && (
+                <div className="mt-4 border-t border-border pt-4" data-testid="private-offer">
+                  <p className="text-sm font-medium">{b.privateFrom(formatVnd(tour.private.tiers.at(-1)!.vnd, locale))}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{b.privateHint}</p>
+                  <ButtonLink href={localePath(locale, `/tours/${slug}/book?type=private`)} variant="outline" className="mt-2 w-full">
+                    {b.privateCta}
+                  </ButtonLink>
+                </div>
+              )}
+              {features.email && (
+                <details className="mt-4 border-t border-border pt-4" data-testid="inquiry">
+                  <summary className="cursor-pointer text-sm font-medium">{c.tours.askAdvice}</summary>
+                  <p className="mt-2 text-sm text-muted-foreground">{c.inquiry.subtitle}</p>
+                  <div className="mt-4">
+                    <InquiryForm action={submitTourInquiry} labels={c.inquiry} tour={tour.title} locale={locale} />
+                  </div>
+                </details>
+              )}
+            </>
           )}
           <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
             <a href={whatsappUrl(c.contact.whatsappText(tour.title))} target="_blank" rel="noopener noreferrer" className="rounded-md bg-[#25d366] px-3 py-2 text-center font-medium text-[#052e16]">
@@ -266,6 +324,20 @@ export default async function TourPage({ params, searchParams }: Props) {
           </div>
         </aside>
       </Container>
+
+      {!page.preview && (
+        <div data-mobile-book-bar className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 px-4 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] pt-3 backdrop-blur lg:hidden">
+          <div className="mx-auto flex max-w-xl items-center justify-between gap-3">
+            <p className="text-sm leading-tight">
+              <span className="text-muted-foreground">{c.tours.from}</span> <span className="text-lg font-bold text-primary">{price}</span>
+              <span className="block text-xs text-muted-foreground">{c.tours.perPerson}</span>
+            </p>
+            <ButtonLink href={bookHref(chosen?.id)} data-testid="mobile-book">
+              {c.tours.chooseDate}
+            </ButtonLink>
+          </div>
+        </div>
+      )}
 
       {related.length > 0 && (
         <Container className="pb-16">

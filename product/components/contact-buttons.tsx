@@ -18,7 +18,7 @@ const ICON: Record<ContactButtonsProps["items"][number]["key"], LucideIcon> = { 
 /** Floating quick-contact buttons (bottom right), visible on every page. */
 export function ContactButtons({ label, items }: ContactButtonsProps) {
   return (
-    <nav aria-label={label} className="fixed bottom-4 right-4 z-40 flex flex-col items-end gap-2">
+    <nav aria-label={label} className="fixed bottom-4 right-4 z-40 flex flex-col items-end gap-2 max-lg:in-[body:has([data-mobile-book-bar])]:bottom-24">
       {items.map((item) => (
         <a
           key={item.key}
