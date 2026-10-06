@@ -30,8 +30,10 @@ export interface PostSummary extends PostFrontmatter {
 }
 
 export interface Post extends PostSummary {
-  /** MDX body without the frontmatter. */
+  /** Body without the frontmatter. */
   body: string;
+  /** "mdx": trusted file in the repo (MdxContent). "markdown": staff text from the database (MarkdownContent, no code). */
+  format: "mdx" | "markdown";
 }
 
 export interface Blog {
@@ -68,8 +70,33 @@ export function parsePost(file: string, source: string, locale: string, wordsPer
     throw new BlogContentError(`${file}: ${issues}`);
   }
   const body = source.slice(match[0].length);
+  return { ...parsed.data, locale, slug, body, format: "mdx", readingMinutes: readingMinutes(body, wordsPerMinute) };
+}
+
+function readingMinutes(body: string, wordsPerMinute: number): number {
   const words = body.replace(/<[^>]+>|[#>*_`~[\]()-]/g, " ").split(/\s+/).filter(Boolean).length;
-  return { ...parsed.data, locale, slug, body, readingMinutes: Math.max(1, Math.round(words / wordsPerMinute)) };
+  return Math.max(1, Math.round(words / wordsPerMinute));
+}
+
+/** A post stored in the content module (type "post"): the frontmatter fields, its locale and a Markdown body. */
+export const contentPostSchema = frontmatterSchema.omit({ draft: true }).extend({
+  locale: z.string().min(2).max(10),
+  body: z.string().trim().min(1).max(100_000),
+});
+export type ContentPost = z.infer<typeof contentPostSchema>;
+
+/** Problem fields of a post draft (empty = complete), e.g. ["title", "body"]. */
+export function contentPostProblems(data: unknown): string[] {
+  const parsed = contentPostSchema.safeParse(data);
+  return parsed.success ? [] : [...new Set(parsed.error.issues.map((i) => i.path.join(".") || "post"))];
+}
+
+/** A published content item as a Post; null when it no longer matches the schema. */
+export function postFromContent(slug: string, data: unknown, wordsPerMinute = 200): Post | null {
+  const parsed = contentPostSchema.safeParse(data);
+  if (!parsed.success || !SLUG.test(slug)) return null;
+  const { body, ...rest } = parsed.data;
+  return { ...rest, draft: false, slug, body, format: "markdown", readingMinutes: readingMinutes(body, wordsPerMinute) };
 }
 
 export interface BlogOptions {
@@ -82,16 +109,23 @@ export interface BlogOptions {
 
 /** Reads every post once (at build time for prerendered pages) and serves lookups from memory. */
 export function createBlog(options: BlogOptions): Blog {
-  const byLocale = new Map<string, Post[]>();
+  const all: Post[] = [];
   for (const locale of options.locales) {
     const folder = path.join(options.dir, locale);
     const files = existsSync(folder) ? readdirSync(folder).filter((f) => f.endsWith(".mdx")) : [];
-    const posts = files
-      .map((f) => parsePost(path.join(folder, f), readFileSync(path.join(folder, f), "utf8"), locale, options.wordsPerMinute))
-      .filter((p) => options.includeDrafts || !p.draft)
-      .sort((a, b) => b.date.localeCompare(a.date) || a.slug.localeCompare(b.slug));
-    byLocale.set(locale, posts);
+    for (const f of files) {
+      const post = parsePost(path.join(folder, f), readFileSync(path.join(folder, f), "utf8"), locale, options.wordsPerMinute);
+      if (options.includeDrafts || !post.draft) all.push(post);
+    }
   }
+  return blogFromPosts(all, options);
+}
+
+/** Blog lookups over posts already loaded (MDX files, or published items of the content module). */
+export function blogFromPosts(all: Post[], options: { locales: readonly string[]; postsPerPage: number }): Blog {
+  const byLocale = new Map<string, Post[]>(options.locales.map((l) => [l, []]));
+  for (const post of all) byLocale.get(post.locale)?.push(post);
+  for (const list of byLocale.values()) list.sort((a, b) => b.date.localeCompare(a.date) || a.slug.localeCompare(b.slug));
 
   const summary = ({ body, ...rest }: Post): PostSummary => (void body, rest);
   const posts = (locale: string) => byLocale.get(locale) ?? [];

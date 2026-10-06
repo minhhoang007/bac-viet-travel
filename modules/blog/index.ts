@@ -1,2 +1,2 @@
 export { blogModule } from "./module";
-export { createBlog, parsePost, BlogContentError, type Blog, type Post, type PostSummary, type PostFrontmatter } from "./service";
+export { createBlog, blogFromPosts, parsePost, postFromContent, contentPostSchema, contentPostProblems, BlogContentError, type ContentPost, type Blog, type Post, type PostSummary, type PostFrontmatter } from "./service";

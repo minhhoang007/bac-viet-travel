@@ -9,8 +9,8 @@ import { requireBlog, toListItem } from "./_shared";
 const pageHref = (locale: Locale, n: number) => localePath(locale, n === 1 ? "/blog" : `/blog/page/${n}`);
 
 /** Blog index (page 1 at /blog, others at /blog/page/<n>). */
-export function BlogIndex({ locale, page }: { locale: Locale; page: number }) {
-  const blog = requireBlog();
+export async function BlogIndex({ locale, page }: { locale: Locale; page: number }) {
+  const blog = await requireBlog();
   const c = getAppContent(locale).blog;
   const result = blog.page(locale, page);
   if (result.page !== page) notFound();
