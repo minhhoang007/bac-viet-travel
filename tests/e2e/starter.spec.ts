@@ -164,3 +164,13 @@ test("profile site: /dashboard is a plain 404 (no redirect to a missing login pa
   const res = await request.get("/dashboard", { maxRedirects: 0 });
   expect(res.status()).toBe(404);
 });
+
+test("unknown URLs show the site's own 404 (translated, with the header), not the framework page", async ({ page }) => {
+  for (const [locale, path] of [[defaultLocale, "/no-such-page/deep"], [otherLocale, `/${otherLocale}/no-such-page`]] as const) {
+    const res = await page.goto(path);
+    expect(res?.status()).toBe(404);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(getMarketingContent(locale).notFound.title);
+    await expect(page.locator("header").first()).toBeVisible();
+    await expect(page.locator("html")).toHaveAttribute("lang", locale);
+  }
+});
