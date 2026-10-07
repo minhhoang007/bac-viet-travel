@@ -21,7 +21,7 @@ export interface TourFilters {
 }
 
 /** Price bands per currency: VND on Vietnamese pages, USD on English pages. */
-export const PRICE_LIMITS = { vi: [1_500_000, 3_000_000], en: [60, 120] } as const;
+const PRICE_LIMITS = { vi: [1_500_000, 3_000_000], en: [60, 120] } as const;
 
 type Params = Record<string, string | string[] | undefined>;
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v)?.trim() || undefined;

@@ -4,7 +4,7 @@ import { setRequestLocale } from "next-intl/server";
 import { requireAdmin } from "@/app/_lib/admin";
 import { cancelBooking, confirmBooking, markBalancePaid, markBookingRefunded, receiveTransfer, saveStaffNote } from "@/app/actions/booking-admin";
 import { Input } from "@/components/ui/input";
-import { transferNote } from "@/product/booking/deposits";
+import { balanceDue, transferNote } from "@/product/booking/deposits";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { localePath } from "@/core/i18n/routing";
@@ -140,7 +140,7 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
       <section className="grid gap-4 rounded-lg border border-border p-4">
         <h2 className="font-semibold">{c.detail.actions}</h2>
         <div className="flex flex-wrap gap-3">
-          {(b.status === "deposit_paid" || b.status === "confirmed") && !b.balancePaidAt && b.totalVnd > b.depositVnd && (
+          {balanceDue(b) > 0 && (
             <form action={markBalancePaid}>
               {hidden}
               <ConfirmButton question={c.detail.balanceAsk} variant="outline" data-testid="admin-balance">{c.detail.balanceMark}</ConfirmButton>

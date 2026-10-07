@@ -8,7 +8,7 @@ import { bookingRules } from "./booking/rules";
 // DRAFT: the refund tiers below are placeholders until the owner sets the official policy.
 
 /** Refund of the deposit by how many days before departure the guest cancels (first matching tier). */
-export const cancellationTiers = [
+const cancellationTiers = [
   { minDays: 7, refundPercent: 100 },
   { minDays: 3, refundPercent: 50 },
   { minDays: 0, refundPercent: 0 },

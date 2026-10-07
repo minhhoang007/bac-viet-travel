@@ -1,8 +1,9 @@
 "use server";
 
-import { redirect, unstable_rethrow } from "next/navigation";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireAdmin } from "@/app/_lib/admin";
+import { adminAction, type AdminContext } from "@/app/_lib/admin-action";
 import { localePath } from "@/core/i18n/routing";
 import type { ManualBookingResult } from "@/product/booking/admin";
 import { addDays } from "@/product/booking/rules";
@@ -11,22 +12,13 @@ const locale = z.enum(["vi", "en"]).catch("vi");
 const code = z.string().regex(/^BV-[A-Z2-9]{6}$/);
 const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
-/** Thin actions: admin guard → validate → booking admin service (audited) → back to the page with a result flag. */
-async function run(formData: FormData, back: string, work: (ctx: Awaited<ReturnType<typeof requireAdmin>>) => Promise<boolean>) {
-  const ctx = await requireAdmin();
-  const l = locale.parse(formData.get("locale"));
-  let ok = false;
-  try {
-    ok = await work(ctx);
-  } catch (error) {
-    unstable_rethrow(error);
-    ctx.container.logger.warn("booking_admin.action_failed", { error });
-  }
-  const sep = back.includes("?") ? "&" : "?";
-  redirect(localePath(l, `${back}${sep}result=${ok ? "done" : "failed"}`));
-}
+const EVENT = "booking_admin.action_failed";
 
-const service = (ctx: Awaited<ReturnType<typeof requireAdmin>>) => ctx.container.app!.product.bookingAdmin;
+/** Thin actions: admin guard → validate → booking admin service (audited) → back to the page with a result flag. */
+const run = (formData: FormData, back: string, work: (ctx: AdminContext) => Promise<boolean>) =>
+  adminAction(formData, back, EVENT, async (ctx) => ((await work(ctx)) ? "done" : "failed"));
+
+const service = (ctx: AdminContext) => ctx.container.app!.product.bookingAdmin;
 const bookingCode = (formData: FormData) => code.parse(formData.get("code"));
 
 export async function confirmBooking(formData: FormData): Promise<void> {
@@ -95,7 +87,7 @@ export async function createManualBooking(_prev: ManualBookingState, formData: F
   try {
     result = await service(ctx).createManual(ctx.user, Object.fromEntries(formData));
   } catch (error) {
-    ctx.container.logger.warn("booking_admin.action_failed", { error });
+    ctx.container.logger.warn(EVENT, { error });
     return { status: "error" };
   }
   if (result.status !== "created") return result;
@@ -107,17 +99,10 @@ export async function receiveTransfer(formData: FormData): Promise<void> {
   const c = bookingCode(formData);
   const amountVnd = z.coerce.number().int().positive().catch(0).parse(String(formData.get("amountVnd") ?? "").replace(/\D/g, ""));
   const bankRef = String(formData.get("bankRef") ?? "");
-  const ctx = await requireAdmin();
-  const l = locale.parse(formData.get("locale"));
-  let result = "failed";
-  try {
+  await adminAction(formData, `/admin/bookings/${c}`, EVENT, async (ctx) => {
     const outcome = await service(ctx).receiveTransfer(ctx.user, c, { amountVnd, bankRef });
-    result = outcome === "deposit_paid" ? "done" : outcome === "too_little" || outcome === "refund_due" || outcome === "extra" ? outcome : "failed";
-  } catch (error) {
-    unstable_rethrow(error);
-    ctx.container.logger.warn("booking_admin.action_failed", { error });
-  }
-  redirect(localePath(l, `/admin/bookings/${c}?result=${result}`));
+    return outcome === "deposit_paid" ? "done" : outcome === "too_little" || outcome === "refund_due" || outcome === "extra" ? outcome : "failed";
+  });
 }
 
 export async function markBalancePaid(formData: FormData): Promise<void> {

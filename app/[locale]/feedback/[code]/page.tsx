@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import { setRequestLocale } from "next-intl/server";
-import { getContainer } from "@/bootstrap/container";
 import { submitFeedback } from "@/app/actions/feedback";
+import { getFeedback } from "@/app/_lib/booking";
 import { getTours } from "@/app/_lib/tours";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import type { Locale } from "@/config/app";
 import { contactConfig } from "@/config/contact";
 import { formatDay, getBookingContent } from "@/product/booking/content";
+import { isSold } from "@/product/booking/status";
 
 type Props = { params: Promise<{ locale: Locale; code: string }>; searchParams: Promise<{ s?: string; done?: string; error?: string }> };
 
@@ -23,9 +24,8 @@ export default async function FeedbackPage({ params, searchParams }: Props) {
   setRequestLocale(locale);
   const t = getBookingContent(locale).feedback;
   const { s = "", done, error } = await searchParams;
-  const app = getContainer().app;
-  const found = app ? await app.product.feedback.find(code, s) : null;
-  if (!found || (found.booking.status !== "deposit_paid" && found.booking.status !== "confirmed")) {
+  const found = (await getFeedback()?.find(code, s)) ?? null;
+  if (!found || !isSold(found.booking.status)) {
     return (
       <Container className="max-w-xl py-16">
         <h1 className="text-2xl font-semibold">{t.title}</h1>

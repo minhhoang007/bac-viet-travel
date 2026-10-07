@@ -4,6 +4,7 @@ import { AppError } from "@/core/errors";
 import type { ProductContext } from "@/core/product/context";
 import type { Db } from "@/db/client";
 import { discountCodes, type DiscountCode } from "../schema/booking";
+import { takesSeatsB } from "./status";
 
 type Actor = Parameters<NonNullable<ProductContext["audit"]>["audited"]>[0];
 
@@ -12,7 +13,7 @@ const optionalInt = (max: number) =>
   z.preprocess((v) => (v === "" || v === undefined || v === null ? null : v), z.coerce.number({ message: "invalid" }).int("invalid").min(0, "invalid").max(max, "invalid").nullable());
 
 /** Staff form for a new discount code (D6). Errors are codes; the admin page maps them to text. */
-export const discountInputSchema = z
+const discountInputSchema = z
   .object({
     code: z
       .string()
@@ -52,13 +53,11 @@ export function createDiscountAdmin(deps: { db: Db; audit?: ProductContext["audi
 
   return {
     async list() {
-      const at = now().toISOString();
-      return db
+            return db
         .select({
           code: discountCodes,
           // Columns written out: inside a correlated subquery Drizzle renders a bare "code" (= bookings.code here).
-          used: sql<number>`(select count(*)::int from bookings b where b.discount_code = discount_codes.code
-            and (b.status in ('deposit_paid', 'confirmed') or (b.status = 'held' and b.hold_expires_at > ${at})))`,
+          used: sql<number>`(select count(*)::int from bookings b where b.discount_code = discount_codes.code and ${takesSeatsB(now())})`,
         })
         .from(discountCodes)
         .orderBy(desc(discountCodes.createdAt))

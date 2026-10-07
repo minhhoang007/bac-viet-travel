@@ -2,6 +2,7 @@
 // are simulated with params signed by the fake sandbox merchant (tests/e2e/server-env.ts).
 import { createHmac } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
+import { submitHold } from "./booking-form";
 import { E2E_VNPAY } from "./server-env";
 
 const TOUR = "/tours/ha-long-day-trip";
@@ -14,11 +15,7 @@ function signed(params: Record<string, string>) {
 
 async function holdAndPay(page: Page) {
   await page.goto(`${TOUR}/book`);
-  await page.getByLabel("Họ tên").fill("Lê Thu");
-  await page.getByLabel("Email").fill("thu@example.com");
-  await page.getByLabel("Số điện thoại / WhatsApp").fill("0987654321");
-  await page.getByRole("checkbox", { name: /Tôi đồng ý/ }).check();
-  await page.getByRole("button", { name: "Giữ chỗ 15 phút" }).click();
+  await submitHold(page, { name: "Lê Thu", email: "thu@example.com", phone: "0987654321" });
   await expect(page.locator("[data-booking-status=held]")).toBeVisible();
   await expect(page.getByTestId("sandbox-banner")).toContainText("không trừ tiền thật");
 

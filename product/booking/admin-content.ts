@@ -122,6 +122,20 @@ const vi = {
     empty: "Không có ngày khởi hành trong khoảng này.",
     weekdays: ["CN", "T2", "T3", "T4", "T5", "T6", "T7"],
   },
+  reports: {
+    title: "Báo cáo",
+    hint: "Theo ngày khởi hành. Đã bán = đơn đã cọc hoặc đã xác nhận.",
+    from: "Từ tháng",
+    to: "Đến tháng",
+    show: "Xem",
+    byTour: "Theo tour",
+    bySource: "Theo nguồn khách",
+    cols: ["Tour", "Chuyến", "Chỗ bán / sức chứa", "Lấp đầy", "Đơn", "Doanh thu", "Đã thu cọc"],
+    sourceCols: ["Nguồn", "Đơn", "Khách", "Doanh thu"],
+    total: "Tổng",
+    owed: "Đang nợ hoàn tiền (mọi ngày đi)",
+    empty: "Không có chuyến nào trong khoảng này.",
+  },
 };
 
 type AdminContent = typeof vi;
@@ -246,6 +260,20 @@ const en: AdminContent = {
     listPrice: "tour price",
     empty: "No departures in this range.",
     weekdays: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+  },
+  reports: {
+    title: "Reports",
+    hint: "By departure date. Sold = paid or confirmed bookings.",
+    from: "From month",
+    to: "To month",
+    show: "Show",
+    byTour: "By tour",
+    bySource: "By booking source",
+    cols: ["Tour", "Departures", "Seats sold / capacity", "Fill rate", "Bookings", "Revenue", "Deposits paid"],
+    sourceCols: ["Source", "Bookings", "Travellers", "Revenue"],
+    total: "Total",
+    owed: "Refunds owed (any departure date)",
+    empty: "No departures in this range.",
   },
 };
 

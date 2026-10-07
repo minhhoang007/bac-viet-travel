@@ -2,8 +2,10 @@
 // money in the admin, the guest's page turns to paid. Demo bank account: offered only in payments sandbox mode.
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Browser } from "@playwright/test";
+import { submitHold } from "./booking-form";
 import postgres from "postgres";
 import { e2eServerEnv } from "./server-env";
+import { signInStaff } from "./staff";
 
 const sql = postgres(e2eServerEnv.DATABASE_URL!, { max: 1, onnotice: () => {} });
 test.afterAll(() => sql.end());
@@ -12,19 +14,8 @@ const TOUR = "/tours/ha-long-cruise-2d1n";
 const STAFF = "transfer-staff@bacviet.example";
 
 async function adminPage(browser: Browser) {
-  const page = await (await browser.newContext({ extraHTTPHeaders: { "x-forwarded-for": "198.51.100.200" } })).newPage();
-  await page.goto("/login");
-  await page.fill("#login-email", STAFF);
-  await page.getByRole("button", { name: "Gửi liên kết đăng nhập" }).click();
-  let token: string | undefined;
-  for (let i = 0; i < 30 && !token; i++) {
-    [{ identifier: token } = { identifier: undefined }] = await sql<{ identifier: string }[]>`
-      select regexp_replace(identifier, '^magic-link:', '') as identifier from verifications where value like ${`%"${STAFF}"%`} order by created_at desc limit 1`;
-    if (!token) await new Promise((r) => setTimeout(r, 300));
-  }
-  await page.goto(`/api/auth/magic-link/verify?token=${token}&callbackURL=%2Fdashboard`);
-  await expect(page).toHaveURL(/\/dashboard$/);
-  await sql`update users set role = 'admin' where email = ${STAFF}`;
+  const page = await (await browser.newContext()).newPage();
+  await signInStaff(page, sql, STAFF, "admin");
   return page;
 }
 
@@ -32,11 +23,7 @@ test("bank transfer: VietQR with amount and reference, seats held 2 hours, staff
   test.setTimeout(60_000);
   await page.goto(`${TOUR}/book`);
   await expect(page.locator("form[data-hydrated]")).toBeVisible();
-  await page.getByLabel("Họ tên").fill("Phạm Hoa");
-  await page.getByLabel("Email").fill("hoa@example.com");
-  await page.getByLabel("Số điện thoại / WhatsApp").fill("0987000111");
-  await page.getByRole("checkbox", { name: /Tôi đồng ý/ }).check();
-  await page.getByRole("button", { name: "Giữ chỗ 15 phút" }).click();
+  await submitHold(page, { name: "Phạm Hoa", email: "hoa@example.com", phone: "0987000111" });
   await expect(page.locator("[data-booking-status=held]")).toBeVisible();
   const code = (await page.getByTestId("booking-code").innerText()).trim();
   const deposit = (await page.getByTestId("booking-deposit").innerText()).trim();

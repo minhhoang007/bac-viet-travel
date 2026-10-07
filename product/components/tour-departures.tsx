@@ -5,10 +5,10 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { ButtonLink } from "@/components/ui/button";
 import { localePath } from "@/core/i18n/routing";
 import type { Locale } from "@/config/app";
-import { formatDay, formatVnd, getBookingContent } from "../booking/content";
+import { formatDay, getBookingContent } from "../booking/content";
 import { getProductContent } from "../content";
 import { parseTourFilters } from "../tours/filters";
-import { formatPrice } from "../tours/format";
+import { formatAmount } from "../tours/format";
 import { DepartureCalendar } from "./departure-calendar";
 
 /** One departure as /api/tours/<slug>/departures returns it (live seats). */
@@ -85,7 +85,7 @@ export function TourDepartureList({ locale, price }: { locale: Locale; price: { 
   }
   const upcoming = departures.slice(0, 8);
   const seatLabel = (d: PublicDeparture) => (d.bookable ? b.seatsLeft(d.seatsLeft) : d.status === "closed" ? b.closed : d.seatsLeft <= 0 ? b.soldOut : b.tooSoon);
-  const money = (vnd: number) => (locale === "vi" ? formatVnd(vnd, locale) : formatPrice({ price: { vnd, usd: Math.round((price.usd * vnd) / price.vnd) } }, locale));
+  const money = (vnd: number) => formatAmount(vnd, price, locale);
   const toggle = (value: "list" | "month", label: string) => (
     <button type="button" aria-pressed={view === value} onClick={() => setView(value)} className={`rounded-md px-3 py-1 text-sm ${view === value ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}>
       {label}

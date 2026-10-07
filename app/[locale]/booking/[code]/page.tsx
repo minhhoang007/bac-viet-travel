@@ -4,8 +4,9 @@ import { setRequestLocale } from "next-intl/server";
 import { getBooking, getDeposits, isPaymentsSandbox, isTransferAvailable, isVnpayConfigured } from "@/app/_lib/booking";
 import { chooseTransfer, saveTravellers, startBalance, startDeposit } from "@/app/actions/booking";
 import { balanceDue } from "@/product/booking/deposits";
-import { vietnamToday } from "@/product/booking/rules";
+import { travellerKinds, vietnamToday } from "@/product/booking/rules";
 import { travellersEditable } from "@/product/booking/service";
+import { isSold } from "@/product/booking/status";
 import { TravellersForm } from "@/product/components/travellers-form";
 import { bankTransferConfig } from "@/config/bank-transfer";
 import { vietQrSvg } from "@/core/payments/vietqr";
@@ -55,15 +56,15 @@ export default async function BookingPage({ params, searchParams }: Props) {
   const status = booking.isExpired ? "expired" : booking.status;
   const sandbox = isPaymentsSandbox();
   const today = vietnamToday(new Date());
-  const kinds = [...Array<"adult">(booking.adults).fill("adult"), ...Array<"child">(booking.children).fill("child"), ...Array<"infant">(booking.infants).fill("infant")];
+  const kinds = travellerKinds(booking);
   const transferOffered = status === "held" && isTransferAvailable();
   const transfer = transferOffered && (await getDeposits().transferPending(booking.id));
   const holdUntil = booking.holdExpiresAt.toLocaleTimeString(locale === "vi" ? "vi-VN" : "en-GB", { timeZone: "Asia/Ho_Chi_Minh", hour: "2-digit", minute: "2-digit" });
   // Back from VNPay with a success code, but the IPN has not arrived yet.
   const confirming = status === "held" && pay === "pending";
   const rebook = localePath(locale, `/tours/${booking.departure.tourSlug}/book?d=${booking.departure.id}`);
-  const step = status === "held" ? 2 : status === "deposit_paid" || status === "confirmed" ? 3 : null;
-  const next = status === "held" ? t.booking.nextHeld : status === "deposit_paid" || status === "confirmed" ? t.booking.nextPaid : null;
+  const step = status === "held" ? 2 : isSold(status) ? 3 : null;
+  const next = status === "held" ? t.booking.nextHeld : isSold(status) ? t.booking.nextPaid : null;
   const chat = locale === "vi" ? { href: zaloUrl(), label: "Zalo" } : { href: whatsappUrl(), label: "WhatsApp" };
   const guests = [
     booking.adults && `${booking.adults} ${t.adults.toLowerCase()}`,
@@ -99,7 +100,7 @@ export default async function BookingPage({ params, searchParams }: Props) {
           <AutoRefresh />
         </section>
       )}
-      {(status === "deposit_paid" || status === "confirmed") && (
+      {isSold(status) && (
         <section className="mt-6 rounded-xl border border-success/40 bg-success/10 p-5" data-testid="paid">
           <h2 className="text-lg font-semibold">{t.booking.paidTitle}</h2>
           <p className="mt-1 text-sm">{t.booking.paidText}</p>
@@ -166,7 +167,7 @@ export default async function BookingPage({ params, searchParams }: Props) {
         </section>
       )}
 
-      {(status === "held" || status === "deposit_paid" || status === "confirmed") && (
+      {(status === "held" || isSold(status)) && (
         <section className="mt-8 rounded-xl border border-border p-5" aria-labelledby="travellers-title" data-testid="travellers">
           <h2 id="travellers-title" className="text-lg font-semibold">
             {t.travellers.title}
