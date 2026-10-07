@@ -16,6 +16,7 @@ export async function readContent(type: string, slug: string): Promise<{ id: str
 }
 
 async function staff(app: NonNullable<ReturnType<typeof getContainer>["app"]>) {
-  const user = await app.auth.getUser(await headers());
-  return user !== null && hasRole(user, "editor");
+  const current = await app.auth.getSession(await headers());
+  // Staff who passed the second factor this session (as for the admin area).
+  return current !== null && hasRole(current.user, "editor") && (await app.auth.staffGate(current)) === "ok";
 }

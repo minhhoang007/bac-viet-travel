@@ -9,7 +9,8 @@ Report vulnerabilities privately to the maintainer (hoangvanminh007@gmail.com). 
 |---|---|
 | Input | Schema validation (zod) at every boundary: routes, actions, webhooks, forms, env |
 | Output | Escape/sanitize user content; never render raw HTML from users |
-| AuthN | Session cookie `HttpOnly`, `Secure`, `SameSite=Lax`; Google OAuth + magic link only in V1 |
+| AuthN | Session cookie `HttpOnly`, `Secure`, `SameSite=Lax`; no passwords: Google OAuth, magic link (behind a confirmation page so mail scanners cannot use it up, plus a 6-digit code for another device; optional Turnstile) and passkeys |
+| Staff 2FA | Editors and admins need a second factor for the admin area (NIST 800-63B AAL2): a passkey with user verification, or TOTP + single-use backup codes; checked per session. Staff sessions end after 12 h; money, roles and security changes need a second factor within 10 minutes (step-up). Adding or removing a factor needs a fresh one; new staff devices and factor changes are emailed and logged (`auth_events`). Policy: `config/auth.ts` `staff` |
 | AuthZ | Role-level (`user`/`admin`) + object-level (`ownerId` on every user query — anti-IDOR) |
 | CSRF | Origin check on every mutation. Server Actions: Next.js compares Origin with Host automatically; custom route handlers must check explicitly |
 | Account linking | Only verified email + trusted provider (`config/providers.ts`) |

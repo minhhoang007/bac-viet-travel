@@ -2,7 +2,7 @@
 
 import { notFound, redirect, unstable_rethrow } from "next/navigation";
 import { z } from "zod";
-import { requireAdmin } from "@/app/_lib/admin";
+import { requireAdmin, requireFreshSecondFactor } from "@/app/_lib/admin";
 import { localePath } from "@/core/i18n/routing";
 import { ROLES } from "@/core/users/schema";
 
@@ -10,11 +10,13 @@ const locale = z.enum(["vi", "en"]).catch("vi");
 const uuid = z.uuid();
 
 /** Thin actions: admin guard → validate → module call (audited) → back to the page with a result flag. */
-async function run(formData: FormData, back: string, action: (ctx: Awaited<ReturnType<typeof requireAdmin>>, id: string) => Promise<boolean>) {
+async function run(formData: FormData, back: string, action: (ctx: Awaited<ReturnType<typeof requireAdmin>>, id: string) => Promise<boolean>, options: { sensitive?: boolean } = {}) {
   const ctx = await requireAdmin();
   const l = locale.parse(formData.get("locale"));
   const id = uuid.safeParse(formData.get("id"));
   if (!id.success) notFound();
+  // Account access changes: a second factor within the last minutes (step-up).
+  if (options.sensitive) await requireFreshSecondFactor(back.replace(":id", id.data));
   let ok = false;
   try {
     ok = await action(ctx, id.data);
@@ -30,7 +32,7 @@ export async function setUserStatus(formData: FormData): Promise<void> {
   await run(formData, "/admin/users/:id", async ({ admin, user }, id) => {
     await admin.setUserStatus(user, id, status);
     return true;
-  });
+  }, { sensitive: true });
 }
 
 export async function setUserRole(formData: FormData): Promise<void> {
@@ -38,7 +40,7 @@ export async function setUserRole(formData: FormData): Promise<void> {
   await run(formData, "/admin/users/:id", async ({ admin, user }, id) => {
     await admin.setUserRole(user, id, role);
     return true;
-  });
+  }, { sensitive: true });
 }
 
 export async function retryJob(formData: FormData): Promise<void> {
