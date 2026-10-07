@@ -213,3 +213,48 @@ test("reports: revenue and fill rate per tour for a month range; guests get a 40
   const result = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
   expect(result.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id)).toEqual([]);
 });
+
+test("staff roles: admins add sales and managers; sales see bookings without confirm, cancel or money", async ({ page, browser }) => {
+  test.setTimeout(60_000);
+  const email = "sale-staff@bacviet.example";
+  const staff = await (await browser.newContext()).newPage();
+  await signInStaff(staff, sql, email, "editor"); // a first sign-in creates the account
+  await sql`update users set role = 'user' where email = ${email}`; // as a new hire: a plain account
+  await paidBooking("BV-SALE22", 2);
+
+  await signInAsAdmin(page, "staff-admin@bacviet.example");
+  page.on("dialog", (dialog) => dialog.accept());
+  await page.goto("/admin/staff");
+  const form = page.getByTestId("staff-form");
+  await form.getByLabel("Email nhân viên").fill("nobody@bacviet.example");
+  await form.getByRole("button", { name: "Thêm / đổi vai trò" }).click();
+  await expect(page.getByRole("status")).toContainText("Chưa có tài khoản");
+  await form.getByLabel("Email nhân viên").fill(email);
+  await form.getByLabel("Vai trò").selectOption("sale");
+  await form.getByRole("button", { name: "Thêm / đổi vai trò" }).click();
+  await expect(page.getByRole("status")).toContainText("Đã lưu.");
+  await expect(page.locator(`[data-staff="${email}"]`)).toContainText("Sale");
+
+  // Sales: bookings only, no confirm / cancel / money actions, other booking pages are 404.
+  await staff.goto("/admin/bookings");
+  await expect(staff.getByRole("link", { name: "Đơn đặt tour" })).toBeVisible();
+  for (const name of ["Mã giảm giá", "Lịch khởi hành", "Báo cáo", "Nhân viên"]) await expect(staff.getByRole("link", { name, exact: true })).toHaveCount(0);
+  await staff.goto("/admin/bookings/BV-SALE22");
+  await expect(staff.getByTestId("admin-contact")).toBeVisible();
+  for (const id of ["admin-confirm", "admin-cancel", "admin-transfer"]) await expect(staff.getByTestId(id)).toHaveCount(0);
+  for (const path of ["/admin/discounts", "/admin/reports", "/admin/staff", "/admin"]) expect((await staff.goto(path))?.status()).toBe(404);
+
+  // Managers: everything about bookings.
+  await form.getByLabel("Email nhân viên").fill(email);
+  await form.getByLabel("Vai trò").selectOption("manager");
+  await form.getByRole("button", { name: "Thêm / đổi vai trò" }).click();
+  await expect(page.locator(`[data-staff="${email}"]`)).toContainText("Quản lý");
+  await staff.goto("/admin/bookings/BV-SALE22");
+  await expect(staff.getByTestId("admin-confirm")).toBeVisible();
+  expect((await staff.goto("/admin/discounts"))?.status()).toBe(200);
+
+  // Removed: no admin area any more.
+  await page.locator(`[data-staff="${email}"]`).getByRole("button", { name: /Gỡ/ }).click();
+  await expect(page.getByTestId("staff-table")).toHaveCount(0);
+  expect((await staff.goto("/admin/bookings"))?.status()).toBe(404);
+});

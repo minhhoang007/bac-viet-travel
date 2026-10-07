@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
-import { requireAdmin } from "@/app/_lib/admin";
+import { requirePermission } from "@/app/_lib/staff";
 import { cancelBooking, confirmBooking, markBalancePaid, markBookingRefunded, receiveTransfer, saveContact, saveStaffNote } from "@/app/actions/booking-admin";
 import { Input } from "@/components/ui/input";
 import { balanceDue, transferNote } from "@/product/booking/deposits";
@@ -25,7 +25,7 @@ export async function generateMetadata({ params }: { params: Promise<{ code: str
 export default async function AdminBookingPage({ params, searchParams }: Props) {
   const { locale, code } = await params;
   setRequestLocale(locale);
-  const { admin, container } = await requireAdmin();
+  const { admin, container, allowed } = await requirePermission("bookings.view");
   const found = await container.app!.product.bookingAdmin.get(code);
   if (!found) notFound();
   const { booking: b, departure: d, payments } = found;
@@ -77,6 +77,7 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
             {row(c.source, <span data-testid="detail-source">{c.sources[b.source]}{b.externalRef && ` · ${b.externalRef}`}</span>)}
           </dl>
           {!b.guestEmails && <p className="mt-2 text-xs font-medium text-warning">{c.noGuestEmails}</p>}
+          {allowed("bookings.edit") && (
           <details className="mt-3 text-sm" data-testid="admin-contact">
             <summary className="cursor-pointer text-primary">{c.detail.editContact}</summary>
             <form action={saveContact} className="mt-2 grid gap-2">
@@ -97,6 +98,7 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
               <Button type="submit" variant="outline" className="w-fit" data-testid="admin-contact-save">{c.detail.saveContact}</Button>
             </form>
           </details>
+          )}
         </section>
         <section className="rounded-lg border border-border p-4">
           <h2 className="font-semibold">{c.detail.trip}</h2>
@@ -162,20 +164,20 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
       <section className="grid gap-4 rounded-lg border border-border p-4">
         <h2 className="font-semibold">{c.detail.actions}</h2>
         <div className="flex flex-wrap gap-3">
-          {balanceDue(b) > 0 && (
+          {allowed("bookings.money") && balanceDue(b) > 0 && (
             <form action={markBalancePaid}>
               {hidden}
               <ConfirmButton question={c.detail.balanceAsk} variant="outline" data-testid="admin-balance">{c.detail.balanceMark}</ConfirmButton>
             </form>
           )}
-          {canMove(b.status, "confirmed") && (
+          {allowed("bookings.confirm") && canMove(b.status, "confirmed") && (
             <form action={confirmBooking}>
               {hidden}
               <ConfirmButton question={c.detail.confirmAsk} data-testid="admin-confirm">{c.detail.confirm}</ConfirmButton>
             </form>
           )}
         </div>
-        {(waitingDeposit || transferChosen) && (
+        {allowed("bookings.money") && (waitingDeposit || transferChosen) && (
           <form action={receiveTransfer} className="grid max-w-lg gap-2 rounded-md border border-border p-3" data-testid="admin-transfer">
             {hidden}
             <p className="text-sm font-medium">{c.detail.transferTitle}</p>
@@ -189,7 +191,7 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
             <ConfirmButton question={c.detail.transferAsk} className="w-fit" data-testid="admin-transfer-save">{c.detail.transferSave}</ConfirmButton>
           </form>
         )}
-        {canMove(b.status, "cancelled") && (
+        {allowed("bookings.cancel") && canMove(b.status, "cancelled") && (
           <form action={cancelBooking} className="grid max-w-lg gap-2">
             {hidden}
             <label htmlFor="cancel-reason" className="text-sm font-medium">{c.detail.cancelReason}</label>
@@ -202,7 +204,7 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
             <ConfirmButton question={c.detail.cancelAsk} variant="destructive" className="w-fit" data-testid="admin-cancel">{c.detail.cancel}</ConfirmButton>
           </form>
         )}
-        {refundOwed && (
+        {allowed("bookings.money") && refundOwed && (
           <form action={markBookingRefunded} className="grid max-w-lg gap-2">
             {hidden}
             <label htmlFor="refund-note" className="text-sm font-medium">{c.detail.refundNote}</label>
@@ -210,12 +212,14 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
             <ConfirmButton question={c.detail.refundedAsk} variant="outline" className="w-fit" data-testid="admin-refunded">{c.detail.refunded}</ConfirmButton>
           </form>
         )}
-        <form action={saveStaffNote} className="grid max-w-lg gap-2">
-          {hidden}
-          <label htmlFor="staff-note" className="text-sm font-medium">{c.detail.staffNote}</label>
-          <Textarea id="staff-note" name="note" rows={3} defaultValue={b.staffNote} maxLength={2000} />
-          <Button type="submit" variant="outline" className="w-fit">{c.detail.saveNote}</Button>
-        </form>
+        {allowed("bookings.edit") && (
+          <form action={saveStaffNote} className="grid max-w-lg gap-2">
+            {hidden}
+            <label htmlFor="staff-note" className="text-sm font-medium">{c.detail.staffNote}</label>
+            <Textarea id="staff-note" name="note" rows={3} defaultValue={b.staffNote} maxLength={2000} />
+            <Button type="submit" variant="outline" className="w-fit">{c.detail.saveNote}</Button>
+          </form>
+        )}
       </section>
 
       <section>

@@ -30,11 +30,16 @@ export function requireAdmin(): Promise<StaffContext> {
 // Projects created before rc.11 have no productAdminNav export.
 const productAdminNav = (manifest as { productAdminNav?: ProductNavItem[] }).productAdminNav ?? [];
 
+type NavRule = { roles?: readonly Role[]; allow?: (user: { id: string; role: Role }) => boolean | Promise<boolean> };
+
 /**
  * Product admin menu entries this user may open. An entry is admin-only unless it lists `roles: ["editor"]`
- * (its pages must then call requireStaff("editor"), and admin-only actions requireAdmin()).
+ * (its pages must then call requireStaff("editor"), and admin-only actions requireAdmin()). An entry may also
+ * narrow that with `allow(user)` (e.g. a product staff permission); its pages must check the same rule.
  */
-export function productAdminNavFor(user: { role: Role }): ProductNavItem[] {
+export async function productAdminNavFor(user: { id: string; role: Role }): Promise<ProductNavItem[]> {
   if (hasRole(user, "admin")) return productAdminNav;
-  return productAdminNav.filter((item) => (item as { roles?: readonly Role[] }).roles?.includes(user.role));
+  const rules = productAdminNav.map((item) => item as NavRule);
+  const visible = await Promise.all(rules.map(async (r) => Boolean(r.roles?.includes(user.role) && (r.allow ? await r.allow(user) : true))));
+  return productAdminNav.filter((_, i) => visible[i]);
 }

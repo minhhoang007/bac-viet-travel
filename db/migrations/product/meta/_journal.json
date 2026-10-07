@@ -85,6 +85,13 @@
       "when": 1791309844178,
       "tag": "0011_rapid_zemo",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791375668536,
+      "tag": "0012_charming_living_lightning",
+      "breakpoints": true
     }
   ]
 }

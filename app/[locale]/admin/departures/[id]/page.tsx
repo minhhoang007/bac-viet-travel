@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
-import { requireAdmin } from "@/app/_lib/admin";
+import { requirePermission } from "@/app/_lib/staff";
 import { getTours } from "@/app/_lib/tours";
 import { localePath } from "@/core/i18n/routing";
 import type { Locale } from "@/config/app";
@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function PassengersPage({ params }: Props) {
   const { locale, id } = await params;
   setRequestLocale(locale);
-  const { container } = await requireAdmin();
+  const { container } = await requirePermission("bookings.view");
   const found = await container.app!.product.bookingAdmin.passengers(id);
   if (!found) notFound();
   const { departure: d, rows } = found;
