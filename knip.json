@@ -8,7 +8,8 @@
     "core/i18n/request.ts",
     "components/ui/*.tsx",
     "components/feedback/*.tsx",
-    "core/i18n/navigation.ts"
+    "core/i18n/navigation.ts",
+    ".claude/hooks/*.mjs"
   ],
   "ignore": [
     "tests/arch-fixtures/**",

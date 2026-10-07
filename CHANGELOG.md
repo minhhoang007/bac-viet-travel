@@ -4,6 +4,13 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+### Added — agent setup
+- `.claude/settings.json`: allowed read-only and check commands (pnpm checks, git/gh reads), asked before `db:migrate` / branch deletion / hard reset, denied force-push, repo visibility/deletion and reading `.env.local` / `.env.vercel` / `.env.production*`.
+- Hook: every TypeScript file Claude edits is linted at once (`.claude/hooks/check-edited.mjs`); problems go back to Claude.
+- `CLAUDE.md`: no regex/JSON/multi-line code inside shell commands (Git Bash drops backslashes); use Context7 for library docs.
+- Skill `merge-stack`: merging stacked PRs (migrations first, retarget children before deleting a base branch, CI per PR, flaky reruns).
+- `.mcp.json`: Context7 MCP (current docs for Next.js, Drizzle, better-auth…). Claude Code asks once before enabling a project MCP server.
+
 ## [1.9.0] - 2026-10-07
 
 ### Added — guardrails against growth

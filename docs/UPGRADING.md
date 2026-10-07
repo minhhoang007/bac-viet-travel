@@ -37,6 +37,10 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
+### Unreleased — agent setup
+- New starter-owned files: `.claude/settings.json`, `.claude/hooks/check-edited.mjs`, `.claude/skills/merge-stack/`, `.mcp.json`. Personal permissions stay in `.claude/settings.local.json` (not committed).
+- No migration.
+
 ### v1.9.0 (2026-10-07) — guardrails, CI minutes
 - `pnpm check` now runs `knip` and `jscpd`. After merging: `pnpm install`, then `pnpm knip` and `pnpm dup`.
   Project files the starter config does not know (extra scripts, configs, runtime-read files) go in `entry` /
