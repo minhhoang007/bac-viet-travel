@@ -37,7 +37,7 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
-### Unreleased — agent setup, E2E image fix
+### v1.10.0 (2026-10-07) — agent setup, E2E image fix
 - `next.config.ts` and `.github/workflows/ci.yml` (starter-owned): take theirs. Never set `E2E_UNOPTIMIZED_IMAGES` in a real deployment.
 - New starter-owned files: `.claude/settings.json`, `.claude/hooks/check-edited.mjs`, `.claude/skills/merge-stack/`, `.mcp.json`. Personal permissions stay in `.claude/settings.local.json` (not committed).
 - No migration.
