@@ -18,7 +18,7 @@ type Props = { params: Promise<{ locale: Locale }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
   const c = getAboutContent(locale);
-  return createMetadata(seoSite(getPublicEnv().NEXT_PUBLIC_SITE_URL), { title: c.title, description: c.description, path: "/about", locale, image: "/tours/ninhbinh-1.jpg" });
+  return createMetadata(seoSite(getPublicEnv().NEXT_PUBLIC_SITE_URL), { title: c.title, description: c.description, path: "/about", locale, image: "/tours/hanoi-1.jpg" });
 }
 
 const initials = (name: string) =>
@@ -46,7 +46,7 @@ export default async function AboutPage({ params }: Props) {
   return (
     <>
       <section className="relative isolate overflow-hidden text-white">
-        <Image src="/tours/ninhbinh-1.jpg" alt="" fill priority sizes="100vw" className="-z-10 object-cover" />
+        <Image src="/tours/hanoi-1.jpg" alt="" fill priority sizes="100vw" className="-z-10 object-cover" />
         <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black/75 via-black/45 to-black/25" />
         <Container className="max-w-4xl pb-12 pt-24 sm:pt-32">
           <h1 className="text-4xl font-heading font-normal [text-wrap:balance] sm:text-5xl">{c.title}</h1>
@@ -67,7 +67,7 @@ export default async function AboutPage({ params }: Props) {
             ))}
           </div>
           <div className="relative aspect-[4/3] overflow-hidden">
-            <Image src="/tours/halong-3.jpg" alt="" fill sizes="(min-width: 768px) 50vw, 100vw" className="object-cover" />
+            <Image src="/tours/hanoi-2.jpg" alt="" fill sizes="(min-width: 768px) 50vw, 100vw" className="object-cover" />
           </div>
         </section>
 

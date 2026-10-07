@@ -3,6 +3,16 @@
  * for the blog (travel notes) and Markdown bodies (tour overviews).
  */
 
+/* Slow zoom on a still hero photo where there is no film (destination pages). */
+@keyframes kenburns {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.1);
+  }
+}
+
 .blog-title {
   font-family: var(--font-heading);
   font-weight: 400;

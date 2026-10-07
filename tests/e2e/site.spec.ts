@@ -95,14 +95,14 @@ test("blog posts link their translation; sitemap lists tours and posts; unknown 
 
 test("photo credits page links every Unsplash photographer", async ({ page }) => {
   await page.goto("/credits");
-  await expect(page.locator('a[href^="https://unsplash.com/@"]')).toHaveCount(12);
-  await expect(page.getByTestId("video-credit")).toContainText("Sergey Guk");
+  await expect(page.locator('a[href^="https://unsplash.com/@"]')).toHaveCount(20);
+  await expect(page.getByTestId("video-credit")).toHaveCount(2);
 });
 
 test("tour gallery, mobile menu and accessibility (axe) on travel pages", async ({ page }) => {
   await page.goto("/tours/ha-long-cruise-2d1n");
   const gallery = page.getByTestId("gallery");
-  await expect(gallery.locator("img")).toHaveCount(3);
+  await expect(gallery.locator("img")).toHaveCount(5);
   for (const path of ["/", "/tours", "/tours/ha-long", "/tours/ha-long-cruise-2d1n"]) {
     await page.goto(path);
     const result = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
