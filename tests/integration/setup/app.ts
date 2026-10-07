@@ -58,10 +58,19 @@ export function testApp(
 }
 
 /** Signs in through the real magic-link flow and returns request headers carrying the session cookie. */
+/** The one-time sign-in link in a sign-in email (behind the confirmation page's `link` parameter). */
+export function magicLinkFrom(text: string): string | null {
+  const confirm = text.match(/https?:\/\/\S+/)?.[0];
+  return confirm ? new URL(confirm).searchParams.get("link") : null;
+}
+
+/** The 6-digit code in a sign-in email. */
+export const loginCodeFrom = (text: string) => text.match(/\b\d{6}\b/)?.[0] ?? null;
+
 export async function signIn(t: ReturnType<typeof testApp>, email: string): Promise<Headers> {
   await t.app.auth.signInMagicLink({ email: email, callbackURL: "/dashboard", errorCallbackURL: "/login", clientKey: crypto.randomUUID() }, new Headers({ origin: BASE_URL }));
   const message = t.sent.findLast((m) => m.to === email);
-  const url = message?.text.match(/https?:\/\/\S+/)?.[0];
+  const url = message ? magicLinkFrom(message.text) : null;
   if (!url) throw new Error("magic link not sent");
 
   const res = await t.app.auth.handler(new Request(url, { headers: { origin: BASE_URL } }));

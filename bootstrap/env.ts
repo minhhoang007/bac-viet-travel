@@ -138,6 +138,8 @@ export function getEnv(): Env {
 
 export interface PublicEnv {
   NEXT_PUBLIC_SITE_URL: string;
+  /** Cloudflare Turnstile on the sign-in form, when configured. */
+  NEXT_PUBLIC_TURNSTILE_SITE_KEY?: string;
 }
 
 /**
@@ -150,7 +152,7 @@ export function getPublicEnv(): PublicEnv {
   if (problem) throw new AppError("INTERNAL_ERROR", `Invalid configuration:\n  - ${problem}`);
   const url = baseEnvSchema.shape.NEXT_PUBLIC_SITE_URL.safeParse(siteUrl);
   if (!url.success) throw new AppError("INTERNAL_ERROR", "Invalid configuration:\n  - NEXT_PUBLIC_SITE_URL: invalid URL");
-  return { NEXT_PUBLIC_SITE_URL: url.data };
+  return { NEXT_PUBLIC_SITE_URL: url.data, NEXT_PUBLIC_TURNSTILE_SITE_KEY: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || undefined };
 }
 
 /** Build identity for /api/health: the deployed commit on Vercel, "dev" locally. */

@@ -12,6 +12,7 @@ import type { Payments } from "@/core/ports/payments";
 import type { ContentTypeDefinition, ProductContext, ProductJobs, ProductStat } from "@/core/product/context";
 import type { Locale } from "@/config/app";
 import { createMemoryRateLimiter, withFallback, type RateLimiter, type RateLimitRule } from "@/core/security/rate-limit";
+import { createTurnstileCheck } from "@/core/security/turnstile";
 import { createDb, type Db } from "@/db/client";
 import { createAdminModule, type AdminModule } from "@/modules/admin";
 import { createAnalyticsModule, type AnalyticsModule } from "@/modules/analytics";
@@ -345,11 +346,20 @@ function buildApp(
       trustedProviders: authConfig.trustedProviders,
       google,
       disableRateLimit: env.NODE_ENV === "test",
+      staff: authConfig.staff,
+      confirmSignInPath: localePath(appConfig.defaultLocale, `${authConfig.signInPath}/confirm`),
+      securityPath: localePath(appConfig.defaultLocale, authConfig.securityPath),
     }),
     { magicLink: authConfig.methods.magicLink, google: authConfig.methods.google && Boolean(google) },
     overrides.authRateLimits ?? {
       perClient: rateLimiterFor(env, MAGIC_LINK_PER_CLIENT, logger),
       perRecipient: rateLimiterFor(env, MAGIC_LINK_PER_RECIPIENT, logger),
+    },
+    {
+      db,
+      secret: env.extra.BETTER_AUTH_SECRET!,
+      staff: authConfig.staff,
+      turnstile: env.TURNSTILE_SECRET_KEY ? createTurnstileCheck(env.TURNSTILE_SECRET_KEY) : undefined,
     },
   );
   const product = createProductWith(db, ctx);

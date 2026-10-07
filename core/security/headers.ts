@@ -4,16 +4,21 @@ export interface HeaderOptions {
   connectSrc?: string[];
   /** Extra image origins, e.g. the media CDN. */
   imgSrc?: string[];
+  /** Extra script origins, e.g. a bot check (Cloudflare Turnstile). */
+  scriptSrc?: string[];
+  /** Origins allowed in iframes on our pages (none by default), e.g. the Turnstile challenge. */
+  frameSrc?: string[];
 }
 
 /**
  * Baseline security headers. V0.1a has no dynamic third-party scripts, so CSP uses 'unsafe-inline'
  * for Next's inline bootstrap scripts; switch to nonces when dynamic scripts arrive.
  */
-export function securityHeaders({ isDev, connectSrc = [], imgSrc = [] }: HeaderOptions): { key: string; value: string }[] {
+export function securityHeaders({ isDev, connectSrc = [], imgSrc = [], scriptSrc = [], frameSrc = [] }: HeaderOptions): { key: string; value: string }[] {
   const csp = [
     "default-src 'self'",
-    `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+    `script-src ${["'self'", "'unsafe-inline'", ...(isDev ? ["'unsafe-eval'"] : []), ...scriptSrc].join(" ")}`,
+    ...(frameSrc.length ? [`frame-src ${frameSrc.join(" ")}`] : []),
     "style-src 'self' 'unsafe-inline'",
     `img-src ${["'self'", "data:", "blob:", ...imgSrc].join(" ")}`,
     "font-src 'self' data:",

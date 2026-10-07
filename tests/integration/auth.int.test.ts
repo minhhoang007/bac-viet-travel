@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { users } from "@/core/users/schema";
 import { resetDb, testDb } from "./setup/db";
-import { BASE_URL, signIn, testApp } from "./setup/app";
+import { BASE_URL, magicLinkFrom, signIn, testApp } from "./setup/app";
 
 const handle = testDb();
 const t = testApp(handle.db, { realRateLimits: true });
@@ -27,12 +27,14 @@ describe("auth (magic link, real DB)", () => {
     await t.app.auth.signInMagicLink({ email: "binh@example.com", callbackURL: "/dashboard", errorCallbackURL: "/login", clientKey: crypto.randomUUID() }, new Headers({ origin: BASE_URL }));
     const message = t.sent.at(-1)!;
     expect(message.to).toBe("binh@example.com");
-    expect(message.text).toContain(`${BASE_URL}/api/auth/magic-link/verify?token=`);
+    // The email opens a confirmation page (scanner-proof) that carries the one-time link.
+    expect(message.text).toContain(`${BASE_URL}/login/confirm?link=`);
+    expect(magicLinkFrom(message.text)).toContain(`${BASE_URL}/api/auth/magic-link/verify?token=`);
   });
 
   it("a magic link token works only once", async () => {
     await t.app.auth.signInMagicLink({ email: "once@example.com", callbackURL: "/dashboard", errorCallbackURL: "/login", clientKey: crypto.randomUUID() }, new Headers({ origin: BASE_URL }));
-    const url = t.sent.at(-1)!.text.match(/https?:\/\/\S+/)![0];
+    const url = magicLinkFrom(t.sent.at(-1)!.text)!;
     await t.app.auth.handler(new Request(url));
     const second = await t.app.auth.handler(new Request(url));
     expect(second.headers.getSetCookie().some((c) => c.includes("session_token=") && !c.includes("Max-Age=0"))).toBe(false);
@@ -67,7 +69,7 @@ describe("auth (magic link, real DB)", () => {
 
   it("session cookie is HttpOnly and SameSite=Lax", async () => {
     await t.app.auth.signInMagicLink({ email: "cookie@example.com", callbackURL: "/dashboard", errorCallbackURL: "/login", clientKey: crypto.randomUUID() }, new Headers({ origin: BASE_URL }));
-    const url = t.sent.at(-1)!.text.match(/https?:\/\/\S+/)![0];
+    const url = magicLinkFrom(t.sent.at(-1)!.text)!;
     const res = await t.app.auth.handler(new Request(url));
     const session = res.headers.getSetCookie().find((c) => c.includes("session_token="))!;
     expect(session).toMatch(/HttpOnly/i);

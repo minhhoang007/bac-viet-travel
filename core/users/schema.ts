@@ -13,6 +13,8 @@ export const users = pgTable("users", {
   image: text("image"),
   role: text("role", { enum: ROLES }).notNull().default("user"),
   status: text("status", { enum: ["active", "disabled"] }).notNull().default("active"),
+  /** Better Auth two-factor plugin: TOTP set up and confirmed. */
+  twoFactorEnabled: boolean("two_factor_enabled").default(false),
   ...timestamps(),
 });
 

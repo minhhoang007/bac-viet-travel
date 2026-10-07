@@ -1,7 +1,10 @@
 import { headers } from "next/headers";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { getLocale } from "next-intl/server";
 import { getContainer, type Container } from "@/bootstrap/container";
+import { authConfig } from "@/config/auth";
 import { hasRole, type AuthUser, type Role } from "@/core/auth";
+import { localePath } from "@/core/i18n/routing";
 import type { AdminModule } from "@/modules/admin";
 import * as manifest from "@/product/manifest";
 import type { ProductNavItem } from "@/product/manifest";
@@ -17,9 +20,27 @@ export async function requireStaff(role: Exclude<Role, "user"> = "editor"): Prom
   const app = await requireAppServices();
   const container = getContainer();
   if (!container.admin) notFound();
-  const user = await app.auth.getUser(await headers());
-  if (!user || !hasRole(user, role)) notFound();
-  return { admin: container.admin, user, container };
+  const current = await app.auth.getSession(await headers());
+  if (!current || !hasRole(current.user, role)) notFound();
+  // Staff need a second factor (config/auth.ts `staff`): set one up first, or pass it for this session.
+  const gate = await app.auth.staffGate(current);
+  if (gate === "enroll") redirect(localePath(await getLocale(), `${authConfig.securityPath}?setup=1`));
+  if (gate === "verify") redirect(localePath(await getLocale(), authConfig.verifyPath));
+  return { admin: container.admin, user: current.user, container };
+}
+
+/**
+ * Step-up before a sensitive action (money, roles, security settings): the session must have passed a second factor
+ * within staff.freshMinutes, otherwise the user verifies again and comes back to `back` (a locale-less path) to redo
+ * the action. Call after requireStaff/requireAdmin.
+ */
+export async function requireFreshSecondFactor(back: string): Promise<void> {
+  const app = await requireAppServices();
+  const current = await app.auth.getSession(await headers());
+  if (!current) notFound();
+  if (!app.auth.staffPolicy.requireSecondFactor || app.auth.isFresh(current)) return;
+  const next = back.startsWith("/") && !back.startsWith("//") ? back : "/admin";
+  redirect(localePath(await getLocale(), `${authConfig.verifyPath}?fresh=1&next=${encodeURIComponent(next)}`));
 }
 
 /** Admin pages and actions: admins only (users, money, jobs, audit). Content pages use requireStaff("editor"). */
