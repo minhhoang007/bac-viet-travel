@@ -4,6 +4,28 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.10.0] - 2026-10-07
+
+### Fixed — random E2E timeouts in CI
+- Pages sometimes never finished loading under `next start`: one `/_next/image` variant stopped answering (requests for the same variant wait on the first) and every page using it timed out. The CI E2E build sets `E2E_UNOPTIMIZED_IMAGES=1` (`next.config.ts`: `images.unoptimized`), so images are served as files there. Production (Vercel) is unchanged. Found with Playwright traces on Bắc Việt.
+
+### Added — agent setup
+- `.claude/settings.json`: allowed read-only and check commands (pnpm checks, git/gh reads), asked before `db:migrate` / branch deletion / hard reset, denied force-push, repo visibility/deletion and reading `.env.local` / `.env.vercel` / `.env.production*`.
+- Hook: every TypeScript file Claude edits is linted at once (`.claude/hooks/check-edited.mjs`); problems go back to Claude.
+- `CLAUDE.md`: no regex/JSON/multi-line code inside shell commands (Git Bash drops backslashes); use Context7 for library docs.
+- Skill `merge-stack`: merging stacked PRs (migrations first, retarget children before deleting a base branch, CI per PR, flaky reruns).
+- `.mcp.json`: Context7 MCP (current docs for Next.js, Drizzle, better-auth…). Claude Code asks once before enabling a project MCP server.
+
+## [1.9.0] - 2026-10-07
+
+### Added — guardrails against growth
+- `pnpm check` also runs `pnpm knip` (unused files, dependencies, unlisted dependencies; config `knip.json`) and `pnpm dup` (jscpd copy-paste, max 1% duplicated; config `.jscpd.json`). `pnpm knip:exports` reports unused exports without failing.
+- ESLint `max-lines`: 450 lines per file (blank lines and comments not counted; `components/ui`, `*content.ts`, tests and migrations exempt).
+- Skill `refactor` (`.claude/skills/refactor`): scan → choose → risk levels R0–R4 → small verified commits; R4 (money, payments, auth, schema) never merged without the owner.
+
+### Changed — CI minutes
+- CI runs for `main` and for PRs that target `main` only (stacked PRs are tested when retargeted to `main`), skips docs-only changes, and caches Playwright browsers.
+
 ## [1.8.0] - 2026-10-07
 
 ### Added — VietQR bank transfer QR

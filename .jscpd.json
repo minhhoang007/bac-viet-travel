@@ -1,0 +1,10 @@
+{
+  "path": ["core", "modules", "providers", "bootstrap", "config", "app", "product", "components"],
+  "ignore": ["**/components/ui/**", "**/tests/**", "**/*content.ts", "**/*.test.ts", "**/node_modules/**", "**/.next/**"],
+  "format": ["typescript", "tsx"],
+  "minLines": 8,
+  "minTokens": 70,
+  "threshold": 1,
+  "reporters": ["console"],
+  "gitignore": true
+}

@@ -1,9 +1,15 @@
 name: CI
 
+# Minutes are billed per job on private repos: CI runs for main and for PRs that target main only. A stacked PR
+# (base = another PR's branch) is tested when it is retargeted to main, right before its merge. Docs-only changes
+# skip CI.
 on:
   push:
     branches: [main]
+    paths-ignore: ["**/*.md", "docs/**"]
   pull_request:
+    branches: [main]
+    paths-ignore: ["**/*.md", "docs/**"]
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -84,8 +90,17 @@ jobs:
         if: steps.repo.outputs.starter == 'true'
       - run: pnpm install --frozen-lockfile
         if: steps.repo.outputs.starter == 'true'
-      - run: pnpm exec playwright install --with-deps chromium
+      # Browsers cached per lockfile; system packages are still installed each run.
+      - uses: actions/cache@v4
+        id: pw
         if: steps.repo.outputs.starter == 'true'
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - run: pnpm exec playwright install --with-deps chromium
+        if: steps.repo.outputs.starter == 'true' && steps.pw.outputs.cache-hit != 'true'
+      - run: pnpm exec playwright install-deps chromium
+        if: steps.repo.outputs.starter == 'true' && steps.pw.outputs.cache-hit == 'true'
       - run: pnpm test:e2e:app
         if: steps.repo.outputs.starter == 'true'
 
@@ -115,6 +130,17 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Images served as files in this E2E build (next.config.ts): the optimizer can hang a variant under next start.
       - run: pnpm build
+        env:
+          E2E_UNOPTIMIZED_IMAGES: "1"
+      - uses: actions/cache@v4
+        id: pw
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
       - run: pnpm exec playwright install --with-deps chromium
+        if: steps.pw.outputs.cache-hit != 'true'
+      - run: pnpm exec playwright install-deps chromium
+        if: steps.pw.outputs.cache-hit == 'true'
       - run: pnpm test:e2e

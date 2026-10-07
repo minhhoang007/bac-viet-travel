@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(pnpm lint)",
+      "Bash(pnpm typecheck)",
+      "Bash(pnpm arch)",
+      "Bash(pnpm knip)",
+      "Bash(pnpm knip:exports)",
+      "Bash(pnpm dup)",
+      "Bash(pnpm check)",
+      "Bash(pnpm test)",
+      "Bash(pnpm test:*)",
+      "Bash(pnpm build)",
+      "Bash(pnpm exec vitest:*)",
+      "Bash(pnpm exec playwright test:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh pr checks:*)",
+      "Bash(gh pr diff:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh run view:*)",
+      "Bash(gh run watch:*)"
+    ],
+    "ask": [
+      "Bash(pnpm db:migrate:*)",
+      "Bash(git push origin --delete:*)",
+      "Bash(git reset --hard:*)"
+    ],
+    "deny": [
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(gh repo edit:*)",
+      "Bash(gh repo delete:*)",
+      "Read(./.env.local)",
+      "Read(./.env.vercel)",
+      "Read(./.env.production*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|MultiEdit|Write",
+        "hooks": [{ "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/check-edited.mjs\"", "timeout": 60 }]
+      }
+    ]
+  }
+}
