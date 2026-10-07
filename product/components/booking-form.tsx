@@ -1,5 +1,4 @@
 "use client";
-/* eslint-disable max-lines -- split into booking-form-parts.tsx in PR #41, which replaces this file */
 
 import { useActionState, useState, useSyncExternalStore } from "react";
 import Image from "next/image";
