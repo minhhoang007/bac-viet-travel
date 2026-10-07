@@ -82,6 +82,22 @@ test("bank transfer: VietQR with amount and reference, seats held 2 hours, staff
   await page.reload();
   await expect(page.getByTestId("paid")).toBeVisible();
   await expect(page.getByTestId("transfer")).toHaveCount(0);
+
+  // Voucher (D8): printable page with the code and a QR, and a calendar file; both need the guest's token.
+  const bookingUrl = new URL(page.url());
+  await page.getByTestId("open-voucher").click();
+  await expect(page.getByTestId("voucher-code")).toHaveText(code);
+  await expect(page.getByTestId("voucher").getByRole("img", { name: `Mã QR đơn ${code}` }).locator("svg")).toBeVisible();
+  await expect(page.getByTestId("voucher")).toContainText("Chưa điền thông tin hành khách");
+  const ics = await page.request.get((await page.getByTestId("voucher-ics").getAttribute("href"))!);
+  expect(ics.headers()["content-type"]).toContain("text/calendar");
+  const cal = await ics.text();
+  expect(cal).toContain(`UID:${code}@bacviet.travel`);
+  expect(cal).toMatch(/DTSTART;VALUE=DATE:\d{8}\r\nDTEND;VALUE=DATE:\d{8}/);
+  expect((await page.request.get(`/api/booking/${code}/ics?t=${"x".repeat(32)}`)).status()).toBe(404);
+  await page.goto(`/booking/${code}/voucher?t=${"x".repeat(32)}`);
+  await expect(page.locator("[data-voucher=unavailable]")).toBeVisible();
+  expect(bookingUrl.searchParams.get("t")).toBeTruthy();
 });
 
 test("tour page: when the seats cannot load, the guest is offered a retry (not \"no departures\")", async ({ page }) => {

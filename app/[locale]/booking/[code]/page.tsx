@@ -99,6 +99,9 @@ export default async function BookingPage({ params, searchParams }: Props) {
         <section className="mt-6 rounded-xl border border-success/40 bg-success/10 p-5" data-testid="paid">
           <h2 className="text-lg font-semibold">{t.booking.paidTitle}</h2>
           <p className="mt-1 text-sm">{t.booking.paidText}</p>
+          <ButtonLink href={localePath(locale, `/booking/${booking.code}/voucher?t=${encodeURIComponent(token!)}`)} variant="outline" className="mt-3" data-testid="open-voucher">
+            {t.voucher.open}
+          </ButtonLink>
         </section>
       )}
       {status === "refund_due" && (
