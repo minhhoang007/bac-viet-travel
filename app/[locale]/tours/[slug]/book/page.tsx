@@ -46,7 +46,7 @@ export default async function BookTourPage({ params, searchParams }: Props) {
       <div className="mt-4 max-w-2xl">
         <BookingSteps locale={locale} current={1} />
       </div>
-      <h1 className="mt-6 text-3xl font-heading font-normal">{t.pageTitle(tour.title)}</h1>
+      <h1 className="mt-6 font-heading type-h2">{t.pageTitle(tour.title)}</h1>
       <p className="mt-1 text-muted-foreground">
         {getProductContent(locale).tours.days(tour.days, tour.nights)} · {tour.departure}
       </p>

@@ -81,8 +81,8 @@ export default async function BookingPage({ params, searchParams }: Props) {
       <div className="mb-6">
         <BookingSteps locale={locale} current={step} />
       </div>
-      <h1 className="text-2xl font-heading font-normal">{t.booking.title}</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
+      <h1 className="font-heading type-h2">{t.booking.title}</h1>
+      <p className="mt-2 type-body text-muted-foreground">
         {t.booking.code}: <strong className="font-mono text-base text-foreground" data-testid="booking-code">{booking.code}</strong> ·{" "}
         <span data-booking-status={status}>{t.booking.status[status]}</span>
       </p>
@@ -102,12 +102,12 @@ export default async function BookingPage({ params, searchParams }: Props) {
       )}
       {isSold(status) && (
         <section className="mt-6 border border-success/40 bg-success/10 p-5" data-testid="paid">
-          <h2 className="text-lg font-heading font-normal">{t.booking.paidTitle}</h2>
-          <p className="mt-1 text-sm">{t.booking.paidText}</p>
+          <h2 className="font-heading text-2xl">{t.booking.paidTitle}</h2>
+          <p className="mt-2 type-body">{t.booking.paidText}</p>
           {balanceDue(booking) > 0 && booking.departure.date >= today && isVnpayConfigured() ? (
             <div className="mt-4 border-t border-success/30 pt-4" data-testid="balance">
               <p className="font-medium">{t.booking.balanceTitle(formatVnd(balanceDue(booking), locale))}</p>
-              <p className="mt-1 text-sm">{t.booking.balanceText}</p>
+              <p className="mt-2 type-body">{t.booking.balanceText}</p>
               <DepositButton action={startBalance} code={booking.code} token={token!} locale={locale} label={t.booking.balancePay(formatVnd(balanceDue(booking), locale))} errorText={t.booking.payUnavailable} testId="pay-balance" />
             </div>
           ) : (
@@ -124,14 +124,14 @@ export default async function BookingPage({ params, searchParams }: Props) {
       )}
       {status === "refund_due" && (
         <section className="mt-6 border border-warning/40 bg-warning/10 p-5">
-          <h2 className="text-lg font-heading font-normal">{t.booking.refundTitle}</h2>
-          <p className="mt-1 text-sm">{t.booking.refundText}</p>
+          <h2 className="font-heading text-2xl">{t.booking.refundTitle}</h2>
+          <p className="mt-2 type-body">{t.booking.refundText}</p>
         </section>
       )}
       {status === "held" && !confirming && (
         <section className="mt-6 border border-primary/40 bg-primary/5 p-5">
-          <h2 className="text-lg font-heading font-normal">{t.booking.heldTitle}</h2>
-          <p className="mt-1 text-sm">{transfer ? t.booking.transferHeldText(holdUntil) : t.booking.heldText}</p>
+          <h2 className="font-heading text-2xl">{t.booking.heldTitle}</h2>
+          <p className="mt-2 type-body">{transfer ? t.booking.transferHeldText(holdUntil) : t.booking.heldText}</p>
           <p className="mt-4 text-sm">
             {t.booking.remaining}: <HoldCountdown expiresAt={booking.holdExpiresAt.toISOString()} />
           </p>
@@ -143,7 +143,7 @@ export default async function BookingPage({ params, searchParams }: Props) {
           {transfer && <TransferPanel locale={locale} code={booking.code} amountVnd={booking.depositVnd} />}
           {transfer && <p className="mt-6 text-sm font-medium">{t.booking.transferOrPay}</p>}
           <DepositButton action={startDeposit} code={booking.code} token={token!} locale={locale} label={t.booking.pay(formatVnd(booking.depositVnd, locale))} errorText={t.booking.payUnavailable} />
-          <p className="mt-2 text-xs text-muted-foreground">{t.booking.payHint}</p>
+          <p className="mt-2 type-small text-muted-foreground">{t.booking.payHint}</p>
           {transferOffered && !transfer && (
             <form action={chooseTransfer} className="mt-4 border-t border-border pt-4">
               <input type="hidden" name="code" value={booking.code} />
@@ -152,15 +152,15 @@ export default async function BookingPage({ params, searchParams }: Props) {
               <Button type="submit" variant="outline" className="w-full sm:w-auto" data-testid="choose-transfer">
                 {t.booking.transferChoose}
               </Button>
-              <p className="mt-2 text-xs text-muted-foreground">{t.booking.transferChooseHint}</p>
+              <p className="mt-2 type-small text-muted-foreground">{t.booking.transferChooseHint}</p>
             </form>
           )}
         </section>
       )}
       {status === "expired" && (
         <section className="mt-6 border border-border bg-muted p-5">
-          <h2 className="text-lg font-heading font-normal">{t.booking.expiredTitle}</h2>
-          <p className="mt-1 text-sm">{t.booking.expiredText}</p>
+          <h2 className="font-heading text-2xl">{t.booking.expiredTitle}</h2>
+          <p className="mt-2 type-body">{t.booking.expiredText}</p>
           <ButtonLink href={rebook} className="mt-4">
             {t.booking.rebook}
           </ButtonLink>
@@ -169,7 +169,7 @@ export default async function BookingPage({ params, searchParams }: Props) {
 
       {(status === "held" || isSold(status)) && (
         <section className="mt-8 border border-border p-5" aria-labelledby="travellers-title" data-testid="travellers">
-          <h2 id="travellers-title" className="text-lg font-heading font-normal">
+          <h2 id="travellers-title" className="font-heading text-2xl">
             {t.travellers.title}
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -214,12 +214,12 @@ export default async function BookingPage({ params, searchParams }: Props) {
 
       {next && (
         <section className="mt-8" aria-labelledby="next-title" data-testid="next-steps">
-          <h2 id="next-title" className="text-lg font-heading font-normal">
+          <h2 id="next-title" className="font-heading text-2xl">
             {t.booking.nextTitle}
           </h2>
           <ol className="mt-3 grid gap-3">
             {next.map((line, i) => (
-              <li key={line} className="flex gap-3 text-sm">
+              <li key={line} className="flex gap-3 type-body">
                 <span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-semibold text-primary">{i + 1}</span>
                 {line}
               </li>
@@ -228,7 +228,7 @@ export default async function BookingPage({ params, searchParams }: Props) {
         </section>
       )}
 
-      <section className="mt-8 bg-muted p-5 text-sm" aria-labelledby="help-title">
+      <section className="mt-8 bg-muted p-5 type-body" aria-labelledby="help-title">
         <h2 id="help-title" className="font-heading font-normal">
           {t.booking.helpTitle}
         </h2>
@@ -270,7 +270,7 @@ function TransferPanel({ locale, code, amountVnd }: { locale: Locale; code: stri
           {t.transferDemo}
         </p>
       )}
-      <p className="mt-2 text-sm text-muted-foreground">{t.transferText}</p>
+      <p className="mt-2 type-body text-muted-foreground">{t.transferText}</p>
       <div className="mt-4 grid items-start gap-4 sm:grid-cols-[180px_1fr]">
         <div role="img" aria-label={t.transferQrLabel(amount)} className="mx-auto w-44 bg-white p-1 sm:w-full [&>svg]:h-auto [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: qr }} />
         <dl className="divide-y divide-border text-sm">
@@ -281,7 +281,7 @@ function TransferPanel({ locale, code, amountVnd }: { locale: Locale; code: stri
           {line(t.transferNote, note, note)}
         </dl>
       </div>
-      <p className="mt-4 text-sm">{t.transferAfter}</p>
+      <p className="mt-4 type-body">{t.transferAfter}</p>
       <AutoRefresh everyMs={30_000} maxTimes={240} />
     </div>
   );

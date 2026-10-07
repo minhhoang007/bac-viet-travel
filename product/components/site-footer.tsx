@@ -77,7 +77,7 @@ export function SiteFooter({ locale }: { locale: Locale }) {
         </div>
         {columns.map((col) => (
           <nav key={col.title} aria-label={col.title}>
-            <h2 className="mb-4 font-sans text-xs font-medium tracking-[0.3em] text-primary uppercase">{col.title}</h2>
+            <h2 className="type-eyebrow mb-4 font-sans text-primary">{col.title}</h2>
             <ul className="grid gap-2.5">
               {col.links.map((l) => (
                 <li key={l.href}>

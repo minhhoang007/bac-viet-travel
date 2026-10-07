@@ -3,6 +3,87 @@
  * for the blog (travel notes) and Markdown bodies (tour overviews).
  */
 
+/*
+ * Type scale (one source for every public page). Fluid between a 390 px phone and a 1440 px desktop with clamp(),
+ * so sizes step smoothly instead of jumping at breakpoints. Roles, not sizes: pick the role of the text.
+ *   display  hero titles (home, destinations)          44 → 76 px
+ *   h1       page titles                                36 → 56 px
+ *   h2       section titles                             30 → 44 px
+ *   h3       card and sub-section titles                22 → 28 px
+ *   lead     intro paragraphs, hero subtitles           18 → 21 px
+ *   body     running text, descriptions, answers        16 → 17 px
+ *   small    meta, captions, form hints                 14 px
+ *   eyebrow  short uppercase labels above titles        12 → 13 px, one tracking value
+ *   label    uppercase buttons, nav, chips              12 px
+ * Nothing smaller than 12 px; the heading serif (thin) never below 20 px. Running text keeps ~65 characters a line
+ * (max-w-prose). Line heights tighten as size grows.
+ */
+:root {
+  --type-display: clamp(2.75rem, 1.95rem + 3.3vw, 4.75rem);
+  --type-h1: clamp(2.25rem, 1.8rem + 1.9vw, 3.5rem);
+  --type-h2: clamp(1.875rem, 1.55rem + 1.35vw, 2.75rem);
+  --type-h3: clamp(1.375rem, 1.25rem + 0.5vw, 1.75rem);
+  --type-lead: clamp(1.125rem, 1.05rem + 0.3vw, 1.3125rem);
+  --type-body: clamp(1rem, 0.96rem + 0.15vw, 1.0625rem);
+  --type-eyebrow: clamp(0.75rem, 0.72rem + 0.1vw, 0.8125rem);
+}
+
+/* In Tailwind's components layer: a utility on the same element (e.g. leading-normal) still wins. */
+@layer components {
+.type-display,
+.type-h1,
+.type-h2,
+.type-h3 {
+  font-family: var(--font-heading);
+  font-weight: 400;
+  text-wrap: balance;
+}
+.type-display {
+  font-size: var(--type-display);
+  line-height: 1.04;
+}
+.type-h1 {
+  font-size: var(--type-h1);
+  line-height: 1.08;
+}
+.type-h2 {
+  font-size: var(--type-h2);
+  line-height: 1.15;
+}
+.type-h3 {
+  font-size: var(--type-h3);
+  line-height: 1.25;
+}
+.type-lead {
+  font-size: var(--type-lead);
+  line-height: 1.6;
+  text-wrap: pretty;
+}
+.type-body {
+  font-size: var(--type-body);
+  line-height: 1.7;
+  text-wrap: pretty;
+}
+.type-small {
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+.type-eyebrow {
+  font-size: var(--type-eyebrow);
+  font-weight: 500;
+  line-height: 1.6;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+.type-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+}
+
 /* Slow zoom on a still hero photo where there is no film (destination pages). */
 @keyframes kenburns {
   from {
@@ -16,8 +97,8 @@
 .blog-title {
   font-family: var(--font-heading);
   font-weight: 400;
-  font-size: clamp(2.25rem, 5vw, 3.5rem);
-  line-height: 1.1;
+  font-size: var(--type-h1);
+  line-height: 1.08;
   text-wrap: balance;
 }
 
@@ -27,27 +108,40 @@
   text-transform: uppercase;
 }
 
+/* Blog list (starter component, no class hook yet): post titles in the heading serif at card-title size. */
+[data-testid="post-list"] h2 {
+  font-family: var(--font-heading);
+  font-weight: 400;
+  font-size: var(--type-h3);
+  line-height: 1.25;
+}
+
+/* Running text of a post or tour overview: body size, ~65 characters a line. */
+.prose-blog {
+  max-width: 65ch;
+}
+
 .blog-cover {
   border-radius: 0;
 }
 
 .blog-tags a {
   border-radius: 0;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
 }
 
 .prose-blog {
-  font-size: 1.0625rem;
-  line-height: 1.85;
+  font-size: var(--type-body);
+  line-height: 1.8;
 }
 
 /* The opening paragraph of a post reads as a lead, in the heading serif. */
 .blog-post .prose-blog > p:first-child,
 .blog-post .prose-blog > .contents:first-child > p:first-child {
   font-family: var(--font-heading);
-  font-size: 1.6rem;
+  font-size: clamp(1.375rem, 1.2rem + 0.7vw, 1.625rem);
   line-height: 1.5;
 }
 
@@ -55,7 +149,7 @@
   margin-top: 2.4em;
   font-family: var(--font-heading);
   font-weight: 400;
-  font-size: 2rem;
+  font-size: clamp(1.625rem, 1.4rem + 0.9vw, 2.125rem);
   line-height: 1.2;
 }
 
@@ -63,7 +157,7 @@
   margin-top: 1.8em;
   font-family: var(--font-heading);
   font-weight: 500;
-  font-size: 1.5rem;
+  font-size: var(--type-h3);
 }
 
 .prose-blog a {
@@ -76,7 +170,7 @@
   padding-left: 1.5em;
   font-family: var(--font-heading);
   font-style: italic;
-  font-size: 1.4rem;
+  font-size: clamp(1.25rem, 1.1rem + 0.6vw, 1.5rem);
   line-height: 1.5;
   color: var(--foreground);
 }

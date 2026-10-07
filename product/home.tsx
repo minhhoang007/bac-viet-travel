@@ -32,11 +32,12 @@ export function ProductHomeSections({ locale }: { locale: Locale }) {
   return null;
 }
 
-const field = "h-11 w-full border border-border bg-transparent px-3 text-sm text-foreground";
+// 16 px on phones: iOS Safari zooms into smaller fields on focus.
+const field = "h-11 w-full border border-border bg-transparent px-3 text-base text-foreground md:text-sm";
 /** Small spaced capitals above a section title, in brass. */
-const eyebrow = "text-xs font-medium uppercase tracking-[0.4em] text-primary";
-const title = "font-heading text-4xl font-normal leading-tight [text-wrap:balance] sm:text-5xl";
-const textLink = "text-xs font-medium uppercase tracking-[0.18em] underline underline-offset-8 hover:text-primary";
+const eyebrow = "type-eyebrow text-primary";
+const title = "font-heading type-h2";
+const textLink = "type-label underline underline-offset-8 hover:text-primary";
 
 function Stars({ label }: { label?: string }) {
   return (
@@ -97,16 +98,16 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
         <div className="absolute inset-0 -z-10 bg-gradient-to-b from-black/40 via-black/20 to-background" />
         <Container className="grid gap-10 pb-12 pt-32 text-center">
           <div className="home-hero-text mx-auto max-w-4xl [text-shadow:0_1px_14px_rgb(0_0_0/0.55)]">
-            <p className="text-xs font-medium uppercase tracking-[0.4em] opacity-90">{m.hero.eyebrow}</p>
-            <h1 id="hero-title" className="mt-6 font-heading text-5xl font-normal leading-[1.04] [text-wrap:balance] sm:text-6xl lg:text-7xl">
+            <p className="type-eyebrow opacity-90">{m.hero.eyebrow}</p>
+            <h1 id="hero-title" className="mt-5 font-heading type-display">
               {m.hero.title}
             </h1>
-            <p className="mx-auto mt-6 max-w-2xl text-lg font-light leading-relaxed opacity-90">{m.hero.subtitle}</p>
+            <p className="mx-auto mt-6 max-w-2xl type-lead font-light opacity-90">{m.hero.subtitle}</p>
             <div className="home-hero-actions mt-9 flex flex-wrap items-center justify-center gap-6">
-              <ButtonLink href={localePath(locale, m.hero.primaryHref)} className="h-12 px-8 text-xs uppercase tracking-[0.18em]">
+              <ButtonLink href={localePath(locale, m.hero.primaryHref)} className="type-label h-12 px-8">
                 {m.hero.primaryCta}
               </ButtonLink>
-              <a href={m.hero.secondaryHref} className="text-xs font-medium uppercase tracking-[0.18em] underline underline-offset-8">
+              <a href={m.hero.secondaryHref} className="type-label underline underline-offset-8">
                 {m.hero.secondaryCta}
               </a>
             </div>
@@ -121,7 +122,7 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
             className="grid grid-cols-2 gap-3 border border-border bg-background/85 p-4 text-left text-foreground backdrop-blur lg:grid-cols-[1.4fr_1fr_0.8fr_auto] lg:items-end"
           >
             <label className="col-span-2 grid gap-1.5 lg:col-span-1">
-              <span className="flex items-center gap-1.5 text-xs uppercase tracking-[0.14em] text-muted-foreground">
+              <span className="type-label flex items-center gap-1.5 text-muted-foreground">
                 <MapPin className="size-3.5" aria-hidden="true" />
                 {h.search.destination}
               </span>
@@ -135,25 +136,25 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
               </select>
             </label>
             <label className="grid gap-1.5">
-              <span className="flex items-center gap-1.5 text-xs uppercase tracking-[0.14em] text-muted-foreground">
+              <span className="type-label flex items-center gap-1.5 text-muted-foreground">
                 <CalendarDays className="size-3.5" aria-hidden="true" />
                 {h.search.date}
               </span>
               <input type="date" name="date" className={field} />
             </label>
             <label className="grid gap-1.5">
-              <span className="flex items-center gap-1.5 text-xs uppercase tracking-[0.14em] text-muted-foreground">
+              <span className="type-label flex items-center gap-1.5 text-muted-foreground">
                 <Users className="size-3.5" aria-hidden="true" />
                 {h.search.guests}
               </span>
               <input type="number" name="guests" min={1} max={50} defaultValue={2} className={field} />
             </label>
-            <button type="submit" className="col-span-2 h-11 bg-primary px-7 text-xs font-medium uppercase tracking-[0.18em] text-primary-foreground hover:bg-primary/90 lg:col-span-1">
+            <button type="submit" className="type-label col-span-2 h-11 bg-primary px-7 text-primary-foreground hover:bg-primary/90 lg:col-span-1">
               {h.search.submit}
             </button>
           </form>
 
-          <ul className="grid grid-cols-2 gap-x-6 gap-y-3 text-left text-xs uppercase tracking-[0.14em] text-muted-foreground lg:flex lg:flex-wrap lg:justify-between" data-testid="trust-strip">
+          <ul className="type-label grid grid-cols-2 gap-x-6 gap-y-3 text-left text-muted-foreground lg:flex lg:flex-wrap lg:justify-between" data-testid="trust-strip">
             {h.trust.map((t) => {
               const Icon = TRUST_ICON[t.icon as keyof typeof TRUST_ICON];
               return (
@@ -171,15 +172,15 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
       <section className="py-28 sm:py-36" aria-labelledby="philosophy-title">
         <Container>
           <p className={eyebrow}>{h.philosophy.eyebrow}</p>
-          <h2 id="philosophy-title" className="mt-8 max-w-5xl font-heading text-3xl font-normal leading-snug sm:text-5xl">
+          <h2 id="philosophy-title" className="mt-6 max-w-4xl font-heading type-h2">
             {h.philosophy.statement}
           </h2>
           <div className="mt-20 grid gap-12 border-t border-border pt-12 sm:grid-cols-2 lg:grid-cols-4">
             {h.why.map((w, i) => (
               <div key={w.title}>
-                <p className="font-heading text-2xl text-primary">{ROMAN[i]}</p>
-                <h3 className="mt-3 font-medium">{w.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{w.description}</p>
+                <p className="font-heading type-h3 text-primary">{ROMAN[i]}</p>
+                <h3 className="mt-3 font-sans text-lg font-medium">{w.title}</h3>
+                <p className="mt-2 type-body text-muted-foreground">{w.description}</p>
               </div>
             ))}
           </div>
@@ -206,9 +207,9 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
                 <div className="relative aspect-[4/5] overflow-hidden">
                   <Image src={DESTINATION_IMAGE[d]} alt={c.destinations[d].name} fill sizes="(min-width: 768px) 33vw, 100vw" className="object-cover saturate-[.88] transition duration-700 group-hover:scale-[1.03]" />
                 </div>
-                <p className="mt-6 text-xs uppercase tracking-[0.3em] text-primary">{h.chapter(i + 1)}</p>
-                <h3 className="mt-2 font-heading text-4xl font-normal">{c.destinations[d].name}</h3>
-                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{c.destinations[d].tagline}</p>
+                <p className="mt-6 type-eyebrow text-primary">{h.chapter(i + 1)}</p>
+                <h3 className="mt-2 font-heading type-h2">{c.destinations[d].name}</h3>
+                <p className="mt-3 type-body text-muted-foreground">{c.destinations[d].tagline}</p>
               </a>
             ))}
           </div>
@@ -229,13 +230,13 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
             <p className="mt-6 max-w-xl leading-relaxed text-muted-foreground">{h.private.text}</p>
             <ul className="mt-8 grid max-w-xl gap-3 border-t border-border pt-6">
               {h.private.points.map((p) => (
-                <li key={p} className="flex items-start gap-4 text-sm">
+                <li key={p} className="type-body flex items-start gap-4">
                   <span className="mt-2.5 h-px w-5 shrink-0 bg-primary" aria-hidden="true" />
                   {p}
                 </li>
               ))}
             </ul>
-            <ButtonLink href="#contact" className="mt-10 h-12 px-8 text-xs uppercase tracking-[0.18em]">
+            <ButtonLink href="#contact" className="type-label mt-10 h-12 px-8">
               {h.private.cta}
             </ButtonLink>
           </div>
@@ -283,19 +284,19 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
               <h2 id="reviews-title" className={`mt-5 ${title}`}>
                 {h.reviewsTitle}
               </h2>
-              <p className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+              <p className="mt-4 type-small flex items-center gap-2 text-muted-foreground">
                 <Stars />
                 <strong className="font-medium text-foreground">{h.reviewsSummary.rating}</strong> {h.reviewsSummary.count}
               </p>
             </div>
-            <p className="border border-dashed border-border px-3 py-1 text-xs text-muted-foreground">{h.reviewsDemo}</p>
+            <p className="type-small border border-dashed border-border px-3 py-1 text-muted-foreground">{h.reviewsDemo}</p>
           </div>
           <div className="mt-14 grid gap-12 md:grid-cols-3">
             {h.reviews.map((r) => (
               <figure key={r.name} className="flex flex-col border-t border-border pt-6" data-testid="review">
                 <Stars label="5/5" />
-                <blockquote className="mt-5 flex-1 font-heading text-xl italic leading-relaxed">“{r.text}”</blockquote>
-                <figcaption className="mt-6 text-xs uppercase tracking-[0.16em] text-muted-foreground">
+                <blockquote className="mt-5 flex-1 font-heading text-[1.375rem] italic leading-normal">“{r.text}”</blockquote>
+                <figcaption className="type-label mt-6 text-muted-foreground">
                   <span className="block text-foreground">{r.name}</span>
                   <span className="mt-1 block">
                     {r.origin} · {r.source} · {r.date}
@@ -329,8 +330,8 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
                       <Image src={p.cover} alt="" fill sizes="(min-width: 768px) 33vw, 100vw" className="object-cover transition duration-700 group-hover:scale-[1.03]" />
                     </div>
                   )}
-                  <h3 className="mt-5 font-heading text-2xl font-normal leading-snug group-hover:text-primary">{p.title}</h3>
-                  <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-muted-foreground">{p.description}</p>
+                  <h3 className="mt-5 font-heading type-h3 group-hover:text-primary">{p.title}</h3>
+                  <p className="mt-2 line-clamp-3 type-body text-muted-foreground">{p.description}</p>
                 </a>
               ))}
             </div>
@@ -348,7 +349,7 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
               {h.contactTitle}
             </h2>
             <p className="mt-6 leading-relaxed text-muted-foreground">{h.contactText}</p>
-            <div className="mt-8 grid gap-2 text-sm">
+            <div className="mt-8 grid gap-2 type-body">
               <a href={chat.href} target="_blank" rel="noopener noreferrer" className={`w-fit ${textLink}`}>
                 {chat.label}
               </a>

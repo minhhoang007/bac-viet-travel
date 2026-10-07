@@ -68,7 +68,7 @@ export function DepartureCalendar({ locale, days, bookHref, chosenId }: { locale
                 const body = (
                   <>
                     <span className="block text-sm font-medium">{label}</span>
-                    {d && <span className="block truncate text-[10px] tracking-tight sm:text-xs">{d.bookable ? shortPrice(d.price, locale) : "—"}</span>}
+                    {d && <span className="block truncate text-[11px] tracking-tight sm:text-xs">{d.bookable ? shortPrice(d.price, locale) : "—"}</span>}
                     {d && <span className={cn("block truncate", d.bookable && d.seatsLeft <= 5 ? "font-medium text-warning" : "text-muted-foreground")}>{d.bookable ? d.seatsLeft : ""}</span>}
                   </>
                 );

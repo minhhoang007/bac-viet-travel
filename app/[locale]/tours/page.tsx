@@ -32,7 +32,7 @@ export default async function ToursPage({ params }: Props) {
 
   return (
     <Container className="py-12">
-      <h1 className="text-3xl font-heading font-normal sm:text-4xl">{c.tours.title}</h1>
+      <h1 className="font-heading type-h1">{c.tours.title}</h1>
       <p className="mt-2 max-w-2xl text-muted-foreground">{c.tours.subtitle}</p>
       <nav aria-label={c.home.destinationsTitle} className="mt-6 flex gap-2 overflow-x-auto pb-1 text-sm">
         {DESTINATIONS.map((d) => (
