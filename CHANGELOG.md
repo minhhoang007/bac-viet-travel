@@ -4,6 +4,11 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+### Changed — CI and dependencies
+- E2E keeps a Playwright trace of each failed test; CI uploads `test-results/` as an artifact (`e2e-traces`, `e2e-app-traces`, 7 days).
+- knip no longer loads Playwright configs (a project’s `tests/e2e/server-env.ts` may touch its test database): specs are listed as entries.
+- esbuild >= 0.25 under drizzle-kit (GHSA-67mh-4wv8-2f99, dev server only). Known, not fixable yet: braces GHSA-vfj7-8cjw-p6xm (lint-time only, no patched release).
+
 ## [1.10.0] - 2026-10-07
 
 ### Fixed — random E2E timeouts in CI

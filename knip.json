@@ -2,8 +2,9 @@
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "entry": [
     "drizzle.*.config.ts",
-    "playwright.app.config.ts",
+    "playwright*.config.ts",
     "scripts/*.ts",
+    "tests/e2e/**/*.ts",
     "tests/e2e-app/**/*.ts",
     "core/i18n/request.ts",
     "components/ui/*.tsx",
@@ -15,8 +16,6 @@
     "tests/arch-fixtures/**",
     "content/**"
   ],
-  "ignoreDependencies": [
-    "jscpd"
-  ],
-  "ignoreExportsUsedInFile": true
+  "ignoreExportsUsedInFile": true,
+  "playwright": false
 }
