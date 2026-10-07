@@ -96,13 +96,13 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
         </video>
         <div className="absolute inset-0 -z-10 bg-gradient-to-b from-black/40 via-black/20 to-background" />
         <Container className="grid gap-10 pb-12 pt-32 text-center">
-          <div className="mx-auto max-w-4xl [text-shadow:0_1px_14px_rgb(0_0_0/0.55)]">
+          <div className="home-hero-text mx-auto max-w-4xl [text-shadow:0_1px_14px_rgb(0_0_0/0.55)]">
             <p className="text-xs font-medium uppercase tracking-[0.4em] opacity-90">{m.hero.eyebrow}</p>
             <h1 id="hero-title" className="mt-6 font-heading text-5xl font-normal leading-[1.04] [text-wrap:balance] sm:text-6xl lg:text-7xl">
               {m.hero.title}
             </h1>
             <p className="mx-auto mt-6 max-w-2xl text-lg font-light leading-relaxed opacity-90">{m.hero.subtitle}</p>
-            <div className="mt-9 flex flex-wrap items-center justify-center gap-6">
+            <div className="home-hero-actions mt-9 flex flex-wrap items-center justify-center gap-6">
               <ButtonLink href={localePath(locale, m.hero.primaryHref)} className="h-12 px-8 text-xs uppercase tracking-[0.18em]">
                 {m.hero.primaryCta}
               </ButtonLink>

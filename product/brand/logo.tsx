@@ -1,5 +1,5 @@
-/** Brass accent of the brand (logo ring, wave). The site is dark ("Sơn Mài"), so it also reads as small text. */
-export const SAND = "#c9a25e";
+/** Accent of the logo (ring, wave, "TRAVEL"): the theme's primary (brass in Sơn Mài), readable on its background. */
+const SAND = "var(--primary)";
 
 /** Logo mark: limestone karsts over water (Ha Long, Ninh Binh) in a brass ring. */
 function LogoMark({ className }: { className?: string }) {

@@ -10,7 +10,7 @@ import { getAppContent, getMarketingContent } from "@/content";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteChrome } from "@/components/layout/site-chrome";
-import { themeCss, toastTheme } from "@/components/ui/theme";
+import { resolveTheme, toastTheme, type ProductTheme } from "@/components/ui/theme";
 import { AnalyticsTracker } from "@/components/analytics/tracker";
 import { ConsentBanner } from "@/components/analytics/consent-banner";
 import { features } from "@/config/features";
@@ -31,6 +31,8 @@ const ProductFooter = "ProductFooter" in productLayout ? (productLayout as { Pro
 const ProductHeader = "ProductHeader" in productLayout ? (productLayout as { ProductHeader?: (p: { locale: Locale }) => ReactNode }).ProductHeader : undefined;
 // Optional next/font class names setting --brand-font-sans / --brand-font-heading (`productFontVariables`).
 const fontVariables = "productFontVariables" in productLayout ? ((productLayout as { productFontVariables?: string }).productFontVariables ?? "") : "";
+// Optional theme chosen at run time (`productTheme`, e.g. picked by an admin); config/brand.ts otherwise.
+const productTheme = "productTheme" in productLayout ? (productLayout as { productTheme?: () => Promise<ProductTheme | null> }).productTheme : undefined;
 
 export default async function LocaleLayout({
   children,
@@ -47,12 +49,13 @@ export default async function LocaleLayout({
   const { legal, consent, blog } = getAppContent(locale as Locale);
   const other = appConfig.locales.find((l) => l !== locale) ?? appConfig.defaultLocale;
   const home = localePath(locale);
+  const theme = await resolveTheme(productTheme, brand.colors);
 
   return (
-    <html lang={locale} className={fontVariables || undefined} data-scheme={brand.colors.scheme ?? "auto"}>
+    <html lang={locale} className={fontVariables || undefined} data-scheme={theme.colors.scheme ?? "auto"} data-theme={theme.name}>
       <head>
-        {/* Theme variables from config/brand.ts (validated color values only). */}
-        <style dangerouslySetInnerHTML={{ __html: themeCss(brand.colors) }} />
+        {/* Theme variables from productTheme or config/brand.ts (validated color values only). */}
+        <style dangerouslySetInnerHTML={{ __html: theme.css }} />
       </head>
       <body className="flex min-h-screen flex-col">
         <NextIntlClientProvider>
@@ -90,7 +93,7 @@ export default async function LocaleLayout({
             )}
             <ProductLayoutExtras locale={locale as Locale} />
           </SiteChrome>
-          <Toaster theme={toastTheme(brand.colors)} />
+          <Toaster theme={toastTheme(theme.colors)} />
           {features.analytics && (
             <>
               <AnalyticsTracker />

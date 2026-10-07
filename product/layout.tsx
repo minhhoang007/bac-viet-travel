@@ -3,7 +3,10 @@ import type { Locale } from "@/config/app";
 import { localePath } from "@/core/i18n/routing";
 import { DESTINATIONS, type Destination } from "./tours/model";
 import { telUrl, whatsappUrl, zaloUrl } from "@/config/contact";
+import { currentTheme } from "@/app/_lib/theme";
+import type { ProductTheme } from "@/components/ui/theme";
 import { fontVariables } from "./brand/fonts";
+import { themeColors } from "./theme/themes";
 import { ContactButtons } from "./components/contact-buttons";
 import { SiteFooter } from "./components/site-footer";
 import { SiteHeader } from "./components/site-header";
@@ -11,6 +14,12 @@ import { getProductContent } from "./content";
 
 /** Brand fonts (Be Vietnam Pro, Cormorant Garamond headings), applied on <html> by the starter layout. */
 export const productFontVariables = fontVariables;
+
+/** The theme an admin picked (starter v1.16 hook): colors here, fonts and headings in product/styles.css. */
+export async function productTheme(): Promise<ProductTheme> {
+  const choice = await currentTheme();
+  return { colors: themeColors(choice), name: choice.theme };
+}
 
 /** Replaces the starter header: logo, destinations menu, hotline, "Book a tour". */
 export function ProductHeader({ locale }: { locale: Locale }) {

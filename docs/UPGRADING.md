@@ -37,6 +37,10 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
+### v1.16.0 (2026-10-07) — run-time theme
+- `app/[locale]/layout.tsx` and `components/ui/theme.ts` (starter-owned): take theirs. Nothing changes until `product/layout.tsx` exports `productTheme`.
+- No migration.
+
 ### v1.15.0 (2026-10-07) — per-user product admin menu, blog spacing fix
 - Breaking (only if you call it): `productAdminNavFor(user)` returns a Promise and takes `{ id, role }`: `await` it.
 - `product/manifest.ts` (project-owned): to use it, add `allow?: (user) => boolean | Promise<boolean>` to your `ProductNavItem` type and to entries. Pages behind such entries must check the same rule.

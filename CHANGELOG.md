@@ -4,6 +4,11 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.16.0] - 2026-10-07
+
+### Added — run-time theme
+- `product/layout.tsx` may export `productTheme()` returning `{ colors, name }` (or null): the theme is chosen at run time, e.g. from an admin setting, instead of only `config/brand.ts`. `name` is rendered as `<html data-theme>` for project CSS per theme. A failing load or invalid colors fall back to `brand.colors` (`resolveTheme` in `components/ui/theme.ts`).
+
 ## [1.15.0] - 2026-10-07
 
 ### Added — per-user product admin menu
