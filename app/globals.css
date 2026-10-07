@@ -41,11 +41,12 @@
   --warning: #a16207;
   --success: #15803d;
   --destructive: var(--danger);
-  --sidebar: var(--background);
+  /* Admin/dashboard sidebar: a quiet panel apart from the page, the current item tinted with the brand color. */
+  --sidebar: var(--muted);
   --sidebar-foreground: var(--foreground);
   --sidebar-primary: var(--primary);
   --sidebar-primary-foreground: var(--primary-foreground);
-  --sidebar-accent: var(--muted);
+  --sidebar-accent: color-mix(in oklab, var(--primary) 16%, var(--muted));
   --sidebar-accent-foreground: var(--foreground);
   --sidebar-border: var(--border);
   --sidebar-ring: var(--primary);

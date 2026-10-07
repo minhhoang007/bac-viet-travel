@@ -37,6 +37,10 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
+### v1.18.0 (2026-10-07) — project dashboard hook, admin shell colors
+- `app/[locale]/admin/page.tsx`, `components/admin/stat.tsx`, `app/globals.css` (starter-owned): take theirs. Nothing changes on /admin until `product/layout.tsx` exports `ProductAdminOverview`; the sidebar now uses the `muted` color.
+- No migration.
+
 ### v1.17.0 (2026-10-07) — staff two-step verification
 - **Migration 0005** (additive): run `scripts/db-migrate.ts` against production **before** deploying.
 - **After deploy, every editor and admin is asked to set up a passkey or authenticator app** at their next admin visit (the page explains it). Tell staff first. To phase it in, set `staff: { ...authDefaults.staff, requireSecondFactor: false }` in `config/auth.ts`, then turn it on.
