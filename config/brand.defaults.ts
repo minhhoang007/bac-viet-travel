@@ -14,6 +14,13 @@ export interface BrandColors {
   light: ThemeColors;
   /** Used with prefers-color-scheme: dark. Omit to keep the light palette in dark mode. */
   dark?: ThemeColors;
+  /**
+   * "auto" (default): light, or dark when the visitor's system prefers it. "dark" / "light": always that palette,
+   * whatever the system says (a dark-only brand uses `dark`, or `light` when `dark` is omitted).
+   */
+  scheme?: "auto" | "light" | "dark";
+  /** Corner radius of buttons, inputs and cards (CSS length, e.g. "0" for square corners). Default 0.5rem. */
+  radius?: string;
 }
 
 const defaultColors: BrandColors = {

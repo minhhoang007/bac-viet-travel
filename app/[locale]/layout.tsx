@@ -10,7 +10,7 @@ import { getAppContent, getMarketingContent } from "@/content";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteChrome } from "@/components/layout/site-chrome";
-import { themeCss } from "@/components/ui/theme";
+import { themeCss, toastTheme } from "@/components/ui/theme";
 import { AnalyticsTracker } from "@/components/analytics/tracker";
 import { ConsentBanner } from "@/components/analytics/consent-banner";
 import { features } from "@/config/features";
@@ -88,7 +88,7 @@ export default async function LocaleLayout({
             )}
             <ProductLayoutExtras locale={locale as Locale} />
           </SiteChrome>
-          <Toaster />
+          <Toaster theme={toastTheme(brand.colors)} />
           {features.analytics && (
             <>
               <AnalyticsTracker />

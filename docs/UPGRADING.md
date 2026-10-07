@@ -37,6 +37,10 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
+### v1.13.0 (2026-10-07) — brand color scheme and radius
+- Optional: `scheme: "dark"` and/or `radius: "0"` in `colors` of `config/brand.ts` (project-owned). Nothing to do otherwise.
+- No migration.
+
 ### v1.12.1 (2026-10-07) — production-only Vercel builds
 - `vercel.json` (starter-owned): take theirs. Work branches no longer get preview deployments. To get a preview for one PR, name its branch outside those prefixes (e.g. `preview/x`) or run `vercel deploy`.
 - No migration.

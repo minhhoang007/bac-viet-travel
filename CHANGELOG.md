@@ -4,6 +4,11 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.13.0] - 2026-10-07
+
+### Added — dark-only (or light-only) brands, corner radius
+- `config/brand.ts` `colors.scheme`: `"auto"` (default, follows the visitor's system), `"dark"` or `"light"` (always that palette; dark also switches the status colors and toasts, and prints black on white). `colors.radius` sets `--radius` (e.g. `"0"` for square corners). Values are validated like the colors.
+
 ## [1.12.1] - 2026-10-07
 
 ### Changed — Vercel builds production only
