@@ -216,8 +216,9 @@ export function createAuthService(
         .select({ id: sessions.id, userAgent: sessions.userAgent, ipAddress: sessions.ipAddress, createdAt: sessions.createdAt, expiresAt: sessions.expiresAt })
         .from(sessions)
         .where(eq(sessions.userId, current.user.id));
+      // Staff sessions past staff.sessionHours are over even if not yet deleted (that happens when next used).
       return rows
-        .filter((r) => r.expiresAt > now())
+        .filter((r) => r.expiresAt > now() && !staffSessionExpired(current.user.role, { createdAt: r.createdAt, secondFactorAt: null }, deps.staff, now()))
         .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
         .map((r) => ({ id: r.id, current: r.id === current.session.id, userAgent: r.userAgent, ipAddress: r.ipAddress, createdAt: r.createdAt }));
     },

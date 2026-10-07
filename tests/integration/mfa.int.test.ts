@@ -119,6 +119,14 @@ describe("staff sessions and second factor", () => {
     await expect(limited.app.auth.security.verifyBackupCode(headers, "anything")).rejects.toMatchObject({ code: "RATE_LIMIT_ERROR" });
   });
 
+  it("an authenticator setup started but not confirmed does not lock the user out of setting up", async () => {
+    const headers = await makeStaff("halfway@example.com");
+    await auth.security.startTotp(headers); // closed the page before entering the code
+    expect(await auth.staffGate((await auth.getSession(headers))!)).toBe("enroll");
+    const { totpURI } = await auth.security.startTotp(headers); // starts again: not "verify again first"
+    expect(await auth.security.verifyTotp(headers, totp(new URL(totpURI).searchParams.get("secret")!))).toBe(true);
+  });
+
   it("a backup code passes the second factor once", async () => {
     const { headers, backupCodes } = await staffWithTotp("backup@example.com");
     expect(await auth.security.verifyBackupCode(headers, backupCodes[0]!)).toBe(true);
@@ -133,6 +141,11 @@ describe("staff sessions and second factor", () => {
     const list = await auth.security.devices(a);
     expect(list).toHaveLength(2);
     expect(list.filter((d) => d.current)).toHaveLength(1);
+    // A staff session older than 12 hours is no longer listed.
+    const [first] = (await auth.security.devices(a)).filter((d) => !d.current);
+    await handle.db.update(sessions).set({ createdAt: sql`now() - interval '13 hours'` }).where(eq(sessions.id, first!.id));
+    expect(await auth.security.devices(a)).toHaveLength(1);
+    await handle.db.update(sessions).set({ createdAt: sql`now()` }).where(eq(sessions.id, first!.id));
     await auth.security.signOutOtherDevices(a);
     expect(await auth.getUser(b)).toBeNull();
     expect(await auth.getUser(a)).toMatchObject({ email: "devices@example.com" });
