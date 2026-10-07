@@ -2,6 +2,7 @@
 // money in the admin, the guest's page turns to paid. Demo bank account: offered only in payments sandbox mode.
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Browser } from "@playwright/test";
+import { submitHold } from "./booking-form";
 import postgres from "postgres";
 import { e2eServerEnv } from "./server-env";
 import { signInStaff } from "./staff";
@@ -22,11 +23,7 @@ test("bank transfer: VietQR with amount and reference, seats held 2 hours, staff
   test.setTimeout(60_000);
   await page.goto(`${TOUR}/book`);
   await expect(page.locator("form[data-hydrated]")).toBeVisible();
-  await page.getByLabel("Họ tên").fill("Phạm Hoa");
-  await page.getByLabel("Email").fill("hoa@example.com");
-  await page.getByLabel("Số điện thoại / WhatsApp").fill("0987000111");
-  await page.getByRole("checkbox", { name: /Tôi đồng ý/ }).check();
-  await page.getByRole("button", { name: "Giữ chỗ 15 phút" }).click();
+  await submitHold(page, { name: "Phạm Hoa", email: "hoa@example.com", phone: "0987000111" });
   await expect(page.locator("[data-booking-status=held]")).toBeVisible();
   const code = (await page.getByTestId("booking-code").innerText()).trim();
   const deposit = (await page.getByTestId("booking-deposit").innerText()).trim();
