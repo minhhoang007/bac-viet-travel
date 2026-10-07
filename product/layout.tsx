@@ -5,7 +5,7 @@ import { DESTINATIONS, type Destination } from "./tours/model";
 import { telUrl, whatsappUrl, zaloUrl } from "@/config/contact";
 import { loadDashboard } from "@/app/_lib/dashboard";
 import { currentTheme } from "@/app/_lib/theme";
-import { AdminDashboard } from "./components/admin-dashboard";
+import { AdminDashboard, DashboardUnavailable } from "./components/admin-dashboard";
 import type { ProductTheme } from "@/components/ui/theme";
 import { fontVariables } from "./brand/fonts";
 import { themeColors } from "./theme/themes";
@@ -25,8 +25,10 @@ export async function productTheme(): Promise<ProductTheme> {
 
 /** Business dashboard at the top of /admin (starter v1.18 hook; the page is admin-only). */
 export async function ProductAdminOverview({ locale }: { locale: Locale }) {
-  const { data, tourTitle } = await loadDashboard(locale);
-  return <AdminDashboard locale={locale} data={data} tourTitle={tourTitle} />;
+  // A failing figure must not take the whole admin overview down: say so and keep the rest of the page.
+  const loaded = await loadDashboard(locale).catch(() => null);
+  if (!loaded) return <DashboardUnavailable locale={locale} />;
+  return <AdminDashboard locale={locale} data={loaded.data} tourTitle={loaded.tourTitle} />;
 }
 
 /** Replaces the starter header: logo, destinations menu, hotline, "Book a tour". */

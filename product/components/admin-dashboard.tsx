@@ -29,6 +29,15 @@ const pct = (now: number, before: number) => (before > 0 ? Math.round(((now - be
 const trend = (diff: number): StatDelta["trend"] => (diff > 0 ? "up" : diff < 0 ? "down" : "flat");
 const signed = (n: number) => (n > 0 ? `+${n}` : `${n}`);
 
+/** In place of the dashboard when its figures could not be read (the error is logged by the loader). */
+export function DashboardUnavailable({ locale }: { locale: Locale }) {
+  return (
+    <p role="status" className="rounded-md border border-warning/40 bg-warning/10 p-3 text-sm" data-testid="dashboard-unavailable">
+      {getDashboardContent(locale).unavailable}
+    </p>
+  );
+}
+
 /** Business overview at the top of /admin: figures, to-do queue, money chart, departures and latest bookings. */
 export function AdminDashboard({ locale, data, tourTitle }: { locale: Locale; data: DashboardData; tourTitle: (slug: string) => string }) {
   const c = getDashboardContent(locale);
