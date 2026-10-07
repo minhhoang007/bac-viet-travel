@@ -117,7 +117,14 @@ export default async function AdminDeparturesPage({ params, searchParams }: Prop
               const form = `dep-${d.id}`;
               return (
                 <tr key={d.id} className="border-t border-border" data-departure-row={`${d.tourSlug}:${d.date}`}>
-                  <td className="py-2 pr-3 font-mono">{d.date}</td>
+                  <td className="py-2 pr-3 font-mono">
+                    {d.date}
+                    {d.sold > 0 && (
+                      <a href={localePath(locale, `/admin/departures/${d.id}`)} className="ml-2 font-sans text-xs text-primary underline underline-offset-2" data-testid="passengers-link">
+                        {c.passengers.open}
+                      </a>
+                    )}
+                  </td>
                   <td className="py-2 pr-3">{title(d.tourSlug)}</td>
                   <td className="py-2 pr-3">{d.sold}</td>
                   <td className="py-2 pr-3">{d.held}</td>

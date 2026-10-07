@@ -32,6 +32,31 @@ export interface AdminDepartureRow extends Departure {
   held: number;
 }
 
+/**
+ * One person on a departure. Bookings whose guest has not filled the traveller list give one row for the lead guest
+ * with `missing` = how many people are not named yet.
+ */
+export interface PassengerRow {
+  code: string;
+  name: string;
+  birthYear: number | null;
+  kind: "adult" | "child" | "infant" | null;
+  contact: string;
+  phone: string;
+  note: string;
+  status: BookingStatus;
+  missing: number;
+}
+
+/** Rows of one booking, travellers in party order (adults, children, infants). */
+export function passengerRows(b: Booking): PassengerRow[] {
+  const base = { code: b.code, contact: b.name, phone: b.phone, note: b.note, status: b.status };
+  const people = b.adults + b.children + b.infants;
+  if (b.travellers.length === 0) return [{ ...base, name: b.name, birthYear: null, kind: null, missing: people }];
+  const kindAt = (i: number) => (i < b.adults ? "adult" : i < b.adults + b.children ? "child" : "infant") as PassengerRow["kind"];
+  return b.travellers.map((p, i) => ({ ...base, name: p.name, birthYear: p.birthYear, kind: kindAt(i), missing: 0 }));
+}
+
 export interface BookingAdmin {
   list(options?: { filter?: BookingFilter; source?: BookingSource; tourSlug?: string; from?: string; to?: string; query?: string; page?: number; pageSize?: number }): Promise<{ rows: AdminBookingRow[]; total: number }>;
   get(code: string): Promise<{ booking: Booking; departure: Departure; payments: BookingPayment[] } | null>;
@@ -48,6 +73,8 @@ export interface BookingAdmin {
   createManual(actor: Actor, raw: Record<string, unknown>): Promise<ManualBookingResult>;
 
   listDepartures(options: { tourSlug?: string; from: string; to: string }): Promise<AdminDepartureRow[]>;
+  /** Passenger list of one departure (H1): paid and confirmed bookings, one row per traveller, for the guide. */
+  passengers(departureId: string): Promise<{ departure: Departure; rows: PassengerRow[] } | null>;
   addDepartures(actor: Actor, input: { tourSlug: string; dates: string[]; capacity: number; priceVnd: number | null }): Promise<number>;
   updateDeparture(actor: Actor, id: string, input: { capacity?: number; priceVnd?: number | null; status?: Departure["status"] }): Promise<boolean>;
 
@@ -303,6 +330,18 @@ export function createBookingAdmin(deps: {
       });
       if (result.status === "created") logger.info("booking.created_manual", { code: result.code, source: input.source });
       return result;
+    },
+
+    async passengers(departureId) {
+      if (!UUID.test(departureId)) return null;
+      const [departure] = await db.select().from(departures).where(eq(departures.id, departureId));
+      if (!departure) return null;
+      const rows = await db
+        .select()
+        .from(bookings)
+        .where(and(eq(bookings.departureId, departureId), inArray(bookings.status, [...ACTIVE])))
+        .orderBy(asc(bookings.createdAt));
+      return { departure, rows: rows.flatMap(passengerRows) };
     },
 
     async listDepartures({ tourSlug, from, to }) {
