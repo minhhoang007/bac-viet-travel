@@ -70,3 +70,23 @@ export const manualBookingSchema = z
   .refine((v) => !v.guestEmails || v.email !== "", { path: ["email"], message: "required" });
 
 export type ManualBookingInput = z.infer<typeof manualBookingSchema>;
+
+/**
+ * Traveller list from the guest booking page: one row per person (name_i, year_i). Every row is required; birth
+ * years between 1900 and this year. Errors are per row index ("name_2": "required").
+ */
+export function parseTravellers(raw: Record<string, unknown>, count: number, currentYear: number): { ok: true; travellers: { name: string; birthYear: number }[] } | { ok: false; errors: Record<string, "required" | "invalid" | "too_long"> } {
+  const errors: Record<string, "required" | "invalid" | "too_long"> = {};
+  const travellers: { name: string; birthYear: number }[] = [];
+  for (let i = 0; i < count; i++) {
+    const name = String(raw[`name_${i}`] ?? "").trim().replace(/\s+/g, " ");
+    const yearText = String(raw[`year_${i}`] ?? "").trim();
+    const year = Number(yearText);
+    if (name.length < 2) errors[`name_${i}`] = "required";
+    else if (name.length > 100) errors[`name_${i}`] = "too_long";
+    if (!yearText) errors[`year_${i}`] = "required";
+    else if (!/^\d{4}$/.test(yearText) || year < 1900 || year > currentYear) errors[`year_${i}`] = "invalid";
+    travellers.push({ name, birthYear: year });
+  }
+  return Object.keys(errors).length ? { ok: false, errors } : { ok: true, travellers };
+}

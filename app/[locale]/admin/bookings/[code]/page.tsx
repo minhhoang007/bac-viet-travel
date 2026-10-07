@@ -99,6 +99,21 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
         </section>
       </div>
 
+      <section className="rounded-lg border border-border p-4" data-testid="admin-travellers">
+        <h2 className="font-semibold">{g.travellers.title}</h2>
+        {b.travellers.length === 0 ? (
+          <p className="mt-1 text-sm text-muted-foreground">{g.travellers.missing}</p>
+        ) : (
+          <ol className="mt-2 grid gap-1 text-sm">
+            {b.travellers.map((p, i) => (
+              <li key={i}>
+                {i + 1}. {p.name} · {p.birthYear}
+              </li>
+            ))}
+          </ol>
+        )}
+      </section>
+
       {(b.note || b.cancelReason) && (
         <section className="grid gap-2 text-sm">
           {b.note && <p><span className="text-muted-foreground">{c.detail.guestNote}:</span> {b.note}</p>}

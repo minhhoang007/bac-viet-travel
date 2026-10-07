@@ -169,3 +169,29 @@ describe("prices by traveller type (B2)", () => {
     expect(await db.select().from(bookings)).toHaveLength(0);
   });
 });
+
+describe("traveller details (D7)", () => {
+  it("the guest saves one row per person; bad rows are reported by index; wrong token and past cutoff refused", async () => {
+    const d = await departure();
+    const held = await service().hold(guest(d.id, { adults: "2", children: "0", infants: "1" }), "ip");
+    if (held.status !== "held") throw new Error(held.status);
+
+    expect(await service().saveTravellers(held.code, held.token, { name_0: "Nguyễn Lan", year_0: "1990", name_1: "x", year_1: "1880", name_2: "Bé Na" })).toEqual({
+      status: "invalid",
+      errors: { name_1: "required", year_1: "invalid", year_2: "required" },
+    });
+    expect(await service().saveTravellers(held.code, held.token, { name_0: " Nguyễn  Lan ", year_0: "1990", name_1: "Trần Minh", year_1: "1988", name_2: "Bé Na", year_2: "2025" })).toEqual({ status: "saved" });
+    const [b] = await db.select().from(bookings);
+    expect(b!.travellers).toEqual([
+      { name: "Nguyễn Lan", birthYear: 1990 },
+      { name: "Trần Minh", birthYear: 1988 },
+      { name: "Bé Na", birthYear: 2025 },
+    ]);
+    expect((await service().saveTravellers(held.code, "x".repeat(32), {})).status).toBe("not_found");
+
+    // Inside the 2-day cutoff before departure (and paid): locked.
+    await db.update(bookings).set({ status: "deposit_paid" });
+    clock = new Date("2026-10-09T03:00:00Z");
+    expect((await service().saveTravellers(held.code, held.token, { name_0: "A B", year_0: "1990" })).status).toBe("locked");
+  });
+});

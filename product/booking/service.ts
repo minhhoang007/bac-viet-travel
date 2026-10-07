@@ -5,7 +5,7 @@ import type { RateLimiter } from "@/core/security/rate-limit";
 import type { Db } from "@/db/client";
 import { bookings, departures, type Booking, type Departure } from "../schema/booking";
 import { addDays, bookingRules, DEFAULT_TOUR_PRICING, isBookableDate, privateQuote, privateTier, quote, vietnamToday, type PrivatePricing, type TourPricing } from "./rules";
-import { bookingInputSchema, privateBookingInputSchema } from "./validations";
+import { bookingInputSchema, parseTravellers, privateBookingInputSchema } from "./validations";
 
 export type BookingField = "departureId" | "tourSlug" | "date" | "name" | "email" | "phone" | "adults" | "children" | "infants" | "singleRooms" | "note" | "agree";
 export type BookingFieldError = "required" | "invalid" | "too_long" | "too_many" | "must_agree";
@@ -23,6 +23,13 @@ export interface DepartureView extends Departure {
   seatsLeft: number;
   unitPriceVnd: number;
   bookable: boolean;
+}
+
+export type SaveTravellersResult = { status: "saved" } | { status: "invalid"; errors: Record<string, "required" | "invalid" | "too_long"> } | { status: "not_found" } | { status: "locked" };
+
+/** Whether the guest may still edit the traveller list: live booking, departure after the cutoff. */
+export function travellersEditable(status: Booking["status"], isExpired: boolean, departureDate: string, now: Date): boolean {
+  return (status === "held" ? !isExpired : status === "deposit_paid" || status === "confirmed") && isBookableDate(departureDate, now);
 }
 
 export interface BookingView extends Booking {
@@ -44,6 +51,11 @@ export interface BookingService {
   holdPrivate(raw: Record<string, unknown>, clientKey: string): Promise<HoldResult>;
   /** Guest lookup: a wrong code or token both give null (indistinguishable). */
   getForGuest(code: string, token: string): Promise<BookingView | null>;
+  /**
+   * The guest's traveller list (D7): one row per person. Editable until the booking cutoff before departure, on
+   * live bookings only (held, paid, confirmed).
+   */
+  saveTravellers(code: string, token: string, raw: Record<string, unknown>): Promise<SaveTravellersResult>;
   /** Marks stale holds as expired. Returns how many. */
   expireStale(): Promise<number>;
 }
@@ -120,6 +132,18 @@ export function createBookingService(deps: {
     });
     return { status: "held", code, token };
   };
+
+  async function getForGuest(code: string, token: string): Promise<BookingView | null> {
+    if (!CODE.test(code) || token.length < 20 || token.length > 64) return null;
+    const [row] = await db
+      .select({ b: bookings, d: departures })
+      .from(bookings)
+      .innerJoin(departures, eq(departures.id, bookings.departureId))
+      .where(eq(bookings.code, code));
+    if (!row || !timingSafeEqual(Buffer.from(row.b.tokenHash, "hex"), Buffer.from(hashToken(token), "hex"))) return null;
+    const isExpired = row.b.status === "expired" || (row.b.status === "held" && row.b.holdExpiresAt <= now());
+    return { ...row.b, departure: row.d, isExpired };
+  }
 
   return {
     async listDepartures(tourSlug) {
@@ -211,16 +235,18 @@ export function createBookingService(deps: {
       return result;
     },
 
-    async getForGuest(code, token) {
-      if (!CODE.test(code) || token.length < 20 || token.length > 64) return null;
-      const [row] = await db
-        .select({ b: bookings, d: departures })
-        .from(bookings)
-        .innerJoin(departures, eq(departures.id, bookings.departureId))
-        .where(eq(bookings.code, code));
-      if (!row || !timingSafeEqual(Buffer.from(row.b.tokenHash, "hex"), Buffer.from(hashToken(token), "hex"))) return null;
-      const isExpired = row.b.status === "expired" || (row.b.status === "held" && row.b.holdExpiresAt <= now());
-      return { ...row.b, departure: row.d, isExpired };
+    getForGuest,
+
+    async saveTravellers(code, token, raw) {
+      const booking = await getForGuest(code, token);
+      if (!booking) return { status: "not_found" };
+      const at = now();
+      if (!travellersEditable(booking.status, booking.isExpired, booking.departure.date, at)) return { status: "locked" };
+      const parsed = parseTravellers(raw, booking.adults + booking.children + booking.infants, Number(vietnamToday(at).slice(0, 4)));
+      if (!parsed.ok) return { status: "invalid", errors: parsed.errors };
+      await db.update(bookings).set({ travellers: parsed.travellers }).where(eq(bookings.id, booking.id));
+      deps.logger.info("booking.travellers_saved", { code: booking.code, count: parsed.travellers.length });
+      return { status: "saved" };
     },
 
     async expireStale() {

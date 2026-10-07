@@ -7,6 +7,7 @@ import { BOOKING_COOKIE, getBooking, getDeposits, isTransferAvailable } from "@/
 import { getPublicEnv } from "@/bootstrap/env";
 import { localePath } from "@/core/i18n/routing";
 import type { HoldResult } from "@/product/booking/service";
+import type { TravellersState } from "@/product/components/travellers-form";
 
 export type HoldFormState = Exclude<HoldResult, { status: "held" }> | { status: "error" } | null;
 export type DepositFormState = { status: "not_payable" | "error" } | null;
@@ -74,4 +75,15 @@ export async function chooseTransfer(formData: FormData): Promise<void> {
   }
   const back = `/booking/${encodeURIComponent(code)}?t=${encodeURIComponent(token)}`;
   redirect(localePath(locale, ok ? back : `${back}&pay=transfer_failed`));
+}
+
+/** The guest's traveller list (D7), checked against the secret token; errors per row stay on the page. */
+export async function saveTravellers(_prev: TravellersState, formData: FormData): Promise<TravellersState> {
+  const values = Object.fromEntries([...formData].filter(([k, v]) => /^(name|year)_\d{1,2}$/.test(k) && typeof v === "string").map(([k, v]) => [k, String(v).slice(0, 120)]));
+  try {
+    const result = await getBooking().saveTravellers(String(formData.get("code") ?? ""), String(formData.get("token") ?? ""), Object.fromEntries(formData));
+    return { ...(result.status === "not_found" ? { status: "error" as const } : result), values };
+  } catch {
+    return { status: "error", values };
+  }
 }

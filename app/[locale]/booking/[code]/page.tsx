@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 import { setRequestLocale } from "next-intl/server";
 import { getBooking, getDeposits, isPaymentsSandbox, isTransferAvailable } from "@/app/_lib/booking";
-import { chooseTransfer, startDeposit } from "@/app/actions/booking";
+import { chooseTransfer, saveTravellers, startDeposit } from "@/app/actions/booking";
+import { travellersEditable } from "@/product/booking/service";
+import { TravellersForm } from "@/product/components/travellers-form";
 import { bankTransferConfig } from "@/config/bank-transfer";
 import { vietQrSvg } from "@/core/payments/vietqr";
 import { transferNote } from "@/product/booking/deposits";
@@ -50,6 +52,7 @@ export default async function BookingPage({ params, searchParams }: Props) {
   const tour = (await getTours()).get(locale, booking.departure.tourSlug);
   const status = booking.isExpired ? "expired" : booking.status;
   const sandbox = isPaymentsSandbox();
+  const kinds = [...Array<"adult">(booking.adults).fill("adult"), ...Array<"child">(booking.children).fill("child"), ...Array<"infant">(booking.infants).fill("infant")];
   const transferOffered = status === "held" && isTransferAvailable();
   const transfer = transferOffered && (await getDeposits().transferPending(booking.id));
   const holdUntil = booking.holdExpiresAt.toLocaleTimeString(locale === "vi" ? "vi-VN" : "en-GB", { timeZone: "Asia/Ho_Chi_Minh", hour: "2-digit", minute: "2-digit" });
@@ -140,6 +143,28 @@ export default async function BookingPage({ params, searchParams }: Props) {
           <ButtonLink href={rebook} className="mt-4">
             {t.booking.rebook}
           </ButtonLink>
+        </section>
+      )}
+
+      {(status === "held" || status === "deposit_paid" || status === "confirmed") && (
+        <section className="mt-8 rounded-xl border border-border p-5" aria-labelledby="travellers-title" data-testid="travellers">
+          <h2 id="travellers-title" className="text-lg font-semibold">
+            {t.travellers.title}
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {booking.travellers.length === kinds.length ? t.travellers.done(kinds.length) : t.travellers.missing} {t.travellers.hint}
+          </p>
+          {travellersEditable(booking.status, booking.isExpired, booking.departure.date, new Date()) ? (
+            <TravellersForm action={saveTravellers} code={booking.code} token={token!} locale={locale} kinds={kinds} initial={booking.travellers} />
+          ) : (
+            <ol className="mt-3 grid gap-1 text-sm">
+              {booking.travellers.map((p, i) => (
+                <li key={i}>
+                  {i + 1}. {p.name} ({p.birthYear})
+                </li>
+              ))}
+            </ol>
+          )}
         </section>
       )}
 

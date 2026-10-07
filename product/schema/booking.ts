@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { boolean, check, date, index, integer, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { boolean, check, date, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { id, timestamps } from "@/db/columns";
 import { BOOKING_SOURCES } from "../booking/sources";
 
@@ -26,6 +26,9 @@ export const departures = pgTable(
   ],
 );
 
+/** One person on the trip, in party order: adults, then children, then infants. */
+export type Traveller = { name: string; birthYear: number };
+
 /** refund_due: a deposit arrived after the hold expired and the seats were gone (staff refunds it). */
 export const BOOKING_STATUSES = ["held", "expired", "deposit_paid", "refund_due", "confirmed", "cancelled"] as const;
 export type BookingStatus = (typeof BOOKING_STATUSES)[number];
@@ -51,6 +54,8 @@ export const bookings = pgTable(
     adults: integer("adults").notNull(),
     children: integer("children").notNull().default(0),
     infants: integer("infants").notNull().default(0),
+    /** Names and birth years of everyone on the trip (D7), filled in by the guest after booking (insurance, cruise lists). */
+    travellers: jsonb("travellers").$type<Traveller[]>().notNull().default([]),
     /** Single rooms booked (supplement per room, B2). */
     singleRooms: integer("single_rooms").notNull().default(0),
     /** Seats taken: adults + children (infants share a seat). */
