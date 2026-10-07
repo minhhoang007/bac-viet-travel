@@ -5,7 +5,8 @@ import { localePath } from "@/core/i18n/routing";
 import type { Locale } from "@/config/app";
 import type { BookingFilter } from "@/product/booking/admin";
 import { getBookingAdminContent } from "@/product/booking/admin-content";
-import { formatVnd } from "@/product/booking/content";
+import { formatShortDay, formatVnd } from "@/product/booking/content";
+import { BookingStatusBadge } from "@/product/components/booking-status-badge";
 import { BOOKING_SOURCES, type BookingSource } from "@/product/booking/sources";
 import { getTours } from "@/app/_lib/tours";
 
@@ -73,7 +74,7 @@ export default async function AdminBookingsPage({ params, searchParams }: Props)
           <ul className="mt-2 grid gap-1 text-sm">
             {stats.upcoming.map((u) => (
               <li key={`${u.date}-${u.tourSlug}`}>
-                <span className="font-mono">{u.date}</span> · {title(u.tourSlug)} · {u.seats}
+                <span className="tabular-nums">{formatShortDay(u.date, locale)}</span> · {title(u.tourSlug)} · {u.seats}
               </li>
             ))}
           </ul>
@@ -140,7 +141,7 @@ export default async function AdminBookingsPage({ params, searchParams }: Props)
                   </a>
                 </td>
                 <td className="py-2 pr-4">
-                  {b.date}
+                  <span className="whitespace-nowrap tabular-nums">{formatShortDay(b.date, locale)}</span>
                   <span className="block text-xs text-muted-foreground">
                     {title(b.tourSlug)}
                     {b.kind === "private" && <strong className="ml-1 font-semibold text-foreground">· {c.privateTour}</strong>}
@@ -159,7 +160,7 @@ export default async function AdminBookingsPage({ params, searchParams }: Props)
                 <td className="py-2 pr-4">{b.seats}</td>
                 <td className="py-2 pr-4">{formatVnd(b.totalVnd, locale)}</td>
                 <td className="py-2">
-                  {c.filters[b.status]}
+                  <BookingStatusBadge status={b.status} label={c.filters[b.status]} />
                   {b.refundDueVnd > 0 && !b.refundedAt && (
                     <span className="block text-xs font-semibold text-danger">
                       {c.refundOwed}: {formatVnd(b.refundDueVnd, locale)}

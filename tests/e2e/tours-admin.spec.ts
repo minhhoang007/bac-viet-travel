@@ -45,6 +45,13 @@ test("marketing duplicates and edits a tour, submits it; an admin publishes; vis
   await expect(editor.getByRole("link", { name: "Đơn đặt tour" })).toHaveCount(0);
   expect((await editor.goto("/admin/bookings"))?.status()).toBe(404);
 
+  // Search ignores accents and case: "NINH binh" finds the Ninh Bình tours only.
+  await editor.goto("/admin/tours");
+  await editor.getByLabel("Tìm theo tên hoặc đường dẫn").fill("NINH binh");
+  await editor.getByRole("button", { name: "Tìm" }).click();
+  await expect(editor.locator('[data-slug="ninh-binh-day-tour"]')).toBeVisible();
+  await expect(editor.locator('[data-slug="sapa-trekking-2d1n"]')).toHaveCount(0);
+
   await editor.goto("/admin/tours");
   await editor.locator('[data-slug="ninh-binh-day-tour"]').getByRole("button", { name: "Nhân bản" }).click();
   await expect(editor.getByText("Đã nhân bản.", { exact: false })).toBeVisible();

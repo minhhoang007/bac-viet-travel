@@ -14,6 +14,14 @@ export async function createDiscount(formData: FormData): Promise<void> {
   });
 }
 
+export async function updateDiscount(formData: FormData): Promise<void> {
+  await adminAction(formData, "/admin/discounts", "discounts.action_failed", async (ctx) => {
+    const id = String(formData.get("id") ?? "");
+    const result = await ctx.container.app!.product.discounts.update(ctx.user, id, Object.fromEntries(formData));
+    return result.status === "updated" ? "done" : result.status === "not_found" ? "failed" : `invalid&field=${encodeURIComponent(Object.keys(result.fieldErrors)[0] ?? "")}&edit=${encodeURIComponent(id)}`;
+  });
+}
+
 export async function setDiscountActive(formData: FormData): Promise<void> {
   await adminAction(formData, "/admin/discounts", "discounts.action_failed", async (ctx) =>
     (await ctx.container.app!.product.discounts.setActive(ctx.user, String(formData.get("id") ?? ""), formData.get("active") === "1")) ? "done" : "failed",

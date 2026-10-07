@@ -56,6 +56,13 @@ export const privateBookingInputSchema = z
 
 export type PrivateBookingInput = z.infer<typeof privateBookingInputSchema>;
 
+/** Staff fixing the guest's contact details. Email may be empty only when the booking sends no guest emails. */
+export const contactUpdateSchema = z.object({
+  name: z.string().trim().min(2, "required").max(100, "too_long"),
+  email: z.union([z.literal(""), z.email("invalid").max(200, "too_long")]).default(""),
+  phone: z.string().trim().max(30, "too_long").default(""),
+});
+
 /**
  * Staff-entered booking (phone, Zalo, OTA). Paid outside the website, so it is created directly as deposit_paid or
  * confirmed. Email is optional (OTAs often hide it); amountVnd is what the company actually receives.

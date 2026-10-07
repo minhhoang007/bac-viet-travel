@@ -17,7 +17,7 @@ import { getTourAdminContent } from "@/product/tours/admin-content";
 import { tourProblems } from "@/product/tours/document";
 import { TOUR_CONTENT_TYPE } from "@/product/tours/source";
 
-type Props = { params: Promise<{ locale: Locale }>; searchParams: Promise<{ result?: string }> };
+type Props = { params: Promise<{ locale: Locale }>; searchParams: Promise<{ result?: string; q?: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
@@ -33,19 +33,36 @@ export default async function AdminToursPage({ params, searchParams }: Props) {
   const c = getTourAdminContent(locale);
   const statuses = getAppContent(locale).admin.content.statuses;
   const { rows } = await content.list({ type: TOUR_CONTENT_TYPE, pageSize: 100 });
-  const { result } = await searchParams;
+  const { result, q: rawQuery } = await searchParams;
+  const q = rawQuery?.trim().slice(0, 100) ?? "";
   const titleOf = (draft: Record<string, unknown>, slug: string) => {
     const t = (draft[locale] as { title?: unknown } | undefined)?.title ?? (draft.vi as { title?: unknown } | undefined)?.title;
     return typeof t === "string" && t ? t : slug;
   };
+  // Accent- and case-insensitive: "ha long" finds "Hạ Long".
+  const fold = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "").replace(/đ/g, "d").replace(/Đ/g, "D").toLowerCase();
+  const shown = q ? rows.filter((item) => fold(`${titleOf(item.draft, item.slug)} ${item.slug}`).includes(fold(q))) : rows;
 
   return (
     <div className="grid gap-6">
       <PageHeader title={c.title} description={c.description} actions={<ButtonLink href={localePath(locale, "/admin/tours/new")}>{c.newTour}</ButtonLink>} />
       {result === "failed" && <Notice tone="danger">{getAppContent(locale).admin.failed}</Notice>}
+      {rows.length > 0 && (
+        <form method="get" className="flex flex-wrap items-center gap-2" role="search">
+          <input name="q" defaultValue={q} placeholder={c.search} aria-label={c.search} className="h-9 w-72 max-w-full rounded-md border border-border bg-background px-3 text-sm" />
+          <SubmitButton label={c.searchButton} variant="outline" size="sm" />
+          {q && (
+            <a href={localePath(locale, "/admin/tours")} className="text-sm text-muted-foreground hover:underline">
+              {c.showAll}
+            </a>
+          )}
+        </form>
+      )}
+      {rows.length > 0 && shown.length === 0 && <p className="text-sm text-muted-foreground">{c.noMatch}</p>}
       {rows.length === 0 ? (
         <EmptyState title={c.empty} action={<ButtonLink href={localePath(locale, "/admin/tours/new")}>{c.newTour}</ButtonLink>} />
       ) : (
+        shown.length > 0 && (
         <Table data-testid="admin-tours">
           <TableHeader>
             <TableRow>
@@ -58,7 +75,7 @@ export default async function AdminToursPage({ params, searchParams }: Props) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.map((item) => {
+            {shown.map((item) => {
               const missing = tourProblems(item.draft).length;
               return (
                 <TableRow key={item.id} data-slug={item.slug}>
@@ -84,6 +101,7 @@ export default async function AdminToursPage({ params, searchParams }: Props) {
             })}
           </TableBody>
         </Table>
+        )
       )}
     </div>
   );

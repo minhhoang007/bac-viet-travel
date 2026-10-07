@@ -39,6 +39,11 @@ export async function markBookingRefunded(formData: FormData): Promise<void> {
   await run(formData, `/admin/bookings/${c}`, (ctx) => service(ctx).markRefunded(ctx.user, c, { note: String(formData.get("note") ?? "") }));
 }
 
+export async function saveContact(formData: FormData): Promise<void> {
+  const c = bookingCode(formData);
+  await run(formData, `/admin/bookings/${c}`, (ctx) => service(ctx).updateContact(ctx.user, c, Object.fromEntries(formData)));
+}
+
 export async function saveStaffNote(formData: FormData): Promise<void> {
   const c = bookingCode(formData);
   await run(formData, `/admin/bookings/${c}`, (ctx) => service(ctx).setStaffNote(ctx.user, c, String(formData.get("note") ?? "")));

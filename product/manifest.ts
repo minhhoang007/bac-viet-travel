@@ -6,6 +6,7 @@ import type { ContentTypeDefinition, ProductContext, ProductJobs, SitemapContext
 import { tourSource } from "@/config/tours";
 import type { Db } from "@/db/client";
 import { createBookingAdmin } from "./booking/admin";
+import { bookingOverview } from "./booking/admin-overview";
 import { createDepositService } from "./booking/deposits";
 import { createFeedbackService } from "./booking/feedback";
 import { createDiscountAdmin } from "./booking/discounts";
@@ -109,7 +110,7 @@ export function createProduct(db: Db, ctx: ProductContext) {
     to: () => getEnv().extra.CONTACT_TO_EMAIL ?? "",
     tourTitles: async (locale) => (await tours.catalog()).list(locale).map((t) => t.title),
   });
-  return { services: { tours, booking, deposits, bookingAdmin, feedback, discounts, reports, inquiry, paymentsSandbox: ctx.payments.vnpay?.sandbox ?? false }, exporters, jobs };
+  return { adminOverview: bookingOverview(bookingAdmin), services: { tours, booking, deposits, bookingAdmin, feedback, discounts, reports, inquiry, paymentsSandbox: ctx.payments.vnpay?.sandbox ?? false }, exporters, jobs };
 }
 
 export interface ProductNavItem {
