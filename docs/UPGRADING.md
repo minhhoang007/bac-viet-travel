@@ -37,6 +37,10 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
+### v1.12.1 (2026-10-07) — production-only Vercel builds
+- `vercel.json` (starter-owned): take theirs. Work branches no longer get preview deployments. To get a preview for one PR, name its branch outside those prefixes (e.g. `preview/x`) or run `vercel deploy`.
+- No migration.
+
 ### v1.12.0 (2026-10-07) — admin overview figures
 - Optional: return `adminOverview` from `createProduct` in `product/manifest.ts` (project-owned) to show product figures on `/admin`. Nothing to do otherwise.
 - No migration.
