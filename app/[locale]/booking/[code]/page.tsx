@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 import { setRequestLocale } from "next-intl/server";
 import { getBooking, getDeposits, isPaymentsSandbox, isTransferAvailable } from "@/app/_lib/booking";
-import { chooseTransfer, saveTravellers, startDeposit } from "@/app/actions/booking";
+import { chooseTransfer, saveTravellers, startBalance, startDeposit } from "@/app/actions/booking";
+import { balanceDue } from "@/product/booking/deposits";
+import { vietnamToday } from "@/product/booking/rules";
 import { travellersEditable } from "@/product/booking/service";
 import { TravellersForm } from "@/product/components/travellers-form";
 import { bankTransferConfig } from "@/config/bank-transfer";
@@ -52,6 +54,7 @@ export default async function BookingPage({ params, searchParams }: Props) {
   const tour = (await getTours()).get(locale, booking.departure.tourSlug);
   const status = booking.isExpired ? "expired" : booking.status;
   const sandbox = isPaymentsSandbox();
+  const today = vietnamToday(new Date());
   const kinds = [...Array<"adult">(booking.adults).fill("adult"), ...Array<"child">(booking.children).fill("child"), ...Array<"infant">(booking.infants).fill("infant")];
   const transferOffered = status === "held" && isTransferAvailable();
   const transfer = transferOffered && (await getDeposits().transferPending(booking.id));
@@ -99,6 +102,19 @@ export default async function BookingPage({ params, searchParams }: Props) {
         <section className="mt-6 rounded-xl border border-success/40 bg-success/10 p-5" data-testid="paid">
           <h2 className="text-lg font-semibold">{t.booking.paidTitle}</h2>
           <p className="mt-1 text-sm">{t.booking.paidText}</p>
+          {balanceDue(booking) > 0 && booking.departure.date >= today ? (
+            <div className="mt-4 border-t border-success/30 pt-4" data-testid="balance">
+              <p className="font-medium">{t.booking.balanceTitle(formatVnd(balanceDue(booking), locale))}</p>
+              <p className="mt-1 text-sm">{t.booking.balanceText}</p>
+              <DepositButton action={startBalance} code={booking.code} token={token!} locale={locale} label={t.booking.balancePay(formatVnd(balanceDue(booking), locale))} errorText={t.booking.payUnavailable} testId="pay-balance" />
+            </div>
+          ) : (
+            booking.balancePaidAt && (
+              <p className="mt-3 text-sm font-medium" data-testid="balance-paid">
+                {t.booking.balancePaid}
+              </p>
+            )
+          )}
           <ButtonLink href={localePath(locale, `/booking/${booking.code}/voucher?t=${encodeURIComponent(token!)}`)} variant="outline" className="mt-3" data-testid="open-voucher">
             {t.voucher.open}
           </ButtonLink>

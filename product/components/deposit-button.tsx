@@ -12,17 +12,18 @@ export interface DepositButtonProps {
   locale: "vi" | "en";
   label: string;
   errorText: string;
+  testId?: string;
 }
 
 /** Posts to the deposit action, which redirects to VNPay. */
-export function DepositButton({ action, code, token, locale, label, errorText }: DepositButtonProps) {
+export function DepositButton({ action, code, token, locale, label, errorText, testId = "pay-deposit" }: DepositButtonProps) {
   const [state, formAction, pending] = useActionState(action, null);
   return (
     <form action={formAction} className="mt-4">
       <input type="hidden" name="code" value={code} />
       <input type="hidden" name="token" value={token} />
       <input type="hidden" name="locale" value={locale} />
-      <Button type="submit" size="lg" className="w-full sm:w-auto" disabled={pending} data-testid="pay-deposit">
+      <Button type="submit" size="lg" className="w-full sm:w-auto" disabled={pending} data-testid={testId}>
         {label}
       </Button>
       {state && (

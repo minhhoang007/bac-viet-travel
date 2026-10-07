@@ -71,6 +71,22 @@ test("deposit: VNPay URL for 30%, IPN confirms, guest returns to a paid booking"
   expect((await (await request.get(`/api/booking/vnpay/ipn?${params}`)).json()).RspCode).toBe("02");
   params.set("vnp_Amount", "100");
   expect((await (await request.get(`/api/booking/vnpay/ipn?${params}`)).json()).RspCode).toBe("97");
+
+  // Balance (D5): the rest of the total online, then the booking is paid in full.
+  await page.reload();
+  let balanceUrl: URL | undefined;
+  await page.route("https://sandbox.vnpayment.vn/**", (route) => {
+    balanceUrl = new URL(route.request().url());
+    return route.fulfill({ status: 200, contentType: "text/html", body: "<h1>VNPay sandbox (stub)</h1>" });
+  });
+  const bookingUrl = page.url();
+  await page.getByTestId("pay-balance").click();
+  await expect(page.getByRole("heading", { name: "VNPay sandbox (stub)" })).toBeVisible();
+  expect(Number(balanceUrl!.searchParams.get("vnp_Amount")) / 100).toBeGreaterThan(0);
+  expect((await (await request.get(`/api/booking/vnpay/ipn?${result(balanceUrl!, true)}`)).json()).RspCode).toBe("00");
+  await page.goto(bookingUrl);
+  await expect(page.getByTestId("balance-paid")).toBeVisible();
+  await expect(page.getByTestId("pay-balance")).toHaveCount(0);
 });
 
 test("failed payment: guest is back on the held booking with a retry button", async ({ page }) => {

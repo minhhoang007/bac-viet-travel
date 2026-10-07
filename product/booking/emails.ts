@@ -11,7 +11,7 @@ export function depositEmails(input: {
   /** Guest link token; null when unknown (the email then gives the booking code only). */
   token: string | null;
   /** refund_due: seats gone when late money arrived. extra: the booking no longer waited for a deposit (paid twice). */
-  outcome: "paid" | "refund_due" | "extra";
+  outcome: "paid" | "refund_due" | "extra" | "balance";
   /** The amount that arrived (for "extra"). */
   amountVnd?: number;
   teamEmail?: string;
@@ -120,16 +120,33 @@ export function depositEmails(input: {
           ].join("\n"),
         };
 
-  const messages = [outcome === "extra" ? extra : guest];
+  const balance: MailMessage =
+    locale === "vi"
+      ? {
+          kind: "booking_balance_paid",
+          to: b.email,
+          subject: `Đã thanh toán đủ – ${title} (${b.code})`,
+          text: [`Chào ${b.name},`, ``, `Bắc Việt Travel đã nhận ${received}, đơn ${b.code} đã được thanh toán đủ.`, `Ngày khởi hành: ${day}`, ``, link ? `Xem đơn của bạn: ${link}` : `Mã đơn của bạn: ${b.code}`].join("\n"),
+        }
+      : {
+          kind: "booking_balance_paid",
+          to: b.email,
+          subject: `Paid in full – ${title} (${b.code})`,
+          text: [`Hello ${b.name},`, ``, `We have received ${received}; booking ${b.code} is now paid in full.`, `Departure: ${day}`, ``, link ? `View your booking: ${link}` : `Your booking code: ${b.code}`].join("\n"),
+        };
+
+  const messages = [outcome === "extra" ? extra : outcome === "balance" ? balance : guest];
   if (input.teamEmail) {
     messages.push({
-      kind: outcome === "paid" ? "booking_team_paid" : "booking_team_refund",
+      kind: outcome === "paid" ? "booking_team_paid" : outcome === "balance" ? "booking_team_balance" : "booking_team_refund",
       to: input.teamEmail,
       replyTo: b.email,
-      subject: outcome === "paid" ? `[Đặt cọc] ${b.code} – ${title} – ${d.date}` : `[CẦN HOÀN TIỀN] ${b.code} – ${title} – ${d.date}`,
+      subject: outcome === "paid" ? `[Đặt cọc] ${b.code} – ${title} – ${d.date}` : outcome === "balance" ? `[Đã trả đủ] ${b.code} – ${title} – ${d.date}` : `[CẦN HOÀN TIỀN] ${b.code} – ${title} – ${d.date}`,
       text: [
         outcome === "paid"
           ? `Đơn mới đã đặt cọc.`
+          : outcome === "balance"
+            ? `Khách đã thanh toán phần còn lại (${formatVnd(input.amountVnd ?? 0, "vi")}) online.`
           : outcome === "extra"
             ? `Khách trả thêm ${formatVnd(input.amountVnd ?? 0, "vi")} cho đơn không còn chờ cọc (trả hai lần hoặc đã huỷ): cần hoàn khoản này.`
             : `Tiền cọc về sau khi hết giữ chỗ và không còn đủ chỗ: cần hoàn tiền hoặc đổi ngày.`,

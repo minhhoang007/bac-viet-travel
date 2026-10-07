@@ -119,3 +119,8 @@ export async function receiveTransfer(formData: FormData): Promise<void> {
   }
   redirect(localePath(l, `/admin/bookings/${c}?result=${result}`));
 }
+
+export async function markBalancePaid(formData: FormData): Promise<void> {
+  const c = bookingCode(formData);
+  await run(formData, `/admin/bookings/${c}`, (ctx) => service(ctx).markBalancePaid(ctx.user, c, String(formData.get("note") ?? "")));
+}

@@ -87,3 +87,25 @@ export async function saveTravellers(_prev: TravellersState, formData: FormData)
     return { status: "error", values };
   }
 }
+
+/** VNPay payment of the rest of the total (D5) for a paid booking. */
+export async function startBalance(_prev: DepositFormState, formData: FormData): Promise<DepositFormState> {
+  const code = String(formData.get("code") ?? "");
+  const token = String(formData.get("token") ?? "");
+  const locale = localeOf(formData);
+  let url: string;
+  try {
+    const result = await getDeposits().startBalance({
+      code,
+      token,
+      ipAddr: clientKeyFrom(await headers()),
+      returnUrl: `${getPublicEnv().NEXT_PUBLIC_SITE_URL}${localePath(locale, "/booking/return")}`,
+    });
+    if (result.status !== "redirect") return { status: "not_payable" };
+    url = result.url;
+  } catch {
+    return { status: "error" };
+  }
+  (await cookies()).set(BOOKING_COOKIE(code), token, { httpOnly: true, secure: true, sameSite: "lax", path: "/", maxAge: 60 * 60 });
+  redirect(url);
+}

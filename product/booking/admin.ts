@@ -64,6 +64,8 @@ export interface BookingAdmin {
   cancel(actor: Actor, code: string, input: { reason: string; refund: boolean }): Promise<boolean>;
   markRefunded(actor: Actor, code: string, input: { note: string }): Promise<boolean>;
   setStaffNote(actor: Actor, code: string, note: string): Promise<boolean>;
+  /** Staff got the rest of the total outside the website (cash, transfer) (D5). Audited. */
+  markBalancePaid(actor: Actor, code: string, note: string): Promise<boolean>;
   /** Staff saw the bank transfer for a held (or just expired) booking: records the deposit. Audited. */
   receiveTransfer(actor: Actor, code: string, input: { amountVnd: number; bankRef: string }): Promise<ReceiveTransferResult>;
   /**
@@ -248,6 +250,17 @@ export function createBookingAdmin(deps: {
         return result === "deposit_paid" || result === "refund_due";
       });
       return result;
+    },
+
+    async markBalancePaid(actor, code, note) {
+      return audited(actor, "booking.balance_paid", code, { note: note.trim().slice(0, 200) }, async () => {
+        const done = await db
+          .update(bookings)
+          .set({ balancePaidAt: now() })
+          .where(and(eq(bookings.code, code), inArray(bookings.status, ACTIVE), isNull(bookings.balancePaidAt)))
+          .returning({ id: bookings.id });
+        return done.length > 0;
+      });
     },
 
     async markRefunded(actor, code, { note }) {
