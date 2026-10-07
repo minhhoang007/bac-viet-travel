@@ -10,6 +10,7 @@ import { bookingOverview } from "./booking/admin-overview";
 import { createDepositService } from "./booking/deposits";
 import { createFeedbackService } from "./booking/feedback";
 import { createDiscountAdmin } from "./booking/discounts";
+import { createDashboard } from "./booking/dashboard";
 import { createReports } from "./booking/reports";
 import { DEFAULT_TOUR_PRICING } from "./booking/rules";
 import { bankTransferConfig } from "@/config/bank-transfer";
@@ -107,6 +108,7 @@ export function createProduct(db: Db, ctx: ProductContext) {
   roleLookup = staff.roleOf;
   const theme = createThemeService({ db, audit: ctx.audit });
   const reports = createReports({ db });
+  const dashboard = createDashboard({ db, now: ctx.now });
   // Tour enquiry form: shared limiter (Redis when configured), like the starter contact form; the action checks
   // that the email module is on before using it.
   const inquiry = createInquiryService({
@@ -116,7 +118,7 @@ export function createProduct(db: Db, ctx: ProductContext) {
     to: () => getEnv().extra.CONTACT_TO_EMAIL ?? "",
     tourTitles: async (locale) => (await tours.catalog()).list(locale).map((t) => t.title),
   });
-  return { adminOverview: bookingOverview(bookingAdmin), services: { tours, booking, deposits, bookingAdmin, feedback, discounts, reports, inquiry, staff, theme, paymentsSandbox: ctx.payments.vnpay?.sandbox ?? false }, exporters, jobs };
+  return { adminOverview: bookingOverview(bookingAdmin), services: { tours, booking, deposits, bookingAdmin, feedback, discounts, reports, dashboard, inquiry, staff, theme, paymentsSandbox: ctx.payments.vnpay?.sandbox ?? false }, exporters, jobs };
 }
 
 export interface ProductNavItem {

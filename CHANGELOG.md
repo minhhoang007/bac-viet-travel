@@ -4,6 +4,19 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.18.1] - 2026-10-08
+
+### Fixed — two-step verification
+- An authenticator-app setup started but not confirmed counted as a second factor in the "fresh factor needed" check, so starting it again (or adding a passkey) was refused and a new staff member could not finish setting up.
+- The signed-in devices list showed staff sessions older than 12 hours (already ended).
+
+## [1.18.0] - 2026-10-07
+
+### Added — project dashboard on /admin, livelier admin shell
+- `product/layout.tsx` may export `ProductAdminOverview({ locale })` (async allowed): drawn at the top of /admin in place of the manifest's `adminOverview` figures.
+- `Stat` (components/admin/stat.tsx) takes an optional `delta` (change vs a previous period, colored by direction) and `hint`.
+- The admin/dashboard sidebar is a `muted` panel apart from the page, its current item tinted with the brand color (`--sidebar`, `--sidebar-accent` in app/globals.css).
+
 ## [1.17.1] - 2026-10-07
 
 ### Fixed — sign-in from the email

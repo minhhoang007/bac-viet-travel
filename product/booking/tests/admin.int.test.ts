@@ -4,6 +4,7 @@ import { users } from "@/core/users/schema";
 import { testApp } from "@/tests/integration/setup/app";
 import { resetDb, testDb } from "@/tests/integration/setup/db";
 import { bookings, departures } from "../../schema/booking";
+import { createDashboard } from "../dashboard";
 import { createReports } from "../reports";
 
 // The real product services as bootstrap builds them (admin + jobs on), with a recording mail port.
@@ -225,5 +226,41 @@ describe("reports (H3)", () => {
       { source: "website", bookings: 1, seats: 2, revenueVnd: 2_000_000 },
     ]);
     expect(report.refundsOwedVnd).toBe(300_000);
+  });
+});
+
+describe("admin dashboard", () => {
+  it("money collected (deposits and balances) this month vs last, 7-day bookings, fill, daily series, queue, departures, latest", async () => {
+    await db.execute(sql`TRUNCATE booking_payments, bookings, departures, discount_codes RESTART IDENTITY CASCADE`);
+    const now = new Date("2026-10-20T05:00:00Z"); // 12:00 in Vietnam
+    const [soon] = await db.insert(departures).values({ tourSlug: "sapa-trekking-2d1n", date: "2026-10-24", capacity: 10 }).returning();
+    const [later] = await db.insert(departures).values({ tourSlug: "ninh-binh-day-tour", date: "2026-11-10", capacity: 10 }).returning();
+    const b = (code: string, departureId: string, status: "deposit_paid" | "confirmed" | "held" | "cancelled", seats: number, extra: Record<string, unknown> = {}) => ({
+      code, tokenHash: "x", departureId, status, holdExpiresAt: new Date("2030-01-01"), name: "A", email: "a@example.com", phone: "0900000000", locale: "vi",
+      adults: seats, seats, unitPriceVnd: 1_000_000, totalVnd: seats * 1_000_000, depositVnd: seats * 300_000, ...extra,
+    });
+    await db.insert(bookings).values([
+      // This month: deposit 600k (Oct 18) + balance of a September deposit 1.4M (Oct 19).
+      b("BV-DSHA22", soon!.id, "deposit_paid", 2, { depositPaidAt: new Date("2026-10-18T03:00:00Z") }),
+      b("BV-DSHB22", soon!.id, "confirmed", 2, { depositPaidAt: new Date("2026-09-10T03:00:00Z"), balancePaidAt: new Date("2026-10-19T03:00:00Z") }),
+      // Last month, same days (Sep 1–20): 900k; after Sep 20 it does not count.
+      b("BV-DSHC22", later!.id, "confirmed", 3, { depositPaidAt: new Date("2026-09-15T03:00:00Z") }),
+      b("BV-DSHD22", later!.id, "confirmed", 1, { depositPaidAt: new Date("2026-09-25T03:00:00Z") }),
+      // A hold expiring within 2 hours, and a cancelled booking owing a refund.
+      b("BV-DSHE22", soon!.id, "held", 1, { holdExpiresAt: new Date(now.getTime() + 30 * 60_000) }),
+      b("BV-DSHF22", later!.id, "cancelled", 1, { depositPaidAt: new Date("2026-10-05T03:00:00Z"), refundDueVnd: 300_000 }),
+    ]);
+
+    const data = await createDashboard({ db, now: () => now }).data();
+    expect(data.collected).toEqual({ month: 600_000 + 1_400_000 + 300_000, previous: 900_000 + 600_000 });
+    expect(data.bookings7d).toEqual({ count: 1, value: 2_000_000, previousCount: 0 });
+    expect(data.fill30d).toEqual({ sold: 2 + 2 + 3 + 1, capacity: 20 });
+    expect(data.daily).toHaveLength(30);
+    expect(data.daily.at(-1)!.day).toBe("2026-10-20");
+    expect(data.daily.find((d) => d.day === "2026-10-19")!.vnd).toBe(1_400_000);
+    // Oct 24 is within 7 days with 4 of 10 seats sold: under half full.
+    expect(data.queue).toMatchObject({ toConfirm: 1, refunds: 1, expiringHolds: 1, lowFill: 1 });
+    expect(data.upcoming.map((d) => [d.date, d.sold])).toEqual([["2026-10-24", 4]]);
+    expect(data.recent).toHaveLength(6);
   });
 });
