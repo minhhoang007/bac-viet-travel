@@ -64,7 +64,7 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const REMINDER_DAYS = 3;
 
 /** Paid deposits to confirm, refunds owed, and transfers the guest chose that staff have not recorded yet. */
-const needsAttention = () =>
+export const needsAttention = () =>
   or(
     inArray(bookings.status, canBecome("confirmed")),
     and(sql`${bookings.refundDueVnd} > 0`, isNull(bookings.refundedAt)),

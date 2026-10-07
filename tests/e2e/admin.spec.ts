@@ -62,9 +62,17 @@ test("staff confirm one booking and cancel another; seats return to sale; everyt
   await expect(page.getByText("0988777666").first()).toBeVisible();
   await expect(page.locator("[data-admin-status=confirmed]")).toBeVisible();
 
-  // The admin overview shows the booking figures, each a link to the list.
+  // The admin dashboard: figures, the to-do queue (a paid deposit to confirm), departures with guests, latest bookings.
   await page.goto("/admin");
-  await expect(page.getByTestId("product-stats").getByRole("link", { name: /Cần xử lý/ })).toHaveAttribute("href", "/admin/bookings?filter=attention");
+  await expect(page.getByTestId("product-stats").getByRole("link", { name: /Đã thu tháng này/ })).toHaveAttribute("href", "/admin/reports");
+  await expect(page.locator('[data-queue="toConfirm"]')).toHaveAttribute("href", "/admin/bookings?filter=deposit_paid");
+  await expect(page.getByTestId("dashboard-upcoming")).toContainText("chỗ");
+  await expect(page.getByTestId("dashboard-recent")).toContainText("BV-ADMN33");
+  for (const scheme of ["dark", "light"] as const) {
+    await page.emulateMedia({ colorScheme: scheme });
+    const result = await new AxeBuilder({ page }).include('[data-testid="admin-dashboard"]').withTags(["wcag2a", "wcag2aa"]).analyze();
+    expect(result.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => `${scheme}: ${v.id}`)).toEqual([]);
+  }
   await page.goto("/admin/bookings/BV-ADMN22");
 
   await page.goto("/admin/bookings/BV-ADMN33");
