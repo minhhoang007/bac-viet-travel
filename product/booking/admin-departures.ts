@@ -74,7 +74,7 @@ export function createDepartureAdmin(deps: {
       const rows = await db
         .select()
         .from(bookings)
-        .where(and(eq(bookings.departureId, departureId), inArray(bookings.status, [...SOLD_STATUSES])))
+        .where(and(eq(bookings.departureId, departureId), inArray(bookings.status, SOLD_STATUSES)))
         .orderBy(asc(bookings.createdAt));
       return { departure, rows: rows.flatMap(passengerRows) };
     },

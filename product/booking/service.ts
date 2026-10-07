@@ -6,7 +6,7 @@ import type { Db } from "@/db/client";
 import { bookings, departures, discountCodes, type Booking, type Departure } from "../schema/booking";
 import type { Addon } from "../tours/model";
 import { addDays, applyDiscount, bookingRules, DEFAULT_TOUR_PRICING, type Discount, isBookableDate, privateQuote, privateTier, quote, vietnamToday, type PrivatePricing, type TourPricing } from "./rules";
-import { isSold, takesSeats, takesSeatsB } from "./status";
+import { canBecome, isSold, SOLD_STATUSES, takesSeats, takesSeatsB } from "./status";
 import { bookingInputSchema, discountCodeField, parseTravellers, privateBookingInputSchema } from "./validations";
 
 export type BookingField = "departureId" | "tourSlug" | "date" | "name" | "email" | "phone" | "adults" | "children" | "infants" | "singleRooms" | "discountCode" | "note" | "agree";
@@ -231,11 +231,11 @@ export function createBookingService(deps: {
         await tx
           .update(bookings)
           .set({ status: "expired" })
-          .where(and(eq(bookings.departureId, departure.id), eq(bookings.status, "held"), lte(bookings.holdExpiresAt, at)));
+          .where(and(eq(bookings.departureId, departure.id), inArray(bookings.status, canBecome("expired")), lte(bookings.holdExpiresAt, at)));
         const [row] = await tx
           .select({ taken: sql<number>`coalesce(sum(${bookings.seats}), 0)::int` })
           .from(bookings)
-          .where(and(eq(bookings.departureId, departure.id), inArray(bookings.status, ["held", "deposit_paid", "confirmed"])));
+          .where(and(eq(bookings.departureId, departure.id), inArray(bookings.status, ["held", ...SOLD_STATUSES])));
 
         const base = quote(departure.priceVnd ?? listPrice, { ...input, addons: chosenAddons(raw) }, pricing, await addonsOf(departure.tourSlug));
         const seatsLeft = departure.capacity - (row?.taken ?? 0);
@@ -306,7 +306,7 @@ export function createBookingService(deps: {
       const done = await db
         .update(bookings)
         .set({ status: "expired" })
-        .where(and(eq(bookings.status, "held"), lte(bookings.holdExpiresAt, now())))
+        .where(and(inArray(bookings.status, canBecome("expired")), lte(bookings.holdExpiresAt, now())))
         .returning({ id: bookings.id });
       return done.length;
     },

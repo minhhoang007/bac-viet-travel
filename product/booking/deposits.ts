@@ -8,7 +8,7 @@ import { bookingPayments, bookings, departures, type Booking, type BookingPaymen
 import { depositEmails } from "./emails";
 import { vietnamToday } from "./rules";
 import type { BookingService } from "./service";
-import { isSold, takesSeats } from "./status";
+import { awaitsDeposit, isSold, takesSeats } from "./status";
 
 /** VNPay IPN answer (https://sandbox.vnpayment.vn/apis/docs/thanh-toan-pay/pay.html#code-returnurl). */
 export type IpnResult = { RspCode: "00" | "01" | "02" | "04" | "97" | "99"; Message: string };
@@ -106,7 +106,7 @@ export function createDepositService(deps: {
   /** A deposit arrived. Keep the seats if we still can; never lose the guest's payment. */
   async function recordDeposit(tx: Tx, booking: Booking, departure: Departure, payment: BookingPayment, at: Date): Promise<{ kind: "deposit_paid" | "refund_due" | "extra"; booking: Booking }> {
     // Not waiting for a deposit (already paid by another attempt, or cancelled): the money is extra.
-    const waiting = booking.status === "held" || booking.status === "expired";
+    const waiting = awaitsDeposit(booking.status);
     let kind: "deposit_paid" | "refund_due" | "extra" = waiting ? "deposit_paid" : "extra";
     if (waiting && (booking.status === "expired" || booking.holdExpiresAt <= at)) {
       const [row] = await tx
@@ -304,7 +304,7 @@ export function createDepositService(deps: {
       const [booking] = await db.select().from(bookings).where(eq(bookings.code, code));
       if (!booking) return "not_found";
       const txnRef = `${transferNote(booking.code)}CK`;
-      const waiting = booking.status === "held" || booking.status === "expired";
+      const waiting = awaitsDeposit(booking.status);
       // After another payment (or a cancellation), only a transfer the guest chose can still arrive: it is owed back.
       if (!waiting && !(await transferPending(booking.id))) return "not_payable";
       if (!Number.isInteger(amountVnd) || amountVnd <= 0 || (waiting && amountVnd < booking.depositVnd)) return "too_little";
