@@ -4,6 +4,11 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.12.0] - 2026-10-07
+
+### Added — product figures on the admin overview
+- `product/manifest.ts` may return `adminOverview: async (locale) => ProductStat[]` (`core/product/context.ts`): the admin overview shows them first, each a link when it has `href`. Projects no longer need to edit the starter-owned `app/[locale]/admin/page.tsx` to show orders, bookings or revenue there.
+
 ## [1.11.0] - 2026-10-07
 
 ### Changed — CI and dependencies

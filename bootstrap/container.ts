@@ -9,7 +9,8 @@ import type { Features } from "@/core/module";
 import { noopMail, type MailMessage, type MailPort } from "@/core/ports/mail";
 import { createVnpayIpn, type VnpayIpnHandler, type VnpayIpnResult } from "@/core/payments/vnpay-ipn";
 import type { Payments } from "@/core/ports/payments";
-import type { ContentTypeDefinition, ProductContext, ProductJobs } from "@/core/product/context";
+import type { ContentTypeDefinition, ProductContext, ProductJobs, ProductStat } from "@/core/product/context";
+import type { Locale } from "@/config/app";
 import { createMemoryRateLimiter, withFallback, type RateLimiter, type RateLimitRule } from "@/core/security/rate-limit";
 import { createDb, type Db } from "@/db/client";
 import { createAdminModule, type AdminModule } from "@/modules/admin";
@@ -48,6 +49,8 @@ export interface AppServices {
   product: Product["services"];
   /** The product's VNPay IPN handler (manifest `vnpayIpn`), tried before billing. */
   vnpayIpn?: VnpayIpnHandler;
+  /** Figures the product adds to the admin overview (manifest `adminOverview`). */
+  adminOverview?: (locale: Locale) => Promise<ProductStat[]>;
 }
 
 /** Services wired for the running project. Optional members exist only when their module/profile is on. */
@@ -303,7 +306,7 @@ function buildPayments(env: Env, overrides: ContainerOverrides): Payments {
 }
 
 // Projects created before rc.10 declare createProduct(db): calling it with the extra context is harmless.
-const createProductWith: (db: Db, ctx: ProductContext) => Product & { jobs?: ProductJobs; vnpayIpn?: VnpayIpnHandler } = createProduct;
+const createProductWith: (db: Db, ctx: ProductContext) => Product & { jobs?: ProductJobs; vnpayIpn?: VnpayIpnHandler; adminOverview?: AppServices["adminOverview"] } = createProduct;
 
 function buildApp(
   env: Env,
@@ -372,7 +375,7 @@ function buildApp(
       ...(storage ? [async (userId: string) => void (await storage.deleteAllForUser(userId))] : []),
     ],
   );
-  return { db, auth, account, product: product.services, vnpayIpn: product.vnpayIpn };
+  return { db, auth, account, product: product.services, vnpayIpn: product.vnpayIpn, adminOverview: product.adminOverview };
 }
 
 function emailProvider(env: Env, logger: Logger): EmailProvider {
