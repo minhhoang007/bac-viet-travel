@@ -1,0 +1,22 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "drizzle.*.config.ts",
+    "playwright*.config.ts",
+    "scripts/*.ts",
+    "tests/e2e/**/*.ts",
+    "tests/e2e-app/**/*.ts",
+    "tests/guide/**/*.ts",
+    "core/i18n/request.ts",
+    "components/ui/*.tsx",
+    "components/feedback/*.tsx",
+    "core/i18n/navigation.ts",
+    ".claude/hooks/*.mjs"
+  ],
+  "ignore": [
+    "tests/arch-fixtures/**",
+    "content/**"
+  ],
+  "ignoreExportsUsedInFile": true,
+  "playwright": false
+}

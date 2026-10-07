@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { Logger } from "@/core/logger";
 import type { MailPort } from "@/core/ports/mail";
 import type { RateLimiter } from "@/core/security/rate-limit";
+import { vietnamToday } from "../booking/rules";
 
 /** Booking request from a tour page. The team confirms availability and price by phone / Zalo / WhatsApp / email. */
 const inquirySchema = z.object({
@@ -57,14 +58,14 @@ export interface InquiryService {
 export function createInquiryService(deps: {
   mail: MailPort;
   rateLimiter: RateLimiter;
-  /** Team inbox (CONTACT_TO_EMAIL). */
-  to: string;
+  /** Team inbox (CONTACT_TO_EMAIL), read when an enquiry is sent. */
+  to: () => string;
   logger: Logger;
   /** Known tour titles; anything else is rejected (no free text in the subject line). */
   tourTitles: (locale: string) => Promise<string[]>;
   today?: () => string;
 }): InquiryService {
-  const today = deps.today ?? (() => new Date().toISOString().slice(0, 10));
+  const today = deps.today ?? (() => vietnamToday(new Date()));
 
   return {
     async submit(raw, clientKey) {
@@ -99,7 +100,7 @@ export function createInquiryService(deps: {
       try {
         await deps.mail.send({
           kind: "tour_inquiry",
-          to: deps.to,
+          to: deps.to(),
           replyTo: d.email,
           subject: `[Đặt tour] ${d.tour} · ${d.date} · ${d.adults + d.children} khách · ${name}`,
           text: [

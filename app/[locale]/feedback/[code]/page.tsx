@@ -9,7 +9,7 @@ import { Container } from "@/components/ui/container";
 import type { Locale } from "@/config/app";
 import { contactConfig } from "@/config/contact";
 import { formatDay, getBookingContent } from "@/product/booking/content";
-import { isSold } from "@/product/booking/status";
+import { isSold } from "@/product/booking/lifecycle";
 
 type Props = { params: Promise<{ locale: Locale; code: string }>; searchParams: Promise<{ s?: string; done?: string; error?: string }> };
 

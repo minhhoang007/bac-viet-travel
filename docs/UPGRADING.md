@@ -37,6 +37,19 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
+### v1.10.0 (2026-10-07) — agent setup, E2E image fix
+- `next.config.ts` and `.github/workflows/ci.yml` (starter-owned): take theirs. Never set `E2E_UNOPTIMIZED_IMAGES` in a real deployment.
+- New starter-owned files: `.claude/settings.json`, `.claude/hooks/check-edited.mjs`, `.claude/skills/merge-stack/`, `.mcp.json`. Personal permissions stay in `.claude/settings.local.json` (not committed).
+- No migration.
+
+### v1.9.0 (2026-10-07) — guardrails, CI minutes
+- `pnpm check` now runs `knip` and `jscpd`. After merging: `pnpm install`, then `pnpm knip` and `pnpm dup`.
+  Project files the starter config does not know (extra scripts, configs, runtime-read files) go in `entry` /
+  `ignore` of `knip.json` (project-owned after the first merge: keep **ours**). Remove what knip reports as unused,
+  or list it there with a reason.
+- ESLint `max-lines` 450: split a file that goes over (see the `refactor` skill) rather than raising the limit.
+- No migration.
+
 ### v1.4.0 (2026-10-06) — content validation
 - No migration. New content key `admin.content.incomplete` (projects overriding `content/` must add it).
 - Optional `validate(data)` on each `contentTypes` entry: return the problem fields; incomplete drafts can no longer be

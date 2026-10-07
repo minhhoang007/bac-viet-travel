@@ -6,7 +6,7 @@ import { chooseTransfer, saveTravellers, startBalance, startDeposit } from "@/ap
 import { balanceDue } from "@/product/booking/deposits";
 import { travellerKinds, vietnamToday } from "@/product/booking/rules";
 import { travellersEditable } from "@/product/booking/service";
-import { isSold } from "@/product/booking/status";
+import { isSold } from "@/product/booking/lifecycle";
 import { TravellersForm } from "@/product/components/travellers-form";
 import { bankTransferConfig } from "@/config/bank-transfer";
 import { vietQrSvg } from "@/core/payments/vietqr";

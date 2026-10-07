@@ -12,7 +12,7 @@
     "arch": "depcruise core components config content bootstrap modules providers product app proxy.ts --config .dependency-cruiser.cjs",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "check": "pnpm lint && pnpm typecheck && pnpm arch && pnpm test",
+    "check": "pnpm lint && pnpm typecheck && pnpm arch && pnpm knip && pnpm dup && pnpm test",
     "db:up": "docker compose up -d db",
     "db:generate:starter": "drizzle-kit generate --config drizzle.starter.config.ts",
     "db:generate:product": "drizzle-kit generate --config drizzle.product.config.ts",
@@ -27,7 +27,10 @@
     "tours:import": "node --env-file-if-exists=.env.local --import ./scripts/ts-alias.mjs scripts/import-tours.ts",
     "setup:check": "node --env-file-if-exists=.env.local --import ./scripts/ts-alias.mjs scripts/setup-check.ts",
     "guide:screens": "playwright test --config playwright.guide.config.ts",
-    "blog:import": "node --env-file-if-exists=.env.local --import ./scripts/ts-alias.mjs scripts/import-blog.ts"
+    "blog:import": "node --env-file-if-exists=.env.local --import ./scripts/ts-alias.mjs scripts/import-blog.ts",
+    "knip": "knip --include files,dependencies,unlisted,binaries",
+    "knip:exports": "knip --include exports,types --no-exit-code",
+    "dup": "jscpd"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1145.0",
@@ -67,6 +70,8 @@
     "drizzle-kit": "^0.31.11",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.3.8",
+    "jscpd": "^5.4.0",
+    "knip": "^6.39.0",
     "tailwindcss": "^4.3.3",
     "typescript": "^6.0.3",
     "vitest": "^5.0.3"

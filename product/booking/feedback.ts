@@ -5,7 +5,7 @@ import type { MailMessage, MailPort } from "@/core/ports/mail";
 import type { Db } from "@/db/client";
 import { bookings, departures, tripFeedback, type Booking, type Departure, type TripFeedback } from "../schema/booking";
 import { addDays, vietnamToday } from "./rules";
-import { SOLD_STATUSES } from "./status";
+import { isSold, SOLD_STATUSES } from "./status";
 
 /** Feedback emails go out the day after the trip's last day (departure + tour days), for up to 30 days. */
 const FEEDBACK_WINDOW_DAYS = 30;
@@ -40,8 +40,10 @@ export function createFeedbackService(deps: {
   const now = deps.now ?? (() => new Date());
   const sign = (code: string) => createHmac("sha256", deps.secret()).update(`trip-feedback:${code}`).digest("base64url").slice(0, 32);
   const valid = (code: string, signature: string) => {
-    if (!CODE.test(code) || signature.length !== 32) return false;
-    return timingSafeEqual(Buffer.from(sign(code)), Buffer.from(signature));
+    if (!CODE.test(code)) return false;
+    const given = Buffer.from(signature);
+    // Same byte length first: timingSafeEqual throws otherwise (a non-ASCII signature would be a 500).
+    return given.length === 32 && timingSafeEqual(Buffer.from(sign(code)), given);
   };
   const link = (code: string, locale: string) => `${deps.siteUrl()}${locale === "en" ? "/en" : ""}/feedback/${code}?s=${sign(code)}`;
 
@@ -74,7 +76,7 @@ export function createFeedbackService(deps: {
 
     async submit(code, signature, raw) {
       const found = await find(code, signature);
-      if (!found || (found.booking.status !== "deposit_paid" && found.booking.status !== "confirmed")) return { status: "not_found" };
+      if (!found || !isSold(found.booking.status)) return { status: "not_found" };
       if (found.feedback) return { status: "already" };
       const rating = Number(raw.rating);
       if (!Number.isInteger(rating) || rating < 1 || rating > 5) return { status: "invalid", field: "rating" };
@@ -89,7 +91,7 @@ export function createFeedbackService(deps: {
     async sendRequests() {
       const today = vietnamToday(now());
       const waiting = and(
-        inArray(bookings.status, [...SOLD_STATUSES]),
+        inArray(bookings.status, SOLD_STATUSES),
         isNull(bookings.feedbackRequestedAt),
         eq(bookings.guestEmails, true),
         sql`${bookings.email} <> ''`,
