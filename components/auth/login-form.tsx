@@ -1,7 +1,7 @@
 "use client";
 
 import Script from "next/script";
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import type { LoginCodeState } from "@/app/actions/security";
 import { FormError } from "@/components/forms/form-error";
 import { FormField } from "@/components/forms/form-field";
@@ -62,6 +62,10 @@ export function LoginForm({ locale, sendMagicLink, signInWithCode, turnstileSite
 
 function CodeForm({ email, action, labels, rateLimited, failed }: { email: string; action: (prev: LoginCodeState, formData: FormData) => Promise<LoginCodeState>; labels: NonNullable<LoginFormProps["labels"]["code"]>; rateLimited: string; failed: string }) {
   const [state, submit] = useActionState(action, null);
+  // A right code gives the one-time link: open it in the browser (a real navigation brings the session cookie here).
+  useEffect(() => {
+    if (state?.status === "ok") window.location.assign(state.link);
+  }, [state]);
   const error = state?.status === "wrong" ? labels.wrong : state?.status === "rate_limited" ? rateLimited : state?.status === "error" ? failed : undefined;
   return (
     <form action={submit} className="grid gap-3" data-testid="login-code">
