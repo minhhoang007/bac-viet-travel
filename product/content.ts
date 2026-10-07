@@ -199,7 +199,7 @@ const vi = {
     terms: "Điều khoản dịch vụ",
     moit: "Đã thông báo Bộ Công Thương",
   },
-  credits: { title: "Nguồn ảnh", text: "Ảnh minh hoạ từ Unsplash (Unsplash License)." },
+  credits: { title: "Nguồn ảnh", text: "Ảnh minh hoạ từ Unsplash (Unsplash License), video từ Pexels (Pexels License)." },
   faqPage: {
     nav: "Câu hỏi thường gặp",
     title: "Câu hỏi thường gặp",
@@ -454,7 +454,7 @@ const en: ProductContent = {
     terms: "Terms of service",
     moit: "Registered with the Ministry of Industry and Trade",
   },
-  credits: { title: "Photo credits", text: "Illustrative photos from Unsplash (Unsplash License)." },
+  credits: { title: "Photo credits", text: "Illustrative photos from Unsplash (Unsplash License), video from Pexels (Pexels License)." },
 };
 
 const content: Record<Locale, ProductContent> = { vi, en };
