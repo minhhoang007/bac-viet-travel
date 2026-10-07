@@ -260,7 +260,7 @@ test("staff roles: admins add sales and managers; sales see bookings without con
 });
 
 test("appearance: admins switch the site theme and light/dark mode; every theme passes axe on the home page", async ({ page, browser, request }) => {
-  test.setTimeout(180_000);
+  test.setTimeout(120_000); // 11 saves, each regenerating the home page, and 11 axe runs
   expect((await request.get("/admin/appearance")).status()).toBe(404);
   await signInAsAdmin(page, "theme-admin@bacviet.example");
   const visitor = await (await browser.newContext()).newPage();
