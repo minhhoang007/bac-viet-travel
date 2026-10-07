@@ -19,6 +19,7 @@ export function createProduct(db: Db, ctx: ProductContext) {
   const jobs: ProductJobs = {};
 
   // VNPay orders of the product (needs VNPAY_* env): return `vnpayIpn` (VnpayIpnHandler, core/payments/vnpay-ipn.ts).
+  // Figures on the admin overview: return `adminOverview: async (locale) => [{ label, value, href? }]` (ProductStat).
   return { services: { notes }, exporters, jobs };
 }
 

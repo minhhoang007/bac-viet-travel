@@ -49,6 +49,13 @@ export interface SitemapContext {
   content?: ProductContext["content"];
 }
 
+/** A figure on the admin overview (manifest `adminOverview`); `href` (locale-less, e.g. "/admin/orders") makes it a link. */
+export interface ProductStat {
+  label: string;
+  value: string | number;
+  href?: string;
+}
+
 /** Optional jobs a product registers (needs the jobs module). Names should be prefixed, e.g. "booking.". */
 export interface ProductJobs {
   handlers?: Record<string, ProductJobHandler>;
