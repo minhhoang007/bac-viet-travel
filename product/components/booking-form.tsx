@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable max-lines -- split into booking-form-parts.tsx in PR #41, which replaces this file */
 
 import { useActionState, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
