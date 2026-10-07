@@ -4,6 +4,11 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.12.1] - 2026-10-07
+
+### Changed — Vercel builds production only
+- `vercel.json`: pushes to work branches (`feat/`, `fix/`, `chore/`, `docs/`, `refactor/`, `test/`, `ci/`, `upgrade/`, `release/`, `dependabot/`) no longer create preview deployments; merging to `main` deploys production. The Hobby limit (100 deployments a day) is per account, so previews of busy PRs used to block production deploys. CI still runs every check and E2E on each PR.
+
 ## [1.12.0] - 2026-10-07
 
 ### Added — product figures on the admin overview
