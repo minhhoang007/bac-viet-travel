@@ -14,7 +14,7 @@ export default defineConfig({
   // next dev compiles each route on first visit (slow on CI): give assertions time to see the result.
   expect: { timeout: 20_000 },
   workers: 1,
-  use: { baseURL: `http://localhost:${PORT}` },
+  use: { baseURL: `http://localhost:${PORT}`, trace: "retain-on-failure" },
   webServer: {
     command: `pnpm dev -p ${PORT}`,
     url: `http://localhost:${PORT}/vi`,
