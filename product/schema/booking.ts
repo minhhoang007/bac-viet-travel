@@ -78,6 +78,8 @@ export const bookings = pgTable(
     /** Staff-only note (never shown to the guest). */
     staffNote: text("staff_note").notNull().default(""),
     reminderSentAt: timestamp("reminder_sent_at", { withTimezone: true }),
+    /** When the post-trip feedback email was sent (E4); null = not yet. */
+    feedbackRequestedAt: timestamp("feedback_requested_at", { withTimezone: true }),
     source: text("source", { enum: BOOKING_SOURCES }).notNull().default("website"),
     /** The OTA's own booking reference (e.g. Klook order number), for staff-entered bookings. */
     externalRef: text("external_ref"),
@@ -150,3 +152,17 @@ export const discountCodes = pgTable(
   (t) => [uniqueIndex("discount_codes_code_idx").on(t.code), check("discount_codes_value_check", sql`${t.value} > 0`)],
 );
 export type DiscountCode = typeof discountCodes.$inferSelect;
+
+/** Post-trip feedback (E4): one per booking, from the signed link in the feedback email. Staff only. */
+export const tripFeedback = pgTable(
+  "trip_feedback",
+  {
+    id: id(),
+    bookingId: uuid("booking_id").notNull().references(() => bookings.id, { onDelete: "cascade" }),
+    rating: integer("rating").notNull(),
+    comment: text("comment").notNull().default(""),
+    ...timestamps(),
+  },
+  (t) => [uniqueIndex("trip_feedback_booking_idx").on(t.bookingId), check("trip_feedback_rating_check", sql`${t.rating} between 1 and 5`)],
+);
+export type TripFeedback = typeof tripFeedback.$inferSelect;
