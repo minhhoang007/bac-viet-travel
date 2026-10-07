@@ -4,6 +4,8 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.10.0] - 2026-10-07
+
 ### Fixed — random E2E timeouts in CI
 - Pages sometimes never finished loading under `next start`: one `/_next/image` variant stopped answering (requests for the same variant wait on the first) and every page using it timed out. The CI E2E build sets `E2E_UNOPTIMIZED_IMAGES=1` (`next.config.ts`: `images.unoptimized`), so images are served as files there. Production (Vercel) is unchanged. Found with Playwright traces on Bắc Việt.
 
