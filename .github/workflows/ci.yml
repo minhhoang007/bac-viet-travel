@@ -130,7 +130,10 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Images served as files in this E2E build (next.config.ts): the optimizer can hang a variant under next start.
       - run: pnpm build
+        env:
+          E2E_UNOPTIMIZED_IMAGES: "1"
       - uses: actions/cache@v4
         id: pw
         with:

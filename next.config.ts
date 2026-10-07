@@ -13,6 +13,10 @@ const media = features.media ? { connect: ["https://api.cloudinary.com"], img: [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // E2E builds only (CI sets it on `pnpm build`): under `next start` an image variant can stop answering (the
+  // optimizer dedupes requests for the same variant and one never settles), so the page never fires "load" and
+  // tests time out at random. Vercel optimizes images itself; never set this for a real deployment.
+  images: { unoptimized: process.env.E2E_UNOPTIMIZED_IMAGES === "1" },
   // Content read from disk at request time (dynamic product pages, blog…) must ship with the serverless
   // functions; Vercel only bundles files the code imports. Found on a real deployment (reuse finding G10).
   outputFileTracingIncludes: { "/**/*": ["./content/**/*"] },
