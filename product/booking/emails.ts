@@ -163,6 +163,28 @@ export function depositEmails(input: {
   return messages;
 }
 
+/**
+ * Team alert after the VNPay check-up (reconcile): payments confirmed although their IPN never arrived (booking
+ * codes), and attempts VNPay could not be asked about. Sent only when one of them is not empty.
+ */
+export function reconcileAlertEmail(input: { to: string; confirmed: string[]; failed: number }): MailMessage {
+  const { confirmed, failed } = input;
+  return {
+    kind: "booking_team_reconcile",
+    to: input.to,
+    subject: confirmed.length ? `[Đối soát VNPay] ${confirmed.length} thanh toán không có IPN` : `[Đối soát VNPay] Không hỏi được VNPay (${failed})`,
+    text: [
+      ...(confirmed.length
+        ? [
+            `${confirmed.length} thanh toán VNPay được xác nhận qua đối soát vì IPN không về: ${confirmed.join(", ")}.`,
+            `Các đơn đã được ghi nhận và khách đã nhận email. Nếu việc này lặp lại, kiểm tra IPN URL trong cổng VNPay.`,
+          ]
+        : []),
+      ...(failed ? [`Không hỏi được VNPay cho ${failed} giao dịch (lỗi kết nối hoặc chữ ký). Hệ thống hỏi lại ở lần đối soát sau; nếu vẫn lỗi, kiểm tra VNPay.`] : []),
+    ].join("\n\n"),
+  };
+}
+
 /** Guest email when staff confirm or cancel a booking. */
 export function bookingStatusEmail(input: { booking: Booking; departure: Departure; title: string; kind: "confirmed" | "cancelled" }): MailMessage {
   const { booking: b, departure: d, title, kind } = input;

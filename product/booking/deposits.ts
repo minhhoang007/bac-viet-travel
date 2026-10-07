@@ -5,7 +5,7 @@ import type { MailPort } from "@/core/ports/mail";
 import type { OneTimePaymentProvider } from "@/core/ports/payments";
 import type { Db } from "@/db/client";
 import { bookingPayments, bookings, departures, type Booking, type BookingPayment, type Departure } from "../schema/booking";
-import { depositEmails } from "./emails";
+import { depositEmails, reconcileAlertEmail } from "./emails";
 import { vietnamToday } from "./rules";
 import type { BookingService } from "./service";
 import { isSold, takesSeats } from "./status";
@@ -255,25 +255,32 @@ export function createDepositService(deps: {
       const vnpay = deps.vnpay;
       const at = now();
       const pending = await db
-        .select({ txnRef: bookingPayments.txnRef, createdAt: bookingPayments.createdAt })
+        .select({ txnRef: bookingPayments.txnRef, createdAt: bookingPayments.createdAt, code: bookings.code })
         .from(bookingPayments)
         .innerJoin(bookings, eq(bookings.id, bookingPayments.bookingId))
         .where(and(eq(bookingPayments.method, "vnpay"), eq(bookingPayments.status, "pending"), lte(bookings.holdExpiresAt, at), gt(bookingPayments.createdAt, new Date(at.getTime() - DAY_MS))))
         .limit(50);
-      let confirmed = 0;
+      const confirmed: string[] = [];
+      let failed = 0;
       for (const payment of pending) {
         try {
           const result = await vnpay.query(payment);
-          if (result.status === "paid" && (await confirm(result.params, links)).RspCode === "00") confirmed += 1;
+          if (result.status === "paid" && (await confirm(result.params, links)).RspCode === "00") confirmed.push(payment.code);
           // Not paid and past VNPay's 15-minute payment window: the guest gave up. Close it, so it is not asked again.
           else if (result.status !== "paid" && payment.createdAt.getTime() < at.getTime() - 20 * 60_000)
             await db.update(bookingPayments).set({ status: "failed" }).where(and(eq(bookingPayments.txnRef, payment.txnRef), eq(bookingPayments.status, "pending")));
         } catch (error) {
+          failed += 1;
           logger.error("booking.deposit_reconcile_failed", { txnRef: payment.txnRef, error });
         }
       }
-      if (confirmed) logger.warn("booking.deposit_reconciled", { count: confirmed }); // an IPN was lost
-      return confirmed;
+      if (confirmed.length) logger.warn("booking.deposit_reconciled", { count: confirmed.length }); // an IPN was lost
+      // Lost IPNs or an unreachable VNPay need a person: tell the team (a failed email only logs).
+      if (links.teamEmail && (confirmed.length || failed)) {
+        const message = reconcileAlertEmail({ to: links.teamEmail, confirmed, failed });
+        await deps.mail.send(message).catch((error) => logger.error("booking.email_failed", { kind: message.kind, error }));
+      }
+      return confirmed.length;
     },
 
     async chooseTransfer({ code, token }) {
