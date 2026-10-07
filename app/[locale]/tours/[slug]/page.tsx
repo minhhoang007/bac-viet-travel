@@ -203,7 +203,7 @@ export default async function TourPage({ params }: Props) {
                         +
                       </span>
                     </summary>
-                    <p className="mt-3 max-w-prose pl-[5.25rem] type-body text-muted-foreground">{d.description}</p>
+                    <p className="mt-3 max-w-prose type-body text-muted-foreground sm:pl-[5.25rem]">{d.description}</p>
                   </details>
                 </li>
               ))}

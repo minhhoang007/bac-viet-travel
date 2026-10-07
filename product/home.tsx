@@ -102,7 +102,7 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
             <h1 id="hero-title" className="mt-5 font-heading type-display">
               {m.hero.title}
             </h1>
-            <p className="mx-auto mt-6 max-w-2xl type-lead font-light opacity-90">{m.hero.subtitle}</p>
+            <p className="mx-auto mt-6 max-w-2xl type-lead font-light opacity-90 [text-wrap:balance]">{m.hero.subtitle}</p>
             <div className="home-hero-actions mt-9 flex flex-wrap items-center justify-center gap-6">
               <ButtonLink href={localePath(locale, m.hero.primaryHref)} className="type-label h-12 px-8">
                 {m.hero.primaryCta}
@@ -154,7 +154,7 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
             </button>
           </form>
 
-          <ul className="type-label grid grid-cols-2 gap-x-6 gap-y-3 text-left text-muted-foreground lg:flex lg:flex-wrap lg:justify-between" data-testid="trust-strip">
+          <ul className="type-small grid grid-cols-2 gap-x-4 gap-y-3 text-left text-muted-foreground lg:flex lg:flex-wrap lg:justify-between" data-testid="trust-strip">
             {h.trust.map((t) => {
               const Icon = TRUST_ICON[t.icon as keyof typeof TRUST_ICON];
               return (
@@ -175,7 +175,7 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
           <h2 id="philosophy-title" className="mt-6 max-w-4xl font-heading type-h2">
             {h.philosophy.statement}
           </h2>
-          <div className="mt-20 grid gap-12 border-t border-border pt-12 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-14 grid grid-cols-2 gap-x-6 gap-y-10 border-t border-border pt-10 sm:mt-20 sm:pt-12 lg:grid-cols-4 lg:gap-12">
             {h.why.map((w, i) => (
               <div key={w.title}>
                 <p className="font-heading type-h3 text-primary">{ROMAN[i]}</p>
@@ -204,7 +204,7 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
           <div className="mt-14 grid gap-12 md:grid-cols-3 md:gap-8">
             {DESTINATIONS.map((d, i) => (
               <a key={d} href={localePath(locale, `/tours/${d}`)} className={`group block ${i === 1 ? "md:mt-24" : ""}`} data-destination-card={d}>
-                <div className="relative aspect-[4/5] overflow-hidden">
+                <div className="relative aspect-[4/3] overflow-hidden md:aspect-[4/5]">
                   <Image src={DESTINATION_IMAGE[d]} alt={c.destinations[d].name} fill sizes="(min-width: 768px) 33vw, 100vw" className="object-cover saturate-[.88] transition duration-700 group-hover:scale-[1.03]" />
                 </div>
                 <p className="mt-6 type-eyebrow text-primary">{h.chapter(i + 1)}</p>

@@ -53,6 +53,8 @@
 .type-h3 {
   font-size: var(--type-h3);
   line-height: 1.25;
+  /* Card titles in narrow columns: balancing split names like "Hạ / Long"; pretty only avoids a lonely last word. */
+  text-wrap: pretty;
 }
 .type-lead {
   font-size: var(--type-lead);
@@ -116,6 +118,13 @@
   line-height: 1.25;
 }
 
+/* The post summary under the title and date: body size, muted, so the title leads. */
+[data-testid="post-list"] article > p + p {
+  font-size: var(--type-body);
+  line-height: 1.65;
+  color: var(--muted-foreground);
+}
+
 /* Running text of a post or tour overview: body size, ~65 characters a line. */
 .prose-blog {
   max-width: 65ch;
@@ -125,11 +134,10 @@
   border-radius: 0;
 }
 
+/* Topic chips: tags are URL slugs without accents ("kinh-nghiem"); in capitals they read like codes, so keep them as typed. */
 .blog-tags a {
   border-radius: 0;
-  font-size: 0.75rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  font-size: 0.8125rem;
 }
 
 .prose-blog {

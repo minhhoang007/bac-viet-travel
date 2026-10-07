@@ -16,7 +16,7 @@ test("home: destinations, featured tours, TravelAgency JSON-LD, quick contact (Z
   expect(ld.some((s) => s.includes('"@type":"TravelAgency"'))).toBe(true);
   const contact = page.getByRole("navigation", { name: "Liên hệ nhanh" });
   await expect(contact.locator("a").first()).toHaveAttribute("data-contact", "zalo");
-  await expect(contact.locator('[data-contact="zalo"]')).toHaveAttribute("href", /^https:\/\/zalo\.me\/\d+$/);
+  await expect(contact.locator('[data-contact="zalo"]').first()).toHaveAttribute("href", /^https:\/\/zalo\.me\/\d+$/);
 });
 
 test("home: tour search, trust strip, demo reviews marked for launch:check, guides, FAQ and the contact anchor", async ({ page }) => {
