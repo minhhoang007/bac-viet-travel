@@ -112,6 +112,8 @@ export interface MagicLinkRequest {
 export interface AuthRateLimits {
   perClient: RateLimiter;
   perRecipient: RateLimiter;
+  /** Second-factor code attempts per account (TOTP and backup codes): no unlimited guessing with a stolen email. */
+  secondFactor?: RateLimiter;
 }
 
 export interface AuthServiceDeps {
@@ -171,8 +173,11 @@ export function createAuthService(
     return { passkeys: p?.n ?? 0, totp: (t?.n ?? 0) > 0 };
   };
 
-  // A wrong code is false; anything else (lockout after ten tries, outage) propagates.
-  const codeCheck = async (run: () => Promise<unknown>): Promise<boolean> => {
+  // Limited per account (RATE_LIMIT_ERROR); a wrong code is false; anything else (outage) propagates.
+  const codeCheck = async (headers: Headers, run: () => Promise<unknown>): Promise<boolean> => {
+    const current = await getSession(headers);
+    if (!current) throw new AppError("AUTH_ERROR");
+    if (limits.secondFactor && !(await limits.secondFactor.limit(`second-factor:${current.user.id}`)).success) throw new AppError("RATE_LIMIT_ERROR");
     try {
       await run();
       return true;
@@ -195,8 +200,8 @@ export function createAuthService(
       if (res.method !== "totp") throw new AppError("INTERNAL_ERROR", "TOTP setup unavailable");
       return { totpURI: res.totpURI, backupCodes: res.backupCodes };
     },
-    verifyTotp: (headers, code) => codeCheck(() => auth.api.verifyTOTP({ headers, body: { code } })),
-    verifyBackupCode: (headers, code) => codeCheck(() => auth.api.verifyBackupCode({ headers, body: { code } })),
+    verifyTotp: (headers, code) => codeCheck(headers, () => auth.api.verifyTOTP({ headers, body: { code } })),
+    verifyBackupCode: (headers, code) => codeCheck(headers, () => auth.api.verifyBackupCode({ headers, body: { code } })),
     async disableTotp(headers) {
       await auth.api.disableTwoFactor({ headers, body: {} });
     },

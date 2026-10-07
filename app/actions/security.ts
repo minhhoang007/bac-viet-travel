@@ -24,7 +24,8 @@ function safeNext(value: FormDataEntryValue | null): string {
 
 // Better Auth rejects a factor change without a fresh second factor (adapter "before" hook) with 403.
 const isForbidden = (error: unknown) => (error as { statusCode?: number })?.statusCode === 403 || (error as { status?: unknown })?.status === "FORBIDDEN";
-const isLocked = (error: unknown) => (error as { statusCode?: number })?.statusCode === 429 || (error as { status?: unknown })?.status === "TOO_MANY_REQUESTS";
+const isLocked = (error: unknown) =>
+  (isAppError(error) && error.code === "RATE_LIMIT_ERROR") || (error as { statusCode?: number })?.statusCode === 429 || (error as { status?: unknown })?.status === "TOO_MANY_REQUESTS";
 
 async function signedIn() {
   const app = await requireAppServices();
@@ -79,7 +80,7 @@ export async function confirmTotp(formData: FormData): Promise<void> {
     try {
       if (await app.auth.security.verifyTotp(h, parsed.data.replace(/\s/g, ""))) result = "done";
     } catch (e) {
-      result = isLocked(e) ? "wrong" : "failed";
+      result = isLocked(e) ? "locked" : "failed";
     }
   }
   redirect(securityPage(locale, result));

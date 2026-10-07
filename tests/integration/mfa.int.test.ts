@@ -105,6 +105,20 @@ describe("staff sessions and second factor", () => {
     expect(await auth.security.newBackupCodes(headers)).toHaveLength(10);
   });
 
+  it("second-factor codes are limited per account: five tries per 15 minutes, then even the right code waits", async () => {
+    const limited = testApp(handle.db, { realRateLimits: true });
+    const first = await signIn(limited, "brute@example.com");
+    await handle.db.update(users).set({ role: "editor" }).where(eq(users.email, "brute@example.com"));
+    const { totpURI } = await limited.app.auth.security.startTotp(first);
+    const secret = new URL(totpURI).searchParams.get("secret")!;
+    expect(await limited.app.auth.security.verifyTotp(first, totp(secret))).toBe(true); // 1 of 5
+    const headers = await signIn(limited, "brute@example.com");
+    const wrong = totp(secret) === "000000" ? "111111" : "000000";
+    for (let i = 0; i < 4; i++) expect(await limited.app.auth.security.verifyTotp(headers, wrong)).toBe(false);
+    await expect(limited.app.auth.security.verifyTotp(headers, totp(secret))).rejects.toMatchObject({ code: "RATE_LIMIT_ERROR" });
+    await expect(limited.app.auth.security.verifyBackupCode(headers, "anything")).rejects.toMatchObject({ code: "RATE_LIMIT_ERROR" });
+  });
+
   it("a backup code passes the second factor once", async () => {
     const { headers, backupCodes } = await staffWithTotp("backup@example.com");
     expect(await auth.security.verifyBackupCode(headers, backupCodes[0]!)).toBe(true);
