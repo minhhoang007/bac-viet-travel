@@ -37,6 +37,11 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
+### v1.14.0 (2026-10-07) — project CSS, blog hooks
+- New project-owned file `product/styles.css` (empty): keep **ours** if you already created it. `app/[locale]/layout.tsx` imports it, so it must exist.
+- Blog posts now show their `cover` above the text; remove it from the post body if you had repeated it there.
+- No migration.
+
 ### v1.13.1 (2026-10-07) — dark: follows the brand scheme
 - `app/globals.css` and `app/[locale]/layout.tsx` (starter-owned): take theirs. Projects with their own `dark:` classes: they now follow `colors.scheme` too.
 - No migration.

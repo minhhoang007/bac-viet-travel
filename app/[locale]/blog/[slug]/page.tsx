@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { notFound, permanentRedirect } from "next/navigation";
 import { connection } from "next/server";
 import { setRequestLocale } from "next-intl/server";
@@ -106,10 +107,11 @@ export default async function BlogPostPage({ params }: Props) {
       <a href={localePath(locale, "/blog")} className="text-sm text-muted-foreground hover:underline">
         ← {c.allPosts}
       </a>
-      <article className="mt-4">
+      {/* blog-* class names are stable hooks for project CSS (product/styles.css). */}
+      <article className="blog-post mt-4">
         <header>
-          <h1 className="text-3xl font-bold sm:text-4xl">{post.title}</h1>
-          <p className="mt-3 text-sm text-muted-foreground">
+          <h1 className="blog-title text-3xl font-bold sm:text-4xl">{post.title}</h1>
+          <p className="blog-meta mt-3 text-sm text-muted-foreground">
             <time dateTime={post.date}>{formatDate(post.date, locale)}</time>
             {post.updated && ` · ${c.updated} ${formatDate(post.updated, locale)}`}
             {` · ${c.readingTime.replace("{n}", String(post.readingMinutes))}`}
@@ -121,11 +123,16 @@ export default async function BlogPostPage({ params }: Props) {
             </a>
           ))}
         </header>
+        {post.cover && (
+          <figure className="blog-cover relative mt-8 aspect-[16/9] overflow-hidden rounded-lg">
+            <Image src={post.cover} alt="" fill priority sizes="(min-width: 768px) 768px, 100vw" unoptimized={!post.cover.startsWith("/")} className="object-cover" />
+          </figure>
+        )}
         <div className="prose-blog mt-8">
           {post.format === "mdx" ? <MdxContent source={post.body} /> : <MarkdownContent source={post.body} />}
         </div>
         {post.tags.length > 0 && (
-          <ul className="mt-10 flex flex-wrap gap-2 text-sm">
+          <ul className="blog-tags mt-10 flex flex-wrap gap-2 text-sm">
             {post.tags.map((t) => (
               <li key={t}>
                 <a href={localePath(locale, `/blog/tag/${t}`)} className="rounded-full border border-border px-3 py-1 hover:bg-muted">
