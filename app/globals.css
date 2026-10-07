@@ -108,7 +108,10 @@ body {
 .prose-blog {
   line-height: 1.75;
 }
-.prose-blog > * + * {
+/* Markdown renders blocks inside display:contents wrappers (components/blog/markdown.tsx): space those too. */
+.prose-blog > * + *,
+.prose-blog > .contents > * + *,
+.prose-blog > * + .contents > :first-child {
   margin-top: 1.25em;
 }
 .prose-blog h2 {
