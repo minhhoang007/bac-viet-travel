@@ -18,6 +18,8 @@ import { Toaster } from "@/components/ui/sonner";
 import * as productLayout from "@/product/layout";
 import { ProductLayoutExtras } from "@/product/layout";
 import "../globals.css";
+// Project CSS (project-owned), loaded after the starter's so its rules win.
+import "@/product/styles.css";
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
