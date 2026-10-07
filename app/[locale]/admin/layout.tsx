@@ -20,7 +20,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 export default async function AdminLayout({ children, params }: { children: ReactNode; params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   // Editors see the layout with their content pages only; every starter admin page still requires an admin.
-  const { user, container } = await requireStaff("editor");
+  const { user, container } = await requireStaff("editor", { secondFactor: false });
   const isAdmin = hasRole(user, "admin");
   const content = getAppContent(locale as Locale);
   const c = content.admin;

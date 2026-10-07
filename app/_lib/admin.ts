@@ -16,12 +16,15 @@ type StaffContext = { admin: AdminModule; user: AuthUser; container: Container }
  * Admin-area guard: the admin module must be on and the user must hold `role` (hierarchical: "editor" admits
  * admins too). Everyone else (signed out included) gets a 404, so the admin area does not reveal itself.
  */
-export async function requireStaff(role: Exclude<Role, "user"> = "editor"): Promise<StaffContext> {
+export async function requireStaff(role: Exclude<Role, "user"> = "editor", options: { secondFactor?: boolean } = {}): Promise<StaffContext> {
   const app = await requireAppServices();
   const container = getContainer();
   if (!container.admin) notFound();
   const current = await app.auth.getSession(await headers());
   if (!current || !hasRole(current.user, role)) notFound();
+  // The admin layout only draws the frame (secondFactor: false): its pages and actions run the gate after their
+  // own role check, so a page the user may not open stays a plain 404.
+  if (options.secondFactor === false) return { admin: container.admin, user: current.user, container };
   // Staff need a second factor (config/auth.ts `staff`): set one up first, or pass it for this session.
   const gate = await app.auth.staffGate(current);
   if (gate === "enroll") redirect(localePath(await getLocale(), `${authConfig.securityPath}?setup=1`));
