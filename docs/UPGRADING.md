@@ -37,6 +37,11 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
+### Next release — per-user product admin menu
+- Breaking (only if you call it): `productAdminNavFor(user)` returns a Promise and takes `{ id, role }`: `await` it.
+- `product/manifest.ts` (project-owned): to use it, add `allow?: (user) => boolean | Promise<boolean>` to your `ProductNavItem` type and to entries. Pages behind such entries must check the same rule.
+- No migration.
+
 ### v1.14.0 (2026-10-07) — project CSS, blog hooks
 - New project-owned file `product/styles.css` (empty): keep **ours** if you already created it. `app/[locale]/layout.tsx` imports it, so it must exist.
 - Blog posts now show their `cover` above the text; remove it from the post body if you had repeated it there.

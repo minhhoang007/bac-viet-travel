@@ -30,8 +30,9 @@ export default async function DashboardLayout({
   const { user } = await requirePageUser(locale);
   const c = getAppContent(locale as Locale).dashboard;
 
-  const adminHref = (u: typeof user) =>
-    hasRole(u, "admin") ? "/admin" : (productAdminNavFor(u)[0]?.href ?? (hasRole(u, "editor") && getContainer().media ? "/admin/media" : null));
+  const adminHref = async (u: typeof user) =>
+    hasRole(u, "admin") ? "/admin" : ((await productAdminNavFor(u))[0]?.href ?? (hasRole(u, "editor") && getContainer().media ? "/admin/media" : null));
+  const adminLink = getContainer().admin ? await adminHref(user) : null;
   const nav = [
     { label: c.nav.overview, href: localePath(locale, "/dashboard") },
     ...productNav.map((item) => ({ label: item.label[locale as Locale], href: localePath(locale, item.href) })),
@@ -41,7 +42,7 @@ export default async function DashboardLayout({
     })),
     { label: c.nav.account, href: localePath(locale, "/dashboard/account") },
     // Admin link for staff only (the admin pages themselves 404 for everyone else). Editors land on their first content page.
-    ...(getContainer().admin && adminHref(user) ? [{ label: c.nav.admin, href: localePath(locale, adminHref(user)!) }] : []),
+    ...(adminLink ? [{ label: c.nav.admin, href: localePath(locale, adminLink) }] : []),
   ];
 
   return (

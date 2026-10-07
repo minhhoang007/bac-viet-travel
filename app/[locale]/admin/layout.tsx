@@ -33,7 +33,7 @@ export default async function AdminLayout({ children, params }: { children: Reac
     ...(container.media ? [{ label: c.nav.media, href: href("/admin/media") }] : []),
     ...(container.content && features.blog && blogConfig.source === "content" ? [{ label: c.nav.posts, href: href("/admin/posts") }] : []),
   ];
-  const product = [...productAdminNavFor(user).map((item) => ({ label: item.label[locale as Locale], href: href(item.href) })), ...contentNav];
+  const product = [...(await productAdminNavFor(user)).map((item) => ({ label: item.label[locale as Locale], href: href(item.href) })), ...contentNav];
   const nav = isAdmin
     ? [
         { label: c.nav.overview, href: href("/admin") },
