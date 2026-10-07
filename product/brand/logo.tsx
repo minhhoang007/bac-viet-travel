@@ -1,10 +1,10 @@
 /** Sand accent of the brand (decoration only: logo ring, wave, small labels). */
 export const SAND = "#b8935a";
 /** Sand for text on light backgrounds (AA 4.5:1 on the paper colour); SAND itself only on dark or as decoration. */
-export const SAND_TEXT = "#8a6a35";
+const SAND_TEXT = "#8a6a35";
 
 /** Logo mark A: limestone karsts over water (Ha Long, Ninh Binh) in a sand ring. */
-export function LogoMark({ className, peak = "currentColor" }: { className?: string; peak?: string }) {
+function LogoMark({ className, peak = "currentColor" }: { className?: string; peak?: string }) {
   return (
     <svg viewBox="0 0 48 48" className={className} aria-hidden="true" focusable="false">
       <circle cx="24" cy="24" r="23" fill="none" stroke={SAND} strokeWidth="1.5" />

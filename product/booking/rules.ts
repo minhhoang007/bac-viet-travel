@@ -35,7 +35,7 @@ export interface Quote {
 export type Party = { adults: number; children: number; infants?: number; singleRooms?: number; addons?: Record<string, number> };
 
 /** Chosen add-ons priced: per-person ones capped at the number of travellers (adults + children), others at one. */
-export function priceAddons(available: readonly Addon[], party: Party): Quote["addons"] {
+function priceAddons(available: readonly Addon[], party: Party): Quote["addons"] {
   const travellers = party.adults + party.children;
   return available
     .map((a) => {

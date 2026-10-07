@@ -12,7 +12,7 @@ const optionalInt = (max: number) =>
   z.preprocess((v) => (v === "" || v === undefined || v === null ? null : v), z.coerce.number({ message: "invalid" }).int("invalid").min(0, "invalid").max(max, "invalid").nullable());
 
 /** Staff form for a new discount code (D6). Errors are codes; the admin page maps them to text. */
-export const discountInputSchema = z
+const discountInputSchema = z
   .object({
     code: z
       .string()

@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { parse as parseYaml } from "yaml";
 
-export { DESTINATIONS, privateTourSchema, tourSchema, type Destination, type Tour, type TourData } from "./model";
+export { DESTINATIONS, type Destination, type Tour, type TourData } from "./model";
 import { DESTINATIONS, tourSchema, type Destination, type Tour } from "./model";
 
 export class TourContentError extends Error {}

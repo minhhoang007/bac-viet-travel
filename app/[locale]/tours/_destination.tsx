@@ -11,7 +11,7 @@ import { getProductContent } from "@/product/content";
 import { breadcrumbLd } from "@/product/seo";
 import type { Destination, Tour } from "@/product/tours/model";
 
-export const DESTINATION_IMAGE: Record<Destination, string> = {
+const DESTINATION_IMAGE: Record<Destination, string> = {
   "ha-long": "/tours/halong-2.jpg",
   "ninh-binh": "/tours/ninhbinh-3.jpg",
   sapa: "/tours/sapa-2.jpg",
