@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { BadgeCheck, CalendarDays, Car, Check, CreditCard, MapPin, MessageCircle, Star, Users } from "lucide-react";
+import { BadgeCheck, CalendarDays, Car, CreditCard, MapPin, MessageCircle, Star, Users } from "lucide-react";
 import { submitContact } from "@/app/actions/contact";
 import { loadBlog } from "@/app/_lib/blog";
 import { getPublicTours } from "@/app/_lib/tours";
@@ -19,11 +19,12 @@ import { DESTINATIONS, type Destination } from "./tours/catalog";
 import { formatPrice } from "./tours/format";
 
 const DESTINATION_IMAGE: Record<Destination, string> = {
-  "ha-long": "/tours/halong-1.jpg",
+  "ha-long": "/tours/halong-2.jpg",
   "ninh-binh": "/tours/ninhbinh-1.jpg",
-  sapa: "/tours/sapa-1.jpg",
+  sapa: "/tours/sapa-2.jpg",
 };
 const TRUST_ICON = { license: BadgeCheck, pickup: Car, payment: CreditCard, support: MessageCircle } as const;
+const ROMAN = ["I.", "II.", "III.", "IV.", "V."];
 
 /** The starter's slot after its marketing blocks: unused, the whole page is ProductHomePage. */
 export function ProductHomeSections({ locale }: { locale: Locale }) {
@@ -31,29 +32,26 @@ export function ProductHomeSections({ locale }: { locale: Locale }) {
   return null;
 }
 
-const initials = (name: string) =>
-  name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(-2)
-    .map((w) => w[0]!.toUpperCase())
-    .join("");
-
-const field = "h-11 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground";
+const field = "h-11 w-full border border-border bg-transparent px-3 text-sm text-foreground";
+/** Small spaced capitals above a section title, in brass. */
+const eyebrow = "text-xs font-medium uppercase tracking-[0.4em] text-primary";
+const title = "font-heading text-4xl font-normal leading-tight [text-wrap:balance] sm:text-5xl";
+const textLink = "text-xs font-medium uppercase tracking-[0.18em] underline underline-offset-8 hover:text-primary";
 
 function Stars({ label }: { label?: string }) {
   return (
-    <span className="flex text-amber-500" {...(label ? { role: "img", "aria-label": label } : { "aria-hidden": true })}>
+    <span className="flex text-primary" {...(label ? { role: "img", "aria-label": label } : { "aria-hidden": true })}>
       {Array.from({ length: 5 }, (_, i) => (
-        <Star key={i} className="size-4 fill-current" aria-hidden="true" />
+        <Star key={i} className="size-3.5 fill-current" aria-hidden="true" />
       ))}
     </span>
   );
 }
 
 /**
- * Bắc Việt home page (replaces the starter blocks): photo with a tour search, trust strip, destinations,
- * most booked tours, private tours, why us, reviews, travel guides, FAQ and the contact form (#contact).
+ * Bắc Việt home page, "Sơn Mài" direction (dark, cinematic, editorial): full-height photo with the tour search,
+ * philosophy, destinations as chapters, private journeys, most booked tours, reviews, travel notes, FAQ and the
+ * contact form (#contact).
  */
 export async function ProductHomePage({ locale }: { locale: Locale }) {
   const c = getProductContent(locale);
@@ -84,16 +82,25 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(agencyLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(faqLd) }} />
 
-      <section className="relative isolate overflow-hidden text-white" aria-labelledby="hero-title">
-        <Image src={m.hero.image!.src} alt={m.hero.image!.alt} fill priority sizes="100vw" className="-z-10 object-cover" />
-        <div className="absolute inset-0 -z-10 bg-gradient-to-b from-black/55 via-black/40 to-black/70" />
-        <Container className="grid gap-8 pb-10 pt-20 sm:pt-28 lg:pb-14">
-          <div className="max-w-3xl">
-            <p className="text-sm font-medium tracking-wide text-white/90">{m.hero.eyebrow}</p>
-            <h1 id="hero-title" className="mt-3 text-4xl font-semibold leading-tight [text-wrap:balance] sm:text-5xl">
+      {/* Hero: the photo fills the screen; the text sits low and centred, the search bar under it. */}
+      <section className="relative isolate flex min-h-[88svh] items-end overflow-hidden text-[#f5f1ea]" aria-labelledby="hero-title">
+        <Image src={m.hero.image!.src} alt={m.hero.image!.alt} fill priority sizes="100vw" className="-z-10 object-cover saturate-[.88]" />
+        <div className="absolute inset-0 -z-10 bg-gradient-to-b from-black/55 via-black/40 to-background" />
+        <Container className="grid gap-10 pb-12 pt-32 text-center">
+          <div className="mx-auto max-w-4xl [text-shadow:0_1px_14px_rgb(0_0_0/0.55)]">
+            <p className="text-xs font-medium uppercase tracking-[0.4em] opacity-90">{m.hero.eyebrow}</p>
+            <h1 id="hero-title" className="mt-6 font-heading text-5xl font-normal leading-[1.04] [text-wrap:balance] sm:text-6xl lg:text-7xl">
               {m.hero.title}
             </h1>
-            <p className="mt-4 max-w-2xl text-lg text-white/90">{m.hero.subtitle}</p>
+            <p className="mx-auto mt-6 max-w-2xl text-lg font-light leading-relaxed opacity-90">{m.hero.subtitle}</p>
+            <div className="mt-9 flex flex-wrap items-center justify-center gap-6">
+              <ButtonLink href={localePath(locale, m.hero.primaryHref)} className="h-12 px-8 text-xs uppercase tracking-[0.18em]">
+                {m.hero.primaryCta}
+              </ButtonLink>
+              <a href={m.hero.secondaryHref} className="text-xs font-medium uppercase tracking-[0.18em] underline underline-offset-8">
+                {m.hero.secondaryCta}
+              </a>
+            </div>
           </div>
 
           <form
@@ -102,11 +109,11 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
             role="search"
             aria-label={h.search.title}
             data-testid="tour-search"
-            className="grid gap-3 rounded-2xl bg-background p-4 text-foreground shadow-xl grid-cols-2 lg:grid-cols-[1.4fr_1fr_0.8fr_auto] lg:items-end"
+            className="grid grid-cols-2 gap-3 border border-border bg-background/85 p-4 text-left text-foreground backdrop-blur lg:grid-cols-[1.4fr_1fr_0.8fr_auto] lg:items-end"
           >
-            <label className="col-span-2 grid gap-1 text-sm font-medium lg:col-span-1">
-              <span className="flex items-center gap-1.5 text-muted-foreground">
-                <MapPin className="size-4" aria-hidden="true" />
+            <label className="col-span-2 grid gap-1.5 lg:col-span-1">
+              <span className="flex items-center gap-1.5 text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                <MapPin className="size-3.5" aria-hidden="true" />
                 {h.search.destination}
               </span>
               <select name="destination" className={field} defaultValue="">
@@ -118,31 +125,31 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
                 ))}
               </select>
             </label>
-            <label className="grid gap-1 text-sm font-medium">
-              <span className="flex items-center gap-1.5 text-muted-foreground">
-                <CalendarDays className="size-4" aria-hidden="true" />
+            <label className="grid gap-1.5">
+              <span className="flex items-center gap-1.5 text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                <CalendarDays className="size-3.5" aria-hidden="true" />
                 {h.search.date}
               </span>
               <input type="date" name="date" className={field} />
             </label>
-            <label className="grid gap-1 text-sm font-medium">
-              <span className="flex items-center gap-1.5 text-muted-foreground">
-                <Users className="size-4" aria-hidden="true" />
+            <label className="grid gap-1.5">
+              <span className="flex items-center gap-1.5 text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                <Users className="size-3.5" aria-hidden="true" />
                 {h.search.guests}
               </span>
               <input type="number" name="guests" min={1} max={50} defaultValue={2} className={field} />
             </label>
-            <button type="submit" className="h-11 rounded-md bg-primary px-6 text-sm font-semibold text-primary-foreground hover:bg-primary/90 col-span-2 lg:col-span-1">
+            <button type="submit" className="col-span-2 h-11 bg-primary px-7 text-xs font-medium uppercase tracking-[0.18em] text-primary-foreground hover:bg-primary/90 lg:col-span-1">
               {h.search.submit}
             </button>
           </form>
 
-          <ul className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm text-white lg:flex lg:flex-wrap lg:justify-between" data-testid="trust-strip">
+          <ul className="grid grid-cols-2 gap-x-6 gap-y-3 text-left text-xs uppercase tracking-[0.14em] text-muted-foreground lg:flex lg:flex-wrap lg:justify-between" data-testid="trust-strip">
             {h.trust.map((t) => {
               const Icon = TRUST_ICON[t.icon as keyof typeof TRUST_ICON];
               return (
                 <li key={t.label} className="flex items-center gap-2">
-                  <Icon className="size-4 shrink-0" aria-hidden="true" />
+                  <Icon className="size-4 shrink-0 text-primary" aria-hidden="true" />
                   {t.label}
                 </li>
               );
@@ -151,37 +158,95 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
         </Container>
       </section>
 
-      <section className="py-16" aria-labelledby="destinations-title">
+      {/* Philosophy: one sentence in the heading serif, then the promises as numbered pillars. */}
+      <section className="py-28 sm:py-36" aria-labelledby="philosophy-title">
         <Container>
-          <h2 id="destinations-title" className="text-3xl font-semibold">
-            {h.destinationsTitle}
+          <p className={eyebrow}>{h.philosophy.eyebrow}</p>
+          <h2 id="philosophy-title" className="mt-8 max-w-5xl font-heading text-3xl font-normal leading-snug sm:text-5xl">
+            {h.philosophy.statement}
           </h2>
-          <div className="mt-8 grid gap-6 md:grid-cols-3">
-            {DESTINATIONS.map((d) => (
-              <a key={d} href={localePath(locale, `/tours/${d}`)} className="group relative block aspect-[4/5] overflow-hidden rounded-2xl" data-destination-card={d}>
-                <Image src={DESTINATION_IMAGE[d]} alt={c.destinations[d].name} fill sizes="(min-width: 768px) 33vw, 100vw" className="object-cover transition duration-700 group-hover:scale-105" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
-                <div className="absolute inset-x-0 bottom-0 p-6 text-white">
-                  <h3 className="text-2xl font-semibold">{c.destinations[d].name}</h3>
-                  <p className="mt-2 text-sm text-white/90">{c.destinations[d].tagline}</p>
+          <div className="mt-20 grid gap-12 border-t border-border pt-12 sm:grid-cols-2 lg:grid-cols-4">
+            {h.why.map((w, i) => (
+              <div key={w.title}>
+                <p className="font-heading text-2xl text-primary">{ROMAN[i]}</p>
+                <h3 className="mt-3 font-medium">{w.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{w.description}</p>
+              </div>
+            ))}
+          </div>
+        </Container>
+      </section>
+
+      {/* Destinations as chapters; the middle one sits lower on wide screens. */}
+      <section className="pb-28" aria-labelledby="destinations-title">
+        <Container>
+          <div className="flex flex-wrap items-end justify-between gap-6">
+            <div>
+              <p className={eyebrow}>{h.eyebrows.destinations}</p>
+              <h2 id="destinations-title" className={`mt-5 ${title}`}>
+                {h.destinationsTitle}
+              </h2>
+            </div>
+            <a href={localePath(locale, "/tours")} className={textLink}>
+              {h.viewAll}
+            </a>
+          </div>
+          <div className="mt-14 grid gap-12 md:grid-cols-3 md:gap-8">
+            {DESTINATIONS.map((d, i) => (
+              <a key={d} href={localePath(locale, `/tours/${d}`)} className={`group block ${i === 1 ? "md:mt-24" : ""}`} data-destination-card={d}>
+                <div className="relative aspect-[4/5] overflow-hidden">
+                  <Image src={DESTINATION_IMAGE[d]} alt={c.destinations[d].name} fill sizes="(min-width: 768px) 33vw, 100vw" className="object-cover saturate-[.88] transition duration-700 group-hover:scale-[1.03]" />
                 </div>
+                <p className="mt-6 text-xs uppercase tracking-[0.3em] text-primary">{h.chapter(i + 1)}</p>
+                <h3 className="mt-2 font-heading text-4xl font-normal">{c.destinations[d].name}</h3>
+                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{c.destinations[d].tagline}</p>
               </a>
             ))}
           </div>
         </Container>
       </section>
 
-      <section className="bg-muted py-16" aria-labelledby="featured-title">
-        <Container>
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <h2 id="featured-title" className="text-3xl font-semibold">
-              {h.featuredTitle}
+      {/* Private journeys: the photo bleeds to the edge, the text sits beside it. */}
+      <section className="bg-muted" aria-labelledby="private-title">
+        <div className="grid items-center lg:grid-cols-2">
+          <div className="relative min-h-[420px] lg:min-h-[680px]">
+            <Image src="/tours/ninhbinh-3.jpg" alt={c.destinations["ninh-binh"].name} fill sizes="(min-width: 1024px) 50vw, 100vw" className="object-cover saturate-[.88]" />
+          </div>
+          <div className="px-4 py-20 sm:px-10 lg:px-20">
+            <p className={eyebrow}>{h.private.eyebrow}</p>
+            <h2 id="private-title" className={`mt-6 ${title}`}>
+              {h.private.title}
             </h2>
-            <a href={localePath(locale, "/tours")} className="text-sm font-medium text-primary underline underline-offset-4">
-              {h.viewAll} →
+            <p className="mt-6 max-w-xl leading-relaxed text-muted-foreground">{h.private.text}</p>
+            <ul className="mt-8 grid max-w-xl gap-3 border-t border-border pt-6">
+              {h.private.points.map((p) => (
+                <li key={p} className="flex items-start gap-4 text-sm">
+                  <span className="mt-2.5 h-px w-5 shrink-0 bg-primary" aria-hidden="true" />
+                  {p}
+                </li>
+              ))}
+            </ul>
+            <ButtonLink href="#contact" className="mt-10 h-12 px-8 text-xs uppercase tracking-[0.18em]">
+              {h.private.cta}
+            </ButtonLink>
+          </div>
+        </div>
+      </section>
+
+      <section className="py-28" aria-labelledby="featured-title">
+        <Container>
+          <div className="flex flex-wrap items-end justify-between gap-6">
+            <div>
+              <p className={eyebrow}>{h.eyebrows.featured}</p>
+              <h2 id="featured-title" className={`mt-5 ${title}`}>
+                {h.featuredTitle}
+              </h2>
+            </div>
+            <a href={localePath(locale, "/tours")} className={textLink}>
+              {h.viewAll}
             </a>
           </div>
-          <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-14 grid gap-x-8 gap-y-14 sm:grid-cols-2 lg:grid-cols-3">
             {catalog.featured(locale).map((t) => (
               <TourCard
                 key={t.slug}
@@ -200,84 +265,33 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
         </Container>
       </section>
 
-      <section className="py-16" aria-labelledby="private-title">
-        <Container className="grid items-center gap-10 lg:grid-cols-2">
-          <div className="relative aspect-[4/3] overflow-hidden rounded-2xl">
-            <Image src="/tours/ninhbinh-2.jpg" alt={c.destinations["ninh-binh"].name} fill sizes="(min-width: 1024px) 50vw, 100vw" className="object-cover" />
-          </div>
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-wider text-primary">{h.private.eyebrow}</p>
-            <h2 id="private-title" className="mt-2 text-3xl font-semibold [text-wrap:balance]">
-              {h.private.title}
-            </h2>
-            <p className="mt-4 text-muted-foreground">{h.private.text}</p>
-            <ul className="mt-5 grid gap-2">
-              {h.private.points.map((p) => (
-                <li key={p} className="flex items-start gap-2 text-sm">
-                  <Check className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
-                  {p}
-                </li>
-              ))}
-            </ul>
-            <ButtonLink href="#contact" className="mt-6">
-              {h.private.cta}
-            </ButtonLink>
-          </div>
-        </Container>
-      </section>
-
-      <section className="bg-muted py-16" aria-labelledby="why-title">
-        <Container>
-          <h2 id="why-title" className="text-3xl font-semibold">
-            {h.whyTitle}
-          </h2>
-          <div className="mt-8 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-            {h.why.map((w) => (
-              <div key={w.title} className="border-t-2 border-primary pt-4">
-                <h3 className="font-semibold">{w.title}</h3>
-                <p className="mt-2 text-sm text-muted-foreground">{w.description}</p>
-              </div>
-            ))}
-          </div>
-        </Container>
-      </section>
-
       {/* Sample reviews: data-demo makes `pnpm launch:check` fail until they are replaced by real ones. */}
-      <section className="py-16" aria-labelledby="reviews-title" data-demo="reviews">
+      <section className="border-y border-border py-28" aria-labelledby="reviews-title" data-demo="reviews">
         <Container>
-          <div className="flex flex-wrap items-end justify-between gap-4">
+          <div className="flex flex-wrap items-end justify-between gap-6">
             <div>
-              <h2 id="reviews-title" className="text-3xl font-semibold">
+              <p className={eyebrow}>{h.eyebrows.reviews}</p>
+              <h2 id="reviews-title" className={`mt-5 ${title}`}>
                 {h.reviewsTitle}
               </h2>
-              <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+              <p className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
                 <Stars />
-                <strong className="text-foreground">{h.reviewsSummary.rating}</strong> {h.reviewsSummary.count}
+                <strong className="font-medium text-foreground">{h.reviewsSummary.rating}</strong> {h.reviewsSummary.count}
               </p>
             </div>
-            <p className="rounded-full border border-dashed border-border px-3 py-1 text-xs text-muted-foreground">{h.reviewsDemo}</p>
+            <p className="border border-dashed border-border px-3 py-1 text-xs text-muted-foreground">{h.reviewsDemo}</p>
           </div>
-          <div className="mt-8 grid gap-6 md:grid-cols-3">
+          <div className="mt-14 grid gap-12 md:grid-cols-3">
             {h.reviews.map((r) => (
-              <figure key={r.name} className="flex flex-col rounded-2xl border border-border bg-background p-6" data-testid="review">
-                <div className="flex items-center gap-3">
-                  <span aria-hidden="true" className="grid size-11 shrink-0 place-items-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-                    {initials(r.name)}
+              <figure key={r.name} className="flex flex-col border-t border-border pt-6" data-testid="review">
+                <Stars label="5/5" />
+                <blockquote className="mt-5 flex-1 font-heading text-xl italic leading-relaxed">“{r.text}”</blockquote>
+                <figcaption className="mt-6 text-xs uppercase tracking-[0.16em] text-muted-foreground">
+                  <span className="block text-foreground">{r.name}</span>
+                  <span className="mt-1 block">
+                    {r.origin} · {r.source} · {r.date}
                   </span>
-                  <figcaption className="text-sm">
-                    <span className="block font-semibold">{r.name}</span>
-                    <span className="text-muted-foreground">
-                      {r.origin} · {r.source}
-                    </span>
-                  </figcaption>
-                </div>
-                <div className="mt-4">
-                  <Stars label="5/5" />
-                </div>
-                <blockquote className="mt-3 flex-1 text-sm leading-relaxed">“{r.text}”</blockquote>
-                <p className="mt-4 text-xs text-muted-foreground">
-                  {r.tour} · {r.date}
-                </p>
+                </figcaption>
               </figure>
             ))}
           </div>
@@ -285,28 +299,29 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
       </section>
 
       {posts.length > 0 && (
-        <section className="bg-muted py-16" aria-labelledby="blog-title">
+        <section className="py-28" aria-labelledby="blog-title">
           <Container>
-            <div className="flex flex-wrap items-end justify-between gap-4">
-              <h2 id="blog-title" className="text-3xl font-semibold">
-                {h.blogTitle}
-              </h2>
-              <a href={localePath(locale, "/blog")} className="text-sm font-medium text-primary underline underline-offset-4">
-                {h.blogAll} →
+            <div className="flex flex-wrap items-end justify-between gap-6">
+              <div>
+                <p className={eyebrow}>{h.eyebrows.blog}</p>
+                <h2 id="blog-title" className={`mt-5 ${title}`}>
+                  {h.blogTitle}
+                </h2>
+              </div>
+              <a href={localePath(locale, "/blog")} className={textLink}>
+                {h.blogAll}
               </a>
             </div>
-            <div className="mt-8 grid gap-6 md:grid-cols-3">
+            <div className="mt-14 grid gap-10 md:grid-cols-3">
               {posts.map((p) => (
-                <a key={p.slug} href={localePath(locale, `/blog/${p.slug}`)} className="group flex flex-col overflow-hidden rounded-2xl bg-background" data-testid="home-post">
+                <a key={p.slug} href={localePath(locale, `/blog/${p.slug}`)} className="group flex flex-col border-t border-border pt-5" data-testid="home-post">
                   {p.cover && (
-                    <div className="relative aspect-[16/9]">
-                      <Image src={p.cover} alt="" fill sizes="(min-width: 768px) 33vw, 100vw" className="object-cover" />
+                    <div className="relative aspect-[3/2] overflow-hidden">
+                      <Image src={p.cover} alt="" fill sizes="(min-width: 768px) 33vw, 100vw" className="object-cover transition duration-700 group-hover:scale-[1.03]" />
                     </div>
                   )}
-                  <div className="flex flex-1 flex-col p-5">
-                    <h3 className="font-semibold group-hover:underline">{p.title}</h3>
-                    <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">{p.description}</p>
-                  </div>
+                  <h3 className="mt-5 font-heading text-2xl font-normal leading-snug group-hover:text-primary">{p.title}</h3>
+                  <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-muted-foreground">{p.description}</p>
                 </a>
               ))}
             </div>
@@ -316,22 +331,23 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
 
       <Faq id="faq" title={m.faq.title} items={m.faq.items} />
 
-      <section id="contact" className="scroll-mt-20 bg-muted py-16" aria-labelledby="contact-title">
-        <Container className="grid gap-10 lg:grid-cols-[1fr_1.2fr]">
+      <section id="contact" className="scroll-mt-20 bg-muted py-28" aria-labelledby="contact-title">
+        <Container className="grid gap-14 lg:grid-cols-[1fr_1.2fr]">
           <div>
-            <h2 id="contact-title" className="text-3xl font-semibold">
+            <p className={eyebrow}>{h.eyebrows.contact}</p>
+            <h2 id="contact-title" className={`mt-5 ${title}`}>
               {h.contactTitle}
             </h2>
-            <p className="mt-3 text-muted-foreground">{h.contactText}</p>
-            <div className="mt-6 grid gap-2 text-sm">
-              <a href={chat.href} target="_blank" rel="noopener noreferrer" className="font-medium text-primary underline underline-offset-4">
-                {chat.label} →
+            <p className="mt-6 leading-relaxed text-muted-foreground">{h.contactText}</p>
+            <div className="mt-8 grid gap-2 text-sm">
+              <a href={chat.href} target="_blank" rel="noopener noreferrer" className={`w-fit ${textLink}`}>
+                {chat.label}
               </a>
-              <span>{contactConfig.hotline}</span>
+              <span className="mt-2">{contactConfig.hotline}</span>
               <span>{contactConfig.email}</span>
             </div>
           </div>
-          <div className="rounded-2xl bg-background p-6">{features.email ? <ContactForm action={submitContact} labels={m.contact} /> : null}</div>
+          <div className="border border-border bg-background p-6 sm:p-8">{features.email ? <ContactForm action={submitContact} labels={m.contact} /> : null}</div>
         </Container>
       </section>
     </>

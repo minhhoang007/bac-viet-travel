@@ -26,16 +26,16 @@ export function SiteHeader({ locale }: { locale: Locale }) {
 
   return (
     <header className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85">
-      <div className="hidden bg-foreground text-xs text-background/85 md:block">
+      <div className="hidden border-b border-border bg-muted text-xs text-muted-foreground md:block">
         <Container className="flex h-8 items-center justify-between gap-4">
           <span className="truncate">
             {contactConfig.licenseType[locale]} {contactConfig.licenseNumber} · {h.pickup}
           </span>
           <span className="flex shrink-0 items-center gap-3">
-            <a href={`mailto:${contactConfig.email}`} className="hover:text-background">
+            <a href={`mailto:${contactConfig.email}`} className="hover:text-foreground">
               {contactConfig.email}
             </a>
-            <a href={localePath(other)} hrefLang={other} className="font-medium hover:text-background">
+            <a href={localePath(other)} hrefLang={other} className="font-medium hover:text-foreground">
               {switchLabel}
             </a>
           </span>
@@ -47,14 +47,14 @@ export function SiteHeader({ locale }: { locale: Locale }) {
             <Logo size="sm" />
           </a>
 
-          <nav aria-label={h.nav} className="hidden items-center gap-7 text-[15px] lg:flex">
+          <nav aria-label={h.nav} className="hidden items-center gap-6 whitespace-nowrap text-xs font-medium uppercase tracking-[0.12em] lg:flex xl:gap-8">
             {/* Opens on hover and on keyboard focus (focus-within), links stay real links. */}
             <div className="group relative">
               <a href={href("/tours")} className="inline-flex items-center gap-1 py-2 hover:text-primary">
                 {h.destinations}
                 <ChevronDown className="size-4 transition group-hover:rotate-180 group-focus-within:rotate-180" aria-hidden="true" />
               </a>
-              <ul className="invisible absolute left-0 top-full w-56 translate-y-1 rounded-lg border border-border bg-background p-2 opacity-0 shadow-lg transition group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100">
+              <ul className="invisible absolute left-0 top-full w-56 translate-y-1 border border-border bg-background p-2 normal-case tracking-normal opacity-0 shadow-lg transition group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100">
                 {destinations.map((d) => (
                   <li key={d.href}>
                     <a href={d.href} className="block rounded-md px-3 py-2 hover:bg-muted">
@@ -77,16 +77,16 @@ export function SiteHeader({ locale }: { locale: Locale }) {
           </nav>
 
           <div className="flex items-center gap-2 sm:gap-4">
-            <a href={telUrl()} className="hidden text-right leading-tight xl:grid">
+            <a href={telUrl()} className="hidden whitespace-nowrap text-right leading-tight 2xl:grid">
               <span className="text-xs text-muted-foreground">
                 {h.advice} {contactConfig.hoursShort}
               </span>
               <span className="font-semibold">{contactConfig.hotline}</span>
             </a>
-            <a href={telUrl()} aria-label={h.call} className="inline-flex size-10 items-center justify-center rounded-full border border-border xl:hidden">
+            <a href={telUrl()} aria-label={h.call} className="inline-flex size-10 items-center justify-center rounded-full border border-border 2xl:hidden">
               <Phone className="size-4" aria-hidden="true" />
             </a>
-            <ButtonLink href={href("/tours")} className="hidden rounded-full px-5 sm:inline-flex">
+            <ButtonLink href={href("/tours")} className="hidden px-6 text-xs uppercase tracking-[0.16em] sm:inline-flex">
               {h.book}
             </ButtonLink>
             <MobileNav

@@ -149,7 +149,7 @@ test("tour filters: the home search lands on a filtered list; filters stay in th
   await expect(page).toHaveURL(/duration=1/);
   await expect(page).toHaveURL(/sort=price-asc/);
   await expect(page).toHaveURL(/guests=3/);
-  const prices = await page.locator("[data-destination] article .text-primary").allTextContents();
+  const prices = await page.locator("[data-destination] article [data-price]").allTextContents();
   const values = prices.map((p) => Number(p.replace(/\D/g, "")));
   expect(values.length).toBeGreaterThan(0);
   expect(values).toEqual([...values].sort((a, b) => a - b));

@@ -9,7 +9,7 @@ import { SiteFooter } from "./components/site-footer";
 import { SiteHeader } from "./components/site-header";
 import { getProductContent } from "./content";
 
-/** Brand fonts (Be Vietnam Pro, Playfair Display headings), applied on <html> by the starter layout. */
+/** Brand fonts (Be Vietnam Pro, Cormorant Garamond headings), applied on <html> by the starter layout. */
 export const productFontVariables = fontVariables;
 
 /** Replaces the starter header: logo, destinations menu, hotline, "Book a tour". */
