@@ -4,6 +4,11 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.18.2] - 2026-10-08
+
+### Changed
+- Next.js 16.4.0 and eslint-config-next 16.4.0 (from 16.3.8). No code changes needed.
+
 ## [1.18.1] - 2026-10-08
 
 ### Fixed — two-step verification
