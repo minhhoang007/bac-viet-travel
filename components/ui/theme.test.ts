@@ -22,6 +22,7 @@ describe("themeCss", () => {
     expect(css).toContain(":root{color-scheme:dark;--background:#0b1120;");
     expect(css).toContain(":root:root{--danger:#f87171;--warning:#facc15;--success:#4ade80}");
     expect(css).toContain(":root:root{--radius:0}");
+    expect(css).toContain("@media print{:root:root{color-scheme:light;--background:#ffffff;--foreground:#111111;");
     expect(css).not.toContain("prefers-color-scheme");
     expect(css).not.toContain("#ffffff");
   });

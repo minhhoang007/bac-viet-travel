@@ -25,7 +25,8 @@ function declarations(colors: ThemeColors): string {
 
 // Status colors readable on a dark background (app/globals.css uses them under prefers-color-scheme: dark).
 const DARK_STATUS = "--danger:#f87171;--warning:#facc15;--success:#4ade80";
-const LENGTH = /^(0|\d+(\.\d+)?(px|rem|em))$/;
+const PRINT = "--background:#ffffff;--foreground:#111111;--muted:#f3f4f6;--muted-foreground:#374151;--border:#d1d5db;--primary:#111111;--primary-foreground:#ffffff;--danger:#b91c1c;--warning:#a16207;--success:#15803d";
+const LENGTH =/^(0|\d+(\.\d+)?(px|rem|em))$/;
 
 /**
  * CSS variables for the theme, from config/brand.ts. Rendered once in the root layout. Overrides of globals.css
@@ -34,7 +35,8 @@ const LENGTH = /^(0|\d+(\.\d+)?(px|rem|em))$/;
 export function themeCss(colors: BrandColors): string {
   const scheme = colors.scheme ?? "auto";
   let css: string;
-  if (scheme === "dark") css = `:root{color-scheme:dark;${declarations(colors.dark ?? colors.light)}}:root:root{${DARK_STATUS}}`;
+  // Paper is white: a dark-only brand prints black on white (vouchers, passenger lists).
+  if (scheme === "dark") css = `:root{color-scheme:dark;${declarations(colors.dark ?? colors.light)}}:root:root{${DARK_STATUS}}@media print{:root:root{color-scheme:light;${PRINT}}}`;
   else if (scheme === "light") css = `:root{color-scheme:light;${declarations(colors.light)}}`;
   else {
     const light = `:root{${declarations(colors.light)}}`;
