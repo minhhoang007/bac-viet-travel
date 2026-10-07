@@ -1,0 +1,5 @@
+/*
+ * Project-owned CSS, loaded after app/globals.css (so equal selectors here win). Use the theme variables
+ * (var(--primary), var(--font-heading)…) and the stable hooks the starter renders: .prose-blog, .blog-post,
+ * .blog-title, .blog-meta, .blog-cover, .blog-tags.
+ */

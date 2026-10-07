@@ -18,7 +18,7 @@ export async function BlogIndex({ locale, page }: { locale: Locale; page: number
 
   return (
     <Container className="max-w-3xl py-16">
-      <h1 className="text-3xl font-bold">{c.title}</h1>
+      <h1 className="blog-title text-3xl font-bold">{c.title}</h1>
       <p className="mt-2 text-muted-foreground">
         {c.subtitle}{" "}
         <a href={localePath(locale, "/blog/rss.xml")} className="text-sm underline">
@@ -26,7 +26,7 @@ export async function BlogIndex({ locale, page }: { locale: Locale; page: number
         </a>
       </p>
       {tags.length > 0 && (
-        <nav aria-label={c.tags} className="mt-6 flex flex-wrap gap-2 text-sm">
+        <nav aria-label={c.tags} className="blog-tags mt-6 flex flex-wrap gap-2 text-sm">
           {tags.map((t) => (
             <a key={t.tag} href={localePath(locale, `/blog/tag/${t.tag}`)} className="rounded-full border border-border px-3 py-1 hover:bg-muted">
               #{t.tag} <span className="text-muted-foreground">{t.count}</span>

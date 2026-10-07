@@ -4,6 +4,12 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.14.0] - 2026-10-07
+
+### Added — project CSS and blog style hooks
+- `product/styles.css` (project-owned) is loaded after `app/globals.css`: project typography or component tweaks without editing starter files.
+- Blog pages render stable class names (`blog-post`, `blog-title`, `blog-meta`, `blog-cover`, `blog-tags`) and the post's cover image above the text.
+
 ## [1.13.1] - 2026-10-07
 
 ### Fixed — `dark:` utilities follow the brand scheme
