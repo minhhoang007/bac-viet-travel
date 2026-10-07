@@ -8,6 +8,7 @@ import { bookingPayments, bookings, departures, type Booking, type BookingPaymen
 import { depositEmails } from "./emails";
 import { vietnamToday } from "./rules";
 import type { BookingService } from "./service";
+import { isSold, takesSeats } from "./status";
 
 /** VNPay IPN answer (https://sandbox.vnpayment.vn/apis/docs/thanh-toan-pay/pay.html#code-returnurl). */
 export type IpnResult = { RspCode: "00" | "01" | "02" | "04" | "97" | "99"; Message: string };
@@ -15,7 +16,7 @@ export type IpnResult = { RspCode: "00" | "01" | "02" | "04" | "97" | "99"; Mess
 export type StartDepositResult = { status: "redirect"; url: string } | { status: "not_found" } | { status: "not_payable" };
 /** Rest of the total still owed online (D5): paid bookings before departure, not yet settled. */
 export function balanceDue(booking: Pick<Booking, "status" | "totalVnd" | "depositVnd" | "balancePaidAt">): number {
-  if ((booking.status !== "deposit_paid" && booking.status !== "confirmed") || booking.balancePaidAt) return 0;
+  if (!isSold(booking.status) || booking.balancePaidAt) return 0;
   return Math.max(0, booking.totalVnd - booking.depositVnd);
 }
 
@@ -109,7 +110,7 @@ export function createDepositService(deps: {
 
         // Balance (D5): settles the total of a live paid booking; anything else is money to give back.
         if (payment.purpose === "balance") {
-          const live = (booking!.status === "deposit_paid" || booking!.status === "confirmed") && !booking!.balancePaidAt;
+          const live = isSold(booking!.status) && !booking!.balancePaidAt;
           const [updated] = await tx
             .update(bookings)
             .set(live ? { balancePaidAt: at } : { refundDueVnd: sql`${bookings.refundDueVnd} + ${payment.amountVnd}` })
@@ -130,7 +131,7 @@ export function createDepositService(deps: {
               and(
                 eq(bookings.departureId, departure!.id),
                 ne(bookings.id, booking!.id),
-                sql`(${bookings.status} in ('deposit_paid', 'confirmed') or (${bookings.status} = 'held' and ${bookings.holdExpiresAt} > ${at.toISOString()}))`,
+                takesSeats(at),
               ),
             );
           if (departure!.capacity - (row?.taken ?? 0) < booking!.seats) status = "refund_due";

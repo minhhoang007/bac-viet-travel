@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, gt, gte, ilike, inArray, isNull, lte, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, ilike, inArray, isNull, lte, or, sql, type SQL } from "drizzle-orm";
 import { AppError } from "@/core/errors";
 import type { Logger } from "@/core/logger";
 import type { MailPort } from "@/core/ports/mail";
@@ -9,6 +9,7 @@ import { bookingPayments, bookings, departures, type Booking, type BookingPaymen
 import { bookingStatusEmail, reminderEmail } from "./emails";
 import type { ReceiveTransferResult } from "./deposits";
 import { addDays, bookingRules, vietnamToday } from "./rules";
+import { SOLD_STATUSES, takesSeats } from "./status";
 import { manualBookingSchema } from "./validations";
 
 export interface Actor {
@@ -96,7 +97,6 @@ const CODE = /^BV-[A-Z2-9]{6}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const REMINDER_DAYS = 3;
-const ACTIVE = ["deposit_paid", "confirmed"] as const;
 
 /** Paid deposits to confirm, refunds owed, and transfers the guest chose that staff have not recorded yet. */
 const needsAttention = () =>
@@ -228,7 +228,7 @@ export function createBookingAdmin(deps: {
             cancelledAt: now(),
             cancelReason: text,
             // Refund the deposit only when it was paid (held bookings paid nothing).
-            ...(refund ? { refundDueVnd: sql`${bookings.refundDueVnd} + case when ${bookings.status} in ('deposit_paid', 'confirmed') then ${bookings.depositVnd} else 0 end` } : {}),
+            ...(refund ? { refundDueVnd: sql`${bookings.refundDueVnd} + case when ${inArray(bookings.status, [...SOLD_STATUSES])} then ${bookings.depositVnd} else 0 end` } : {}),
           })
           .where(and(eq(bookings.code, code), inArray(bookings.status, ["held", "deposit_paid", "confirmed"])))
           .returning();
@@ -257,7 +257,7 @@ export function createBookingAdmin(deps: {
         const done = await db
           .update(bookings)
           .set({ balancePaidAt: now() })
-          .where(and(eq(bookings.code, code), inArray(bookings.status, ACTIVE), isNull(bookings.balancePaidAt)))
+          .where(and(eq(bookings.code, code), inArray(bookings.status, SOLD_STATUSES), isNull(bookings.balancePaidAt)))
           .returning({ id: bookings.id });
         return done.length > 0;
       });
@@ -306,7 +306,7 @@ export function createBookingAdmin(deps: {
           const [row] = await tx
             .select({ taken: sql<number>`coalesce(sum(${bookings.seats}), 0)::int` })
             .from(bookings)
-            .where(and(eq(bookings.departureId, departure.id), or(inArray(bookings.status, ACTIVE), and(eq(bookings.status, "held"), gt(bookings.holdExpiresAt, at)))));
+            .where(and(eq(bookings.departureId, departure.id), takesSeats(at)));
           const seats = input.adults + input.children;
           const seatsLeft = departure.capacity - (row?.taken ?? 0);
           if (seats > seatsLeft) return { status: "sold_out", seatsLeft: Math.max(0, seatsLeft) };
@@ -352,7 +352,7 @@ export function createBookingAdmin(deps: {
       const rows = await db
         .select()
         .from(bookings)
-        .where(and(eq(bookings.departureId, departureId), inArray(bookings.status, [...ACTIVE])))
+        .where(and(eq(bookings.departureId, departureId), inArray(bookings.status, [...SOLD_STATUSES])))
         .orderBy(asc(bookings.createdAt));
       return { departure, rows: rows.flatMap(passengerRows) };
     },
@@ -402,7 +402,7 @@ export function createBookingAdmin(deps: {
             const [row] = await tx
               .select({ taken: sql<number>`coalesce(sum(${bookings.seats}), 0)::int` })
               .from(bookings)
-              .where(and(eq(bookings.departureId, id), or(inArray(bookings.status, ACTIVE), and(eq(bookings.status, "held"), sql`${bookings.holdExpiresAt} > ${now().toISOString()}`))));
+              .where(and(eq(bookings.departureId, id), takesSeats(now())));
             if (input.capacity < (row?.taken ?? 0)) throw new AppError("VALIDATION_ERROR", "Capacity below seats taken", { details: { taken: row?.taken } });
           }
           const set = Object.fromEntries(Object.entries(input).filter(([, v]) => v !== undefined));
@@ -434,7 +434,7 @@ export function createBookingAdmin(deps: {
         .select({ date: departures.date, tourSlug: departures.tourSlug, seats: sql<number>`sum(${bookings.seats})::int` })
         .from(bookings)
         .innerJoin(departures, eq(departures.id, bookings.departureId))
-        .where(and(inArray(bookings.status, ACTIVE), gte(departures.date, today), lte(departures.date, addDays(today, 7))))
+        .where(and(inArray(bookings.status, SOLD_STATUSES), gte(departures.date, today), lte(departures.date, addDays(today, 7))))
         .groupBy(departures.date, departures.tourSlug)
         .orderBy(asc(departures.date));
       return { paidToday: paid?.today ?? 0, paidWeek: paid?.week ?? 0, depositsWeekVnd: Number(paid?.deposits ?? 0), attention: attention?.n ?? 0, upcoming };
@@ -448,7 +448,7 @@ export function createBookingAdmin(deps: {
         .set({ reminderSentAt: now() })
         .where(
           and(
-            inArray(bookings.status, ACTIVE),
+            inArray(bookings.status, SOLD_STATUSES),
             isNull(bookings.reminderSentAt),
             eq(bookings.guestEmails, true),
             sql`${bookings.email} <> ''`,
