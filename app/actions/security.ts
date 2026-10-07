@@ -4,8 +4,8 @@ import { headers } from "next/headers";
 import { notFound, redirect, unstable_rethrow } from "next/navigation";
 import { renderSVG } from "uqr";
 import { z } from "zod";
-import { getPublicEnv } from "@/bootstrap/env";
 import { clientKeyFrom } from "@/app/_lib/client-ip";
+import { isOwnMagicLink } from "@/app/_lib/magic-link";
 import { requireAppServices } from "@/app/_lib/session";
 import { authConfig } from "@/config/auth";
 import { hasSecondFactor } from "@/core/auth";
@@ -151,9 +151,13 @@ function mustKeep(role: string, after: { passkeys: number; totp: boolean }, requ
   return required && (role === "editor" || role === "admin") && !hasSecondFactor(after);
 }
 
-export type LoginCodeState = { status: "wrong" } | { status: "rate_limited" } | { status: "error" } | null;
+export type LoginCodeState = { status: "ok"; link: string } | { status: "wrong" } | { status: "rate_limited" } | { status: "error" } | null;
 
-/** The 6-digit code from the sign-in email: opens the same one-time link on this device. */
+/**
+ * The 6-digit code from the sign-in email: returns the same one-time link for the browser to open. Never
+ * redirect() to it from here: Next.js would follow a same-site redirect on the server, using the link up there and
+ * leaving the session cookie with the server instead of the browser.
+ */
 export async function signInWithCode(_prev: LoginCodeState, formData: FormData): Promise<LoginCodeState> {
   const app = await requireAppServices();
   const email = z.email().max(200).safeParse(String(formData.get("email") ?? "").trim().toLowerCase());
@@ -167,23 +171,5 @@ export async function signInWithCode(_prev: LoginCodeState, formData: FormData):
     return { status: "error" };
   }
   if (!link || !isOwnMagicLink(link)) return { status: "wrong" };
-  redirect(link);
-}
-
-/** The confirmation page's button: opens the emailed link (only Better Auth's own verify URL on this site). */
-export async function confirmSignIn(formData: FormData): Promise<void> {
-  const link = String(formData.get("link") ?? "");
-  const locale = localeSchema.parse(formData.get("locale"));
-  if (!isOwnMagicLink(link)) redirect(localePath(locale, `${authConfig.signInPath}?error=INVALID_LINK`));
-  redirect(link);
-}
-
-function isOwnMagicLink(link: string): boolean {
-  try {
-    const url = new URL(link);
-    const site = new URL(getPublicEnv().NEXT_PUBLIC_SITE_URL);
-    return url.origin === site.origin && url.pathname === "/api/auth/magic-link/verify" && url.searchParams.has("token");
-  } catch {
-    return false;
-  }
+  return { status: "ok", link };
 }
