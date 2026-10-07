@@ -9,6 +9,7 @@ import { createBookingAdmin } from "./booking/admin";
 import { createDepositService } from "./booking/deposits";
 import { createFeedbackService } from "./booking/feedback";
 import { createDiscountAdmin } from "./booking/discounts";
+import { createReports } from "./booking/reports";
 import { DEFAULT_TOUR_PRICING } from "./booking/rules";
 import { bankTransferConfig } from "@/config/bank-transfer";
 import { createBookingService } from "./booking/service";
@@ -97,7 +98,8 @@ export function createProduct(db: Db, ctx: ProductContext) {
   };
 
   const discounts = createDiscountAdmin({ db, audit: ctx.audit, now: ctx.now });
-  return { services: { tours, booking, deposits, bookingAdmin, feedback, discounts, paymentsSandbox: ctx.payments.vnpay?.sandbox ?? false }, exporters, jobs };
+  const reports = createReports({ db });
+  return { services: { tours, booking, deposits, bookingAdmin, feedback, discounts, reports, paymentsSandbox: ctx.payments.vnpay?.sandbox ?? false }, exporters, jobs };
 }
 
 export interface ProductNavItem {
@@ -126,6 +128,7 @@ export const productAdminNav: ProductNavItem[] = [
   { href: "/admin/bookings", label: { vi: "Đơn đặt tour", en: "Bookings" } },
   { href: "/admin/discounts", label: { vi: "Mã giảm giá", en: "Discount codes" } },
   { href: "/admin/departures", label: { vi: "Lịch khởi hành", en: "Departures" } },
+  { href: "/admin/reports", label: { vi: "Báo cáo", en: "Reports" } },
 ];
 
 export type Product = ReturnType<typeof createProduct>;

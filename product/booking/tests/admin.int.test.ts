@@ -4,6 +4,7 @@ import { users } from "@/core/users/schema";
 import { testApp } from "@/tests/integration/setup/app";
 import { resetDb, testDb } from "@/tests/integration/setup/db";
 import { bookings, departures } from "../../schema/booking";
+import { createReports } from "../reports";
 
 // The real product services as bootstrap builds them (admin + jobs on), with a recording mail port.
 const { db, close } = testDb();
@@ -161,5 +162,33 @@ describe("booking admin", () => {
     expect(s).toMatchObject({ paidToday: 2, paidWeek: 2, attention: 2 });
     expect(s.depositsWeekVnd).toBeGreaterThan(0);
     expect(s.upcoming).toEqual([]);
+  });
+});
+
+describe("reports (H3)", () => {
+  it("per tour: departures, capacity, sold seats, revenue and deposits; per source; refunds owed; held and other months left out", async () => {
+    await db.execute(sql`TRUNCATE booking_payments, bookings, departures RESTART IDENTITY CASCADE`);
+    const [a] = await db.insert(departures).values({ tourSlug: "sapa-trekking-2d1n", date: "2026-11-05", capacity: 10 }).returning();
+    await db.insert(departures).values({ tourSlug: "sapa-trekking-2d1n", date: "2026-11-12", capacity: 10 });
+    const [other] = await db.insert(departures).values({ tourSlug: "ninh-binh-day-tour", date: "2026-12-01", capacity: 10 }).returning();
+    const row = (code: string, departureId: string, status: "deposit_paid" | "confirmed" | "held", seats: number, source: "website" | "klook" = "website") => ({
+      code, tokenHash: "x", departureId, status, holdExpiresAt: new Date("2030-01-01"), name: "A", email: "a@example.com", phone: "0900000000", locale: "vi",
+      adults: seats, seats, unitPriceVnd: 1_000_000, totalVnd: seats * 1_000_000, depositVnd: seats * 300_000, source,
+    });
+    await db.insert(bookings).values([
+      row("BV-RPTA22", a!.id, "deposit_paid", 2),
+      row("BV-RPTB22", a!.id, "confirmed", 3, "klook"),
+      row("BV-RPTC22", a!.id, "held", 4),
+      row("BV-RPTD22", other!.id, "confirmed", 5),
+    ]);
+    await db.update(bookings).set({ refundDueVnd: 300_000 }).where(eq(bookings.code, "BV-RPTA22"));
+
+    const report = await createReports({ db }).report("2026-11-01", "2026-11-30");
+    expect(report.tours).toEqual([{ tourSlug: "sapa-trekking-2d1n", departures: 2, capacity: 20, seats: 5, bookings: 2, revenueVnd: 5_000_000, depositsVnd: 1_500_000 }]);
+    expect(report.sources).toEqual([
+      { source: "klook", bookings: 1, seats: 3, revenueVnd: 3_000_000 },
+      { source: "website", bookings: 1, seats: 2, revenueVnd: 2_000_000 },
+    ]);
+    expect(report.refundsOwedVnd).toBe(300_000);
   });
 });

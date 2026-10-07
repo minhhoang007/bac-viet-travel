@@ -12,7 +12,10 @@ test.describe.configure({ mode: "serial" });
 const STAFF = "staff@bacviet.example";
 const TOUR = "sapa-trekking-2d1n";
 
+// One IP per sign-in: the magic-link rate limit counts per IP, and this file signs in several times.
+let ip = 10;
 async function signInAsAdmin(page: Page, email = STAFF) {
+  await page.context().setExtraHTTPHeaders({ "x-forwarded-for": `198.51.100.${ip++}` });
   await page.goto("/login");
   await page.fill("#login-email", email);
   await page.getByRole("button", { name: "Gửi liên kết đăng nhập" }).click();
@@ -192,4 +195,16 @@ test("discount codes: staff create one; the guest applies it in the booking form
   await expect(guest.getByTestId("booking-discount")).toBeVisible();
   await page.reload();
   await expect(page.locator('[data-discount="E2E-10"]').getByTestId("discount-used")).toHaveText("1");
+});
+
+test("reports: revenue and fill rate per tour for a month range; guests get a 404", async ({ page, request }) => {
+  expect((await request.get("/admin/reports")).status()).toBe(404);
+  await signInAsAdmin(page, "reports-staff@bacviet.example");
+  const [row] = await sql<{ from: string; to: string }[]>`select to_char(current_date, 'YYYY-MM') as from, to_char(current_date + 90, 'YYYY-MM') as to`;
+  await page.goto(`/admin/reports?from=${row!.from}&to=${row!.to}`);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Báo cáo");
+  await expect(page.getByTestId("report-tours")).toBeVisible();
+  await expect(page.getByTestId("report-total")).toContainText("Tổng");
+  const result = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
+  expect(result.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id)).toEqual([]);
 });
