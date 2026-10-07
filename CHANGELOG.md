@@ -4,6 +4,16 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.13.1] - 2026-10-07
+
+### Fixed — `dark:` utilities follow the brand scheme
+- With `colors.scheme: "dark"`, shadcn/ui `dark:` styles stayed off for visitors whose system is light (a red button kept white text on light red: failed contrast). `dark:` now follows `data-scheme` on `<html>` (`app/globals.css` `@custom-variant dark`): always for dark, never for light, the system's choice for auto.
+
+## [1.13.0] - 2026-10-07
+
+### Added — dark-only (or light-only) brands, corner radius
+- `config/brand.ts` `colors.scheme`: `"auto"` (default, follows the visitor's system), `"dark"` or `"light"` (always that palette; dark also switches the status colors and toasts, and prints black on white). `colors.radius` sets `--radius` (e.g. `"0"` for square corners). Values are validated like the colors.
+
 ## [1.12.1] - 2026-10-07
 
 ### Changed — Vercel builds production only

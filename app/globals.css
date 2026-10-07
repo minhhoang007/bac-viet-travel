@@ -1,6 +1,21 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/*
+ * `dark:` follows the brand scheme (config/brand.ts `colors.scheme`, set as data-scheme on <html>): always for
+ * "dark", never for "light", with the visitor's system for "auto".
+ */
+@custom-variant dark {
+  &:where([data-scheme="dark"], [data-scheme="dark"] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where([data-scheme="auto"], [data-scheme="auto"] *) {
+      @slot;
+    }
+  }
+}
+
 /* Color values come from config/brand.ts (components/ui/theme.ts renders them in the root layout). */
 :root {
   --radius: 0.5rem;
