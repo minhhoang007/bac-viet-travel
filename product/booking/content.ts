@@ -181,8 +181,8 @@ const vi = {
     nextTitle: "Các bước tiếp theo",
     nextHeld: ["Đặt cọc qua VNPay trước khi hết thời gian giữ chỗ.", "Nhận email xác nhận kèm đường link xem đơn.", "Thanh toán phần còn lại trước ngày khởi hành."],
     nextPaid: ["Email xác nhận đã được gửi kèm đường link xem đơn.", "Trước ngày khởi hành, chúng tôi gửi lịch trình chi tiết và giờ đón qua Zalo hoặc email.", "Thanh toán phần còn lại trước ngày khởi hành."],
-    helpTitle: "Cần hỗ trợ?",
-    helpText: (code: string) => `Nhắn Zalo hoặc gọi hotline, đọc mã đơn ${code}.`,
+    helpTitle: "Cần hỗ trợ hoặc đổi ngày?",
+    helpText: (code: string) => `Muốn đổi ngày đi, số khách hay thông tin liên hệ: nhắn Zalo hoặc gọi hotline, đọc mã đơn ${code}. Nhân viên sẽ xử lý trực tiếp với bạn.`,
   },
 };
 
@@ -367,8 +367,8 @@ const en: BookingContent = {
     nextTitle: "What happens next",
     nextHeld: ["Pay the deposit by VNPay before the hold runs out.", "You receive a confirmation email with the link to this page.", "The balance is paid before departure."],
     nextPaid: ["A confirmation email with the link to this page has been sent.", "Before departure we send the detailed itinerary and pick-up time by WhatsApp or email.", "The balance is paid before departure."],
-    helpTitle: "Need help?",
-    helpText: (code: string) => `Message us on WhatsApp or call the hotline with your booking code ${code}.`,
+    helpTitle: "Need help or a different date?",
+    helpText: (code: string) => `To change the date, number of guests or contact details, message us on WhatsApp or call the hotline with your booking code ${code}. Our team will sort it out with you directly.`,
   },
 };
 
