@@ -2,7 +2,7 @@
 
 import { redirect, unstable_rethrow } from "next/navigation";
 import { z } from "zod";
-import { requireAdmin } from "@/app/_lib/admin";
+import { requireAdmin, requireFreshSecondFactor } from "@/app/_lib/admin";
 import { localePath } from "@/core/i18n/routing";
 import { isStaffRole } from "@/product/staff/permissions";
 
@@ -12,6 +12,8 @@ const EVENT = "staff_admin.action_failed";
 /** Admins only: run `work`, then back to /admin/staff with result=<outcome>. */
 async function staffAction(formData: FormData, work: (ctx: Awaited<ReturnType<typeof requireAdmin>>) => Promise<string>): Promise<never> {
   const ctx = await requireAdmin();
+  // Who may do what: verify again if the last second factor is older than a few minutes.
+  await requireFreshSecondFactor("/admin/staff");
   let result = "failed";
   try {
     result = await work(ctx);

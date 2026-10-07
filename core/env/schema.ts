@@ -18,6 +18,9 @@ export const baseEnvSchema = z
     // Optional Google sign-in (profile "app").
     GOOGLE_CLIENT_ID: z.string().min(1).optional(),
     GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
+    // Optional Cloudflare Turnstile on the sign-in form (bot protection). Both or neither.
+    NEXT_PUBLIC_TURNSTILE_SITE_KEY: z.string().min(1).optional(),
+    TURNSTILE_SECRET_KEY: z.string().min(1).optional(),
     // Billing providers (required per enabled provider, checked in bootstrap/env.ts).
     POLAR_ACCESS_TOKEN: z.string().min(1).optional(),
     POLAR_WEBHOOK_SECRET: z.string().min(1).optional(),
@@ -37,6 +40,10 @@ export const baseEnvSchema = z
   .refine((e) => bothOrNeither(e.GOOGLE_CLIENT_ID, e.GOOGLE_CLIENT_SECRET), {
     message: "set both GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET, or neither",
     path: ["GOOGLE_CLIENT_ID"],
+  })
+  .refine((e) => bothOrNeither(e.NEXT_PUBLIC_TURNSTILE_SITE_KEY, e.TURNSTILE_SECRET_KEY), {
+    message: "set both NEXT_PUBLIC_TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY, or neither",
+    path: ["TURNSTILE_SECRET_KEY"],
   })
   .refine(
     (e) => e.NODE_ENV !== "production" || e.NEXT_PUBLIC_SITE_URL.startsWith("https://") || isLocalhost(e.NEXT_PUBLIC_SITE_URL),

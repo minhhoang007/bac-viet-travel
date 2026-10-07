@@ -37,6 +37,15 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
+### v1.17.0 (2026-10-07) — staff two-step verification
+- **Migration 0005** (additive): run `scripts/db-migrate.ts` against production **before** deploying.
+- **After deploy, every editor and admin is asked to set up a passkey or authenticator app** at their next admin visit (the page explains it). Tell staff first. To phase it in, set `staff: { ...authDefaults.staff, requireSecondFactor: false }` in `config/auth.ts`, then turn it on.
+- Staff E2E helpers that sign in through the database must also give the session a second factor (insert a `two_factors` row and set `sessions.second_factor_at`), or the admin area redirects to `/security` or `/verify`.
+- Project admin actions handling money, roles or security settings: add `await requireFreshSecondFactor(back)` after the staff guard.
+- Pages that check staff with `auth.getUser` directly (instead of `requireStaff`): also require `(await auth.staffGate(session)) === "ok"`.
+- The sign-in email changed (confirmation link + code): tests that read the link from the email text take the `link` parameter of the confirmation URL.
+- Optional: `NEXT_PUBLIC_TURNSTILE_SITE_KEY` + `TURNSTILE_SECRET_KEY` (Cloudflare Turnstile) in the build and runtime environment.
+
 ### v1.16.0 (2026-10-07) — run-time theme
 - `app/[locale]/layout.tsx` and `components/ui/theme.ts` (starter-owned): take theirs. Nothing changes until `product/layout.tsx` exports `productTheme`.
 - No migration.

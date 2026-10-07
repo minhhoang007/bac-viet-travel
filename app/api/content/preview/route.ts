@@ -11,8 +11,9 @@ import { appConfig } from "@/config/app";
 export async function GET(request: Request): Promise<Response> {
   const { content, app } = getContainer();
   if (!content || !app) return new Response("Not found", { status: 404 });
-  const user = await app.auth.getUser(await headers());
-  if (!user || !hasRole(user, "editor")) return new Response("Not found", { status: 404 });
+  const current = await app.auth.getSession(await headers());
+  // Staff only, and past the second factor for this session (as for the admin area).
+  if (!current || !hasRole(current.user, "editor") || (await app.auth.staffGate(current)) !== "ok") return new Response("Not found", { status: 404 });
   const url = new URL(request.url);
   const locale = (appConfig.locales as readonly string[]).includes(url.searchParams.get("locale") ?? "") ? url.searchParams.get("locale")! : appConfig.defaultLocale;
   const mode = await draftMode();

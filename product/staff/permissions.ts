@@ -26,6 +26,9 @@ const GRANTS = {
   sale: ["bookings.view", "bookings.edit"],
 } as const satisfies Record<StaffRole, readonly Permission[]>;
 
+/** Money and cancellations: a second factor within the last minutes before the action (step-up, starter v1.17). */
+export const STEP_UP_PERMISSIONS: readonly Permission[] = ["bookings.money", "bookings.cancel"];
+
 export const isStaffRole = (value: unknown): value is StaffRole => (STAFF_ROLES as readonly unknown[]).includes(value);
 
 /** Admins: everything. Editors: what their staff role grants. Everyone else: nothing. */

@@ -299,3 +299,38 @@ test("appearance: admins switch the site theme and light/dark mode; every theme 
   await pick(/^A · Sơn Mài/, "Gốc của theme");
   await homeIs("lacquer", "dark");
 });
+
+test("two-step verification: staff set up a second factor first, pass it each session, and again before money", async ({ page }) => {
+  const email = "mfa-staff@bacviet.example";
+  await signInStaff(page, sql, email, "admin");
+  const [user] = await sql<{ id: string }[]>`select id from users where email = ${email}`;
+
+  // No second factor yet: the admin area sends staff to the security page (customers never see this).
+  await sql`delete from two_factors where user_id = ${user!.id}`;
+  await page.goto("/admin/bookings");
+  await expect(page).toHaveURL(/\/security\?setup=1$/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Bảo mật tài khoản");
+
+  // Set up, but this session has not passed it: the second-factor check.
+  await sql`insert into two_factors (user_id, secret, backup_codes, verified) values (${user!.id}, 'e2e', 'e2e', true)`;
+  await sql`update sessions set second_factor_at = null where user_id = ${user!.id}`;
+  await page.goto("/admin/bookings");
+  await expect(page).toHaveURL(/\/verify$/);
+  await expect(page.getByTestId("verify-totp")).toBeVisible();
+
+  // Passed 20 minutes ago: pages open, but money and cancellations ask again (step-up) and do nothing until then.
+  await sql`update sessions set second_factor_at = now() - interval '20 minutes' where user_id = ${user!.id}`;
+  await paidBooking("BV-MFA222", 1);
+  await page.goto("/admin/bookings/BV-MFA222");
+  page.on("dialog", (dialog) => dialog.accept());
+  await page.getByLabel("Lý do huỷ (gửi cho khách)").fill("Thử xác thực lại");
+  await page.getByTestId("admin-cancel").click();
+  await expect(page).toHaveURL(/\/verify\?fresh=1&next=%2Fadmin%2Fbookings%2FBV-MFA222$/);
+  await expect(page.getByText("Thao tác này cần xác thực lại")).toBeVisible();
+  const [booking] = await sql<{ status: string }[]>`select status from bookings where code = 'BV-MFA222'`;
+  expect(booking!.status).toBe("deposit_paid");
+
+  // Staff sessions end after 12 hours.
+  await sql`update sessions set created_at = now() - interval '13 hours' where user_id = ${user!.id}`;
+  expect((await page.goto("/admin/bookings"))!.status()).toBe(404);
+});

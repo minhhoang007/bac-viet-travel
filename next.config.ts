@@ -10,6 +10,8 @@ const withNextIntl = createNextIntlPlugin("./core/i18n/request.ts");
 const storageOrigin = process.env.STORAGE_ENDPOINT ? new URL(process.env.STORAGE_ENDPOINT).origin : undefined;
 // Media module (ADR-0008): uploads go to Cloudinary's API, images load from its CDN.
 const media = features.media ? { connect: ["https://api.cloudinary.com"], img: ["https://res.cloudinary.com"] } : { connect: [], img: [] };
+// Cloudflare Turnstile on the sign-in form (optional): its script and challenge iframe.
+const turnstile = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ? ["https://challenges.cloudflare.com"] : [];
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
@@ -21,7 +23,7 @@ const nextConfig: NextConfig = {
   // functions; Vercel only bundles files the code imports. Found on a real deployment (reuse finding G10).
   outputFileTracingIncludes: { "/**/*": ["./content/**/*"] },
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders({ isDev: process.env.NODE_ENV !== "production", connectSrc: [...(storageOrigin ? [storageOrigin] : []), ...media.connect], imgSrc: media.img }) }];
+    return [{ source: "/:path*", headers: securityHeaders({ isDev: process.env.NODE_ENV !== "production", connectSrc: [...(storageOrigin ? [storageOrigin] : []), ...media.connect], imgSrc: media.img, scriptSrc: turnstile, frameSrc: turnstile }) }];
   },
 };
 

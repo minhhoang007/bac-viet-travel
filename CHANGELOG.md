@@ -4,6 +4,18 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.17.0] - 2026-10-07
+
+### Added — staff two-step verification and modern sign-in
+- **Second factor for staff** (`config/auth.ts` `staff`, on by default): editors and admins set up a passkey (Face ID, fingerprint, device PIN; user verification required) or an authenticator app with ten single-use backup codes, then pass it once per session before the admin area. Sessions record when they passed it (`sessions.second_factor_at`).
+- **Staff sessions end after 12 hours** (`staff.sessionHours`); customers keep the usual sessions.
+- **Step-up:** `requireFreshSecondFactor(back)` (app/_lib/admin.ts) before sensitive actions; the starter uses it for user role and status changes. Adding, removing or changing a factor also needs a fresh second factor once one exists.
+- **`/security`** page: passkeys, authenticator app (QR code), backup codes, signed-in devices (sign out one or all others), recent activity. **`/verify`**: the second-factor check.
+- **Security emails** to staff on a sign-in from a new browser, and to anyone whose second factors change (`auth_events` log).
+- **Sign-in email:** links to `/login/confirm` (mail scanners cannot use the one-time link up) and carries a 6-digit code for signing in on another device. **Passkey sign-in** button on the login page.
+- **Optional Cloudflare Turnstile** on the sign-in form (`NEXT_PUBLIC_TURNSTILE_SITE_KEY` + `TURNSTILE_SECRET_KEY`); CSP allows it only when set.
+- Migration `0005` (additive): `passkeys`, `two_factors`, `auth_events`, `sessions.second_factor_at`, `users.two_factor_enabled`.
+
 ## [1.16.0] - 2026-10-07
 
 ### Added — run-time theme
