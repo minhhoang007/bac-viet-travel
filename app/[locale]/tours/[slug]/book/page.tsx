@@ -70,6 +70,7 @@ export default async function BookTourPage({ params, searchParams }: Props) {
           initialDepartureId={d}
           pricing={tour.pricing}
           tourSlug={slug}
+          addons={tour.addons}
           previewDiscount={previewDiscount}
           tour={{ title: tour.title, image: tour.images[0]!, duration: getProductContent(locale).tours.days(tour.days, tour.nights) }}
           initialAdults={Number.isInteger(adults) && adults >= 1 && adults <= 50 ? adults : undefined}

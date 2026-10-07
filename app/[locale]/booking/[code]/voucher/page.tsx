@@ -84,6 +84,7 @@ export default async function VoucherPage({ params, searchParams }: Props) {
           {row(t.booking.tour, tour?.title ?? booking.departure.tourSlug)}
           {row(t.booking.date, <span className="capitalize">{formatDay(booking.departure.date, locale)}</span>)}
           {tour && row(v.pickup, tour.departure)}
+          {booking.addons.length > 0 && row(t.addonsTitle, booking.addons.map((a) => t.addonLine(a.name[locale], a.qty)).join(", "))}
           {row(t.booking.contact, `${booking.name} · ${booking.phone}`)}
           {row(t.total, formatVnd(booking.totalVnd, locale))}
           {row(v.paid, formatVnd(booking.depositVnd, locale))}

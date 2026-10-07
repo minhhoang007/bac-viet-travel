@@ -13,6 +13,7 @@ import { localePath } from "@/core/i18n/routing";
 import { formatDay, formatVnd, getBookingContent } from "../booking/content";
 import { applyDiscount, DEFAULT_TOUR_PRICING, privateQuote, privateTier, quote, type Discount, type PrivatePricing, type TourPricing } from "../booking/rules";
 import type { BookingField, HoldResult } from "../booking/service";
+import type { Addon } from "../tours/model";
 
 export interface DepartureOption {
   id: string;
@@ -47,6 +48,8 @@ export interface BookingFormProps {
   privateTour?: PrivateTourOption;
   /** Child %, infant price, single room supplement of the tour (defaults when absent). */
   pricing?: TourPricing;
+  /** Add-ons the guest may choose (B6). */
+  addons?: Addon[];
   /** Tour of the form and the discount preview (D6); without it no code field. */
   tourSlug?: string;
   previewDiscount?: (code: string, tourSlug: string, totalVnd: number) => Promise<Discount | null>;
@@ -65,6 +68,7 @@ export function BookingForm({
   pricing = DEFAULT_TOUR_PRICING,
   tourSlug,
   previewDiscount,
+  addons = [],
 }: BookingFormProps) {
   const t = getBookingContent(locale);
   const [state, formAction, pending] = useActionState(action, null);
@@ -78,7 +82,8 @@ export function BookingForm({
   const [children, setChildren] = useState(0);
   const [infants, setInfants] = useState(0);
   const [singleRooms, setSingleRooms] = useState(0);
-  const party = { adults, children, infants, singleRooms };
+  const [chosen_, setChosen] = useState<Record<string, number>>({});
+  const party = { adults, children, infants, singleRooms, addons: chosen_ };
   // Prices and limits update only once React runs; tests wait for this marker before typing.
   const hydrated = useSyncExternalStore(noopSubscribe, () => true, () => false);
   // The date list scrolls inside its box: bring the preselected date (from the tour page) into view, once.
@@ -93,9 +98,9 @@ export function BookingForm({
   // One shape for both modes: the chosen day, and the quote for it.
   const chosen = privateTour ? (date ? { date } : undefined) : group;
   const q = privateTour
-    ? privateQuote(privateTour.pricing, party, pricing)
+    ? privateQuote(privateTour.pricing, party, pricing, addons)
     : group
-      ? quote(group.unitPriceVnd, party, pricing)
+      ? quote(group.unitPriceVnd, party, pricing, addons)
       : null;
   const guestsOutOfRange = Boolean(privateTour) && q === null;
   // Discount (D6): checked on the server for the preview, and again when the seats are held.
@@ -311,6 +316,37 @@ export function BookingForm({
               />
               {message("infants")}
             </div>
+            {addons.length > 0 && (
+              <fieldset className="col-span-full grid gap-2" data-testid="addons">
+                <legend className="text-sm font-medium">{t.addonsTitle}</legend>
+                {addons.map((a) => {
+                  const price = formatVnd(a.vnd, locale);
+                  const id = `booking-addon-${a.id}`;
+                  return a.per === "booking" ? (
+                    <label key={a.id} className="flex items-center gap-2 text-sm">
+                      <input type="checkbox" id={id} name={`addon_${a.id}`} value="1" checked={(chosen_[a.id] ?? 0) > 0} onChange={(e) => setChosen({ ...chosen_, [a.id]: e.target.checked ? 1 : 0 })} />
+                      {a.name[locale]} · {t.addonPerBooking(price)}
+                    </label>
+                  ) : (
+                    <div key={a.id} className="flex items-center gap-2 text-sm">
+                      <Input
+                        id={id}
+                        name={`addon_${a.id}`}
+                        type="number"
+                        min={0}
+                        max={adults + children}
+                        value={chosen_[a.id] ?? 0}
+                        onChange={(e) => setChosen({ ...chosen_, [a.id]: Math.max(0, Number(e.target.value) || 0) })}
+                        className="w-20"
+                      />
+                      <label htmlFor={id}>
+                        {a.name[locale]} · {t.addonPerPerson(price)}
+                      </label>
+                    </div>
+                  );
+                })}
+              </fieldset>
+            )}
             {pricing.singleSupplementVnd > 0 && (
               <div>
                 <Label htmlFor="booking-singleRooms">{t.singleRooms}</Label>
@@ -434,6 +470,12 @@ export function BookingForm({
                   <dd>{formatVnd(infants * q.infantPriceVnd, locale)}</dd>
                 </div>
               )}
+              {q.addons.map((a) => (
+                <div key={a.id} className="flex justify-between" data-testid="addon-line">
+                  <dt>{t.addonLine(a.name[locale], a.qty)}</dt>
+                  <dd>{formatVnd(a.vnd, locale)}</dd>
+                </div>
+              ))}
               {q.singleRooms > 0 && (
                 <div className="flex justify-between">
                   <dt>{t.singleLine(q.singleRooms)}</dt>

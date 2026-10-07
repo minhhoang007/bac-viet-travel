@@ -159,3 +159,20 @@ test("traveller details: the guest fills one row per person on the booking page;
   const a11y = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
   expect(a11y.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id)).toEqual([]);
 });
+
+test("add-ons: the guest adds hotel pick-up; the quote and the held booking include it", async ({ page }) => {
+  await page.goto("/tours/ha-long-day-trip/book");
+  await expect(page.locator("form[data-hydrated]")).toBeVisible();
+  const total = page.getByTestId("total");
+  const before = Number((await total.innerText()).replace(/\D/g, ""));
+  await page.getByTestId("addons").getByRole("checkbox", { name: /Đón tận khách sạn/ }).check();
+  await expect(page.getByTestId("addon-line")).toContainText("Đón tận khách sạn");
+  await expect.poll(async () => Number((await total.innerText()).replace(/\D/g, ""))).toBe(before + 200_000);
+  await page.getByLabel("Họ tên").fill("Ngô Bình");
+  await page.getByLabel("Email").fill("binh@example.com");
+  await page.getByLabel("Số điện thoại / WhatsApp").fill("0944555666");
+  await page.getByRole("checkbox", { name: /Tôi đồng ý/ }).check();
+  await page.getByRole("button", { name: "Giữ chỗ 15 phút" }).click();
+  await expect(page.locator("[data-booking-status=held]")).toBeVisible();
+  await expect(page.getByText(/Đón tận khách sạn/)).toBeVisible();
+});

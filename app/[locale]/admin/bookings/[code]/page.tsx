@@ -85,6 +85,7 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
             {row(g.children, b.children)}
             {row(g.infants, b.infants)}
             {b.singleRooms > 0 && row(g.singleRooms, b.singleRooms)}
+            {b.addons.length > 0 && row(g.addonsTitle, b.addons.map((a) => `${g.addonLine(a.name[locale], a.qty)} (${formatVnd(a.vnd, locale)})`).join(", "))}
           </dl>
         </section>
         <section className="rounded-lg border border-border p-4">

@@ -11,6 +11,7 @@ describe("booking rules", () => {
       infantPriceVnd: 0,
       singleSupplementVnd: 0,
       singleRooms: 0,
+      addons: [],
       totalVnd: 5_198_000,
       depositVnd: 1_560_000,
     });
@@ -25,6 +26,7 @@ describe("booking rules", () => {
       infantPriceVnd: 200_000,
       singleSupplementVnd: 900_000,
       singleRooms: 1,
+      addons: [],
       totalVnd: 4_000_000 + 1_000_000 + 200_000 + 900_000,
       depositVnd: 1_830_000,
     });
@@ -59,5 +61,20 @@ describe("booking rules", () => {
     expect(tooMany.error?.issues[0]).toMatchObject({ path: ["children"], message: "too_many" });
     const bad = bookingInputSchema.safeParse({ ...base, email: "x", phone: "abc", adults: "0" });
     expect(bad.error?.issues.map((i) => i.path[0]).sort()).toEqual(["adults", "email", "phone"]);
+  });
+});
+
+describe("add-ons (B6)", () => {
+  const addons = [
+    { id: "pickup", name: { vi: "Đón khách sạn", en: "Hotel pick-up" }, vnd: 200_000, per: "booking" as const },
+    { id: "bike", name: { vi: "Xe máy", en: "Motorbike" }, vnd: 150_000, per: "person" as const },
+  ];
+  it("per booking at most once, per person at most one per traveller (infants excluded), unknown ids ignored", () => {
+    const q = quote(1_000_000, { adults: 2, children: 1, infants: 1, addons: { pickup: 3, bike: 9, nope: 1 } }, undefined, addons);
+    expect(q.addons).toEqual([
+      { id: "pickup", name: addons[0]!.name, qty: 1, vnd: 200_000 },
+      { id: "bike", name: addons[1]!.name, qty: 3, vnd: 450_000 },
+    ]);
+    expect(q.totalVnd).toBe(2_000_000 + 750_000 + 650_000);
   });
 });

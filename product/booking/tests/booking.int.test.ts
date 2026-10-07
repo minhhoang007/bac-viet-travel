@@ -253,3 +253,20 @@ describe("discount admin (D6)", () => {
     expect((await admin.list()).map((r) => [r.code, r.used])).toEqual([["LIST10", 1]]);
   });
 });
+
+describe("add-ons (B6)", () => {
+  it("adds chosen add-ons to the total and stores them with names and line prices", async () => {
+    const withAddons = createBookingService({
+      db,
+      logger,
+      rateLimiter: createMemoryRateLimiter({ max: 1_000, windowMs: 60_000 }),
+      tourPrice: async () => 2_000_000,
+      tourAddons: async () => [{ id: "pickup", name: { vi: "Đón khách sạn", en: "Hotel pick-up" }, vnd: 200_000, per: "booking" }],
+      now: () => clock,
+    });
+    const d = await departure();
+    expect((await withAddons.hold(guest(d.id, { adults: "2", addon_pickup: "1", addon_unknown: "5" }), "ip")).status).toBe("held");
+    const [b] = await db.select().from(bookings);
+    expect(b).toMatchObject({ totalVnd: 4_200_000, addons: [{ id: "pickup", name: { vi: "Đón khách sạn", en: "Hotel pick-up" }, qty: 1, vnd: 200_000 }] });
+  });
+});
