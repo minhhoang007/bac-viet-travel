@@ -27,7 +27,7 @@ export function MobileNav({
       <SheetTrigger className="inline-flex size-10 items-center justify-center rounded-full border border-border lg:hidden" aria-label={labels.open}>
         <MenuIcon className="size-5" aria-hidden="true" />
       </SheetTrigger>
-      <SheetContent side="right" closeLabel={labels.close} className="w-80 overflow-y-auto">
+      <SheetContent side="right" closeLabel={labels.close} className="w-[85vw] max-w-80 overflow-y-auto">
         <SheetTitle className="px-4 pt-4 font-heading text-xl">{labels.title}</SheetTitle>
         <nav className="grid gap-1 px-2 pb-6" data-testid="mobile-menu">
           <p className="px-3 pt-2 text-xs font-medium tracking-widest text-muted-foreground uppercase">{labels.destinations}</p>
@@ -46,10 +46,10 @@ export function MobileNav({
             {locale.label}
           </a>
           <div className="mt-4 grid gap-2 px-2">
-            <a href={book.href} className="inline-flex h-11 items-center justify-center rounded-full bg-primary font-medium text-primary-foreground">
+            <a href={book.href} className="type-label inline-flex h-11 items-center justify-center rounded-md bg-primary text-primary-foreground">
               {book.label}
             </a>
-            <a href={phone.href} className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-border" aria-label={`${labels.call} ${phone.label}`}>
+            <a href={phone.href} className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-border" aria-label={`${labels.call} ${phone.label}`}>
               <Phone className="size-4" aria-hidden="true" />
               {phone.label}
             </a>

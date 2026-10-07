@@ -148,7 +148,7 @@ export default async function TourPage({ params }: Props) {
 
       <Container className="grid gap-12 pb-28 pt-10 lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-16 lg:pb-24">
         <div className="min-w-0">
-          <dl className="type-body grid grid-cols-2 gap-6 border-y border-border py-6 sm:grid-cols-4" data-testid="tour-facts">
+          <dl className="type-body grid grid-cols-2 gap-6 border-y border-border py-6" data-testid="tour-facts">
             {facts.map(({ icon: Icon, label, value }) => (
               <div key={label}>
                 <dt className="type-label flex items-center gap-1.5 text-muted-foreground">

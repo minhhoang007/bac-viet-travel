@@ -223,7 +223,7 @@ const vi = {
     formHint: "Chúng tôi phản hồi qua email trong giờ làm việc.",
   },
   notFound: {
-    text: "Có thể đường dẫn đã thay đổi. Bạn thử bắt đầu từ một điểm đến:",
+    text: "Hoặc bắt đầu từ một điểm đến:",
     search: "Xem tất cả tour",
   },
 };
@@ -437,7 +437,7 @@ const en: ProductContent = {
     formHint: "We reply by email during business hours.",
   },
   notFound: {
-    text: "The link may have changed. Try starting from a destination:",
+    text: "Or start from a destination:",
     search: "See all tours",
   },
   footer: {

@@ -18,7 +18,7 @@ type Props = { params: Promise<{ locale: Locale }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
   const c = getAboutContent(locale);
-  return createMetadata(seoSite(getPublicEnv().NEXT_PUBLIC_SITE_URL), { title: c.title, description: c.description, path: "/about", locale, image: "/tours/hanoi-1.jpg" });
+  return createMetadata(seoSite(getPublicEnv().NEXT_PUBLIC_SITE_URL), { title: c.metaTitle, description: c.description, path: "/about", locale, image: "/tours/hanoi-1.jpg" });
 }
 
 const initials = (name: string) =>

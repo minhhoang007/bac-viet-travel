@@ -50,7 +50,7 @@ export function TourGallery({ images, title, locale }: { images: string[]; title
             key={src}
             type="button"
             onClick={(e) => open(i, e.currentTarget)}
-            className={cn("relative block overflow-hidden focus-visible:outline-2 focus-visible:outline-offset-2", i === 0 ? cn("aspect-[4/3]", big) : cn("hidden aspect-[4/3] sm:block", shown.length === 2 && "sm:aspect-[16/9]"))}
+            className={cn("relative block overflow-hidden focus-visible:outline-2 focus-visible:outline-offset-2", i === 0 ? cn("aspect-[4/3]", big) : cn("hidden aspect-[4/3] sm:block", shown.length === 2 && "sm:aspect-[16/9]", shown.length >= 3 && "sm:aspect-auto"))}
             aria-label={labels.photo(i + 1, n)}
           >
             <Image src={src} alt={i === 0 ? title : ""} fill priority={i === 0} sizes={i === 0 ? "(min-width: 640px) 50vw, 100vw" : "25vw"} className="object-cover transition duration-500 hover:scale-105" />

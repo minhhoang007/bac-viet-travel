@@ -166,7 +166,7 @@ export function BookingForm({
             </div>
           </div>
         )}
-        <h2 className="font-heading font-normal">{t.summary}</h2>
+        <h2 className="font-heading text-xl font-normal">{t.summary}</h2>
         {chosen && q && discount.discounted && (
           <QuoteSummary t={t} locale={locale} date={chosen.date} party={party} childPercent={pricing.childPercent} q={q} discounted={discount.discounted} />
         )}

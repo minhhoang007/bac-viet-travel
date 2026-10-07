@@ -28,7 +28,7 @@ export function TourListing({ locale, tours, filters, destination }: { locale: L
 
   return (
     <div className="grid gap-8 lg:grid-cols-[16rem_minmax(0,1fr)]">
-      <form action={base} method="get" aria-label={t.title} data-testid="tour-filters" className="grid h-fit grid-cols-2 gap-3 border border-border p-4 lg:sticky lg:top-24 lg:grid-cols-1">
+      <form action={base} method="get" aria-label={t.title} data-testid="tour-filters" className="grid h-fit grid-cols-2 gap-3 border border-border px-4 py-1 lg:sticky lg:top-24 lg:grid-cols-1 lg:py-4">
         <p className="col-span-2 hidden items-center gap-2 font-semibold lg:col-span-1 lg:flex">
           <SlidersHorizontal className="size-4" aria-hidden="true" />
           {t.title}

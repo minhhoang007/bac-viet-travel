@@ -5,6 +5,8 @@ import type { Locale } from "@/config/app";
 
 const vi = {
   title: "Giới thiệu Bắc Việt Travel",
+  /** <title> (the site name is appended): without repeating the brand. */
+  metaTitle: "Về chúng tôi",
   description: "Công ty lữ hành tại Hà Nội, chuyên tour ghép và tour riêng Hạ Long, Ninh Bình, Sapa cho khách Việt và quốc tế.",
   intro:
     "Tour ghép và tour riêng tới Hạ Long, Ninh Bình và Sapa, do chính chúng tôi vận hành cùng hướng dẫn viên người địa phương.",
@@ -37,6 +39,7 @@ type AboutContent = typeof vi;
 
 const en: AboutContent = {
   title: "About Bắc Việt Travel",
+  metaTitle: "About us",
   description: "A Hanoi tour operator running group and private tours to Ha Long Bay, Ninh Binh and Sapa for Vietnamese and international travellers.",
   intro:
     "Group and private tours to Ha Long Bay, Ninh Binh and Sapa, run by us from Hanoi with local guides.",
