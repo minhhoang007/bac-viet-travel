@@ -4,6 +4,9 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+### Fixed — random E2E timeouts in CI
+- Pages sometimes never finished loading under `next start`: one `/_next/image` variant stopped answering (requests for the same variant wait on the first) and every page using it timed out. The CI E2E build sets `E2E_UNOPTIMIZED_IMAGES=1` (`next.config.ts`: `images.unoptimized`), so images are served as files there. Production (Vercel) is unchanged. Found with Playwright traces on Bắc Việt.
+
 ### Added — agent setup
 - `.claude/settings.json`: allowed read-only and check commands (pnpm checks, git/gh reads), asked before `db:migrate` / branch deletion / hard reset, denied force-push, repo visibility/deletion and reading `.env.local` / `.env.vercel` / `.env.production*`.
 - Hook: every TypeScript file Claude edits is linted at once (`.claude/hooks/check-edited.mjs`); problems go back to Claude.
