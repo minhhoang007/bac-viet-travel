@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { setRequestLocale } from "next-intl/server";
-import { requireAdmin } from "@/app/_lib/admin";
+import { requirePermission } from "@/app/_lib/staff";
 import { localePath } from "@/core/i18n/routing";
 import type { Locale } from "@/config/app";
 import type { BookingFilter } from "@/product/booking/admin";
@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: L
 export default async function AdminBookingsPage({ params, searchParams }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const { container } = await requireAdmin();
+  const { container, allowed } = await requirePermission("bookings.view");
   const service = container.app!.product.bookingAdmin;
   const c = getBookingAdminContent(locale);
   const sp = await searchParams;
@@ -48,9 +48,11 @@ export default async function AdminBookingsPage({ params, searchParams }: Props)
     <div className="grid gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">{c.bookings}</h1>
-        <a href={localePath(locale, "/admin/bookings/new")} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
-          {c.newBooking}
-        </a>
+        {allowed("bookings.edit") && (
+          <a href={localePath(locale, "/admin/bookings/new")} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
+            {c.newBooking}
+          </a>
+        )}
       </div>
 
       <section className="grid gap-3 sm:grid-cols-4" data-testid="booking-stats">

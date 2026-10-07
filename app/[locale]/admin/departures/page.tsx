@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { setRequestLocale } from "next-intl/server";
-import { requireAdmin } from "@/app/_lib/admin";
+import { requirePermission } from "@/app/_lib/staff";
 import { addDepartures, updateDeparture } from "@/app/actions/booking-admin";
 import { Button } from "@/components/ui/button";
 import { localePath } from "@/core/i18n/routing";
@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: L
 export default async function AdminDeparturesPage({ params, searchParams }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const { container } = await requireAdmin();
+  const { container } = await requirePermission("departures");
   const c = getBookingAdminContent(locale);
   const sp = await searchParams;
   const tours = (await getTours()).list(locale);

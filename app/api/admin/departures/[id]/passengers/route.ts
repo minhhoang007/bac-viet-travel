@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/app/_lib/admin";
+import { requirePermission } from "@/app/_lib/staff";
 import { getBookingAdminContent } from "@/product/booking/admin-content";
 
 /** CSV cell: quoted, quotes doubled; a leading = + - @ is neutralised (spreadsheet formula injection). */
@@ -10,7 +10,7 @@ const cell = (v: string | number | null) => {
 /** Passenger list of one departure as CSV (H1), UTF-8 with BOM so Excel shows Vietnamese correctly. Admins only. */
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { container } = await requireAdmin();
+  const { container } = await requirePermission("bookings.view");
   const found = await container.app!.product.bookingAdmin.passengers(id);
   if (!found) return new Response("Not found", { status: 404 });
   const locale = new URL(request.url).searchParams.get("locale") === "en" ? "en" : "vi";

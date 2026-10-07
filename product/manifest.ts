@@ -17,6 +17,8 @@ import { createBookingService } from "./booking/service";
 import { DESTINATIONS, getTourCatalog } from "./tours/catalog";
 import { tourProblems } from "./tours/document";
 import { createInquiryService } from "./tours/inquiry";
+import { can, type Permission, type StaffRole } from "./staff/permissions";
+import { createStaffService } from "./staff/service";
 import { createTourSource, TOUR_CONTENT_TYPE, TOURS_CACHE_TAG } from "./tours/source";
 
 /** The only file bootstrap/ imports from product/. Declares product services, menu, exporters and jobs. */
@@ -100,6 +102,8 @@ export function createProduct(db: Db, ctx: ProductContext) {
   };
 
   const discounts = createDiscountAdmin({ db, audit: ctx.audit, now: ctx.now });
+  const staff = createStaffService({ db, audit: ctx.audit });
+  roleLookup = staff.roleOf;
   const reports = createReports({ db });
   // Tour enquiry form: shared limiter (Redis when configured), like the starter contact form; the action checks
   // that the email module is on before using it.
@@ -110,7 +114,7 @@ export function createProduct(db: Db, ctx: ProductContext) {
     to: () => getEnv().extra.CONTACT_TO_EMAIL ?? "",
     tourTitles: async (locale) => (await tours.catalog()).list(locale).map((t) => t.title),
   });
-  return { adminOverview: bookingOverview(bookingAdmin), services: { tours, booking, deposits, bookingAdmin, feedback, discounts, reports, inquiry, paymentsSandbox: ctx.payments.vnpay?.sandbox ?? false }, exporters, jobs };
+  return { adminOverview: bookingOverview(bookingAdmin), services: { tours, booking, deposits, bookingAdmin, feedback, discounts, reports, inquiry, staff, paymentsSandbox: ctx.payments.vnpay?.sandbox ?? false }, exporters, jobs };
 }
 
 export interface ProductNavItem {
@@ -118,9 +122,17 @@ export interface ProductNavItem {
   label: Record<Locale, string>;
   /** productAdminNav only: roles besides admin that see the entry, e.g. ["editor"] for content pages. */
   roles?: readonly ("editor" | "admin")[];
-  /** productAdminNav only: narrows `roles` per user, e.g. a product staff permission (async allowed). */
+  /** productAdminNav only: narrows `roles` per user (starter v1.15): here, the staff permission of the page. */
   allow?: (user: { id: string; role: "user" | "editor" | "admin" }) => boolean | Promise<boolean>;
 }
+
+/**
+ * Staff role lookup for the admin menu, set by createProduct (which runs when bootstrap builds the container, before
+ * any admin page renders): the menu entries below cannot import the container without an import cycle.
+ */
+let roleLookup: ((userId: string) => Promise<StaffRole | null>) | null = null;
+const staffRoleOf = async (userId: string): Promise<StaffRole | null> => (roleLookup ? roleLookup(userId) : null);
+const staffMay = (permission: Permission) => async (user: { id: string; role: string }) => can(user, await staffRoleOf(user.id), permission);
 
 /** Dashboard menu entries for product pages (href without locale prefix). */
 export const productNav: ProductNavItem[] = [];
@@ -137,11 +149,14 @@ export async function sitemapPaths({ content }: SitemapContext): Promise<string[
 /** Admin menu entries (starter rc.11). */
 export const productAdminNav: ProductNavItem[] = [
   // Content: marketing (editor role) writes tours; publishing stays with admins (content workflow).
-  { href: "/admin/tours", label: { vi: "Tour", en: "Tours" }, roles: ["editor"] },
-  { href: "/admin/bookings", label: { vi: "Đơn đặt tour", en: "Bookings" } },
-  { href: "/admin/discounts", label: { vi: "Mã giảm giá", en: "Discount codes" } },
-  { href: "/admin/departures", label: { vi: "Lịch khởi hành", en: "Departures" } },
-  { href: "/admin/reports", label: { vi: "Báo cáo", en: "Reports" } },
+  // Sales staff do bookings only, not tour content.
+  { href: "/admin/tours", label: { vi: "Tour", en: "Tours" }, roles: ["editor"], allow: async (u) => (await staffRoleOf(u.id)) !== "sale" },
+  // Booking pages: editors with a staff role (H2); each page checks the same permission (app/_lib/staff.ts).
+  { href: "/admin/bookings", label: { vi: "Đơn đặt tour", en: "Bookings" }, roles: ["editor"], allow: staffMay("bookings.view") },
+  { href: "/admin/discounts", label: { vi: "Mã giảm giá", en: "Discount codes" }, roles: ["editor"], allow: staffMay("discounts") },
+  { href: "/admin/departures", label: { vi: "Lịch khởi hành", en: "Departures" }, roles: ["editor"], allow: staffMay("departures") },
+  { href: "/admin/reports", label: { vi: "Báo cáo", en: "Reports" }, roles: ["editor"], allow: staffMay("reports") },
+  { href: "/admin/staff", label: { vi: "Nhân viên", en: "Staff" } },
 ];
 
 export type Product = ReturnType<typeof createProduct>;

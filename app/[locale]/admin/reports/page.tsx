@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { setRequestLocale } from "next-intl/server";
-import { requireAdmin } from "@/app/_lib/admin";
+import { requirePermission } from "@/app/_lib/staff";
 import { getTours } from "@/app/_lib/tours";
 import { Button } from "@/components/ui/button";
 import type { Locale } from "@/config/app";
@@ -20,7 +20,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function ReportsPage({ params, searchParams }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const { container } = await requireAdmin();
+  const { container } = await requirePermission("reports");
   const a = getBookingAdminContent(locale);
   const t = a.reports;
   const thisMonth = vietnamToday(new Date()).slice(0, 7);

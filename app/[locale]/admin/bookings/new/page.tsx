@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { setRequestLocale } from "next-intl/server";
 import { createManualBooking } from "@/app/actions/booking-admin";
-import { requireAdmin } from "@/app/_lib/admin";
+import { requirePermission } from "@/app/_lib/staff";
 import { localePath } from "@/core/i18n/routing";
 import type { Locale } from "@/config/app";
 import { getBookingAdminContent } from "@/product/booking/admin-content";
@@ -20,7 +20,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function NewManualBookingPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const { container } = await requireAdmin();
+  const { container } = await requirePermission("bookings.edit");
   const c = getBookingAdminContent(locale);
   const today = vietnamToday(new Date());
   const tours = (await getTours()).list(locale);

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { setRequestLocale } from "next-intl/server";
-import { requireAdmin } from "@/app/_lib/admin";
+import { requirePermission } from "@/app/_lib/staff";
 import { createDiscount, setDiscountActive, updateDiscount } from "@/app/actions/discounts";
 import { localePath } from "@/core/i18n/routing";
 import { getTours } from "@/app/_lib/tours";
@@ -22,7 +22,7 @@ const input = "h-9 w-full min-w-0 rounded-md border border-border bg-background 
 export default async function DiscountsPage({ params, searchParams }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const { container } = await requireAdmin();
+  const { container } = await requirePermission("discounts");
   const rows = await container.app!.product.discounts.list();
   const tours = (await getTours()).list(locale);
   const c = getDiscountAdminContent(locale);

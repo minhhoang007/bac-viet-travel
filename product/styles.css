@@ -43,14 +43,6 @@
   line-height: 1.85;
 }
 
-/*
- * Markdown bodies render inside display:contents wrappers (div.contents), which the starter's
- * `.prose-blog > * + *` spacing does not reach. TODO(starter): space wrapped children there too.
- */
-.prose-blog .contents > * + * {
-  margin-top: 1.25em;
-}
-
 /* The opening paragraph of a post reads as a lead, in the heading serif. */
 .blog-post .prose-blog > p:first-child,
 .blog-post .prose-blog > .contents:first-child > p:first-child {
