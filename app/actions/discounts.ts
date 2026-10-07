@@ -1,42 +1,23 @@
 "use server";
 
-import { redirect, unstable_rethrow } from "next/navigation";
-import { z } from "zod";
-import { requireAdmin } from "@/app/_lib/admin";
+import { adminAction } from "@/app/_lib/admin-action";
 import { getBooking } from "@/app/_lib/booking";
-import { localePath } from "@/core/i18n/routing";
 import { headers } from "next/headers";
 import { clientKeyFrom } from "@/app/_lib/client-ip";
 import type { Discount } from "@/product/booking/rules";
 
-const locale = z.enum(["vi", "en"]).catch("vi");
-
 /** Thin admin actions (D6): admin guard → discount service (audited) → back to the list with a result flag. */
 export async function createDiscount(formData: FormData): Promise<void> {
-  const ctx = await requireAdmin();
-  const l = locale.parse(formData.get("locale"));
-  let query = "result=failed";
-  try {
+  await adminAction(formData, "/admin/discounts", "discounts.action_failed", async (ctx) => {
     const result = await ctx.container.app!.product.discounts.create(ctx.user, Object.fromEntries(formData));
-    query = result.status === "created" ? "result=done" : result.status === "taken" ? "result=taken" : `result=invalid&field=${encodeURIComponent(Object.keys(result.fieldErrors)[0] ?? "")}`;
-  } catch (error) {
-    unstable_rethrow(error);
-    ctx.container.logger.warn("discounts.action_failed", { error });
-  }
-  redirect(localePath(l, `/admin/discounts?${query}`));
+    return result.status === "created" ? "done" : result.status === "taken" ? "taken" : `invalid&field=${encodeURIComponent(Object.keys(result.fieldErrors)[0] ?? "")}`;
+  });
 }
 
 export async function setDiscountActive(formData: FormData): Promise<void> {
-  const ctx = await requireAdmin();
-  const l = locale.parse(formData.get("locale"));
-  let ok = false;
-  try {
-    ok = await ctx.container.app!.product.discounts.setActive(ctx.user, String(formData.get("id") ?? ""), formData.get("active") === "1");
-  } catch (error) {
-    unstable_rethrow(error);
-    ctx.container.logger.warn("discounts.action_failed", { error });
-  }
-  redirect(localePath(l, `/admin/discounts?result=${ok ? "done" : "failed"}`));
+  await adminAction(formData, "/admin/discounts", "discounts.action_failed", async (ctx) =>
+    (await ctx.container.app!.product.discounts.setActive(ctx.user, String(formData.get("id") ?? ""), formData.get("active") === "1")) ? "done" : "failed",
+  );
 }
 
 /** Booking form preview: what a code takes off this tour's total today (null = not valid). Public, read-only. */
