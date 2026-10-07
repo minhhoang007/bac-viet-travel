@@ -4,10 +4,15 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-10-07
+
 ### Added — guardrails against growth
 - `pnpm check` also runs `pnpm knip` (unused files, dependencies, unlisted dependencies; config `knip.json`) and `pnpm dup` (jscpd copy-paste, max 1% duplicated; config `.jscpd.json`). `pnpm knip:exports` reports unused exports without failing.
 - ESLint `max-lines`: 450 lines per file (blank lines and comments not counted; `components/ui`, `*content.ts`, tests and migrations exempt).
 - Skill `refactor` (`.claude/skills/refactor`): scan → choose → risk levels R0–R4 → small verified commits; R4 (money, payments, auth, schema) never merged without the owner.
+
+### Changed — CI minutes
+- CI runs for `main` and for PRs that target `main` only (stacked PRs are tested when retargeted to `main`), skips docs-only changes, and caches Playwright browsers.
 
 ## [1.8.0] - 2026-10-07
 
