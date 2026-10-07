@@ -47,7 +47,7 @@ export function SiteHeader({ locale }: { locale: Locale }) {
             <Logo size="sm" />
           </a>
 
-          <nav aria-label={h.nav} className="hidden items-center gap-6 whitespace-nowrap text-xs font-medium uppercase tracking-[0.12em] lg:flex xl:gap-8">
+          <nav aria-label={h.nav} className="type-label hidden items-center gap-6 whitespace-nowrap tracking-[0.12em] lg:flex xl:gap-8">
             {/* Opens on hover and on keyboard focus (focus-within), links stay real links. */}
             <div className="group relative">
               <a href={href("/tours")} className="inline-flex items-center gap-1 py-2 hover:text-primary">
@@ -86,7 +86,7 @@ export function SiteHeader({ locale }: { locale: Locale }) {
             <a href={telUrl()} aria-label={h.call} className="inline-flex size-10 items-center justify-center rounded-full border border-border 2xl:hidden">
               <Phone className="size-4" aria-hidden="true" />
             </a>
-            <ButtonLink href={href("/tours")} className="hidden px-6 text-xs uppercase tracking-[0.16em] sm:inline-flex">
+            <ButtonLink href={href("/tours")} className="type-label hidden px-6 sm:inline-flex">
               {h.book}
             </ButtonLink>
             <MobileNav

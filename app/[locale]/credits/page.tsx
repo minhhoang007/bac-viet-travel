@@ -19,7 +19,7 @@ export default async function CreditsPage({ params }: Props) {
   const c = getProductContent(locale).credits;
   return (
     <Container className="max-w-3xl py-14">
-      <h1 className="text-3xl font-bold">{c.title}</h1>
+      <h1 className="font-heading type-h1">{c.title}</h1>
       <p className="mt-2 text-muted-foreground">{c.text}</p>
       <ul className="mt-8 grid gap-4 sm:grid-cols-2">
         {photoCredits.map((p) => (

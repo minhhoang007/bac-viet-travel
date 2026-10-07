@@ -8,7 +8,8 @@ import { DESTINATIONS, type Destination } from "../tours/destinations";
 import type { Tour } from "../tours/model";
 import { TourCard } from "./tour-card";
 
-const select = "h-10 w-full rounded-md border border-border bg-background px-3 text-sm";
+// 16 px on phones: iOS Safari zooms into smaller fields on focus.
+const select = "h-10 w-full rounded-md border border-border bg-background px-3 text-base md:text-sm";
 
 /**
  * Tour grid with a filter form (GET: the URL keeps the filters and can be shared). On a destination page

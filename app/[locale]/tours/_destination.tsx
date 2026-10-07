@@ -62,11 +62,11 @@ export function DestinationPage({ locale, destination, tours }: { locale: Locale
         )}
         <div className="absolute inset-0 -z-10 bg-gradient-to-t from-background via-black/30 to-black/30" />
         <Container className="pb-12 pt-32 [text-shadow:0_1px_14px_rgb(0_0_0/0.55)] sm:pt-40">
-          <a href={localePath(locale, "/tours")} className="text-xs uppercase tracking-[0.2em] text-white/90 underline underline-offset-8">
+          <a href={localePath(locale, "/tours")} className="type-label text-white/90 underline underline-offset-8">
             ← {c.tours.allDestinationsLink}
           </a>
-          <h1 className="mt-5 font-heading text-5xl font-normal leading-tight sm:text-6xl lg:text-7xl">{c.tours.destinationTitle(d.name)}</h1>
-          <p className="mt-3 max-w-2xl text-lg text-white/90">{d.tagline}</p>
+          <h1 className="mt-5 font-heading type-display">{c.tours.destinationTitle(d.name)}</h1>
+          <p className="mt-4 max-w-2xl type-lead text-white/90">{d.tagline}</p>
         </Container>
       </section>
       <Container className="py-10">

@@ -19,7 +19,7 @@ export function Logo({ size = "md" }: { size?: "sm" | "md" }) {
       <LogoMark className={size === "sm" ? "size-8" : "size-10"} />
       <span className="grid leading-none">
         <span className={`font-heading font-medium tracking-[0.28em] ${size === "sm" ? "text-lg" : "text-2xl"}`}>BẮC VIỆT</span>
-        <span className="mt-1.5 text-[9px] font-medium tracking-[0.5em]" style={{ color: SAND }}>
+        <span className="mt-1.5 text-[11px] font-medium tracking-[0.42em]" style={{ color: SAND }}>
           TRAVEL
         </span>
       </span>

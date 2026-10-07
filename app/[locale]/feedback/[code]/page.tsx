@@ -28,7 +28,7 @@ export default async function FeedbackPage({ params, searchParams }: Props) {
   if (!found || !isSold(found.booking.status)) {
     return (
       <Container className="max-w-xl py-16">
-        <h1 className="text-2xl font-heading font-normal">{t.title}</h1>
+        <h1 className="font-heading type-h2">{t.title}</h1>
         <p className="mt-4" data-feedback="not-found">
           {t.notFound}
         </p>
@@ -42,12 +42,12 @@ export default async function FeedbackPage({ params, searchParams }: Props) {
   if (feedback) {
     return (
       <Container className="max-w-xl py-16">
-        <h1 className="text-2xl font-heading font-normal">{t.thanksTitle}</h1>
+        <h1 className="font-heading type-h2">{t.thanksTitle}</h1>
         <p className="mt-3" data-feedback="saved">
           {done ? t.thanks : t.already}
         </p>
         {feedback.rating >= 4 && review && (
-          <p className="mt-6 bg-muted p-5 text-sm">
+          <p className="mt-6 bg-muted p-5 type-body">
             {t.reviewAsk}{" "}
             <a href={review} target="_blank" rel="noopener noreferrer" className="font-medium text-primary underline underline-offset-4" data-testid="google-review">
               {t.reviewLink}
@@ -60,7 +60,7 @@ export default async function FeedbackPage({ params, searchParams }: Props) {
 
   return (
     <Container className="max-w-xl py-12">
-      <h1 className="text-2xl font-heading font-normal">{t.title}</h1>
+      <h1 className="font-heading type-h2">{t.title}</h1>
       <p className="mt-2 text-muted-foreground">
         {tour?.title ?? departure.tourSlug} · <span className="capitalize">{formatDay(departure.date, locale)}</span>
       </p>
@@ -87,12 +87,12 @@ export default async function FeedbackPage({ params, searchParams }: Props) {
         </fieldset>
         <label className="grid gap-1">
           <span className="font-medium">{t.comment}</span>
-          <textarea name="comment" rows={5} maxLength={2000} className="rounded-md border border-border bg-background p-3 text-sm" />
+          <textarea name="comment" rows={5} maxLength={2000} className="rounded-md border border-border bg-background p-3 text-base md:text-sm" />
         </label>
         <Button type="submit" className="w-fit" data-testid="feedback-send">
           {t.send}
         </Button>
-        <p className="text-xs text-muted-foreground">{t.private}</p>
+        <p className="type-small text-muted-foreground">{t.private}</p>
       </form>
     </Container>
   );

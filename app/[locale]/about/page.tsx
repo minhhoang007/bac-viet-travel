@@ -49,15 +49,15 @@ export default async function AboutPage({ params }: Props) {
         <Image src="/tours/hanoi-1.jpg" alt="" fill priority sizes="100vw" className="-z-10 object-cover" />
         <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black/75 via-black/45 to-black/25" />
         <Container className="max-w-4xl pb-12 pt-24 sm:pt-32">
-          <h1 className="text-4xl font-heading font-normal [text-wrap:balance] sm:text-5xl">{c.title}</h1>
-          <p className="mt-4 max-w-3xl text-lg text-white/90">{c.intro}</p>
+          <h1 className="font-heading type-h1">{c.title}</h1>
+          <p className="mt-4 max-w-2xl type-lead text-white/90">{c.intro}</p>
         </Container>
       </section>
 
       <Container className="max-w-5xl py-14">
         <section className="grid items-center gap-10 md:grid-cols-2" aria-labelledby="about-story">
           <div>
-            <h2 id="about-story" className="text-2xl font-heading font-normal sm:text-3xl">
+            <h2 id="about-story" className="font-heading type-h2">
               {c.storyTitle}
             </h2>
             {c.story.map((s) => (
@@ -72,14 +72,14 @@ export default async function AboutPage({ params }: Props) {
         </section>
 
         <section className="mt-16" aria-labelledby="about-why">
-          <h2 id="about-why" className="text-2xl font-heading font-normal sm:text-3xl">
+          <h2 id="about-why" className="font-heading type-h2">
             {c.whyTitle}
           </h2>
           <ul className="mt-8 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
             {c.why.map((w) => (
               <li key={w.title} className="border-t-2 border-primary pt-4">
-                <h3 className="font-semibold">{w.title}</h3>
-                <p className="mt-2 text-sm text-muted-foreground">{w.text}</p>
+                <h3 className="font-sans text-lg font-medium">{w.title}</h3>
+                <p className="mt-2 type-body text-muted-foreground">{w.text}</p>
               </li>
             ))}
           </ul>
@@ -87,7 +87,7 @@ export default async function AboutPage({ params }: Props) {
 
         {/* Placeholder names until the company adds its real team and photos (product/about.ts). */}
         <section className="mt-16" aria-labelledby="about-team" data-demo="team">
-          <h2 id="about-team" className="text-2xl font-heading font-normal sm:text-3xl">
+          <h2 id="about-team" className="font-heading type-h2">
             {c.teamTitle}
           </h2>
           <ul className="mt-8 grid gap-6 sm:grid-cols-3">
@@ -98,7 +98,7 @@ export default async function AboutPage({ params }: Props) {
                 </span>
                 <span>
                   <span className="block font-semibold">{m.name}</span>
-                  <span className="text-sm text-muted-foreground">{m.role}</span>
+                  <span className="type-small text-muted-foreground">{m.role}</span>
                 </span>
               </li>
             ))}
@@ -107,7 +107,7 @@ export default async function AboutPage({ params }: Props) {
 
         <section className="mt-16 grid gap-6 md:grid-cols-[1.2fr_1fr]" aria-labelledby="about-legal">
           <div className="border border-border p-6" data-testid="licence">
-            <h2 id="about-legal" className="flex items-center gap-2 text-xl font-heading font-normal">
+            <h2 id="about-legal" className="flex items-center gap-2 font-heading type-h3">
               <BadgeCheck aria-hidden="true" className="size-6 text-primary" />
               {c.legalTitle}
             </h2>
@@ -125,10 +125,10 @@ export default async function AboutPage({ params }: Props) {
             </dl>
           </div>
           <div className="bg-muted p-6" aria-labelledby="about-partners">
-            <h2 id="about-partners" className="text-xl font-heading font-normal">
+            <h2 id="about-partners" className="font-heading type-h3">
               {c.partnersTitle}
             </h2>
-            <p className="mt-3 text-sm text-muted-foreground">{c.partners}</p>
+            <p className="mt-3 type-body text-muted-foreground">{c.partners}</p>
           </div>
         </section>
 

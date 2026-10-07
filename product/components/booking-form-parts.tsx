@@ -221,7 +221,7 @@ export function PartyStep(props: {
           <div>
             <Label htmlFor="booking-singleRooms">{t.singleRooms}</Label>
             <Input {...fields.aria("singleRooms")} type="number" min={0} max={people} value={party.singleRooms} onChange={set("singleRooms")} className="mt-1" />
-            <span className="mt-1 block text-xs text-muted-foreground">{t.singleRoomsHint(formatVnd(props.singleSupplementVnd, locale))}</span>
+            <span className="mt-1 block type-small text-muted-foreground">{t.singleRoomsHint(formatVnd(props.singleSupplementVnd, locale))}</span>
             {fields.message("singleRooms")}
           </div>
         )}
@@ -330,7 +330,7 @@ export function QuoteSummary(props: { t: Content; locale: Locale; date: string; 
 export function PolicyAndAgree({ t, locale, fields }: { t: Content; locale: Locale; fields: Fields }) {
   return (
     <>
-      <section className="mt-4 rounded-lg bg-muted p-3 text-xs" aria-labelledby="booking-policy" data-testid="booking-policy">
+      <section className="mt-4 rounded-lg bg-muted p-3 type-small" aria-labelledby="booking-policy" data-testid="booking-policy">
         <h3 id="booking-policy" className="font-semibold">
           {t.policyTitle}
         </h3>

@@ -24,17 +24,17 @@ export function TourCard(p: TourCardProps) {
         <Image src={p.image} alt={p.title} fill priority={p.priority} sizes={p.sizes ?? "(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"} className="object-cover transition duration-700 group-hover:scale-[1.03]" />
       </a>
       <div className="flex flex-1 flex-col pt-5">
-        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+        <p className="type-label text-muted-foreground">
           {p.destination} · {p.duration}
         </p>
-        <h3 className="mt-2 font-heading text-2xl font-normal leading-snug">
+        <h3 className="mt-2 font-heading type-h3">
           <a href={p.href} className="hover:text-primary">
             {p.title}
           </a>
         </h3>
-        <p className="mt-2 line-clamp-3 flex-1 text-sm leading-relaxed text-muted-foreground">{p.summary}</p>
-        <p className="mt-4 text-sm text-muted-foreground">
-          {p.fromLabel} <span className="text-base font-medium text-foreground" data-price>
+        <p className="mt-2 line-clamp-3 flex-1 type-body text-muted-foreground">{p.summary}</p>
+        <p className="mt-4 type-small text-muted-foreground">
+          {p.fromLabel} <span className="text-lg font-medium text-foreground" data-price>
             {p.price}
           </span> {p.perPersonLabel}
         </p>
