@@ -54,6 +54,7 @@ describe("post-trip feedback (E4)", () => {
     await booking("BV-FBAA22", "2026-11-06");
     const s = new URL(feedback.link("BV-FBAA22", "vi")).searchParams.get("s")!;
     expect(await feedback.find("BV-FBAA22", "x".repeat(32))).toBeNull();
+    expect(await feedback.find("BV-FBAA22", "é".repeat(32))).toBeNull(); // 32 characters, 64 bytes: no throw
     expect(await feedback.submit("BV-FBAA22", s, { rating: "7" })).toEqual({ status: "invalid", field: "rating" });
     expect(await feedback.submit("BV-FBAA22", s, { rating: "5", comment: " Hướng dẫn viên rất nhiệt tình " })).toEqual({ status: "saved", rating: 5 });
     expect(await feedback.submit("BV-FBAA22", s, { rating: "1" })).toEqual({ status: "already" });

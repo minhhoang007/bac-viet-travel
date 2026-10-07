@@ -13,8 +13,6 @@ import { addDays, bookingRules, vietnamDayStart, vietnamToday } from "./rules";
 import { canBecome, SOLD_STATUSES, takesSeats } from "./status";
 import { manualBookingSchema } from "./validations";
 
-export type { AdminDepartureRow, PassengerRow } from "./admin-departures";
-
 export interface Actor {
   id: string;
   email: string;
@@ -66,7 +64,7 @@ const REMINDER_DAYS = 3;
 /** Paid deposits to confirm, refunds owed, and transfers the guest chose that staff have not recorded yet. */
 const needsAttention = () =>
   or(
-    eq(bookings.status, "deposit_paid"),
+    inArray(bookings.status, canBecome("confirmed")),
     and(sql`${bookings.refundDueVnd} > 0`, isNull(bookings.refundedAt)),
     and(
       inArray(bookings.status, canBecome("deposit_paid")),

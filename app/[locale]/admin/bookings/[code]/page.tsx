@@ -147,7 +147,7 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
               <ConfirmButton question={c.detail.balanceAsk} variant="outline" data-testid="admin-balance">{c.detail.balanceMark}</ConfirmButton>
             </form>
           )}
-          {b.status === "deposit_paid" && (
+          {canMove(b.status, "confirmed") && (
             <form action={confirmBooking}>
               {hidden}
               <ConfirmButton question={c.detail.confirmAsk} data-testid="admin-confirm">{c.detail.confirm}</ConfirmButton>

@@ -15,7 +15,7 @@ function setup(options: { max?: number; failMail?: (m: MailMessage) => boolean }
       },
     },
     rateLimiter: createMemoryRateLimiter({ max: options.max ?? 100, windowMs: 60_000 }),
-    to: "team@example.com",
+    to: () => "team@example.com",
     logger,
     tourTitles: async (locale) => (locale === "vi" ? ["Du thuyền Hạ Long"] : ["Ha Long cruise"]),
     today: () => "2026-10-01",

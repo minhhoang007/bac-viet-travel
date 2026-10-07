@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { isSold } from "@/product/booking/lifecycle";
 import { connection } from "next/server";
 import { setRequestLocale } from "next-intl/server";
 import { renderSVG } from "uqr";
@@ -31,7 +32,7 @@ export default async function VoucherPage({ params, searchParams }: Props) {
   const v = t.voucher;
   const { t: token } = await searchParams;
   const booking = token ? await getBooking().getForGuest(code, token) : null;
-  if (!booking || (booking.status !== "deposit_paid" && booking.status !== "confirmed")) {
+  if (!booking || !isSold(booking.status)) {
     return (
       <Container className="max-w-2xl py-16">
         <h1 className="text-2xl font-bold">{v.title}</h1>
