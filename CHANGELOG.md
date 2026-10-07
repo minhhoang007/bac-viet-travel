@@ -4,6 +4,13 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.18.0] - 2026-10-07
+
+### Added — project dashboard on /admin, livelier admin shell
+- `product/layout.tsx` may export `ProductAdminOverview({ locale })` (async allowed): drawn at the top of /admin in place of the manifest's `adminOverview` figures.
+- `Stat` (components/admin/stat.tsx) takes an optional `delta` (change vs a previous period, colored by direction) and `hint`.
+- The admin/dashboard sidebar is a `muted` panel apart from the page, its current item tinted with the brand color (`--sidebar`, `--sidebar-accent` in app/globals.css).
+
 ## [1.17.1] - 2026-10-07
 
 ### Fixed — sign-in from the email
