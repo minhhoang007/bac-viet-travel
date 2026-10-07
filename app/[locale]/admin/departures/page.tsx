@@ -9,7 +9,7 @@ import { getBookingAdminContent } from "@/product/booking/admin-content";
 import { bookingRules, vietnamToday } from "@/product/booking/rules";
 import { getTours } from "@/app/_lib/tours";
 
-type Props = { params: Promise<{ locale: Locale }>; searchParams: Promise<{ tour?: string; month?: string; result?: string }> };
+type Props = { params: Promise<{ locale: Locale }>; searchParams: Promise<{ tour?: string; month?: string; result?: string; taken?: string }> };
 
 const MONTH = /^\d{4}-\d{2}$/;
 
@@ -42,7 +42,7 @@ export default async function AdminDeparturesPage({ params, searchParams }: Prop
       <h1 className="text-2xl font-bold">{c.departures}</h1>
       {sp.result && (
         <p role="status" className={`rounded-md border p-3 text-sm ${sp.result === "done" ? "border-success/40 bg-success/10 text-foreground" : "border-danger/40 bg-danger/10 text-foreground"}`}>
-          {sp.result === "done" ? c.result.done : c.result.failed}
+          {sp.result === "done" ? c.result.done : sp.result === "capacity" ? c.dep.capacityBelowTaken(Number(sp.taken) || 0) : sp.result === "dates" ? c.dep.noValidDates : c.result.failed}
         </p>
       )}
 

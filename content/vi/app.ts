@@ -172,7 +172,7 @@ export const app: AppContent = {
       updated: "Cập nhật",
       statuses: { draft: "Nháp", pending: "Chờ duyệt", approved: "Đã duyệt, chờ đến giờ", published: "Đã công khai" },
       hidden: "Đang ẩn",
-      live: "Đang hiển thị trên web",
+      live: "Bản đã công khai đang hiển thị trên web (thay đổi mới chỉ lên web khi được duyệt)",
       notLive: "Chưa hiển thị trên web",
       scheduledFor: "Công khai lúc",
       reviewNote: "Ghi chú của người duyệt",

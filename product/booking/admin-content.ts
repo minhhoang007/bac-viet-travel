@@ -120,6 +120,8 @@ const vi = {
     closed: "Đóng",
     listPrice: "giá tour",
     empty: "Không có ngày khởi hành trong khoảng này.",
+    capacityBelowTaken: (n: number) => `Không lưu được: số chỗ không thể nhỏ hơn ${n} chỗ đã bán hoặc đang giữ.`,
+    noValidDates: "Không thêm được: chọn ngày từ hôm nay trở đi (tối đa 2 năm) và số chỗ 1–100.",
     weekdays: ["CN", "T2", "T3", "T4", "T5", "T6", "T7"],
   },
   reports: {
@@ -259,6 +261,8 @@ const en: AdminContent = {
     closed: "Closed",
     listPrice: "tour price",
     empty: "No departures in this range.",
+    capacityBelowTaken: (n: number) => `Not saved: seats cannot be fewer than the ${n} already sold or on hold.`,
+    noValidDates: "Nothing added: pick dates from today (up to 2 years ahead) and 1–100 seats.",
     weekdays: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
   },
   reports: {
