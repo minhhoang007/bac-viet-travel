@@ -226,3 +226,19 @@ export function reminderEmail(input: { booking: Booking; departure: Departure; t
       : [`Hello ${b.name},`, ``, `Your trip ${title} departs ${day} (booking ${b.code}, ${b.seats} guests).`, `Hotel pick-up in Hanoi Old Quarter from 7:30–8:00. Your guide will call to confirm the day before.`, `Balance due: ${rest}.`, `Bring: ID/passport, comfortable shoes, a light jacket.`].join("\n"),
   };
 }
+
+/** Guest email when staff move the booking to another date (same price: nothing to pay or refund). */
+export function dateChangedEmail(input: { booking: Booking; from: Departure; to: Departure; title: string }): MailMessage {
+  const { booking: b, from, to, title } = input;
+  const vi = b.locale !== "en";
+  const was = formatDay(from.date, vi ? "vi" : "en");
+  const now = formatDay(to.date, vi ? "vi" : "en");
+  return {
+    kind: "booking_date_changed",
+    to: b.email,
+    subject: vi ? `Đơn ${b.code}: đổi ngày khởi hành sang ${now}` : `Booking ${b.code}: new departure date ${now}`,
+    text: vi
+      ? [`Chào ${b.name},`, ``, `Đơn ${b.code} (${title}) đã được đổi ngày khởi hành từ ${was} sang ${now}.`, `Số khách và số tiền không thay đổi.`, `Nếu có sai sót, vui lòng trả lời email này hoặc liên hệ Zalo / hotline.`].join("\n")
+      : [`Hello ${b.name},`, ``, `Booking ${b.code} (${title}) now departs on ${now} instead of ${was}.`, `Guests and amounts are unchanged.`, `If this is not right, reply to this email or contact us on WhatsApp.`].join("\n"),
+  };
+}

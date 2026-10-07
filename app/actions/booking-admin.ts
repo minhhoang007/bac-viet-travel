@@ -39,6 +39,14 @@ export async function markBookingRefunded(formData: FormData): Promise<void> {
   await run(formData, `/admin/bookings/${c}`, (ctx) => service(ctx).markRefunded(ctx.user, c, { note: String(formData.get("note") ?? "") }));
 }
 
+export async function changeBookingDate(formData: FormData): Promise<void> {
+  const c = bookingCode(formData);
+  await adminAction(formData, `/admin/bookings/${c}`, EVENT, async (ctx) => {
+    const r = await service(ctx).changeDate(ctx.user, c, String(formData.get("departureId") ?? ""));
+    return r.status === "sold_out" ? `date_sold_out&left=${r.seatsLeft}` : `date_${r.status}`;
+  });
+}
+
 export async function saveContact(formData: FormData): Promise<void> {
   const c = bookingCode(formData);
   await run(formData, `/admin/bookings/${c}`, (ctx) => service(ctx).updateContact(ctx.user, c, Object.fromEntries(formData)));

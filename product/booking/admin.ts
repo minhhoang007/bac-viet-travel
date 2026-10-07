@@ -6,7 +6,8 @@ import type { ProductContext } from "@/core/product/context";
 import type { Db } from "@/db/client";
 import { createHash, randomBytes, randomInt } from "node:crypto";
 import { bookingPayments, bookings, departures, type Booking, type BookingPayment, type BookingSource, type BookingStatus, type Departure } from "../schema/booking";
-import { bookingStatusEmail, reminderEmail } from "./emails";
+import { bookingStatusEmail, dateChangedEmail, reminderEmail } from "./emails";
+import { createDateChange, type ChangeDateResult, type DateOption } from "./admin-change-date";
 import type { ReceiveTransferResult } from "./deposits";
 import { createDepartureAdmin, type DepartureAdmin } from "./admin-departures";
 import { addDays, bookingRules, vietnamDayStart, vietnamToday } from "./rules";
@@ -36,6 +37,10 @@ export interface BookingAdmin extends DepartureAdmin {
   setStaffNote(actor: Actor, code: string, note: string): Promise<boolean>;
   /** Fix the guest's name, email or phone (typos, a new number). Seats and money do not change. Audited (field names only). */
   updateContact(actor: Actor, code: string, raw: Record<string, unknown>): Promise<boolean>;
+  /** Dates this booking can move to (same tour, open, enough seats); `samePrice` false ones are refused. */
+  dateOptions(code: string): Promise<DateOption[]>;
+  /** Move a paid booking to another date of the same tour at the same price; emails the guest. Audited. */
+  changeDate(actor: Actor, code: string, departureId: string): Promise<ChangeDateResult>;
   /** Staff got the rest of the total outside the website (cash, transfer) (D5). Audited. */
   markBalancePaid(actor: Actor, code: string, note: string): Promise<boolean>;
   /** Staff saw the bank transfer for a held (or just expired) booking: records the deposit. Audited. */
@@ -83,6 +88,8 @@ export function createBookingAdmin(deps: {
   audit?: ProductContext["audit"];
   tourTitle: (slug: string, locale: string) => Promise<string>;
   tourExists: (slug: string) => Promise<boolean>;
+  /** List price per adult (departures without their own price); null = unknown tour. */
+  tourPrice: (slug: string) => Promise<number | null>;
   /** Deposit service's receiveTransfer with the site links bound (emails). */
   receiveTransfer?: (code: string, input: { amountVnd: number; bankRef: string }) => Promise<ReceiveTransferResult>;
   now?: () => Date;
@@ -94,6 +101,8 @@ export function createBookingAdmin(deps: {
     if (!deps.audit) throw new AppError("MODULE_DISABLED", "Admin module is off");
     return deps.audit.audited(actor, { action, targetType: action.startsWith("departure") ? "departure" : "booking", targetId, metadata }, work);
   };
+
+  const dateChange = createDateChange({ db, tourPrice: deps.tourPrice, now });
 
   const load = async (code: string) => {
     if (!CODE.test(code)) return null;
@@ -253,6 +262,23 @@ export function createBookingAdmin(deps: {
         const done = await db.update(bookings).set(input).where(eq(bookings.code, code)).returning({ id: bookings.id });
         return done.length > 0;
       });
+    },
+
+    async dateOptions(code) {
+      const found = await load(code);
+      return found ? dateChange.options(found.b, found.d) : [];
+    },
+
+    async changeDate(actor, code, departureId) {
+      let result = { status: "not_allowed" } as Awaited<ReturnType<typeof dateChange.move>>; // set inside the audited transaction
+      await audited(actor, "booking.change_date", code, { departureId }, async () => {
+        result = await dateChange.move(code, departureId);
+        return result.status === "done";
+      });
+      if (result.status !== "done") return result;
+      const { booking, from, to } = result;
+      await sendToGuest(booking, dateChangedEmail({ booking, from, to, title: await deps.tourTitle(to.tourSlug, booking.locale) }));
+      return { status: "done" };
     },
 
     async setStaffNote(actor, code, note) {

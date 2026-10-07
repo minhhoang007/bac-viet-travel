@@ -171,6 +171,64 @@ describe("booking admin", () => {
     expect(figures.map((f) => f.href)).toEqual(["/admin/bookings?filter=attention", "/admin/bookings?filter=all", "/admin/reports", "/admin/departures"]);
   });
 
+  describe("change date", () => {
+    const departure = async (date: string, values: Partial<typeof departures.$inferInsert> = {}) =>
+      (await db.insert(departures).values({ tourSlug: "ninh-binh-day-tour", date, capacity: 10, ...values }).returning())[0]!;
+
+    it("moves a paid booking to a same-price date: seats follow, money unchanged, reminder reset, guest emailed, audited", async () => {
+      const { code, departure: from } = await paidBooking(10, "2026-10-10", 3);
+      const to = await departure("2026-10-17");
+      await db.update(bookings).set({ reminderSentAt: clock }).where(eq(bookings.code, code));
+      const before = await row(code);
+      clearMail();
+
+      expect(await bookingAdmin.changeDate(staff, code, to.id)).toEqual({ status: "done" });
+      const after = await row(code);
+      expect(after).toMatchObject({ departureId: to.id, status: "deposit_paid", totalVnd: before.totalVnd, depositVnd: before.depositVnd, seats: 3, reminderSentAt: null });
+      expect((await booking.getDeparture(from.id))!.seatsLeft).toBe(10);
+      expect((await booking.getDeparture(to.id))!.seatsLeft).toBe(7);
+      expect(sent.map((m) => [m.kind, m.to])).toEqual([["booking_date_changed", "lan@example.com"]]);
+      expect(sent[0]!.text).toContain("17/10/2026");
+      const { rows } = await container.admin!.listAudit({ targetId: code });
+      expect(rows.map((r) => r.action)).toEqual(["booking.change_date"]);
+    });
+
+    it("two moves racing for the last seats: exactly one wins", async () => {
+      const a = await paidBooking(10, "2026-10-10", 2);
+      const b = await paidBooking(10, "2026-10-10", 2);
+      const to = await departure("2026-10-18", { capacity: 3 });
+      const results = await Promise.all([bookingAdmin.changeDate(staff, a.code, to.id), bookingAdmin.changeDate(staff, b.code, to.id)]);
+      expect(results.map((r) => r.status).sort()).toEqual(["done", "sold_out"]);
+      expect((await booking.getDeparture(to.id))!.seatsLeft).toBe(1);
+    });
+
+    it("refuses another price, too few seats, a closed or past date, another tour, and unpaid bookings; options say why", async () => {
+      const { code } = await paidBooking(10, "2026-10-10", 3);
+      const pricier = await departure("2026-10-11", { priceVnd: 9_990_000 });
+      const full = await departure("2026-10-12", { capacity: 2 });
+      const closed = await departure("2026-10-13", { status: "closed" });
+      const past = await departure("2026-09-20");
+      const otherTour = await departure("2026-10-14", { tourSlug: "sapa-trekking-2d1n" });
+      const ok = await departure("2026-10-15");
+
+      const options = await bookingAdmin.dateOptions(code);
+      expect(options.map((o) => [o.date, o.samePrice])).toEqual([["2026-10-11", false], ["2026-10-15", true]]);
+
+      expect(await bookingAdmin.changeDate(staff, code, pricier.id)).toEqual({ status: "price_differs" });
+      expect(await bookingAdmin.changeDate(staff, code, full.id)).toEqual({ status: "sold_out", seatsLeft: 2 });
+      expect(await bookingAdmin.changeDate(staff, code, closed.id)).toEqual({ status: "unavailable" });
+      expect(await bookingAdmin.changeDate(staff, code, past.id)).toEqual({ status: "unavailable" });
+      expect(await bookingAdmin.changeDate(staff, code, otherTour.id)).toEqual({ status: "unavailable" });
+      expect(await bookingAdmin.changeDate(staff, code, "not-a-uuid")).toEqual({ status: "unavailable" });
+      expect((await row(code)).departureId).not.toBe(ok.id);
+      expect((await container.admin!.listAudit({ targetId: code })).rows).toEqual([]);
+
+      await db.update(bookings).set({ status: "held" }).where(eq(bookings.code, code));
+      expect(await bookingAdmin.changeDate(staff, code, ok.id)).toEqual({ status: "not_allowed" });
+      expect(await bookingAdmin.dateOptions(code)).toEqual([]);
+    });
+  });
+
   it("contact: fixes name, email and phone; audits field names only; never empties the email of a guest who gets emails", async () => {
     const { code } = await paidBooking();
     const before = await row(code);

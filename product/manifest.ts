@@ -64,6 +64,7 @@ export function createProduct(db: Db, ctx: ProductContext) {
     audit: ctx.audit,
     tourTitle,
     tourExists: async (slug) => (await tour(slug)) !== null,
+    tourPrice: async (slug) => (await tour(slug))?.price.vnd ?? null,
     receiveTransfer: (code, input) => {
       const env = getEnv();
       return deposits.receiveTransfer(code, input, { siteUrl: env.NEXT_PUBLIC_SITE_URL, teamEmail: env.extra.CONTACT_TO_EMAIL });

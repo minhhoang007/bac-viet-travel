@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
 import { requireAdmin } from "@/app/_lib/admin";
-import { cancelBooking, confirmBooking, markBalancePaid, markBookingRefunded, receiveTransfer, saveContact, saveStaffNote } from "@/app/actions/booking-admin";
+import { cancelBooking, confirmBooking, markBalancePaid, markBookingRefunded, receiveTransfer, saveContact, saveStaffNote, changeBookingDate } from "@/app/actions/booking-admin";
+import { canChangeDate } from "@/product/booking/admin-change-date";
 import { Input } from "@/components/ui/input";
 import { balanceDue, transferNote } from "@/product/booking/deposits";
 import { awaitsDeposit, canMove } from "@/product/booking/lifecycle";
@@ -16,7 +17,7 @@ import { ConfirmButton } from "@/product/components/confirm-button";
 import { BookingStatusBadge } from "@/product/components/booking-status-badge";
 import { getTours } from "@/app/_lib/tours";
 
-type Props = { params: Promise<{ locale: Locale; code: string }>; searchParams: Promise<{ result?: string }> };
+type Props = { params: Promise<{ locale: Locale; code: string }>; searchParams: Promise<{ result?: string; left?: string }> };
 
 export async function generateMetadata({ params }: { params: Promise<{ code: string }> }): Promise<Metadata> {
   return { title: (await params).code };
@@ -33,7 +34,10 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
   const { rows: history } = await admin.listAudit({ targetId: b.code, pageSize: 50 });
   const c = getBookingAdminContent(locale);
   const g = getBookingContent(locale);
-  const { result } = await searchParams;
+  const { result, left } = await searchParams;
+  const dateOptions = canChangeDate(b.status) ? await container.app!.product.bookingAdmin.dateOptions(b.code) : [];
+  const dateResult = result?.startsWith("date_") ? result.slice(5) : null;
+  const dateMessage = dateResult === "sold_out" ? c.detail.dateChanged.sold_out(Number(left) || 0) : dateResult && dateResult in c.detail.dateChanged ? (c.detail.dateChanged[dateResult as keyof typeof c.detail.dateChanged] as string) : null;
   const title = (await getTours()).get(locale, d.tourSlug)?.title ?? d.tourSlug;
   const time = (t: Date | null) => (t ? t.toLocaleString(locale === "vi" ? "vi-VN" : "en-GB", { timeZone: "Asia/Ho_Chi_Minh" }) : "—");
   const refundOwed = b.refundDueVnd > 0 && !b.refundedAt;
@@ -61,8 +65,8 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
         <span className="font-mono">{b.code}</span> <BookingStatusBadge status={b.status} label={c.filters[b.status]} />
       </h1>
       {result && (
-        <p role="status" className={`rounded-md border p-3 text-sm ${result === "done" ? "border-success/40 bg-success/10 text-foreground" : result === "refund_due" || result === "extra" ? "border-warning/40 bg-warning/10 text-foreground" : "border-danger/40 bg-danger/10 text-foreground"}`}>
-          {result === "done" ? c.result.done : result === "too_little" ? c.detail.transferTooLittle : result === "refund_due" ? c.detail.transferRefundDue : result === "extra" ? c.detail.transferExtra : c.result.failed}
+        <p role="status" className={`rounded-md border p-3 text-sm ${result === "done" || result === "date_done" ? "border-success/40 bg-success/10 text-foreground" : result === "refund_due" || result === "extra" ? "border-warning/40 bg-warning/10 text-foreground" : "border-danger/40 bg-danger/10 text-foreground"}`}>
+          {dateMessage ?? (result === "done" ? c.result.done : result === "too_little" ? c.detail.transferTooLittle : result === "refund_due" ? c.detail.transferRefundDue : result === "extra" ? c.detail.transferExtra : c.result.failed)}
         </p>
       )}
 
@@ -187,6 +191,28 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
             <label htmlFor="transfer-ref" className="text-sm">{c.detail.transferRef}</label>
             <Input id="transfer-ref" name="bankRef" maxLength={100} className="max-w-xs" />
             <ConfirmButton question={c.detail.transferAsk} className="w-fit" data-testid="admin-transfer-save">{c.detail.transferSave}</ConfirmButton>
+          </form>
+        )}
+        {canChangeDate(b.status) && (
+          <form action={changeBookingDate} className="grid max-w-lg gap-2" data-testid="admin-change-date">
+            {hidden}
+            <label htmlFor="new-date" className="text-sm font-medium">{c.detail.changeDate}</label>
+            {dateOptions.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{c.detail.noDates}</p>
+            ) : (
+              <>
+                <select id="new-date" name="departureId" required defaultValue="" className="h-10 rounded-md border border-border bg-background px-3 text-sm">
+                  <option value="" disabled>{c.detail.pickDate}</option>
+                  {dateOptions.map((o) => (
+                    <option key={o.id} value={o.id} disabled={!o.samePrice}>
+                      {formatDay(o.date, locale)} · {c.detail.seatsLeft(o.seatsLeft)}{o.samePrice ? "" : ` · ${c.detail.otherPrice}`}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground">{c.detail.changeDateHint}</p>
+                <ConfirmButton question={c.detail.changeDateAsk} variant="outline" className="w-fit" data-testid="admin-change-date-save">{c.detail.changeDateSave}</ConfirmButton>
+              </>
+            )}
           </form>
         )}
         {canMove(b.status, "cancelled") && (

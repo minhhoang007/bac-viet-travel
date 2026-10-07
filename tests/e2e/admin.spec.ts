@@ -129,6 +129,21 @@ test("staff enter an OTA booking: seats shared with the website, source shown, n
   expect(result.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id)).toEqual([]);
 });
 
+test("staff move a paid booking to another date at the same price; seats move with it", async ({ page }) => {
+  const from = await paidBooking("BV-DATE22", 2);
+  const [to] = await sql<{ id: string; date: string }[]>`
+    select id, date::text from departures where tour_slug = ${TOUR} and status = 'open' and kind = 'group' and price_vnd is null and date > ${from.date}::date order by date limit 1`;
+  await signInAsAdmin(page, "date-staff@bacviet.example");
+  await page.goto("/admin/bookings/BV-DATE22");
+  page.on("dialog", (dialog) => dialog.accept());
+  await page.getByTestId("admin-change-date").getByLabel("Đổi ngày đi").selectOption(to!.id);
+  await page.getByTestId("admin-change-date-save").click();
+  await expect(page.getByRole("status")).toContainText("Đã đổi ngày");
+  const [moved] = await sql<{ date: string }[]>`select d.date::text from bookings b join departures d on d.id = b.departure_id where b.code = 'BV-DATE22'`;
+  expect(moved!.date).toBe(to!.date);
+  await expect(page.getByTestId("admin-history")).toContainText("booking.change_date");
+});
+
 test("passenger list per departure: one row per named traveller, unnamed parties flagged; print and CSV for staff only", async ({ page, request }) => {
   const d = await paidBooking("BV-PAXA22", 2);
   await sql`update bookings set adults = 2, travellers = ${sql.json([{ name: "Phạm Lan", birthYear: 1990 }, { name: "=HYPERLINK(1)", birthYear: 1985 }])} where code = 'BV-PAXA22'`;
