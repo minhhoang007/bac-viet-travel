@@ -172,7 +172,7 @@ export const app: AppContent = {
       updated: "Updated",
       statuses: { draft: "Draft", pending: "Awaiting review", approved: "Approved, scheduled", published: "Published" },
       hidden: "Hidden",
-      live: "Live on the site",
+      live: "The published version is live (new changes go live once approved)",
       notLive: "Not on the site yet",
       scheduledFor: "Publishes at",
       reviewNote: "Reviewer's note",

@@ -11,6 +11,7 @@ import { getProductContent } from "../content";
 import { DESTINATIONS } from "../tours/model";
 import { getTourAdminContent, tourProblemLabel } from "../tours/admin-content";
 import { tourProblems, type TourDraft } from "../tours/document";
+import { useUnsavedGuard } from "./use-unsaved-guard";
 
 const TABS = ["general", "vi", "en", "seo", "images", "private", "addons"] as const;
 type Tab = (typeof TABS)[number];
@@ -45,6 +46,9 @@ export function TourForm({
   const ids = useId();
   // Tabs and lists only work once React runs; tests and the save button wait for it.
   const hydrated = useSyncExternalStore(noopSubscribe, () => true, () => false);
+  // Leaving with unsaved edits asks first; after a save the page reloads the draft and the form is clean again.
+  const dirty = slug !== item.slug || JSON.stringify(data) !== JSON.stringify(item.draft);
+  useUnsavedGuard(dirty, c.unsaved);
 
   const section = (s: Section) => (data[s] ?? {}) as Obj;
   const set = (s: Section, key: string, value: unknown) => setData((d) => ({ ...d, [s]: { ...(d[s] as Obj), [key]: value } }));

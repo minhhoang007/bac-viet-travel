@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireAdmin } from "@/app/_lib/admin";
 import { adminAction, type AdminContext } from "@/app/_lib/admin-action";
+import { AppError } from "@/core/errors";
 import { localePath } from "@/core/i18n/routing";
 import type { ManualBookingResult } from "@/product/booking/admin";
 import { addDays } from "@/product/booking/rules";
@@ -57,9 +58,15 @@ export async function addDepartures(formData: FormData): Promise<void> {
     const d = addDays(from, i);
     if (weekdays.includes(new Date(`${d}T00:00:00Z`).getUTCDay())) dates.push(d);
   }
-  await run(formData, `/admin/departures?tour=${encodeURIComponent(tourSlug)}`, async (ctx) =>
-    (await service(ctx).addDepartures(ctx.user, { tourSlug, dates, capacity, priceVnd: priceRaw ? Number(priceRaw) : null })) > 0,
-  );
+  // Invalid input (past dates, seats out of range) says so instead of a generic failure.
+  await adminAction(formData, `/admin/departures?tour=${encodeURIComponent(tourSlug)}`, EVENT, async (ctx) => {
+    try {
+      return (await service(ctx).addDepartures(ctx.user, { tourSlug, dates, capacity, priceVnd: priceRaw ? Number(priceRaw) : null })) > 0 ? "done" : "failed";
+    } catch (error) {
+      if (error instanceof AppError && error.code === "VALIDATION_ERROR") return "dates";
+      throw error;
+    }
+  });
 }
 
 export async function updateDeparture(formData: FormData): Promise<void> {
@@ -68,13 +75,21 @@ export async function updateDeparture(formData: FormData): Promise<void> {
   const capacity = formData.get("capacity");
   const priceRaw = formData.get("priceVnd");
   const status = formData.get("status");
-  await run(formData, back.startsWith("/admin/departures") ? back : "/admin/departures", (ctx) =>
-    service(ctx).updateDeparture(ctx.user, id, {
-      ...(capacity !== null && { capacity: Number(capacity) }),
-      ...(priceRaw !== null && { priceVnd: String(priceRaw).replace(/\D/g, "") ? Number(String(priceRaw).replace(/\D/g, "")) : null }),
-      ...((status === "open" || status === "closed") && { status }),
-    }),
-  );
+  // A capacity below the seats already taken comes back with the count, so the page can say why.
+  await adminAction(formData, back.startsWith("/admin/departures") ? back : "/admin/departures", EVENT, async (ctx) => {
+    try {
+      const changed = await service(ctx).updateDeparture(ctx.user, id, {
+        ...(capacity !== null && { capacity: Number(capacity) }),
+        ...(priceRaw !== null && { priceVnd: String(priceRaw).replace(/\D/g, "") ? Number(String(priceRaw).replace(/\D/g, "")) : null }),
+        ...((status === "open" || status === "closed") && { status }),
+      });
+      return changed ? "done" : "failed";
+    } catch (error) {
+      const taken = error instanceof AppError ? error.details?.taken : undefined;
+      if (typeof taken === "number") return `capacity&taken=${taken}`;
+      throw error;
+    }
+  });
 }
 
 export type ManualBookingState = Exclude<ManualBookingResult, { status: "created" }> | { status: "error" } | null;
