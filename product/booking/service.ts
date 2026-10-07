@@ -52,8 +52,11 @@ export interface BookingService {
   holdPrivate(raw: Record<string, unknown>, clientKey: string): Promise<HoldResult>;
   /** Guest lookup: a wrong code or token both give null (indistinguishable). */
   getForGuest(code: string, token: string): Promise<BookingView | null>;
-  /** Live preview in the booking form: the discount a code gives on this tour and total today, or null. */
-  checkDiscount(code: string, tourSlug: string, totalVnd: number): Promise<Discount | null>;
+  /**
+   * Live preview in the booking form: the discount a code gives on this tour and total today, or null. Rate limited
+   * per visitor (`clientKey`) so codes cannot be found by trying many.
+   */
+  checkDiscount(code: string, tourSlug: string, totalVnd: number, clientKey: string): Promise<Discount | null>;
   /**
    * The guest's traveller list (D7): one row per person. Editable until the booking cutoff before departure, on
    * live bookings only (held, paid, confirmed).
@@ -81,6 +84,8 @@ export function createBookingService(deps: {
   tourPrivate?: (slug: string) => Promise<PrivatePricing | null>;
   /** Prices by traveller type (child %, infant, single supplement); the defaults when absent. */
   tourPricing?: (slug: string) => Promise<TourPricing>;
+  /** Limits discount previews per visitor (shared across server instances when Redis is configured). */
+  discountLimiter?: RateLimiter;
   /** Add-ons the guest may choose on this tour (B6); none when absent. */
   tourAddons?: (slug: string) => Promise<Addon[]>;
   now?: () => Date;
@@ -278,7 +283,8 @@ export function createBookingService(deps: {
 
     getForGuest,
 
-    async checkDiscount(code, tourSlug, totalVnd) {
+    async checkDiscount(code, tourSlug, totalVnd, clientKey) {
+      if (deps.discountLimiter && !(await deps.discountLimiter.limit(`discount:${clientKey}`)).success) return null;
       const parsed = discountCodeField.safeParse(code);
       return parsed.success ? findDiscount(db, parsed.data, tourSlug, totalVnd, now(), false) : null;
     },

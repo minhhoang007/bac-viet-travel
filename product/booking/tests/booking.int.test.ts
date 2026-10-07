@@ -213,7 +213,7 @@ describe("discount codes (D6)", () => {
     const [b] = await db.select().from(bookings);
     // 2 × 2,000,000 = 4,000,000 − 10% = 3,600,000; deposit 30% = 1,080,000
     expect(b).toMatchObject({ discountCode: "TET2027", discountVnd: 400_000, totalVnd: 3_600_000, depositVnd: 1_080_000 });
-    expect(await service().checkDiscount("tet2027", "ha-long-cruise-2d1n", 4_000_000)).toEqual({ code: "TET2027", kind: "percent", value: 10 });
+    expect(await service().checkDiscount("tet2027", "ha-long-cruise-2d1n", 4_000_000, "ip")).toEqual({ code: "TET2027", kind: "percent", value: 10 });
   });
 
   it("refuses unknown, inactive, expired, other-tour, too-small and used-up codes (nothing held)", async () => {

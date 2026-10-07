@@ -7,11 +7,7 @@ import { getBooking } from "@/app/_lib/booking";
 import { localePath } from "@/core/i18n/routing";
 import { headers } from "next/headers";
 import { clientKeyFrom } from "@/app/_lib/client-ip";
-import { createMemoryRateLimiter } from "@/core/security/rate-limit";
 import type { Discount } from "@/product/booking/rules";
-
-// Codes must not be guessable by trying many: a few checks per visitor (per server instance).
-const previewLimiter = createMemoryRateLimiter({ max: 20, windowMs: 10 * 60_000 });
 
 const locale = z.enum(["vi", "en"]).catch("vi");
 
@@ -47,8 +43,7 @@ export async function setDiscountActive(formData: FormData): Promise<void> {
 export async function previewDiscount(code: string, tourSlug: string, totalVnd: number): Promise<Discount | null> {
   if (typeof code !== "string" || typeof tourSlug !== "string" || !Number.isInteger(totalVnd) || totalVnd < 0 || code.length > 40 || tourSlug.length > 120) return null;
   try {
-    if (!(await previewLimiter.limit(`discount:${clientKeyFrom(await headers())}`)).success) return null;
-    return await getBooking().checkDiscount(code, tourSlug, totalVnd);
+    return await getBooking().checkDiscount(code, tourSlug, totalVnd, clientKeyFrom(await headers()));
   } catch {
     return null;
   }

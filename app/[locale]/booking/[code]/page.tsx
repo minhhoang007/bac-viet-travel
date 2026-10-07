@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import { setRequestLocale } from "next-intl/server";
-import { getBooking, getDeposits, isPaymentsSandbox, isTransferAvailable } from "@/app/_lib/booking";
+import { getBooking, getDeposits, isPaymentsSandbox, isTransferAvailable, isVnpayConfigured } from "@/app/_lib/booking";
 import { chooseTransfer, saveTravellers, startBalance, startDeposit } from "@/app/actions/booking";
 import { balanceDue } from "@/product/booking/deposits";
 import { vietnamToday } from "@/product/booking/rules";
@@ -103,7 +103,7 @@ export default async function BookingPage({ params, searchParams }: Props) {
         <section className="mt-6 rounded-xl border border-success/40 bg-success/10 p-5" data-testid="paid">
           <h2 className="text-lg font-semibold">{t.booking.paidTitle}</h2>
           <p className="mt-1 text-sm">{t.booking.paidText}</p>
-          {balanceDue(booking) > 0 && booking.departure.date >= today ? (
+          {balanceDue(booking) > 0 && booking.departure.date >= today && isVnpayConfigured() ? (
             <div className="mt-4 border-t border-success/30 pt-4" data-testid="balance">
               <p className="font-medium">{t.booking.balanceTitle(formatVnd(balanceDue(booking), locale))}</p>
               <p className="mt-1 text-sm">{t.booking.balanceText}</p>
