@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { bookingInputSchema } from "../validations";
-import { addDays, isBookableDate, privateQuote, privateTier, quote, vietnamToday } from "../rules";
+import { addDays, isBookableDate, privateQuote, privateTier, quote, travellerKinds, vietnamDayStart, vietnamToday } from "../rules";
 
 describe("booking rules", () => {
   it("prices children at 75% and the deposit at 30%, both rounded up to 1,000 VND", () => {
@@ -52,6 +52,12 @@ describe("booking rules", () => {
     expect(addDays("2026-12-31", 1)).toBe("2027-01-01");
     expect(isBookableDate("2026-10-03", lateEvening)).toBe(false);
     expect(isBookableDate("2026-10-04", lateEvening)).toBe(true);
+  });
+
+  it("starts a Vietnam day at 17:00 UTC the day before and lists traveller kinds in party order", () => {
+    expect(vietnamDayStart("2026-10-02").toISOString()).toBe("2026-10-01T17:00:00.000Z");
+    expect(vietnamToday(vietnamDayStart("2026-10-02"))).toBe("2026-10-02");
+    expect(travellerKinds({ adults: 2, children: 1, infants: 1 })).toEqual(["adult", "adult", "child", "infant"]);
   });
 
   it("validates the guest form: party size limits and contact fields", () => {

@@ -13,14 +13,16 @@ let clock = new Date("2026-10-01T03:00:00Z");
 
 const PRIVATE = { maxGuests: 10, tiers: [{ minGuests: 2, vnd: 3_000_000, usd: 120 }, { minGuests: 4, vnd: 2_500_000, usd: 100 }] };
 
-const service = (max = 1_000) =>
+/** The booking service on the test DB and clock; tests override only what they are about. */
+const service = (overrides: Partial<Parameters<typeof createBookingService>[0]> = {}) =>
   createBookingService({
     db,
     logger,
-    rateLimiter: createMemoryRateLimiter({ max, windowMs: 60_000 }),
+    rateLimiter: createMemoryRateLimiter({ max: 1_000, windowMs: 60_000 }),
     tourPrice: async (slug) => (slug === "ha-long-cruise-2d1n" ? 2_000_000 : null),
     tourPrivate: async (slug) => (slug === "ha-long-cruise-2d1n" ? PRIVATE : null),
     now: () => clock,
+    ...overrides,
   });
 
 const guest = (departureId: string, extra: Record<string, unknown> = {}) => ({
@@ -104,7 +106,7 @@ describe("booking holds", () => {
     expect(await service().getForGuest("nonsense", held.token)).toBeNull();
 
     expect((await service().hold(guest(d.id, { website: "spam" }), "ip")).status).toBe("rate_limited");
-    const limited = service(1);
+    const limited = service({ rateLimiter: createMemoryRateLimiter({ max: 1, windowMs: 60_000 }) });
     await limited.hold(guest(d.id), "same");
     expect((await limited.hold(guest(d.id), "same")).status).toBe("rate_limited");
     expect((await db.select().from(bookings)).length).toBe(2);
@@ -144,13 +146,9 @@ describe("booking holds", () => {
 });
 
 describe("prices by traveller type (B2)", () => {
-  const priced = createBookingService({
-    db,
-    logger,
-    rateLimiter: createMemoryRateLimiter({ max: 1_000, windowMs: 60_000 }),
+  const priced = service({
     tourPrice: async (slug) => (slug === "ha-long-cruise-2d1n" ? 2_000_000 : 1_000_000),
     tourPricing: async (slug) => (slug === "ha-long-cruise-2d1n" ? { childPercent: 50, infantVnd: 100_000, singleSupplementVnd: 900_000 } : { childPercent: 75, infantVnd: 0, singleSupplementVnd: 0 }),
-    now: () => clock,
   });
 
   it("charges the tour's child, infant and single room prices and stores the single rooms", async () => {
@@ -256,13 +254,9 @@ describe("discount admin (D6)", () => {
 
 describe("add-ons (B6)", () => {
   it("adds chosen add-ons to the total and stores them with names and line prices", async () => {
-    const withAddons = createBookingService({
-      db,
-      logger,
-      rateLimiter: createMemoryRateLimiter({ max: 1_000, windowMs: 60_000 }),
+    const withAddons = service({
       tourPrice: async () => 2_000_000,
       tourAddons: async () => [{ id: "pickup", name: { vi: "Đón khách sạn", en: "Hotel pick-up" }, vnd: 200_000, per: "booking" }],
-      now: () => clock,
     });
     const d = await departure();
     expect((await withAddons.hold(guest(d.id, { adults: "2", addon_pickup: "1", addon_unknown: "5" }), "ip")).status).toBe("held");

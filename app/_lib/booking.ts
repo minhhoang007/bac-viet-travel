@@ -4,6 +4,8 @@ import { bankTransferConfig } from "@/config/bank-transfer";
 /** Booking services built in product/manifest.ts (profile app). */
 export const getBooking = () => getContainer().app!.product.booking;
 export const getDeposits = () => getContainer().app!.product.deposits;
+/** Post-trip feedback (E4); null outside profile app. */
+export const getFeedback = () => getContainer().app?.product.feedback ?? null;
 export const isPaymentsSandbox = () => getContainer().app!.product.paymentsSandbox;
 /** Online card / QR payments (VNPay) are configured. */
 export const isVnpayConfigured = () => Boolean(getContainer().payments.vnpay);

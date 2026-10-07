@@ -11,39 +11,9 @@ import { addDays, vietnamToday } from "@/product/booking/rules";
 type Props = { params: Promise<{ locale: Locale }>; searchParams: Promise<{ from?: string; to?: string }> };
 
 const MONTH = /^\d{4}-\d{2}$/;
-const text = {
-  vi: {
-    title: "Báo cáo",
-    hint: "Theo ngày khởi hành. Đã bán = đơn đã cọc hoặc đã xác nhận.",
-    from: "Từ tháng",
-    to: "Đến tháng",
-    show: "Xem",
-    byTour: "Theo tour",
-    bySource: "Theo nguồn khách",
-    cols: ["Tour", "Chuyến", "Chỗ bán / sức chứa", "Lấp đầy", "Đơn", "Doanh thu", "Đã thu cọc"],
-    sourceCols: ["Nguồn", "Đơn", "Khách", "Doanh thu"],
-    total: "Tổng",
-    owed: "Đang nợ hoàn tiền (mọi ngày đi)",
-    empty: "Không có chuyến nào trong khoảng này.",
-  },
-  en: {
-    title: "Reports",
-    hint: "By departure date. Sold = paid or confirmed bookings.",
-    from: "From month",
-    to: "To month",
-    show: "Show",
-    byTour: "By tour",
-    bySource: "By booking source",
-    cols: ["Tour", "Departures", "Seats sold / capacity", "Fill rate", "Bookings", "Revenue", "Deposits paid"],
-    sourceCols: ["Source", "Bookings", "Travellers", "Revenue"],
-    total: "Total",
-    owed: "Refunds owed (any departure date)",
-    empty: "No departures in this range.",
-  },
-};
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  return { title: text[(await params).locale === "en" ? "en" : "vi"].title };
+  return { title: getBookingAdminContent((await params).locale).reports.title };
 }
 
 /** Sales report (H3): revenue, travellers and fill rate per tour, and per booking source, over a range of months. */
@@ -51,8 +21,8 @@ export default async function ReportsPage({ params, searchParams }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
   const { container } = await requireAdmin();
-  const t = text[locale === "en" ? "en" : "vi"];
   const a = getBookingAdminContent(locale);
+  const t = a.reports;
   const thisMonth = vietnamToday(new Date()).slice(0, 7);
   const q = await searchParams;
   const fromMonth = q.from && MONTH.test(q.from) ? q.from : thisMonth;

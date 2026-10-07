@@ -2,6 +2,7 @@
 // Staff sign in with the real magic-link flow (token read from the E2E database), then get the admin role.
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { submitHold } from "./booking-form";
 import postgres from "postgres";
 import { e2eServerEnv } from "./server-env";
 import { signInStaff } from "./staff";
@@ -171,11 +172,7 @@ test("discount codes: staff create one; the guest applies it in the booking form
   const after = Number((await guest.getByTestId("total").innerText()).replace(/\D/g, ""));
   expect(after).toBeLessThan(before);
 
-  await guest.getByLabel("Họ tên").fill("Vũ Mai");
-  await guest.getByLabel("Email").fill("mai@example.com");
-  await guest.getByLabel("Số điện thoại / WhatsApp").fill("0933444555");
-  await guest.getByRole("checkbox", { name: /Tôi đồng ý/ }).check();
-  await guest.getByRole("button", { name: "Giữ chỗ 15 phút" }).click();
+  await submitHold(guest, { name: "Vũ Mai", email: "mai@example.com", phone: "0933444555" });
   await expect(guest.locator("[data-booking-status=held]")).toBeVisible();
   await expect(guest.getByTestId("booking-discount")).toBeVisible();
   await page.reload();

@@ -6,6 +6,7 @@ import type { Db } from "@/db/client";
 import { bookings, departures, discountCodes, type Booking, type Departure } from "../schema/booking";
 import type { Addon } from "../tours/model";
 import { addDays, applyDiscount, bookingRules, DEFAULT_TOUR_PRICING, type Discount, isBookableDate, privateQuote, privateTier, quote, vietnamToday, type PrivatePricing, type TourPricing } from "./rules";
+import { isSold, takesSeats, takesSeatsB } from "./status";
 import { bookingInputSchema, discountCodeField, parseTravellers, privateBookingInputSchema } from "./validations";
 
 export type BookingField = "departureId" | "tourSlug" | "date" | "name" | "email" | "phone" | "adults" | "children" | "infants" | "singleRooms" | "discountCode" | "note" | "agree";
@@ -30,7 +31,7 @@ export type SaveTravellersResult = { status: "saved" } | { status: "invalid"; er
 
 /** Whether the guest may still edit the traveller list: live booking, departure after the cutoff. */
 export function travellersEditable(status: Booking["status"], isExpired: boolean, departureDate: string, now: Date): boolean {
-  return (status === "held" ? !isExpired : status === "deposit_paid" || status === "confirmed") && isBookableDate(departureDate, now);
+  return (status === "held" ? !isExpired : isSold(status)) && isBookableDate(departureDate, now);
 }
 
 export interface BookingView extends Booking {
@@ -98,7 +99,7 @@ export function createBookingService(deps: {
   const takenSql = (at: Date) => sql<number>`coalesce((
     select sum(b.seats) from bookings b
     where b.departure_id = departures.id
-      and (b.status in ('deposit_paid', 'confirmed') or (b.status = 'held' and b.hold_expires_at > ${at.toISOString()}))
+      and ${takesSeatsB(at)}
   ), 0)::int`;
 
   const view = async (d: Departure, taken: number, at: Date): Promise<DepartureView | null> => {
@@ -131,7 +132,7 @@ export function createBookingService(deps: {
       const [used] = await q
         .select({ n: sql<number>`count(*)::int` })
         .from(bookings)
-        .where(and(eq(bookings.discountCode, code), sql`(${bookings.status} in ('deposit_paid', 'confirmed') or (${bookings.status} = 'held' and ${bookings.holdExpiresAt} > ${at.toISOString()}))`));
+        .where(and(eq(bookings.discountCode, code), takesSeats(at)));
       if ((used?.n ?? 0) >= row.maxUses) return null;
     }
     return { code: row.code, kind: row.kind, value: row.value };

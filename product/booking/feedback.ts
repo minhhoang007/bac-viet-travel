@@ -5,6 +5,7 @@ import type { MailMessage, MailPort } from "@/core/ports/mail";
 import type { Db } from "@/db/client";
 import { bookings, departures, tripFeedback, type Booking, type Departure, type TripFeedback } from "../schema/booking";
 import { addDays, vietnamToday } from "./rules";
+import { SOLD_STATUSES } from "./status";
 
 /** Feedback emails go out the day after the trip's last day (departure + tour days), for up to 30 days. */
 const FEEDBACK_WINDOW_DAYS = 30;
@@ -88,7 +89,7 @@ export function createFeedbackService(deps: {
     async sendRequests() {
       const today = vietnamToday(now());
       const waiting = and(
-        inArray(bookings.status, ["deposit_paid", "confirmed"]),
+        inArray(bookings.status, [...SOLD_STATUSES]),
         isNull(bookings.feedbackRequestedAt),
         eq(bookings.guestEmails, true),
         sql`${bookings.email} <> ''`,

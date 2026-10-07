@@ -3,6 +3,7 @@
 // one is sold out. Tests in this file must not book on those two dates.
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+import { submitHold } from "./booking-form";
 
 const TOUR = "/tours/ninh-binh-day-tour";
 
@@ -38,11 +39,7 @@ test("guest holds seats: live quote, then a private booking page with a 15-minut
   const deposit = await page.getByTestId("deposit").textContent();
   expect(total).toMatch(/₫/);
 
-  await page.getByLabel("Họ tên").fill("Nguyễn Văn A");
-  await page.getByLabel("Email").fill("a@example.com");
-  await page.getByLabel("Số điện thoại / WhatsApp").fill("0912 345 678");
-  await page.getByRole("checkbox", { name: /Tôi đồng ý/ }).check();
-  await page.getByRole("button", { name: "Giữ chỗ 15 phút" }).click();
+  await submitHold(page, { name: "Nguyễn Văn A", email: "a@example.com", phone: "0912 345 678" });
 
   await expect(page).toHaveURL(/\/booking\/BV-[A-Z2-9]{6}\?t=[\w-]{20,}$/);
   await expect(page.locator("[data-booking-status=held]")).toBeVisible();
@@ -69,11 +66,7 @@ test("server validation keeps the guest on the form; asking for more seats than 
   await page.getByTestId("departures").getByRole("button", { name: /Chỉ còn 3 chỗ/ }).click();
   await expect(page.locator("form[data-hydrated]")).toBeVisible();
   await page.getByLabel("Người lớn").fill("4");
-  await page.getByLabel("Họ tên").fill("Tran B");
-  await page.getByLabel("Email").fill("b@example.com");
-  await page.getByLabel("Số điện thoại / WhatsApp").fill("0912345678");
-  await page.getByRole("checkbox", { name: /Tôi đồng ý/ }).check();
-  await page.getByRole("button", { name: "Giữ chỗ 15 phút" }).click();
+  await submitHold(page, { name: "Tran B", email: "b@example.com", phone: "0912345678" });
   await expect(page.getByRole("alert").filter({ hasText: "chỗ" })).toContainText("Chỉ còn 3 chỗ cho ngày này");
 });
 
@@ -99,11 +92,7 @@ test("private tour: tour page offer → guest picks the date and group size, pri
 
   await page.getByLabel("Người lớn").fill("4");
   await expect(page.getByTestId("private-tiers").locator("li.font-semibold")).toContainText("3–4 khách");
-  await page.getByLabel("Họ tên").fill("Nguyễn Văn Riêng");
-  await page.getByLabel("Email").fill("rieng@example.com");
-  await page.getByLabel("Số điện thoại / WhatsApp").fill("0912 345 679");
-  await page.getByRole("checkbox", { name: /Tôi đồng ý/ }).check();
-  await page.getByRole("button", { name: "Giữ chỗ 15 phút" }).click();
+  await submitHold(page, { name: "Nguyễn Văn Riêng", email: "rieng@example.com", phone: "0912 345 679" });
   await expect(page).toHaveURL(/\/booking\/BV-[A-Z2-9]{6}\?t=[\w-]{20,}$/);
 });
 
@@ -132,11 +121,7 @@ test("traveller details: the guest fills one row per person on the booking page;
   await page.goto("/tours/sapa-fansipan-3d2n/book");
   await expect(page.locator("form[data-hydrated]")).toBeVisible();
   await page.getByLabel("Người lớn").fill("2");
-  await page.getByLabel("Họ tên").fill("Đỗ Hà");
-  await page.getByLabel("Email").fill("ha@example.com");
-  await page.getByLabel("Số điện thoại / WhatsApp").fill("0911222333");
-  await page.getByRole("checkbox", { name: /Tôi đồng ý/ }).check();
-  await page.getByRole("button", { name: "Giữ chỗ 15 phút" }).click();
+  await submitHold(page, { name: "Đỗ Hà", email: "ha@example.com", phone: "0911222333" });
   const section = page.getByTestId("travellers");
   await expect(section).toContainText("Chưa điền thông tin hành khách");
   const form = page.getByTestId("travellers-form");
@@ -168,11 +153,7 @@ test("add-ons: the guest adds hotel pick-up; the quote and the held booking incl
   await page.getByTestId("addons").getByRole("checkbox", { name: /Đón tận khách sạn/ }).check();
   await expect(page.getByTestId("addon-line")).toContainText("Đón tận khách sạn");
   await expect.poll(async () => Number((await total.innerText()).replace(/\D/g, ""))).toBe(before + 200_000);
-  await page.getByLabel("Họ tên").fill("Ngô Bình");
-  await page.getByLabel("Email").fill("binh@example.com");
-  await page.getByLabel("Số điện thoại / WhatsApp").fill("0944555666");
-  await page.getByRole("checkbox", { name: /Tôi đồng ý/ }).check();
-  await page.getByRole("button", { name: "Giữ chỗ 15 phút" }).click();
+  await submitHold(page, { name: "Ngô Bình", email: "binh@example.com", phone: "0944555666" });
   await expect(page.locator("[data-booking-status=held]")).toBeVisible();
   await expect(page.getByText(/Đón tận khách sạn/)).toBeVisible();
 });
