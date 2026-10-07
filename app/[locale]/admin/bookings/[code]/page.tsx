@@ -89,6 +89,7 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
         <section className="rounded-lg border border-border p-4">
           <h2 className="font-semibold">{c.detail.money}</h2>
           <dl className="mt-2 grid grid-cols-[110px_1fr] gap-1 text-sm">
+            {b.discountVnd > 0 && row(g.discount.line(b.discountCode ?? ""), `−${formatVnd(b.discountVnd, locale)}`)}
             {row(c.detail.total, formatVnd(b.totalVnd, locale))}
             {row(c.detail.deposit, formatVnd(b.depositVnd, locale))}
             {row(c.detail.paidAt, time(b.depositPaidAt))}

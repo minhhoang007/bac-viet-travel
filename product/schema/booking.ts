@@ -56,6 +56,10 @@ export const bookings = pgTable(
     infants: integer("infants").notNull().default(0),
     /** Names and birth years of everyone on the trip (D7), filled in by the guest after booking (insurance, cruise lists). */
     travellers: jsonb("travellers").$type<Traveller[]>().notNull().default([]),
+    /** Discount code used (D6), upper case; null = none. */
+    discountCode: text("discount_code"),
+    /** Amount taken off the total by the code (VND). */
+    discountVnd: integer("discount_vnd").notNull().default(0),
     /** Single rooms booked (supplement per room, B2). */
     singleRooms: integer("single_rooms").notNull().default(0),
     /** Seats taken: adults + children (infants share a seat). */
@@ -118,3 +122,31 @@ export const bookingPayments = pgTable(
 export type BookingPayment = typeof bookingPayments.$inferSelect;
 export type Departure = typeof departures.$inferSelect;
 export type Booking = typeof bookings.$inferSelect;
+
+/**
+ * Discount codes (D6): percent or fixed VND off the total, valid between two days (Vietnam time), optionally for one
+ * tour, a minimum total, and a maximum number of live bookings (held, paid, confirmed).
+ */
+export const discountCodes = pgTable(
+  "discount_codes",
+  {
+    id: id(),
+    /** Upper case letters, digits and dashes, e.g. TET2027. */
+    code: text("code").notNull(),
+    kind: text("kind", { enum: ["percent", "amount"] }).notNull(),
+    /** Percent (1–90) or VND. */
+    value: integer("value").notNull(),
+    validFrom: date("valid_from", { mode: "string" }).notNull(),
+    validTo: date("valid_to", { mode: "string" }).notNull(),
+    /** Only for this tour; null = every tour. */
+    tourSlug: text("tour_slug"),
+    minTotalVnd: integer("min_total_vnd").notNull().default(0),
+    /** null = unlimited. */
+    maxUses: integer("max_uses"),
+    active: boolean("active").notNull().default(true),
+    note: text("note").notNull().default(""),
+    ...timestamps(),
+  },
+  (t) => [uniqueIndex("discount_codes_code_idx").on(t.code), check("discount_codes_value_check", sql`${t.value} > 0`)],
+);
+export type DiscountCode = typeof discountCodes.$inferSelect;

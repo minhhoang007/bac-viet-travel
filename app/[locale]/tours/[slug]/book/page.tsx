@@ -10,6 +10,7 @@ import type { Locale } from "@/config/app";
 import { getBookingContent } from "@/product/booking/content";
 import { addDays, bookingRules, vietnamToday } from "@/product/booking/rules";
 import { BookingForm } from "@/product/components/booking-form";
+import { previewDiscount } from "@/app/actions/discounts";
 import { BookingSteps } from "@/product/components/booking-steps";
 import { getProductContent } from "@/product/content";
 import { getTours } from "@/app/_lib/tours";
@@ -68,6 +69,8 @@ export default async function BookTourPage({ params, searchParams }: Props) {
           privateTour={isPrivate ? { tourSlug: slug, pricing: tour.private!, minDate: addDays(today, bookingRules.cutoffDays), maxDate: addDays(today, 366) } : undefined}
           initialDepartureId={d}
           pricing={tour.pricing}
+          tourSlug={slug}
+          previewDiscount={previewDiscount}
           tour={{ title: tour.title, image: tour.images[0]!, duration: getProductContent(locale).tours.days(tour.days, tour.nights) }}
           initialAdults={Number.isInteger(adults) && adults >= 1 && adults <= 50 ? adults : undefined}
           departures={departures.map((x) => ({ id: x.id, date: x.date, seatsLeft: x.seatsLeft, unitPriceVnd: x.unitPriceVnd, bookable: x.bookable, status: x.status }))}

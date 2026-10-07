@@ -2,6 +2,14 @@ import { z } from "zod";
 import { MANUAL_SOURCES } from "./sources";
 import { bookingRules } from "./rules";
 
+/** Discount code typed by the guest: trimmed, upper case; empty = none. */
+export const discountCodeField = z
+  .string()
+  .trim()
+  .transform((v) => v.toUpperCase())
+  .pipe(z.union([z.literal(""), z.string().regex(/^[A-Z0-9-]{3,30}$/, "invalid")]))
+  .default("");
+
 const count = (min: number, max: number) => z.coerce.number({ message: "invalid" }).int("invalid").min(min, "invalid").max(max, "invalid");
 
 /** Guest booking form. Error messages are codes; the UI maps them to localized text. */
@@ -16,6 +24,7 @@ export const bookingInputSchema = z
     infants: count(0, bookingRules.maxInfants).default(0),
     /** Single rooms (supplement), only on tours that set one; at most one per traveller. */
     singleRooms: count(0, bookingRules.maxSeatsPerBooking).default(0),
+    discountCode: discountCodeField,
     note: z.string().trim().max(1000, "too_long").default(""),
     /** Checkbox "I accept the terms and the cancellation policy" (browsers post "on"). */
     agree: z.literal("on", { message: "must_agree" }),
@@ -38,6 +47,7 @@ export const privateBookingInputSchema = z
     children: count(0, 50).default(0),
     infants: count(0, bookingRules.maxInfants).default(0),
     singleRooms: count(0, 50).default(0),
+    discountCode: discountCodeField,
     note: z.string().trim().max(1000, "too_long").default(""),
     locale: z.enum(["vi", "en"]).catch("vi"),
     agree: z.literal("on", { message: "must_agree" }),

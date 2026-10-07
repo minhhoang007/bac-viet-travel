@@ -11,7 +11,7 @@ import { ShieldCheck } from "lucide-react";
 import type { Locale } from "@/config/app";
 import { localePath } from "@/core/i18n/routing";
 import { formatDay, formatVnd, getBookingContent } from "../booking/content";
-import { DEFAULT_TOUR_PRICING, privateQuote, privateTier, quote, type PrivatePricing, type TourPricing } from "../booking/rules";
+import { applyDiscount, DEFAULT_TOUR_PRICING, privateQuote, privateTier, quote, type Discount, type PrivatePricing, type TourPricing } from "../booking/rules";
 import type { BookingField, HoldResult } from "../booking/service";
 
 export interface DepartureOption {
@@ -47,6 +47,9 @@ export interface BookingFormProps {
   privateTour?: PrivateTourOption;
   /** Child %, infant price, single room supplement of the tour (defaults when absent). */
   pricing?: TourPricing;
+  /** Tour of the form and the discount preview (D6); without it no code field. */
+  tourSlug?: string;
+  previewDiscount?: (code: string, tourSlug: string, totalVnd: number) => Promise<Discount | null>;
 }
 
 const noopSubscribe = () => () => {};
@@ -60,6 +63,8 @@ export function BookingForm({
   locale,
   privateTour,
   pricing = DEFAULT_TOUR_PRICING,
+  tourSlug,
+  previewDiscount,
 }: BookingFormProps) {
   const t = getBookingContent(locale);
   const [state, formAction, pending] = useActionState(action, null);
@@ -93,6 +98,19 @@ export function BookingForm({
       ? quote(group.unitPriceVnd, party, pricing)
       : null;
   const guestsOutOfRange = Boolean(privateTour) && q === null;
+  // Discount (D6): checked on the server for the preview, and again when the seats are held.
+  const [code, setCode] = useState("");
+  const [discount, setDiscount] = useState<{ checked: string; value: Discount | null } | null>(null);
+  const [checking, setChecking] = useState(false);
+  const applied = discount && discount.checked === code.trim().toUpperCase() ? discount.value : null;
+  const dq = q ? applyDiscount(q, applied) : null;
+  const checkCode = async () => {
+    if (!previewDiscount || !tourSlug || !q || !code.trim()) return;
+    setChecking(true);
+    const value = await previewDiscount(code, tourSlug, q.totalVnd).catch(() => null);
+    setDiscount({ checked: code.trim().toUpperCase(), value });
+    setChecking(false);
+  };
 
   const error = (field: BookingField) => {
     const code =
@@ -348,6 +366,28 @@ export function BookingForm({
               {message("phone")}
             </div>
           </div>
+          {previewDiscount && tourSlug && (
+            <div>
+              <Label htmlFor="booking-discountCode">{t.discount.label}</Label>
+              <div className="mt-1 flex gap-2">
+                <Input
+                  {...aria("discountCode")}
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  maxLength={30}
+                  autoComplete="off"
+                  className="max-w-48 uppercase"
+                />
+                <Button type="button" variant="outline" onClick={checkCode} disabled={checking || !code.trim()} data-testid="discount-apply">
+                  {t.discount.apply}
+                </Button>
+              </div>
+              <p className="mt-1 text-sm" role="status" data-testid="discount-status">
+                {discount && discount.checked === code.trim().toUpperCase() && (applied ? <span className="text-success">{t.discount.ok}</span> : <span className="text-danger">{t.discount.bad}</span>)}
+              </p>
+              {message("discountCode")}
+            </div>
+          )}
           <div>
             <Label htmlFor="booking-note">{t.note}</Label>
             <Textarea {...aria("note")} rows={3} className="mt-1" />
@@ -400,13 +440,19 @@ export function BookingForm({
                   <dd>{formatVnd(q.singleRooms * q.singleSupplementVnd, locale)}</dd>
                 </div>
               )}
+              {dq && dq.discountVnd > 0 && (
+                <div className="flex justify-between text-success" data-testid="discount-line">
+                  <dt>{t.discount.line(dq.discountCode!)}</dt>
+                  <dd>−{formatVnd(dq.discountVnd, locale)}</dd>
+                </div>
+              )}
               <div className="flex justify-between border-t border-border pt-2 font-semibold">
                 <dt>{t.total}</dt>
-                <dd data-testid="total">{formatVnd(q.totalVnd, locale)}</dd>
+                <dd data-testid="total">{formatVnd(dq!.totalVnd, locale)}</dd>
               </div>
               <div className="flex justify-between text-base font-bold text-primary">
                 <dt>{t.deposit}</dt>
-                <dd data-testid="deposit">{formatVnd(q.depositVnd, locale)}</dd>
+                <dd data-testid="deposit">{formatVnd(dq!.depositVnd, locale)}</dd>
               </div>
             </dl>
             <p className="text-xs text-muted-foreground">

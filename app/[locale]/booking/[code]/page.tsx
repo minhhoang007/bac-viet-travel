@@ -182,6 +182,12 @@ export default async function BookingPage({ params, searchParams }: Props) {
         <dd>
           {booking.name} · {booking.email} · {booking.phone}
         </dd>
+        {booking.discountVnd > 0 && (
+          <>
+            <dt className="text-muted-foreground">{t.discount.line(booking.discountCode ?? "")}</dt>
+            <dd className="text-success" data-testid="booking-discount">−{formatVnd(booking.discountVnd, locale)}</dd>
+          </>
+        )}
         <dt className="text-muted-foreground">{t.total}</dt>
         <dd className="font-semibold">{formatVnd(booking.totalVnd, locale)}</dd>
         <dt className="text-muted-foreground">{t.deposit}</dt>

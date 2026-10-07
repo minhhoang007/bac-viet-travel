@@ -154,3 +154,42 @@ test("passenger list per departure: one row per named traveller, unnamed parties
   const result = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
   expect(result.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id)).toEqual([]);
 });
+
+test("discount codes: staff create one; the guest applies it in the booking form; the hold keeps the discounted price", async ({ page, browser }) => {
+  await signInAsAdmin(page, "discount-staff@bacviet.example");
+  await page.goto("/admin/discounts");
+  const form = page.getByTestId("discount-form");
+  await form.getByLabel("Mã (chữ, số, gạch ngang)").fill("e2e-10");
+  await form.getByLabel("Giá trị (% hoặc VND)").fill("10");
+  const [row] = await sql<{ to: string }[]>`select (current_date + 60)::text as to`;
+  await form.getByLabel("Đến ngày").fill(row!.to);
+  await page.getByTestId("discount-create").click();
+  await expect(page.getByRole("status")).toContainText("Đã lưu.");
+  await expect(page.locator('[data-discount="E2E-10"]')).toContainText("10%");
+  const a11y = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
+  expect(a11y.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id)).toEqual([]);
+
+  const guest = await (await browser.newContext()).newPage();
+  await guest.goto("/tours/ninh-binh-2d1n/book");
+  await expect(guest.locator("form[data-hydrated]")).toBeVisible();
+  const before = Number((await guest.getByTestId("total").innerText()).replace(/\D/g, ""));
+  await guest.getByLabel("Mã giảm giá (nếu có)").fill("NOPE99");
+  await guest.getByTestId("discount-apply").click();
+  await expect(guest.getByTestId("discount-status")).toContainText("không hợp lệ");
+  await guest.getByLabel("Mã giảm giá (nếu có)").fill("e2e-10");
+  await guest.getByTestId("discount-apply").click();
+  await expect(guest.getByTestId("discount-status")).toContainText("Đã áp dụng");
+  await expect(guest.getByTestId("discount-line")).toBeVisible();
+  const after = Number((await guest.getByTestId("total").innerText()).replace(/\D/g, ""));
+  expect(after).toBeLessThan(before);
+
+  await guest.getByLabel("Họ tên").fill("Vũ Mai");
+  await guest.getByLabel("Email").fill("mai@example.com");
+  await guest.getByLabel("Số điện thoại / WhatsApp").fill("0933444555");
+  await guest.getByRole("checkbox", { name: /Tôi đồng ý/ }).check();
+  await guest.getByRole("button", { name: "Giữ chỗ 15 phút" }).click();
+  await expect(guest.locator("[data-booking-status=held]")).toBeVisible();
+  await expect(guest.getByTestId("booking-discount")).toBeVisible();
+  await page.reload();
+  await expect(page.locator('[data-discount="E2E-10"]').getByTestId("discount-used")).toHaveText("1");
+});
