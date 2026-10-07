@@ -4,6 +4,12 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.18.1] - 2026-10-08
+
+### Fixed — two-step verification
+- An authenticator-app setup started but not confirmed counted as a second factor in the "fresh factor needed" check, so starting it again (or adding a passkey) was refused and a new staff member could not finish setting up.
+- The signed-in devices list showed staff sessions older than 12 hours (already ended).
+
 ## [1.18.0] - 2026-10-07
 
 ### Added — project dashboard on /admin, livelier admin shell
