@@ -26,7 +26,7 @@ export function TourListing({ locale, tours, filters, destination }: { locale: L
 
   return (
     <div className="grid gap-8 lg:grid-cols-[16rem_minmax(0,1fr)]">
-      <form action={base} method="get" aria-label={t.title} data-testid="tour-filters" className="grid h-fit grid-cols-2 gap-3 rounded-2xl border border-border p-4 lg:sticky lg:top-24 lg:grid-cols-1">
+      <form action={base} method="get" aria-label={t.title} data-testid="tour-filters" className="grid h-fit grid-cols-2 gap-3 border border-border p-4 lg:sticky lg:top-24 lg:grid-cols-1">
         <p className="col-span-2 flex items-center gap-2 font-semibold lg:col-span-1">
           <SlidersHorizontal className="size-4" aria-hidden="true" />
           {t.title}
@@ -105,7 +105,7 @@ export function TourListing({ locale, tours, filters, destination }: { locale: L
           {tripLabel && ` · ${tripLabel}`}
         </h2>
         {results.length === 0 ? (
-          <p className="mt-6 rounded-2xl border border-dashed border-border p-8 text-center text-muted-foreground">{t.empty}</p>
+          <p className="mt-6 border border-dashed border-border p-8 text-center text-muted-foreground">{t.empty}</p>
         ) : (
           <div className="mt-4 grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
             {results.map((tour, i) => (

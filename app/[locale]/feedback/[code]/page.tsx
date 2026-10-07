@@ -28,7 +28,7 @@ export default async function FeedbackPage({ params, searchParams }: Props) {
   if (!found || !isSold(found.booking.status)) {
     return (
       <Container className="max-w-xl py-16">
-        <h1 className="text-2xl font-semibold">{t.title}</h1>
+        <h1 className="text-2xl font-heading font-normal">{t.title}</h1>
         <p className="mt-4" data-feedback="not-found">
           {t.notFound}
         </p>
@@ -42,12 +42,12 @@ export default async function FeedbackPage({ params, searchParams }: Props) {
   if (feedback) {
     return (
       <Container className="max-w-xl py-16">
-        <h1 className="text-2xl font-semibold">{t.thanksTitle}</h1>
+        <h1 className="text-2xl font-heading font-normal">{t.thanksTitle}</h1>
         <p className="mt-3" data-feedback="saved">
           {done ? t.thanks : t.already}
         </p>
         {feedback.rating >= 4 && review && (
-          <p className="mt-6 rounded-xl bg-muted p-5 text-sm">
+          <p className="mt-6 bg-muted p-5 text-sm">
             {t.reviewAsk}{" "}
             <a href={review} target="_blank" rel="noopener noreferrer" className="font-medium text-primary underline underline-offset-4" data-testid="google-review">
               {t.reviewLink}
@@ -60,7 +60,7 @@ export default async function FeedbackPage({ params, searchParams }: Props) {
 
   return (
     <Container className="max-w-xl py-12">
-      <h1 className="text-2xl font-semibold">{t.title}</h1>
+      <h1 className="text-2xl font-heading font-normal">{t.title}</h1>
       <p className="mt-2 text-muted-foreground">
         {tour?.title ?? departure.tourSlug} · <span className="capitalize">{formatDay(departure.date, locale)}</span>
       </p>

@@ -32,14 +32,14 @@ export default async function FaqPage({ params }: Props) {
   return (
     <Container className="max-w-3xl py-12">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
-      <h1 className="text-3xl font-semibold sm:text-4xl">{c.title}</h1>
+      <h1 className="text-3xl font-heading font-normal sm:text-4xl">{c.title}</h1>
       <p className="mt-2 text-muted-foreground">{c.description}</p>
       {groups.map((g) => (
         <section key={g.title} className="mt-10" aria-labelledby={`faq-${g.title}`}>
-          <h2 id={`faq-${g.title}`} className="text-xl font-semibold">
+          <h2 id={`faq-${g.title}`} className="text-xl font-heading font-normal">
             {g.title}
           </h2>
-          <div className="mt-3 divide-y divide-border rounded-2xl border border-border" data-testid="faq-group">
+          <div className="mt-3 divide-y divide-border border border-border" data-testid="faq-group">
             {g.items.map((i) => (
               <details key={i.q} className="group px-4 py-3">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-medium">
@@ -59,7 +59,7 @@ export default async function FaqPage({ params }: Props) {
           </div>
         </section>
       ))}
-      <p className="mt-10 rounded-xl bg-muted p-5 text-sm">
+      <p className="mt-10 bg-muted p-5 text-sm">
         {c.more}{" "}
         <a href={localePath(locale, "/contact")} className="font-medium text-primary underline underline-offset-4">
           {c.contact}

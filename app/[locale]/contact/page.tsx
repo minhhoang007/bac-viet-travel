@@ -54,13 +54,13 @@ export default async function ContactPage({ params }: Props) {
   return (
     <Container className="py-12">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(agencyLd) }} />
-      <h1 className="text-3xl font-semibold sm:text-4xl">{c.title}</h1>
+      <h1 className="text-3xl font-heading font-normal sm:text-4xl">{c.title}</h1>
       <p className="mt-3 max-w-2xl text-lg text-muted-foreground">{c.intro}</p>
 
       <div className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
         <div className="grid content-start gap-8">
           <section aria-labelledby="channels-title">
-            <h2 id="channels-title" className="text-xl font-semibold">
+            <h2 id="channels-title" className="text-xl font-heading font-normal">
               {c.channelsTitle}
             </h2>
             <ul className="mt-4 grid gap-3 sm:grid-cols-2" data-testid="contact-channels">
@@ -70,7 +70,7 @@ export default async function ContactPage({ params }: Props) {
                     href={href}
                     {...(href.startsWith("http") ? { target: "_blank", rel: "noopener noreferrer" } : {})}
                     data-channel={key}
-                    className="flex h-full gap-3 rounded-2xl border border-border p-4 transition hover:border-primary/60 hover:bg-muted/50"
+                    className="flex h-full gap-3 border border-border p-4 transition hover:border-primary/60 hover:bg-muted/50"
                   >
                     <Icon aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-primary" />
                     <span className="min-w-0">
@@ -84,8 +84,8 @@ export default async function ContactPage({ params }: Props) {
             </ul>
           </section>
 
-          <section aria-labelledby="office-title" className="rounded-2xl bg-muted p-5">
-            <h2 id="office-title" className="text-xl font-semibold">
+          <section aria-labelledby="office-title" className="bg-muted p-5">
+            <h2 id="office-title" className="text-xl font-heading font-normal">
               {c.officeTitle}
             </h2>
             <p className="mt-3 flex gap-2 text-sm">
@@ -108,8 +108,8 @@ export default async function ContactPage({ params }: Props) {
           </section>
         </div>
 
-        <section aria-labelledby="form-title" className="rounded-2xl border border-border p-6">
-          <h2 id="form-title" className="text-xl font-semibold">
+        <section aria-labelledby="form-title" className="border border-border p-6">
+          <h2 id="form-title" className="text-xl font-heading font-normal">
             {c.formTitle}
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">{c.formHint}</p>

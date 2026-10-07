@@ -49,7 +49,7 @@ export default async function AboutPage({ params }: Props) {
         <Image src="/tours/ninhbinh-1.jpg" alt="" fill priority sizes="100vw" className="-z-10 object-cover" />
         <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black/75 via-black/45 to-black/25" />
         <Container className="max-w-4xl pb-12 pt-24 sm:pt-32">
-          <h1 className="text-4xl font-semibold [text-wrap:balance] sm:text-5xl">{c.title}</h1>
+          <h1 className="text-4xl font-heading font-normal [text-wrap:balance] sm:text-5xl">{c.title}</h1>
           <p className="mt-4 max-w-3xl text-lg text-white/90">{c.intro}</p>
         </Container>
       </section>
@@ -57,7 +57,7 @@ export default async function AboutPage({ params }: Props) {
       <Container className="max-w-5xl py-14">
         <section className="grid items-center gap-10 md:grid-cols-2" aria-labelledby="about-story">
           <div>
-            <h2 id="about-story" className="text-2xl font-semibold sm:text-3xl">
+            <h2 id="about-story" className="text-2xl font-heading font-normal sm:text-3xl">
               {c.storyTitle}
             </h2>
             {c.story.map((s) => (
@@ -66,13 +66,13 @@ export default async function AboutPage({ params }: Props) {
               </p>
             ))}
           </div>
-          <div className="relative aspect-[4/3] overflow-hidden rounded-2xl">
+          <div className="relative aspect-[4/3] overflow-hidden">
             <Image src="/tours/halong-3.jpg" alt="" fill sizes="(min-width: 768px) 50vw, 100vw" className="object-cover" />
           </div>
         </section>
 
         <section className="mt-16" aria-labelledby="about-why">
-          <h2 id="about-why" className="text-2xl font-semibold sm:text-3xl">
+          <h2 id="about-why" className="text-2xl font-heading font-normal sm:text-3xl">
             {c.whyTitle}
           </h2>
           <ul className="mt-8 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
@@ -87,12 +87,12 @@ export default async function AboutPage({ params }: Props) {
 
         {/* Placeholder names until the company adds its real team and photos (product/about.ts). */}
         <section className="mt-16" aria-labelledby="about-team" data-demo="team">
-          <h2 id="about-team" className="text-2xl font-semibold sm:text-3xl">
+          <h2 id="about-team" className="text-2xl font-heading font-normal sm:text-3xl">
             {c.teamTitle}
           </h2>
           <ul className="mt-8 grid gap-6 sm:grid-cols-3">
             {c.team.map((m) => (
-              <li key={m.name} className="flex items-center gap-4 rounded-2xl border border-border p-5">
+              <li key={m.name} className="flex items-center gap-4 border border-border p-5">
                 <span aria-hidden="true" className="grid size-14 shrink-0 place-items-center rounded-full bg-primary/10 text-lg font-semibold text-primary">
                   {initials(m.name)}
                 </span>
@@ -106,8 +106,8 @@ export default async function AboutPage({ params }: Props) {
         </section>
 
         <section className="mt-16 grid gap-6 md:grid-cols-[1.2fr_1fr]" aria-labelledby="about-legal">
-          <div className="rounded-2xl border border-border p-6" data-testid="licence">
-            <h2 id="about-legal" className="flex items-center gap-2 text-xl font-semibold">
+          <div className="border border-border p-6" data-testid="licence">
+            <h2 id="about-legal" className="flex items-center gap-2 text-xl font-heading font-normal">
               <BadgeCheck aria-hidden="true" className="size-6 text-primary" />
               {c.legalTitle}
             </h2>
@@ -124,8 +124,8 @@ export default async function AboutPage({ params }: Props) {
               ))}
             </dl>
           </div>
-          <div className="rounded-2xl bg-muted p-6" aria-labelledby="about-partners">
-            <h2 id="about-partners" className="text-xl font-semibold">
+          <div className="bg-muted p-6" aria-labelledby="about-partners">
+            <h2 id="about-partners" className="text-xl font-heading font-normal">
               {c.partnersTitle}
             </h2>
             <p className="mt-3 text-sm text-muted-foreground">{c.partners}</p>
