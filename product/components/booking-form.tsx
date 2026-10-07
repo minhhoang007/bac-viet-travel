@@ -154,7 +154,7 @@ export function BookingForm({
         </fieldset>
       </div>
 
-      <aside className="h-fit rounded-xl border border-border p-5 shadow-sm lg:sticky lg:top-6" aria-live="polite">
+      <aside className="h-fit border border-border p-5 shadow-sm lg:sticky lg:top-6" aria-live="polite">
         {tour && (
           <div className="mb-4 flex gap-3 border-b border-border pb-4">
             <div className="relative size-16 shrink-0 overflow-hidden rounded-lg">
@@ -166,7 +166,7 @@ export function BookingForm({
             </div>
           </div>
         )}
-        <h2 className="font-semibold">{t.summary}</h2>
+        <h2 className="font-heading font-normal">{t.summary}</h2>
         {chosen && q && discount.discounted && (
           <QuoteSummary t={t} locale={locale} date={chosen.date} party={party} childPercent={pricing.childPercent} q={q} discounted={discount.discounted} />
         )}

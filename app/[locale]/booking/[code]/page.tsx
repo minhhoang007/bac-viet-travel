@@ -81,7 +81,7 @@ export default async function BookingPage({ params, searchParams }: Props) {
       <div className="mb-6">
         <BookingSteps locale={locale} current={step} />
       </div>
-      <h1 className="text-2xl font-semibold">{t.booking.title}</h1>
+      <h1 className="text-2xl font-heading font-normal">{t.booking.title}</h1>
       <p className="mt-1 text-sm text-muted-foreground">
         {t.booking.code}: <strong className="font-mono text-base text-foreground" data-testid="booking-code">{booking.code}</strong> ·{" "}
         <span data-booking-status={status}>{t.booking.status[status]}</span>
@@ -95,14 +95,14 @@ export default async function BookingPage({ params, searchParams }: Props) {
         </p>
       )}
       {confirming && (
-        <section className="mt-6 rounded-xl border border-border p-5" data-testid="confirming">
+        <section className="mt-6 border border-border p-5" data-testid="confirming">
           <p className="font-medium">{t.booking.confirming}</p>
           <AutoRefresh />
         </section>
       )}
       {isSold(status) && (
-        <section className="mt-6 rounded-xl border border-success/40 bg-success/10 p-5" data-testid="paid">
-          <h2 className="text-lg font-semibold">{t.booking.paidTitle}</h2>
+        <section className="mt-6 border border-success/40 bg-success/10 p-5" data-testid="paid">
+          <h2 className="text-lg font-heading font-normal">{t.booking.paidTitle}</h2>
           <p className="mt-1 text-sm">{t.booking.paidText}</p>
           {balanceDue(booking) > 0 && booking.departure.date >= today && isVnpayConfigured() ? (
             <div className="mt-4 border-t border-success/30 pt-4" data-testid="balance">
@@ -123,14 +123,14 @@ export default async function BookingPage({ params, searchParams }: Props) {
         </section>
       )}
       {status === "refund_due" && (
-        <section className="mt-6 rounded-xl border border-warning/40 bg-warning/10 p-5">
-          <h2 className="text-lg font-semibold">{t.booking.refundTitle}</h2>
+        <section className="mt-6 border border-warning/40 bg-warning/10 p-5">
+          <h2 className="text-lg font-heading font-normal">{t.booking.refundTitle}</h2>
           <p className="mt-1 text-sm">{t.booking.refundText}</p>
         </section>
       )}
       {status === "held" && !confirming && (
-        <section className="mt-6 rounded-xl border border-primary/40 bg-primary/5 p-5">
-          <h2 className="text-lg font-semibold">{t.booking.heldTitle}</h2>
+        <section className="mt-6 border border-primary/40 bg-primary/5 p-5">
+          <h2 className="text-lg font-heading font-normal">{t.booking.heldTitle}</h2>
           <p className="mt-1 text-sm">{transfer ? t.booking.transferHeldText(holdUntil) : t.booking.heldText}</p>
           <p className="mt-4 text-sm">
             {t.booking.remaining}: <HoldCountdown expiresAt={booking.holdExpiresAt.toISOString()} />
@@ -158,8 +158,8 @@ export default async function BookingPage({ params, searchParams }: Props) {
         </section>
       )}
       {status === "expired" && (
-        <section className="mt-6 rounded-xl border border-border bg-muted p-5">
-          <h2 className="text-lg font-semibold">{t.booking.expiredTitle}</h2>
+        <section className="mt-6 border border-border bg-muted p-5">
+          <h2 className="text-lg font-heading font-normal">{t.booking.expiredTitle}</h2>
           <p className="mt-1 text-sm">{t.booking.expiredText}</p>
           <ButtonLink href={rebook} className="mt-4">
             {t.booking.rebook}
@@ -168,8 +168,8 @@ export default async function BookingPage({ params, searchParams }: Props) {
       )}
 
       {(status === "held" || isSold(status)) && (
-        <section className="mt-8 rounded-xl border border-border p-5" aria-labelledby="travellers-title" data-testid="travellers">
-          <h2 id="travellers-title" className="text-lg font-semibold">
+        <section className="mt-8 border border-border p-5" aria-labelledby="travellers-title" data-testid="travellers">
+          <h2 id="travellers-title" className="text-lg font-heading font-normal">
             {t.travellers.title}
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -189,7 +189,7 @@ export default async function BookingPage({ params, searchParams }: Props) {
         </section>
       )}
 
-      <dl className="mt-8 grid gap-3 rounded-xl border border-border p-5 text-sm sm:grid-cols-[160px_1fr]">
+      <dl className="mt-8 grid gap-3 border border-border p-5 text-sm sm:grid-cols-[160px_1fr]">
         <dt className="text-muted-foreground">{t.booking.tour}</dt>
         <dd className="font-medium">{tour?.title ?? booking.departure.tourSlug}</dd>
         <dt className="text-muted-foreground">{t.booking.date}</dt>
@@ -214,7 +214,7 @@ export default async function BookingPage({ params, searchParams }: Props) {
 
       {next && (
         <section className="mt-8" aria-labelledby="next-title" data-testid="next-steps">
-          <h2 id="next-title" className="text-lg font-semibold">
+          <h2 id="next-title" className="text-lg font-heading font-normal">
             {t.booking.nextTitle}
           </h2>
           <ol className="mt-3 grid gap-3">
@@ -228,8 +228,8 @@ export default async function BookingPage({ params, searchParams }: Props) {
         </section>
       )}
 
-      <section className="mt-8 rounded-xl bg-muted p-5 text-sm" aria-labelledby="help-title">
-        <h2 id="help-title" className="font-semibold">
+      <section className="mt-8 bg-muted p-5 text-sm" aria-labelledby="help-title">
+        <h2 id="help-title" className="font-heading font-normal">
           {t.booking.helpTitle}
         </h2>
         <p className="mt-1 text-muted-foreground">{t.booking.helpText(booking.code)}</p>
@@ -263,7 +263,7 @@ function TransferPanel({ locale, code, amountVnd }: { locale: Locale; code: stri
     </div>
   );
   return (
-    <div className="mt-5 rounded-xl border border-border bg-background p-4" data-testid="transfer">
+    <div className="mt-5 border border-border bg-background p-4" data-testid="transfer">
       <h3 className="font-semibold">{t.transferTitle}</h3>
       {bank.demo && (
         <p className="mt-2 rounded-md border border-warning/40 bg-warning/10 p-2 text-sm font-medium" data-demo="bank-account">

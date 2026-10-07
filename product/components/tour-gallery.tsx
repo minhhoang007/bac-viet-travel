@@ -44,7 +44,7 @@ export function TourGallery({ images, title, locale }: { images: string[]; title
 
   return (
     <section aria-label={labels.gallery} data-testid="gallery" className="relative">
-      <div className={cn("grid gap-2 overflow-hidden rounded-2xl", grid)}>
+      <div className={cn("grid gap-2 overflow-hidden", grid)}>
         {shown.map((src, i) => (
           <button
             key={src}

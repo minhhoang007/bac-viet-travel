@@ -68,7 +68,7 @@ export function TourDepartureList({ locale, price }: { locale: Locale; price: { 
   const b = getBookingContent(locale);
   if (failed) {
     return (
-      <div className="mt-4 rounded-2xl border border-warning/40 bg-warning/10 p-4 text-sm" role="alert" data-testid="departures-failed">
+      <div className="mt-4 border border-warning/40 bg-warning/10 p-4 text-sm" role="alert" data-testid="departures-failed">
         <p>{c.tours.departuresFailed}</p>
         <button type="button" onClick={retry} className="mt-2 font-medium text-primary underline underline-offset-4">
           {c.tours.departuresRetry}
@@ -78,7 +78,7 @@ export function TourDepartureList({ locale, price }: { locale: Locale; price: { 
   }
   if (!departures) {
     return (
-      <p className="mt-4 min-h-40 rounded-2xl border border-border p-4 text-sm text-muted-foreground" role="status">
+      <p className="mt-4 min-h-40 border border-border p-4 text-sm text-muted-foreground" role="status">
         {c.tours.departuresLoading}
       </p>
     );
@@ -102,9 +102,9 @@ export function TourDepartureList({ locale, price }: { locale: Locale; price: { 
       {view === "month" && departures.length > 0 ? (
         <DepartureCalendar locale={locale} days={departures.map((d) => ({ id: d.id, date: d.date, seatsLeft: d.seatsLeft, bookable: d.bookable, price: money(d.unitPriceVnd) }))} bookHref={bookHref} chosenId={chosen?.id} />
       ) : upcoming.length === 0 ? (
-        <p className="mt-4 rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">{b.noDepartures}</p>
+        <p className="mt-4 border border-dashed border-border p-4 text-sm text-muted-foreground">{b.noDepartures}</p>
       ) : (
-        <ul className="mt-4 divide-y divide-border rounded-2xl border border-border">
+        <ul className="mt-4 divide-y divide-border border border-border">
           {upcoming.map((d) => (
             <li key={d.id} className={`flex flex-wrap items-center justify-between gap-3 px-4 py-3 ${chosen?.id === d.id ? "bg-primary/5" : ""}`} data-departure={d.date} aria-current={chosen?.id === d.id ? "true" : undefined}>
               <div className="flex items-center gap-3">

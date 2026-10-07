@@ -68,11 +68,11 @@ export default async function VoucherPage({ params, searchParams }: Props) {
         </a>
       </div>
 
-      <article className="rounded-2xl border border-border p-6 print:border-black" data-testid="voucher">
+      <article className="border border-border p-6 print:border-black" data-testid="voucher">
         <header className="flex flex-wrap items-start justify-between gap-4 border-b border-border pb-4 print:!flex">
           <div>
             <p className="text-sm text-muted-foreground">{contactConfig.companyName}</p>
-            <h1 className="text-2xl font-semibold">{v.title}</h1>
+            <h1 className="text-2xl font-heading font-normal">{v.title}</h1>
             <p className="mt-1 font-mono text-lg" data-testid="voucher-code">
               {booking.code}
             </p>
@@ -93,7 +93,7 @@ export default async function VoucherPage({ params, searchParams }: Props) {
         </dl>
 
         <section className="mt-5">
-          <h2 className="font-semibold">{t.travellers.title}</h2>
+          <h2 className="font-heading font-normal">{t.travellers.title}</h2>
           {booking.travellers.length ? (
             <ol className="mt-2 grid gap-1 text-sm" data-testid="voucher-travellers">
               {booking.travellers.map((p, i) => (

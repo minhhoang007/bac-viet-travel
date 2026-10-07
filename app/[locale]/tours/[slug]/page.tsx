@@ -131,7 +131,7 @@ export default async function TourPage({ params }: Props) {
       {banner}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd([jsonLd, breadcrumbLd(site, locale, [{ path: "/tours", name: c.tours.title }, { path: `/tours/${tour.destination}`, name: c.destinations[tour.destination].name }, { path: `/tours/${slug}`, name: tour.title }])]) }} />
       <Container className="pt-6 lg:pt-10">
-        <nav aria-label="breadcrumb" className="text-sm text-muted-foreground">
+        <nav aria-label="breadcrumb" className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
           <a href={localePath(locale, "/tours")} className="hover:underline">
             {c.tours.title}
           </a>
@@ -140,31 +140,31 @@ export default async function TourPage({ params }: Props) {
             {c.destinations[tour.destination].name}
           </a>
         </nav>
-        <h1 className="mt-2 max-w-4xl text-3xl font-semibold [text-wrap:balance] sm:text-4xl">{tour.title}</h1>
-        <div className="mt-6">
+        <h1 className="mt-4 max-w-4xl font-heading text-4xl font-normal leading-tight [text-wrap:balance] sm:text-5xl lg:text-6xl">{tour.title}</h1>
+        <div className="mt-8">
           <TourGallery images={tour.images} title={tour.title} locale={locale} />
         </div>
       </Container>
 
-      <Container className="grid gap-10 pb-28 pt-8 lg:grid-cols-[minmax(0,1fr)_380px] lg:pb-16">
+      <Container className="grid gap-12 pb-28 pt-10 lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-16 lg:pb-24">
         <div className="min-w-0">
-          <dl className="grid grid-cols-2 gap-4 rounded-2xl border border-border p-4 text-sm sm:grid-cols-4" data-testid="tour-facts">
+          <dl className="grid grid-cols-2 gap-6 border-y border-border py-6 text-sm sm:grid-cols-4" data-testid="tour-facts">
             {facts.map(({ icon: Icon, label, value }) => (
               <div key={label}>
-                <dt className="flex items-center gap-1.5 text-muted-foreground">
+                <dt className="flex items-center gap-1.5 text-xs uppercase tracking-[0.14em] text-muted-foreground">
                   <Icon aria-hidden="true" className="size-4 shrink-0 text-primary" />
                   {label}
                 </dt>
-                <dd className="mt-0.5 font-medium">{value}</dd>
+                <dd className="mt-1.5">{value}</dd>
               </div>
             ))}
           </dl>
 
-          <p className="mt-6 text-lg">{tour.summary}</p>
+          <p className="mt-10 font-heading text-2xl leading-relaxed sm:text-3xl">{tour.summary}</p>
 
-          <section className="mt-8">
-            <h2 className="text-xl font-semibold">{c.tours.highlights}</h2>
-            <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+          <section className="mt-14">
+            <h2 className="font-heading text-3xl font-normal">{c.tours.highlights}</h2>
+            <ul className="mt-6 grid gap-x-8 gap-y-3 sm:grid-cols-2">
               {tour.highlights.map((h) => (
                 <li key={h} className="flex gap-2">
                   <Check aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-primary" />
@@ -175,8 +175,8 @@ export default async function TourPage({ params }: Props) {
           </section>
 
           {!page.preview && (
-            <section id="departures" className="mt-10 scroll-mt-24" aria-labelledby="departures-title" data-testid="tour-departures">
-              <h2 id="departures-title" className="text-xl font-semibold">
+            <section id="departures" className="mt-16 scroll-mt-24" aria-labelledby="departures-title" data-testid="tour-departures">
+              <h2 id="departures-title" className="font-heading text-3xl font-normal">
                 {c.tours.departuresTitle}
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">{c.tours.departuresHint}</p>
@@ -185,35 +185,35 @@ export default async function TourPage({ params }: Props) {
           )}
 
           {tour.body.trim() && (
-            <div className="prose-blog mt-10">
+            <div className="prose-blog mt-16">
               <MarkdownContent source={tour.body} />
             </div>
           )}
 
-          <section className="mt-10" data-testid="itinerary">
-            <h2 className="text-xl font-semibold">{c.tours.itinerary}</h2>
-            <ol className="mt-4 grid gap-3">
+          <section className="mt-16" data-testid="itinerary">
+            <h2 className="font-heading text-3xl font-normal">{c.tours.itinerary}</h2>
+            <ol className="mt-6 border-b border-border">
               {tour.itinerary.map((d, i) => (
                 <li key={d.title}>
-                  <details open={i === 0} className="group rounded-xl border border-border px-4 py-3">
-                    <summary className="flex cursor-pointer list-none items-center gap-3 font-semibold">
-                      <span className="flex h-7 shrink-0 items-center rounded-full bg-primary px-2.5 text-xs font-bold text-primary-foreground">{c.tours.itineraryDay(i + 1)}</span>
-                      <span className="flex-1">{d.title}</span>
+                  <details open={i === 0} className="group border-t border-border py-5">
+                    <summary className="flex cursor-pointer list-none items-baseline gap-5">
+                      <span className="w-16 shrink-0 text-xs uppercase tracking-[0.2em] text-primary">{c.tours.itineraryDay(i + 1)}</span>
+                      <span className="flex-1 font-heading text-xl">{d.title}</span>
                       <span aria-hidden="true" className="text-lg text-muted-foreground transition group-open:rotate-45">
                         +
                       </span>
                     </summary>
-                    <p className="mt-2 text-sm text-muted-foreground">{d.description}</p>
+                    <p className="mt-3 pl-[5.25rem] text-sm leading-relaxed text-muted-foreground">{d.description}</p>
                   </details>
                 </li>
               ))}
             </ol>
           </section>
 
-          <div className="mt-10 grid gap-6 sm:grid-cols-2">
+          <div className="mt-16 grid gap-10 sm:grid-cols-2">
             <section>
-              <h2 className="font-semibold">{c.tours.includes}</h2>
-              <ul className="mt-2 grid gap-1 text-sm">
+              <h2 className="font-heading text-2xl font-normal">{c.tours.includes}</h2>
+              <ul className="mt-4 grid gap-2 text-sm">
                 {tour.includes.map((x) => (
                   <li key={x} className="flex gap-2">
                     <Check aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-primary" />
@@ -224,8 +224,8 @@ export default async function TourPage({ params }: Props) {
             </section>
             {tour.excludes.length > 0 && (
               <section>
-                <h2 className="font-semibold">{c.tours.excludes}</h2>
-                <ul className="mt-2 grid gap-1 text-sm text-muted-foreground">
+                <h2 className="font-heading text-2xl font-normal">{c.tours.excludes}</h2>
+                <ul className="mt-4 grid gap-2 text-sm text-muted-foreground">
                   {tour.excludes.map((x) => (
                     <li key={x} className="flex gap-2">
                       <X aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
@@ -237,9 +237,9 @@ export default async function TourPage({ params }: Props) {
             )}
           </div>
           {tour.bring.length > 0 && (
-            <section className="mt-10" data-testid="bring">
-              <h2 className="font-semibold">{c.tours.bring}</h2>
-              <ul className="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+            <section className="mt-14" data-testid="bring">
+              <h2 className="font-heading text-2xl font-normal">{c.tours.bring}</h2>
+              <ul className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
                 {tour.bring.map((x) => (
                   <li key={x} className="flex gap-2">
                     <Backpack aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-primary" />
@@ -249,12 +249,12 @@ export default async function TourPage({ params }: Props) {
               </ul>
             </section>
           )}
-          <p className="mt-6 text-xs text-muted-foreground">{c.tours.priceNote}</p>
+          <p className="mt-10 text-xs text-muted-foreground">{c.tours.priceNote}</p>
         </div>
 
-        <aside id="book" className="h-fit rounded-2xl border border-border p-5 shadow-sm lg:sticky lg:top-24">
+        <aside id="book" className="h-fit border border-border bg-muted p-6 lg:sticky lg:top-28">
           <p className="text-sm text-muted-foreground">
-            {c.tours.from} <span className="text-2xl font-bold text-primary">{price}</span> {c.tours.perPerson}
+            {c.tours.from} <span className="font-heading text-3xl text-foreground">{price}</span> {c.tours.perPerson}
           </p>
           <ul className="mt-2 grid gap-0.5 text-xs text-muted-foreground" data-testid="price-by-traveller">
             <li>{c.tours.priceChild(pricing.childPercent, money(Math.ceil((tour.price.vnd * pricing.childPercent) / 100 / 1000) * 1000))}</li>
@@ -311,7 +311,7 @@ export default async function TourPage({ params }: Props) {
         <div data-mobile-book-bar className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 px-4 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] pt-3 backdrop-blur lg:hidden">
           <div className="mx-auto flex max-w-xl items-center justify-between gap-3">
             <p className="text-sm leading-tight">
-              <span className="text-muted-foreground">{c.tours.from}</span> <span className="text-lg font-bold text-primary">{price}</span>
+              <span className="text-muted-foreground">{c.tours.from}</span> <span className="font-heading text-xl text-foreground">{price}</span>
               <span className="block text-xs text-muted-foreground">{c.tours.perPerson}</span>
             </p>
             <TourBookButton locale={locale} place="mobile" />
@@ -320,9 +320,9 @@ export default async function TourPage({ params }: Props) {
       )}
 
       {related.length > 0 && (
-        <Container className="pb-16">
-          <h2 className="text-2xl font-semibold">{c.tours.related}</h2>
-          <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <Container className="border-t border-border pb-24 pt-20">
+          <h2 className="font-heading text-4xl font-normal">{c.tours.related}</h2>
+          <div className="mt-10 grid gap-x-8 gap-y-14 sm:grid-cols-2 lg:grid-cols-3">
             {related.map((t) => (
               <TourCard
                 key={t.slug}

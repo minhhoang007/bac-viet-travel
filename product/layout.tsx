@@ -43,7 +43,7 @@ export function ProductNotFound({ locale }: { locale: Locale }) {
       <p className="text-center text-muted-foreground">{c.notFound.text}</p>
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
         {DESTINATIONS.map((d) => (
-          <a key={d} href={localePath(locale, `/tours/${d}`)} className="group relative block aspect-[4/3] overflow-hidden rounded-2xl">
+          <a key={d} href={localePath(locale, `/tours/${d}`)} className="group relative block aspect-[4/3] overflow-hidden">
             <Image src={NOT_FOUND_IMAGE[d]} alt="" fill sizes="(min-width: 640px) 33vw, 100vw" className="object-cover transition duration-500 group-hover:scale-105" />
             <span className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
             <span className="absolute inset-x-0 bottom-0 p-4 font-semibold text-white">{c.destinations[d].name}</span>

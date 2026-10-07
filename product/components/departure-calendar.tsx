@@ -36,7 +36,7 @@ export function DepartureCalendar({ locale, days, bookHref, chosenId }: { locale
   const weekdays = Array.from({ length: 7 }, (_, i) => new Date(Date.UTC(2024, 0, 1 + i)).toLocaleDateString(locale === "vi" ? "vi-VN" : "en-GB", { weekday: "short", timeZone: "UTC" }));
 
   return (
-    <div className="mt-4 rounded-2xl border border-border p-3" data-testid="departure-calendar">
+    <div className="mt-4 border border-border p-3" data-testid="departure-calendar">
       <div className="mb-2 flex items-center justify-between">
         <button type="button" onClick={() => setIndex(index - 1)} disabled={index === 0} aria-label={c.calendarPrev} className="grid size-9 place-items-center rounded-md hover:bg-muted disabled:opacity-40">
           <ChevronLeft aria-hidden="true" className="size-5" />

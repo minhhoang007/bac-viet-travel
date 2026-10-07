@@ -52,7 +52,7 @@ export function DestinationPage({ locale, destination, tours }: { locale: Locale
           <a href={localePath(locale, "/tours")} className="text-sm text-white/90 underline underline-offset-4">
             ← {c.tours.allDestinationsLink}
           </a>
-          <h1 className="mt-3 text-4xl font-semibold sm:text-5xl">{c.tours.destinationTitle(d.name)}</h1>
+          <h1 className="mt-3 text-4xl font-heading font-normal sm:text-5xl">{c.tours.destinationTitle(d.name)}</h1>
           <p className="mt-3 max-w-2xl text-lg text-white/90">{d.tagline}</p>
         </Container>
       </section>
