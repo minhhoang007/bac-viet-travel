@@ -7,7 +7,7 @@ const vi = {
   title: "Giới thiệu Bắc Việt Travel",
   description: "Công ty lữ hành tại Hà Nội, chuyên tour ghép và tour riêng Hạ Long, Ninh Bình, Sapa cho khách Việt và quốc tế.",
   intro:
-    "Bắc Việt Travel là công ty lữ hành tại Hà Nội, tổ chức tour ghép và tour riêng tới Hạ Long, Ninh Bình và Sapa. Chúng tôi tự vận hành từng chuyến đi: chọn du thuyền, nhà xe, điểm lưu trú và đi cùng khách bằng đội hướng dẫn viên người địa phương.",
+    "Tour ghép và tour riêng tới Hạ Long, Ninh Bình và Sapa, do chính chúng tôi vận hành cùng hướng dẫn viên người địa phương.",
   storyTitle: "Câu chuyện của chúng tôi",
   story: [
     "Bắt đầu từ những chuyến đi cùng bạn bè quốc tế khám phá miền Bắc, chúng tôi nhận ra du khách cần một đơn vị nói thật về lịch trình, giá và trải nghiệm, không phát sinh, không bất ngờ.",
@@ -39,7 +39,7 @@ const en: AboutContent = {
   title: "About Bắc Việt Travel",
   description: "A Hanoi tour operator running group and private tours to Ha Long Bay, Ninh Binh and Sapa for Vietnamese and international travellers.",
   intro:
-    "Bắc Việt Travel is a Hanoi-based tour operator running group and private tours to Ha Long Bay, Ninh Binh and Sapa. We operate every trip ourselves: we choose the cruises, transport and stays, and our local guides travel with you.",
+    "Group and private tours to Ha Long Bay, Ninh Binh and Sapa, run by us from Hanoi with local guides.",
   storyTitle: "Our story",
   story: [
     "It started with trips showing friends from abroad around Northern Vietnam. Travellers wanted someone honest about itineraries, prices and experiences: no hidden costs, no surprises.",

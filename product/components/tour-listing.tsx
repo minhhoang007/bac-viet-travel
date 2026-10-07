@@ -6,6 +6,7 @@ import { activeFilterCount, applyTourFilters, DURATIONS, PRICE_BANDS, SORTS, TOU
 import { formatPrice } from "../tours/format";
 import { DESTINATIONS, type Destination } from "../tours/destinations";
 import type { Tour } from "../tours/model";
+import { FilterToggle } from "./filter-toggle";
 import { TourCard } from "./tour-card";
 
 // 16 px on phones: iOS Safari zooms into smaller fields on focus.
@@ -28,10 +29,11 @@ export function TourListing({ locale, tours, filters, destination }: { locale: L
   return (
     <div className="grid gap-8 lg:grid-cols-[16rem_minmax(0,1fr)]">
       <form action={base} method="get" aria-label={t.title} data-testid="tour-filters" className="grid h-fit grid-cols-2 gap-3 border border-border p-4 lg:sticky lg:top-24 lg:grid-cols-1">
-        <p className="col-span-2 flex items-center gap-2 font-semibold lg:col-span-1">
+        <p className="col-span-2 hidden items-center gap-2 font-semibold lg:col-span-1 lg:flex">
           <SlidersHorizontal className="size-4" aria-hidden="true" />
           {t.title}
         </p>
+        <FilterToggle label={t.title} active={narrowing}>
         {!destination && (
           <label className="grid gap-1 text-sm">
             {t.destination}
@@ -98,6 +100,7 @@ export function TourListing({ locale, tours, filters, destination }: { locale: L
             {t.reset}
           </a>
         )}
+        </FilterToggle>
       </form>
 
       <div>
@@ -108,7 +111,7 @@ export function TourListing({ locale, tours, filters, destination }: { locale: L
         {results.length === 0 ? (
           <p className="mt-6 border border-dashed border-border p-8 text-center text-muted-foreground">{t.empty}</p>
         ) : (
-          <div className="mt-4 grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-4 grid gap-x-6 gap-y-10 sm:grid-cols-2">
             {results.map((tour, i) => (
               <div key={tour.slug} data-destination={tour.destination} className="contents">
                 <TourCard

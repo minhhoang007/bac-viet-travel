@@ -7,9 +7,9 @@ export const marketing: MarketingContent = {
   },
   nav: { switchLocale: "Tiếng Việt", menu: "Open menu", close: "Close" },
   hero: {
-    eyebrow: "Ha Long · Ninh Binh · Sapa — private and small-group tours from Hanoi",
+    eyebrow: "Ha Long · Ninh Binh · Sapa",
     title: "Northern Vietnam, at your own pace.",
-    subtitle: "Overnight cruises on the bay, boat rides through the caves of Trang An, treks across rice terraces. Small groups, all-inclusive prices, 24/7 support on WhatsApp.",
+    subtitle: "Private and small-group tours from Hanoi: limestone bays, caves and rice terraces. All-inclusive prices.",
     primaryCta: "See tours",
     primaryHref: "/tours",
     secondaryCta: "Ask us",

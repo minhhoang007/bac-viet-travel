@@ -7,9 +7,9 @@ export const marketing: MarketingContent = {
   },
   nav: { switchLocale: "English", menu: "Mở menu", close: "Đóng" },
   hero: {
-    eyebrow: "Hạ Long · Ninh Bình · Sapa — tour riêng và nhóm nhỏ từ Hà Nội",
+    eyebrow: "Hạ Long · Ninh Bình · Sapa",
     title: "Miền Bắc, theo nhịp của riêng bạn.",
-    subtitle: "Du thuyền ngủ đêm trên vịnh, thuyền qua hang động Tràng An, trekking ruộng bậc thang. Nhóm nhỏ, giá trọn gói, hỗ trợ 24/7 qua Zalo.",
+    subtitle: "Tour riêng và nhóm nhỏ từ Hà Nội: vịnh đá, hang động, ruộng bậc thang. Giá trọn gói.",
     primaryCta: "Xem tour",
     primaryHref: "/tours",
     secondaryCta: "Nhận tư vấn",

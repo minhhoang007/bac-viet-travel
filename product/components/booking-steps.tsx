@@ -18,7 +18,7 @@ export function BookingSteps({ locale, current }: { locale: Locale; current: 1 |
           const done = current !== null && n < current;
           const active = n === current;
           return (
-            <li key={label} className="flex min-w-0 flex-1 items-center gap-2" aria-current={active ? "step" : undefined}>
+            <li key={label} className={cn("flex min-w-0 items-center gap-2", active ? "flex-1" : "flex-none sm:flex-1")} aria-current={active ? "step" : undefined}>
               <span
                 className={cn(
                   "grid size-7 shrink-0 place-items-center rounded-full border text-xs font-semibold",

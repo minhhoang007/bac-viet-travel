@@ -106,18 +106,18 @@ export function TourDepartureList({ locale, price }: { locale: Locale; price: { 
       ) : (
         <ul className="mt-4 divide-y divide-border border border-border">
           {upcoming.map((d) => (
-            <li key={d.id} className={`flex flex-wrap items-center justify-between gap-3 px-4 py-3 ${chosen?.id === d.id ? "bg-primary/5" : ""}`} data-departure={d.date} aria-current={chosen?.id === d.id ? "true" : undefined}>
-              <div className="flex items-center gap-3">
-                <CalendarDays aria-hidden="true" className="size-4 text-muted-foreground" />
-                <div>
-                  <p className="font-medium capitalize">{formatDay(d.date, locale)}</p>
+            <li key={d.id} className={`flex items-center justify-between gap-3 px-3 py-3 sm:px-4 ${chosen?.id === d.id ? "bg-primary/5" : ""}`} data-departure={d.date} aria-current={chosen?.id === d.id ? "true" : undefined}>
+              <div className="flex min-w-0 items-center gap-3">
+                <CalendarDays aria-hidden="true" className="hidden size-4 shrink-0 text-muted-foreground sm:block" />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium capitalize sm:text-base">{formatDay(d.date, locale)}</p>
                   <p className={`text-xs ${d.bookable && d.seatsLeft <= 5 ? "font-medium text-warning" : "text-muted-foreground"}`}>{seatLabel(d)}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-semibold">{money(d.unitPriceVnd)}</span>
+              <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+                <span className="text-sm font-semibold tabular-nums">{money(d.unitPriceVnd)}</span>
                 {d.bookable ? (
-                  <ButtonLink href={bookHref(d.id)} className="h-9 px-4" variant={chosen?.id === d.id ? "primary" : "outline"} aria-label={c.tours.chooseDay(formatDay(d.date, locale))}>
+                  <ButtonLink href={bookHref(d.id)} className="h-9 px-3 sm:px-4" variant={chosen?.id === d.id ? "primary" : "outline"} aria-label={c.tours.chooseDay(formatDay(d.date, locale))}>
                     {b.choose}
                   </ButtonLink>
                 ) : (
