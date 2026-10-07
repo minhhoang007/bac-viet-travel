@@ -1,5 +1,9 @@
 // Browser E2E for the blog module (MDX posts in content/blog; sample posts kept by --keep-example).
 import { expect, test } from "@playwright/test";
+import { app } from "../../content/vi/app";
+
+// Projects rename the blog (e.g. "Cẩm nang"): read the labels from content instead of assuming "Blog".
+const blog = app.blog;
 
 test.beforeEach(async ({ context }) => {
   await context.addCookies([{ name: "analytics_consent", value: "denied", url: "http://localhost:3200" }]);
@@ -7,9 +11,9 @@ test.beforeEach(async ({ context }) => {
 
 test("index → post → translation, with SEO tags and rendered MDX", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("link", { name: "Blog", exact: true }).first().click();
+  await page.getByRole("link", { name: blog.nav, exact: true }).first().click();
   await expect(page).toHaveURL(/\/blog$/);
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Blog");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(blog.title);
 
   await page.getByTestId("post-list").getByRole("link", { name: "Chào mừng đến với blog" }).click();
   await expect(page).toHaveURL(/\/blog\/chao-mung-den-voi-blog$/);
