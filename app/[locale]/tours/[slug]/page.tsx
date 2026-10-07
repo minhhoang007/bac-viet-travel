@@ -297,10 +297,10 @@ export default async function TourPage({ params }: Props) {
             </>
           )}
           <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
-            <a href={whatsappUrl(c.contact.whatsappText(tour.title))} target="_blank" rel="noopener noreferrer" className="rounded-md bg-[#25d366] px-3 py-2 text-center font-medium text-[#052e16]">
+            <a href={whatsappUrl(c.contact.whatsappText(tour.title))} target="_blank" rel="noopener noreferrer" className="border border-border px-3 py-2 text-center font-medium hover:border-primary">
               {c.contact.whatsapp}
             </a>
-            <a href={zaloUrl()} target="_blank" rel="noopener noreferrer" className="rounded-md bg-[#0068ff] px-3 py-2 text-center font-medium text-white">
+            <a href={zaloUrl()} target="_blank" rel="noopener noreferrer" className="border border-border px-3 py-2 text-center font-medium hover:border-primary">
               {c.contact.zalo}
             </a>
           </div>

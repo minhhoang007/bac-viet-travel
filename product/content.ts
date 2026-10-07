@@ -10,6 +10,12 @@ const vi = {
     sapa: { name: "Sapa", tagline: "Ruộng bậc thang, bản làng dân tộc và đỉnh Fansipan 3.143 m." },
   } satisfies Record<Destination, { name: string; tagline: string }>,
   home: {
+    philosophy: {
+      eyebrow: "Triết lý",
+      statement: "Chúng tôi không bán những chuyến đi vội. Chúng tôi chuẩn bị những ngày bạn sẽ còn nhớ rất lâu sau khi trở về.",
+    },
+    eyebrows: { destinations: "Điểm đến", featured: "Hành trình", reviews: "Khách nói gì", blog: "Cẩm nang", contact: "Lên kế hoạch" },
+    chapter: (n: number) => `Chương ${String(n).padStart(2, "0")}`,
     destinationsTitle: "Điểm đến miền Bắc",
     featuredTitle: "Tour được đặt nhiều",
     whyTitle: "Vì sao chọn Bắc Việt Travel",
@@ -232,6 +238,12 @@ const en: ProductContent = {
     sapa: { name: "Sapa", tagline: "Rice terraces, ethnic minority villages and Fansipan, the 3,143 m roof of Indochina." },
   },
   home: {
+    philosophy: {
+      eyebrow: "Our philosophy",
+      statement: "We do not sell rushed trips. We prepare the days you will remember long after you are home.",
+    },
+    eyebrows: { destinations: "Destinations", featured: "Journeys", reviews: "In their words", blog: "Travel notes", contact: "Plan your trip" },
+    chapter: (n: number) => `Chapter ${String(n).padStart(2, "0")}`,
     destinationsTitle: "Northern Vietnam destinations",
     featuredTitle: "Most booked tours",
     whyTitle: "Why travel with Bac Viet Travel",

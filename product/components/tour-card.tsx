@@ -18,21 +18,25 @@ export interface TourCardProps {
 
 export function TourCard(p: TourCardProps) {
   return (
-    <article className="group flex flex-col overflow-hidden rounded-xl border border-border bg-background shadow-sm transition hover:shadow-md">
-      <a href={p.href} className="relative block aspect-[4/3] overflow-hidden">
-        <Image src={p.image} alt={p.title} fill priority={p.priority} sizes={p.sizes ?? "(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"} className="object-cover transition duration-500 group-hover:scale-105" />
-        <span className="absolute left-3 top-3 rounded-full bg-background/90 px-3 py-1 text-xs font-medium">{p.destination}</span>
+    // Editorial card ("Sơn Mài"): a hairline above, the photo, small capitals, the title in the heading serif.
+    <article className="group flex flex-col border-t border-border pt-5">
+      <a href={p.href} className="relative block aspect-[3/2] overflow-hidden">
+        <Image src={p.image} alt={p.title} fill priority={p.priority} sizes={p.sizes ?? "(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"} className="object-cover transition duration-700 group-hover:scale-[1.03]" />
       </a>
-      <div className="flex flex-1 flex-col p-5">
-        <p className="text-xs text-muted-foreground">{p.duration}</p>
-        <h3 className="mt-1 text-lg font-semibold">
-          <a href={p.href} className="hover:underline">
+      <div className="flex flex-1 flex-col pt-5">
+        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+          {p.destination} · {p.duration}
+        </p>
+        <h3 className="mt-2 font-heading text-2xl font-normal leading-snug">
+          <a href={p.href} className="hover:text-primary">
             {p.title}
           </a>
         </h3>
-        <p className="mt-2 line-clamp-3 flex-1 text-sm text-muted-foreground">{p.summary}</p>
-        <p className="mt-4 text-sm">
-          {p.fromLabel} <span className="text-lg font-bold text-primary">{p.price}</span> <span className="text-muted-foreground">{p.perPersonLabel}</span>
+        <p className="mt-2 line-clamp-3 flex-1 text-sm leading-relaxed text-muted-foreground">{p.summary}</p>
+        <p className="mt-4 text-sm text-muted-foreground">
+          {p.fromLabel} <span className="text-base font-medium text-foreground" data-price>
+            {p.price}
+          </span> {p.perPersonLabel}
         </p>
       </div>
     </article>

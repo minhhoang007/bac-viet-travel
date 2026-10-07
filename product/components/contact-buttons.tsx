@@ -6,12 +6,6 @@ export interface ContactButtonsProps {
   items: { key: "zalo" | "whatsapp" | "call" | "email"; label: string; href: string }[];
 }
 
-const STYLE: Record<ContactButtonsProps["items"][number]["key"], string> = {
-  zalo: "bg-[#0068ff] text-white",
-  whatsapp: "bg-[#25d366] text-[#052e16]",
-  call: "bg-primary text-primary-foreground",
-  email: "bg-background text-foreground border border-border",
-};
 
 const ICON: Record<ContactButtonsProps["items"][number]["key"], LucideIcon> = { zalo: MessagesSquare, whatsapp: MessageCircle, call: Phone, email: Mail };
 
@@ -25,11 +19,12 @@ export function ContactButtons({ label, items }: ContactButtonsProps) {
           href={item.href}
           data-contact={item.key}
           {...(item.href.startsWith("http") ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-          className={`flex h-11 items-center gap-2 rounded-full px-4 text-sm font-medium shadow-lg transition hover:scale-105 ${STYLE[item.key]}`}
+          // Quiet on the dark "Sơn Mài" theme: same dark pill for every channel, the brass icon tells them apart.
+          className="flex h-11 items-center gap-2 rounded-full border border-border bg-background/90 px-4 text-sm text-foreground shadow-lg backdrop-blur transition hover:border-primary"
         >
           {(() => {
             const Icon = ICON[item.key];
-            return <Icon aria-hidden="true" className="size-5" />;
+            return <Icon aria-hidden="true" className="size-5 text-primary" />;
           })()}
           <span className="hidden sm:inline">{item.label}</span>
           <span className="sr-only sm:hidden">{item.label}</span>
