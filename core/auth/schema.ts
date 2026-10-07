@@ -1,6 +1,9 @@
-import { index, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, index, integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { id, timestamps } from "@/db/columns";
 import { users } from "@/core/users/schema";
+
+export const AUTH_EVENT_KINDS = ["sign_in", "passkey_added", "passkey_removed", "totp_enabled", "totp_disabled", "backup_codes_new", "backup_code_used"] as const;
+export type AuthEventKind = (typeof AUTH_EVENT_KINDS)[number];
 
 // Tables required by Better Auth (plural names, usePlural: true).
 export const sessions = pgTable(
@@ -12,9 +15,59 @@ export const sessions = pgTable(
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     ipAddress: text("ip_address"),
     userAgent: text("user_agent"),
+    /** When this session last passed a second factor (passkey with user verification, TOTP or a backup code). */
+    secondFactorAt: timestamp("second_factor_at", { withTimezone: true }),
     ...timestamps(),
   },
   (t) => [index("sessions_user_id_idx").on(t.userId)],
+);
+
+/** WebAuthn credentials (Better Auth passkey plugin; field names follow its model). */
+export const passkeys = pgTable(
+  "passkeys",
+  {
+    id: id(),
+    name: text("name"),
+    publicKey: text("public_key").notNull(),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    credentialID: text("credential_id").notNull(),
+    counter: integer("counter").notNull(),
+    deviceType: text("device_type").notNull(),
+    backedUp: boolean("backed_up").notNull(),
+    transports: text("transports"),
+    aaguid: text("aaguid"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => [index("passkeys_user_id_idx").on(t.userId), index("passkeys_credential_id_idx").on(t.credentialID)],
+);
+
+/** TOTP secret and backup codes, both encrypted by Better Auth (two-factor plugin). */
+export const twoFactors = pgTable(
+  "two_factors",
+  {
+    id: id(),
+    secret: text("secret").notNull(),
+    backupCodes: text("backup_codes").notNull(),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    verified: boolean("verified").default(true),
+    failedVerificationCount: integer("failed_verification_count").default(0),
+    lockedUntil: timestamp("locked_until", { withTimezone: true }),
+  },
+  (t) => [index("two_factors_user_id_idx").on(t.userId), index("two_factors_secret_idx").on(t.secret)],
+);
+
+/** Sign-ins and security changes, shown to the user and used to spot a new device. No content, ids only. */
+export const authEvents = pgTable(
+  "auth_events",
+  {
+    id: id(),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    kind: text("kind", { enum: AUTH_EVENT_KINDS }).notNull(),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("auth_events_user_created_idx").on(t.userId, t.createdAt)],
 );
 
 export const accounts = pgTable(

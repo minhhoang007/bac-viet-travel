@@ -52,15 +52,35 @@ test.describe("admin", () => {
     const out = execFileSync(process.execPath, ["scripts/admin-grant.ts", adminEmail], { env: { ...process.env, DATABASE_URL: process.env.E2E_DATABASE_URL } }).toString();
     expect(out).toContain("is now an admin");
 
+    // Staff need a second factor: the admin area sends them to set one up first.
+    await adminPage.goto("/dashboard");
+    await adminPage.getByRole("link", { name: "Quản trị" }).click();
+    await expect(adminPage).toHaveURL(/\/security\?setup=1$/);
+    await expect(adminPage.getByTestId("security-passkeys")).toContainText("Chưa có passkey");
+
+    // A passkey on this "device": Chrome's virtual authenticator with user verification (Face ID / PIN stand-in).
+    const cdp = await adminPage.context().newCDPSession(adminPage);
+    await cdp.send("WebAuthn.enable");
+    await cdp.send("WebAuthn.addVirtualAuthenticator", {
+      options: { protocol: "ctap2", transport: "internal", hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true },
+    });
+    await adminPage.getByLabel("Tên (ví dụ: iPhone của Lan)").fill("Máy E2E");
+    await adminPage.getByTestId("add-passkey").click();
+    await expect(adminPage.getByRole("status")).toContainText("Đã lưu.");
+    await expect(adminPage.getByTestId("security-passkeys")).toContainText("Máy E2E");
+
+    // This session has not passed the second factor yet: verify with the passkey, then the admin area opens.
+    await adminPage.goto("/admin");
+    await expect(adminPage).toHaveURL(/\/verify$/);
+    await adminPage.getByTestId("passkey-sign-in").click();
+    await expect(adminPage).toHaveURL(/\/admin$/);
+    await expect(adminPage.getByRole("img", { name: "Người dùng mới" })).toBeVisible();
+
     // Media and content modules are off in this app: their pages do not exist, even for admins.
     expect((await adminPage.goto("/admin/media"))?.status()).toBe(404);
     expect((await adminPage.goto("/admin/content"))?.status()).toBe(404);
     expect((await adminPage.request.get("/api/content/preview?id=x")).status()).toBe(404);
-
-    await adminPage.goto("/dashboard");
-    await adminPage.getByRole("link", { name: "Quản trị" }).click();
-    await expect(adminPage).toHaveURL(/\/admin$/);
-    await expect(adminPage.getByRole("img", { name: "Người dùng mới" })).toBeVisible();
+    await adminPage.goto("/admin");
 
     await adminPage.getByRole("link", { name: "Người dùng", exact: true }).click();
     await adminPage.getByLabel("Tìm theo email").fill(userEmail);
@@ -82,6 +102,19 @@ test.describe("admin", () => {
     await adminPage.getByRole("link", { name: "Nhật ký" }).click();
     await expect(adminPage.getByTestId("audit-log")).toContainText("user.disable");
     await expect(adminPage.getByTestId("audit-log")).toContainText(adminEmail);
+
+    // Signed out, then back in with the passkey alone (no email): it counts as both factors, admin opens at once.
+    await adminPage.context().clearCookies({ name: "better-auth.session_token" });
+    await adminPage.goto("/login");
+    await adminPage.getByTestId("passkey-sign-in").click();
+    await expect(adminPage).toHaveURL(/\/dashboard$/);
+    await adminPage.goto("/admin");
+    await expect(adminPage).toHaveURL(/\/admin$/);
+
+    // The security page lists the activity (sign-ins, the passkey) and this device.
+    await adminPage.goto("/security");
+    await expect(adminPage.getByTestId("security-activity")).toContainText("Thêm passkey");
+    await expect(adminPage.locator('[data-device="current"]')).toBeVisible();
   });
 });
 

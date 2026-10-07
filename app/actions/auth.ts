@@ -13,6 +13,7 @@ export type MagicLinkState =
   | { status: "sent" }
   | { status: "invalid_email" }
   | { status: "rate_limited" }
+  | { status: "captcha" }
   | { status: "error" }
   | null;
 
@@ -32,12 +33,14 @@ export async function sendMagicLink(_prev: MagicLinkState, formData: FormData): 
         callbackURL: localePath(locale, authConfig.afterSignInPath),
         errorCallbackURL: localePath(locale, authConfig.signInPath), // Better Auth appends ?error=<CODE>
         clientKey: clientKeyFrom(h),
+        captchaToken: String(formData.get("cf-turnstile-response") ?? "") || null,
       },
       h,
     );
     return { status: "sent" };
   } catch (error) {
     if (isAppError(error) && error.code === "RATE_LIMIT_ERROR") return { status: "rate_limited" };
+    if (isAppError(error) && error.code === "CAPTCHA_ERROR") return { status: "captcha" };
     return { status: "error" };
   }
 }
