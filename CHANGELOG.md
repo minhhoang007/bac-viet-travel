@@ -4,6 +4,8 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.15.0] - 2026-10-07
+
 ### Added — per-user product admin menu
 - `productAdminNav` entries may add `allow(user)` (sync or async) to narrow `roles` per user, e.g. a product staff permission. `productAdminNavFor` (`app/_lib/admin.ts`) is now async.
 
