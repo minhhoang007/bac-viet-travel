@@ -4,6 +4,11 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.17.1] - 2026-10-07
+
+### Fixed — sign-in from the email
+- The confirmation page's button and the 6-digit code form did not sign the browser in (an error page instead): a server-action redirect to the one-time link is followed by Next.js on the server, which used the link up and kept the session cookie. Both now open the link in the browser. Browser E2E covers both paths.
+
 ## [1.17.0] - 2026-10-07
 
 ### Added — staff two-step verification and modern sign-in

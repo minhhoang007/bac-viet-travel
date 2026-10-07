@@ -15,6 +15,7 @@ const vi = {
     confirmTitle: "Xác nhận đăng nhập",
     confirmText: "Bấm nút dưới đây để đăng nhập trên thiết bị này. Liên kết dùng được một lần, trong 10 phút.",
     confirm: "Đăng nhập",
+    opening: "Đang đăng nhập…",
     confirmInvalid: "Liên kết không hợp lệ. Hãy yêu cầu liên kết mới.",
   },
   verify: {
@@ -97,6 +98,7 @@ const en: typeof vi = {
     confirmTitle: "Confirm sign-in",
     confirmText: "Press the button to sign in on this device. The link works once, for 10 minutes.",
     confirm: "Sign in",
+    opening: "Signing in…",
     confirmInvalid: "Invalid link. Ask for a new one.",
   },
   verify: {
