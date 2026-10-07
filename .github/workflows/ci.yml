@@ -103,6 +103,13 @@ jobs:
         if: steps.repo.outputs.starter == 'true' && steps.pw.outputs.cache-hit == 'true'
       - run: pnpm test:e2e:app
         if: steps.repo.outputs.starter == 'true'
+      # Traces of failed tests (pnpm exec playwright show-trace <zip>).
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-app-traces
+          path: test-results/
+          retention-days: 7
 
   build-minimal:
     # Guards "really off": default config (profile site, all modules off) must build and run with NO secrets.
@@ -144,3 +151,9 @@ jobs:
       - run: pnpm exec playwright install-deps chromium
         if: steps.pw.outputs.cache-hit == 'true'
       - run: pnpm test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-traces
+          path: test-results/
+          retention-days: 7
