@@ -47,7 +47,7 @@ export default async function LocaleLayout({
   const home = localePath(locale);
 
   return (
-    <html lang={locale} className={fontVariables || undefined}>
+    <html lang={locale} className={fontVariables || undefined} data-scheme={brand.colors.scheme ?? "auto"}>
       <head>
         {/* Theme variables from config/brand.ts (validated color values only). */}
         <style dangerouslySetInnerHTML={{ __html: themeCss(brand.colors) }} />

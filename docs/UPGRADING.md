@@ -37,6 +37,10 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
+### v1.13.1 (2026-10-07) — dark: follows the brand scheme
+- `app/globals.css` and `app/[locale]/layout.tsx` (starter-owned): take theirs. Projects with their own `dark:` classes: they now follow `colors.scheme` too.
+- No migration.
+
 ### v1.13.0 (2026-10-07) — brand color scheme and radius
 - Optional: `scheme: "dark"` and/or `radius: "0"` in `colors` of `config/brand.ts` (project-owned). Nothing to do otherwise.
 - No migration.
