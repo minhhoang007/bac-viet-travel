@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { brandDefaults } from "@/config/brand.defaults";
-import { themeCss } from "./theme";
+import { resolveTheme, themeCss } from "./theme";
 
 describe("themeCss", () => {
   it("emits light and dark variables from config", () => {
@@ -40,5 +40,31 @@ describe("themeCss", () => {
     expect(() => themeCss(evil)).toThrow(/Invalid brand color for "primary"/);
     const evil2 = { light: { ...brandDefaults.colors.light, border: "url(https://evil.example/x)" } };
     expect(() => themeCss(evil2)).toThrow(/Invalid brand color/);
+  });
+});
+
+describe("resolveTheme", () => {
+  const fallback = brandDefaults.colors;
+  const dark = { ...brandDefaults.colors, scheme: "dark" as const };
+
+  it("uses the product's theme and its name", async () => {
+    const theme = await resolveTheme(async () => ({ colors: dark, name: "lacquer" }), fallback);
+    expect(theme.colors.scheme).toBe("dark");
+    expect(theme.css).toContain("color-scheme:dark");
+    expect(theme.name).toBe("lacquer");
+  });
+
+  it("falls back to the configured brand: no hook, no theme, a failing load or invalid colors", async () => {
+    const evil = { light: { ...brandDefaults.colors.light, primary: "red;}body{display:none" } };
+    for (const load of [undefined, async () => null, async () => Promise.reject(new Error("db down")), async () => ({ colors: evil })]) {
+      const theme = await resolveTheme(load, fallback);
+      expect(theme.colors).toBe(fallback);
+      expect(theme.css).toBe(themeCss(fallback));
+      expect(theme.name).toBeUndefined();
+    }
+  });
+
+  it("drops a name that is not a plain token", async () => {
+    expect((await resolveTheme(async () => ({ colors: dark, name: 'x" onload="alert(1)' }), fallback)).name).toBeUndefined();
   });
 });
