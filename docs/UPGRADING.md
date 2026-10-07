@@ -37,7 +37,7 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
-### Unreleased — guardrails
+### v1.9.0 (2026-10-07) — guardrails, CI minutes
 - `pnpm check` now runs `knip` and `jscpd`. After merging: `pnpm install`, then `pnpm knip` and `pnpm dup`.
   Project files the starter config does not know (extra scripts, configs, runtime-read files) go in `entry` /
   `ignore` of `knip.json` (project-owned after the first merge: keep **ours**). Remove what knip reports as unused,
