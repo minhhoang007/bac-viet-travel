@@ -194,7 +194,10 @@ describe("booking deposits (VNPay)", () => {
     await bookingService.expireStale();
     expect((await status(paid.code)).status).toBe("deposit_paid");
     expect((await status(unpaid.code)).status).toBe("expired");
-    expect(sent.map((m) => m.kind)).toEqual(["booking_deposit_paid", "booking_team_paid"]);
+    expect(sent.map((m) => m.kind)).toEqual(["booking_deposit_paid", "booking_team_paid", "booking_team_reconcile"]);
+    // The team learns that an IPN was lost, with the booking code.
+    expect(sent[2]).toMatchObject({ to: "team@example.com", subject: "[Đối soát VNPay] 1 thanh toán không có IPN" });
+    expect(sent[2]!.text).toContain(paid.code);
     // Still inside VNPay's window at 16 minutes: the unpaid attempt stays pending; past it, it is closed (not asked again).
     const attempt = async () => (await db.select().from(bookingPayments).where(eq(bookingPayments.status, "pending"))).length;
     expect(await attempt()).toBe(1);
@@ -208,6 +211,30 @@ describe("booking deposits (VNPay)", () => {
     expect(gmt7(asked.find((a) => a.txnRef === paidReq.vnp_TxnRef)!.createdAt)).toBe(paidReq.vnp_CreateDate);
 
     expect(await reconciling.reconcile(LINKS)).toBe(0); // paid now; the unpaid one is asked again but stays unpaid
+  });
+
+  it("reconcile: when VNPay cannot be asked, the team is told; nothing to report sends nothing", async () => {
+    const { code, token } = await holdOn(10);
+    await startPayment(code, token);
+    let down = true;
+    const reconciling = createDepositService({
+      db,
+      logger,
+      mail: { send: async (m) => void sent.push(m) },
+      bookings: bookingService,
+      transferHoldMinutes: 120,
+      vnpay: { ...vnpay, query: async () => (down ? Promise.reject(new Error("VNPay querydr responded 503")) : { status: "unpaid" as const }) },
+      tourTitle: async () => "Ninh Bình 1 ngày",
+      now: () => clock,
+    });
+    clock = new Date(clock.getTime() + 16 * 60_000);
+    expect(await reconciling.reconcile(LINKS)).toBe(0);
+    expect(sent.map((m) => m.kind)).toEqual(["booking_team_reconcile"]);
+    expect(sent[0]!.subject).toBe("[Đối soát VNPay] Không hỏi được VNPay (1)");
+    down = false;
+    sent = [];
+    expect(await reconciling.reconcile(LINKS)).toBe(0);
+    expect(sent).toEqual([]);
   });
 
   it("return URL: pending until the IPN arrives, then paid; forged params are invalid", async () => {

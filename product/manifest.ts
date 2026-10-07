@@ -15,6 +15,7 @@ import { bankTransferConfig } from "@/config/bank-transfer";
 import { createBookingService } from "./booking/service";
 import { DESTINATIONS, getTourCatalog } from "./tours/catalog";
 import { tourProblems } from "./tours/document";
+import { createInquiryService } from "./tours/inquiry";
 import { createTourSource, TOUR_CONTENT_TYPE, TOURS_CACHE_TAG } from "./tours/source";
 
 /** The only file bootstrap/ imports from product/. Declares product services, menu, exporters and jobs. */
@@ -99,7 +100,16 @@ export function createProduct(db: Db, ctx: ProductContext) {
 
   const discounts = createDiscountAdmin({ db, audit: ctx.audit, now: ctx.now });
   const reports = createReports({ db });
-  return { services: { tours, booking, deposits, bookingAdmin, feedback, discounts, reports, paymentsSandbox: ctx.payments.vnpay?.sandbox ?? false }, exporters, jobs };
+  // Tour enquiry form: shared limiter (Redis when configured), like the starter contact form; the action checks
+  // that the email module is on before using it.
+  const inquiry = createInquiryService({
+    mail: ctx.mail,
+    logger: ctx.logger,
+    rateLimiter: ctx.rateLimiter("tour-inquiry", { max: 5, windowMs: 10 * 60_000 }),
+    to: () => getEnv().extra.CONTACT_TO_EMAIL ?? "",
+    tourTitles: async (locale) => (await tours.catalog()).list(locale).map((t) => t.title),
+  });
+  return { services: { tours, booking, deposits, bookingAdmin, feedback, discounts, reports, inquiry, paymentsSandbox: ctx.payments.vnpay?.sandbox ?? false }, exporters, jobs };
 }
 
 export interface ProductNavItem {

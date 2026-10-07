@@ -3,6 +3,8 @@ import { getTours } from "@/app/_lib/tours";
 import { getPublicEnv } from "@/bootstrap/env";
 import { contactConfig } from "@/config/contact";
 import { getContainer } from "@/bootstrap/container";
+import { localePath } from "@/core/i18n/routing";
+import { isSold } from "@/product/booking/lifecycle";
 import { addDays } from "@/product/booking/rules";
 
 /** iCalendar text: escape \ ; , and newlines (RFC 5545 §3.3.11). */
@@ -16,13 +18,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ code
   const locale = url.searchParams.get("locale") === "en" ? "en" : "vi";
   if (!getContainer().app) return new Response("Not found", { status: 404 });
   const booking = await getBooking().getForGuest(code, token);
-  if (!booking || (booking.status !== "deposit_paid" && booking.status !== "confirmed")) return new Response("Not found", { status: 404 });
+  if (!booking || !isSold(booking.status)) return new Response("Not found", { status: 404 });
 
   const tour = (await getTours()).get(locale, booking.departure.tourSlug);
   const start = booking.departure.date;
   const end = addDays(start, tour?.days ?? 1); // DTEND is exclusive for all-day events
   const ymd = (d: string) => d.replace(/-/g, "");
-  const link = `${getPublicEnv().NEXT_PUBLIC_SITE_URL}${locale === "en" ? "/en" : ""}/booking/${booking.code}?t=${encodeURIComponent(token)}`;
+  const link = `${getPublicEnv().NEXT_PUBLIC_SITE_URL}${localePath(locale, `/booking/${booking.code}`)}?t=${encodeURIComponent(token)}`;
   const title = `${tour?.title ?? booking.departure.tourSlug} (${booking.code})`;
   const description = [tour ? `${locale === "en" ? "Pick-up" : "Đón khách"}: ${tour.departure}` : "", `${contactConfig.companyName} · ${contactConfig.hotline}`, link].filter(Boolean).join("\n");
   const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");

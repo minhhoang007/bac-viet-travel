@@ -49,7 +49,7 @@ export function createReports(deps: { db: Db }) {
         })
         .from(bookings)
         .innerJoin(departures, eq(departures.id, bookings.departureId))
-        .where(and(inRange, inArray(bookings.status, [...SOLD_STATUSES])))
+        .where(and(inRange, inArray(bookings.status, SOLD_STATUSES)))
         .groupBy(departures.tourSlug);
       const sources = await db
         .select({
@@ -60,7 +60,7 @@ export function createReports(deps: { db: Db }) {
         })
         .from(bookings)
         .innerJoin(departures, eq(departures.id, bookings.departureId))
-        .where(and(inRange, inArray(bookings.status, [...SOLD_STATUSES])))
+        .where(and(inRange, inArray(bookings.status, SOLD_STATUSES)))
         .groupBy(bookings.source);
       const [owed] = await db
         .select({ vnd: sql<number>`coalesce(sum(${bookings.refundDueVnd}), 0)::bigint` })
