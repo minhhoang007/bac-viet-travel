@@ -49,5 +49,31 @@ export function themeCss(colors: BrandColors): string {
   return css;
 }
 
+/** A theme chosen at run time by the product (product/layout.tsx `productTheme`), e.g. one an admin picks. */
+export interface ProductTheme {
+  colors: BrandColors;
+  /** Rendered as <html data-theme>, for project CSS (fonts, heading style) per theme. Lowercase letters, digits, "-". */
+  name?: string;
+}
+
+const THEME_NAME = /^[a-z0-9-]{1,32}$/;
+
+/**
+ * The theme to render: the product's when it loads and is valid, else config/brand.ts. Never throws: a bad value
+ * in the database must not take the site down.
+ */
+export async function resolveTheme(load: (() => Promise<ProductTheme | null | undefined>) | undefined, fallback: BrandColors): Promise<{ colors: BrandColors; css: string; name?: string }> {
+  try {
+    const theme = await load?.();
+    if (theme) {
+      const name = theme.name !== undefined && THEME_NAME.test(theme.name) ? theme.name : undefined;
+      return { colors: theme.colors, css: themeCss(theme.colors), name };
+    }
+  } catch {
+    // Fall through to the configured brand.
+  }
+  return { colors: fallback, css: themeCss(fallback) };
+}
+
 /** Toasts follow the same scheme as the theme. */
 export const toastTheme = (colors: BrandColors) => (colors.scheme === "dark" ? "dark" : colors.scheme === "light" ? "light" : "system");
