@@ -8,6 +8,7 @@ import { seoSite } from "@/core/seo/site";
 import type { Locale } from "@/config/app";
 import { TourListingFromUrl } from "@/product/components/tour-listing-url";
 import { getProductContent } from "@/product/content";
+import { breadcrumbLd } from "@/product/seo";
 import type { Destination, Tour } from "@/product/tours/model";
 
 export const DESTINATION_IMAGE: Record<Destination, string> = {
@@ -43,7 +44,7 @@ export function DestinationPage({ locale, destination, tours }: { locale: Locale
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(listLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd([listLd, breadcrumbLd(site, locale, [{ path: "/tours", name: c.tours.title }, { path: `/tours/${destination}`, name: d.name }])]) }} />
       <section className="relative isolate overflow-hidden text-white">
         <Image src={DESTINATION_IMAGE[destination]} alt={d.name} fill priority sizes="100vw" className="-z-10 object-cover" />
         <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black/70 via-black/35 to-black/20" />
