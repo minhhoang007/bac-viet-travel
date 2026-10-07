@@ -8,6 +8,8 @@
       "chore/**": false,
       "docs/**": false,
       "refactor/**": false,
+      "style/**": false,
+      "perf/**": false,
       "test/**": false,
       "ci/**": false,
       "upgrade/**": false,

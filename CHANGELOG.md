@@ -4,6 +4,12 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.18.3] - 2026-10-08
+
+### Changed
+- `vercel.json`: `style/**` and `perf/**` branches no longer build previews either (Hobby deploy quota).
+- The app-profile blog E2E reads the blog's nav label and title from `content/vi/app.ts`, so projects can rename the blog (e.g. "Cẩm nang").
+
 ## [1.18.2] - 2026-10-08
 
 ### Changed
