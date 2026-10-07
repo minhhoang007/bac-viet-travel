@@ -12,11 +12,20 @@ export const photoCredits = [
   { file: "/tours/halong-4.jpg", author: "Fuu J", username: "fuuj", photo: "TvB_S0cB2ik" },
   { file: "/tours/ninhbinh-4.jpg", author: "Just Filip", username: "justfilip", photo: "Mt1iIhkBk1I" },
   { file: "/tours/sapa-4.jpg", author: "Huy Nguyen", username: "huynguyen_pch", photo: "OBD62-MyPAQ" },
+  { file: "/tours/halong-5.jpg", author: "Cassie Smart", username: "cassiesmart19", photo: "22v1-AEa2-k" },
+  { file: "/tours/halong-6.jpg", author: "Daniele Franchi", username: "daniele_franchi", photo: "cw7K3_-csCI" },
+  { file: "/tours/ninhbinh-5.jpg", author: "Catherine Dionne", username: "cattdio", photo: "eqWw7Ee85mg" },
+  { file: "/tours/ninhbinh-6.jpg", author: "Hoang Vu Tuyen", username: "vutuyenhoang", photo: "E2jYY1GxAzE" },
+  { file: "/tours/sapa-5.jpg", author: "Vivu Vietnam", username: "bttsg", photo: "4yV0yDIOWis" },
+  { file: "/tours/sapa-6.jpg", author: "Happysurd Photography", username: "happysurd", photo: "GE381hCl2L0" },
+  { file: "/tours/hanoi-1.jpg", author: "Ryan Le", username: "ryan_le", photo: "u3Jd3Bi6EIU" },
+  { file: "/tours/hanoi-2.jpg", author: "Ryan Le", username: "ryan_le", photo: "sbTFy39LRsE" },
 ] as const;
 
 /** Pexels videos (Pexels License: free to use, attribution appreciated). */
 export const videoCredits = [
   { file: "/video/hero-poster.jpg", author: "Sergey Guk", url: "https://www.pexels.com/video/aerial-view-of-ha-long-bay-at-sunset-30391319/" },
+  { file: "/video/ninhbinh-poster.jpg", author: "Sergey Guk", url: "https://www.pexels.com/video/aerial-view-of-ninh-binh-s-misty-mountainscape-30468272/" },
 ] as const;
 
 export const unsplashPhotoUrl = (photo: string) => `https://unsplash.com/photos/${photo}?utm_source=bac_viet_travel&utm_medium=referral`;
