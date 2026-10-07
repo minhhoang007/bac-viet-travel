@@ -15,7 +15,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return { title: getDiscountAdminContent((await params).locale).title };
 }
 
-const input = "h-9 rounded-md border border-border bg-background px-2 text-sm";
+const input = "h-9 w-full min-w-0 rounded-md border border-border bg-background px-2 text-sm";
 
 /** Discount codes (D6): create, see live uses, turn off. Admins only; every change is audited. */
 export default async function DiscountsPage({ params, searchParams }: Props) {
@@ -38,7 +38,7 @@ export default async function DiscountsPage({ params, searchParams }: Props) {
         </p>
       )}
 
-      <form action={createDiscount} className="grid gap-3 rounded-lg border border-border p-4 sm:grid-cols-4" data-testid="discount-form">
+      <form action={createDiscount} className="grid gap-3 rounded-lg border border-border p-4 sm:grid-cols-4 [&>*]:min-w-0" data-testid="discount-form">
         {hidden}
         <p className="font-semibold sm:col-span-4">{c.add}</p>
         <label className="grid gap-1 text-sm">
