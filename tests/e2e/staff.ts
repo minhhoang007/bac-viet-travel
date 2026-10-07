@@ -20,4 +20,14 @@ export async function signInStaff(page: Page, sql: Sql, email: string, role: "ed
   await page.goto(`/api/auth/magic-link/verify?token=${token}&callbackURL=%2Fdashboard`);
   await expect(page).toHaveURL(/\/dashboard$/);
   await sql`update users set role = ${role} where email = ${email}`;
+  // Staff need a second factor (starter v1.17): as if they had set up an authenticator app and passed it just now.
+  // The real passkey/TOTP flows are covered by the starter's tests; admin.spec covers the gate and the step-up here.
+  await withSecondFactor(sql, email);
+}
+
+/** An authenticator app on record (placeholder secret: never checked here) and the user's sessions past the 2FA. */
+export async function withSecondFactor(sql: Sql, email: string): Promise<void> {
+  const [user] = await sql<{ id: string }[]>`select id from users where email = ${email}`;
+  await sql`insert into two_factors (user_id, secret, backup_codes, verified) select ${user!.id}, 'e2e', 'e2e', true where not exists (select 1 from two_factors where user_id = ${user!.id})`;
+  await sql`update sessions set second_factor_at = now() where user_id = ${user!.id}`;
 }
