@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { setRequestLocale } from "next-intl/server";
 import { requireAdmin } from "@/app/_lib/admin";
 import { BarChart } from "@/components/admin/bar-chart";
@@ -7,8 +8,14 @@ import type { Locale } from "@/config/app";
 import { localePath } from "@/core/i18n/routing";
 import { getAppContent } from "@/content";
 import { PageHeader } from "@/components/app-shell/page-header";
+import * as productLayout from "@/product/layout";
 
 const DAYS = 30;
+
+// Optional project dashboard at the top of /admin (product/layout.tsx `ProductAdminOverview`), in place of the
+// `adminOverview` figures: e.g. a business overview with its own queries, charts and to-do lists.
+const ProductAdminOverview =
+  "ProductAdminOverview" in productLayout ? (productLayout as { ProductAdminOverview?: (p: { locale: Locale }) => Promise<ReactNode> | ReactNode }).ProductAdminOverview : undefined;
 
 function List({ title, rows, empty }: { title: string; rows: { label: string; value: number }[]; empty: string }) {
   return (
@@ -42,13 +49,14 @@ export default async function AdminOverviewPage({ params }: { params: Promise<{ 
     container.entitlements?.countActiveOwners("pro"),
     container.analytics?.stats(DAYS),
     container.storage?.totals(),
-    container.app?.adminOverview?.(locale) ?? [],
+    ProductAdminOverview ? [] : (container.app?.adminOverview?.(locale) ?? []),
   ]);
   const sum = (values: number[]) => values.reduce((a, b) => a + b, 0);
 
   return (
     <div className="grid gap-6">
       <PageHeader title={getAppContent(locale).admin.nav.overview} description={c.last30Days} />
+      {ProductAdminOverview && <ProductAdminOverview locale={locale} />}
       {product.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" data-testid="product-stats">
           {product.map((s) => (
