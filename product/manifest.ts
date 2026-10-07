@@ -118,6 +118,8 @@ export interface ProductNavItem {
   label: Record<Locale, string>;
   /** productAdminNav only: roles besides admin that see the entry, e.g. ["editor"] for content pages. */
   roles?: readonly ("editor" | "admin")[];
+  /** productAdminNav only: narrows `roles` per user, e.g. a product staff permission (async allowed). */
+  allow?: (user: { id: string; role: "user" | "editor" | "admin" }) => boolean | Promise<boolean>;
 }
 
 /** Dashboard menu entries for product pages (href without locale prefix). */
