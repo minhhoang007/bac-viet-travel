@@ -96,9 +96,22 @@ export function privateQuote(pricing: PrivatePricing, party: Party, tourPricing:
   return tier ? quote(tier.vnd, party, tourPricing, available) : null;
 }
 
-/** Today's date in Vietnam (UTC+7, no DST) as YYYY-MM-DD. */
+/** Vietnam is UTC+7 all year (no DST). */
+const VIETNAM_OFFSET_MS = 7 * 3_600_000;
+
+/** Today's date in Vietnam as YYYY-MM-DD. */
 export function vietnamToday(now: Date): string {
-  return new Date(now.getTime() + 7 * 3_600_000).toISOString().slice(0, 10);
+  return new Date(now.getTime() + VIETNAM_OFFSET_MS).toISOString().slice(0, 10);
+}
+
+/** The instant a Vietnam day (YYYY-MM-DD) begins. */
+export function vietnamDayStart(day: string): Date {
+  return new Date(new Date(`${day}T00:00:00Z`).getTime() - VIETNAM_OFFSET_MS);
+}
+
+/** One kind per person, in party order: adults, then children, then infants. */
+export function travellerKinds(party: { adults: number; children: number; infants: number }): ("adult" | "child" | "infant")[] {
+  return [...Array<"adult">(party.adults).fill("adult"), ...Array<"child">(party.children).fill("child"), ...Array<"infant">(party.infants).fill("infant")];
 }
 
 export function addDays(day: string, days: number): string {

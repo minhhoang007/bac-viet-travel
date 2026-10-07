@@ -8,7 +8,7 @@ import { createHash, randomBytes, randomInt } from "node:crypto";
 import { bookingPayments, bookings, departures, type Booking, type BookingPayment, type BookingSource, type BookingStatus, type Departure } from "../schema/booking";
 import { bookingStatusEmail, reminderEmail } from "./emails";
 import type { ReceiveTransferResult } from "./deposits";
-import { addDays, bookingRules, vietnamToday } from "./rules";
+import { addDays, bookingRules, travellerKinds, vietnamDayStart, vietnamToday } from "./rules";
 import { SOLD_STATUSES, takesSeats } from "./status";
 import { manualBookingSchema } from "./validations";
 
@@ -54,8 +54,8 @@ function passengerRows(b: Booking): PassengerRow[] {
   const base = { code: b.code, contact: b.name, phone: b.phone, note: b.note, status: b.status };
   const people = b.adults + b.children + b.infants;
   if (b.travellers.length === 0) return [{ ...base, name: b.name, birthYear: null, kind: null, missing: people }];
-  const kindAt = (i: number) => (i < b.adults ? "adult" : i < b.adults + b.children ? "child" : "infant") as PassengerRow["kind"];
-  return b.travellers.map((p, i) => ({ ...base, name: p.name, birthYear: p.birthYear, kind: kindAt(i), missing: 0 }));
+  const kinds = travellerKinds(b);
+  return b.travellers.map((p, i) => ({ ...base, name: p.name, birthYear: p.birthYear, kind: kinds[i] ?? null, missing: 0 }));
 }
 
 export interface BookingAdmin {
@@ -416,7 +416,7 @@ export function createBookingAdmin(deps: {
     async stats() {
       const at = now();
       const today = vietnamToday(at);
-      const dayStart = new Date(`${today}T00:00:00+07:00`);
+      const dayStart = vietnamDayStart(today);
       const weekStart = new Date(dayStart.getTime() - 6 * 86_400_000);
       const [paid] = await db
         .select({

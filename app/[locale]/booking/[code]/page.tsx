@@ -4,7 +4,7 @@ import { setRequestLocale } from "next-intl/server";
 import { getBooking, getDeposits, isPaymentsSandbox, isTransferAvailable, isVnpayConfigured } from "@/app/_lib/booking";
 import { chooseTransfer, saveTravellers, startBalance, startDeposit } from "@/app/actions/booking";
 import { balanceDue } from "@/product/booking/deposits";
-import { vietnamToday } from "@/product/booking/rules";
+import { travellerKinds, vietnamToday } from "@/product/booking/rules";
 import { travellersEditable } from "@/product/booking/service";
 import { isSold } from "@/product/booking/status";
 import { TravellersForm } from "@/product/components/travellers-form";
@@ -56,7 +56,7 @@ export default async function BookingPage({ params, searchParams }: Props) {
   const status = booking.isExpired ? "expired" : booking.status;
   const sandbox = isPaymentsSandbox();
   const today = vietnamToday(new Date());
-  const kinds = [...Array<"adult">(booking.adults).fill("adult"), ...Array<"child">(booking.children).fill("child"), ...Array<"infant">(booking.infants).fill("infant")];
+  const kinds = travellerKinds(booking);
   const transferOffered = status === "held" && isTransferAvailable();
   const transfer = transferOffered && (await getDeposits().transferPending(booking.id));
   const holdUntil = booking.holdExpiresAt.toLocaleTimeString(locale === "vi" ? "vi-VN" : "en-GB", { timeZone: "Asia/Ho_Chi_Minh", hour: "2-digit", minute: "2-digit" });
