@@ -4,6 +4,9 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+### Fixed
+- Blog/Markdown bodies: paragraphs, headings and lists inside the `display: contents` wrappers now get the `.prose-blog` spacing (they were stuck together).
+
 ## [1.14.0] - 2026-10-07
 
 ### Added — project CSS and blog style hooks
