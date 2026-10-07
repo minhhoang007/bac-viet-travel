@@ -89,3 +89,53 @@
 .prose-blog ul li::marker {
   color: var(--primary);
 }
+
+/*
+ * Themes (Admin → Giao diện, product/theme): the starter layout sets <html data-theme>; colors come from themeCss.
+ * Here: the heading font and heading style of each theme. "lacquer" (Sơn Mài) is the base above.
+ */
+html[data-theme="paper"] {
+  --brand-font-heading: var(--bv-font-playfair);
+  --bv-heading-tracking: -0.01em;
+}
+
+html[data-theme="mist"] {
+  --brand-font-heading: var(--brand-font-sans);
+  --bv-heading-weight: 200;
+  --bv-heading-case: uppercase;
+  --bv-heading-tracking: 0.06em;
+}
+
+html[data-theme="tomato"] {
+  --brand-font-heading: var(--bv-font-barlow);
+  --bv-heading-weight: 500;
+  --bv-heading-case: uppercase;
+  --bv-heading-tracking: 0.02em;
+}
+
+html[data-theme="jade"] {
+  --brand-font-heading: var(--bv-font-noto-display);
+  --bv-heading-weight: 300;
+  --bv-heading-tracking: -0.01em;
+}
+
+html[data-theme]:not([data-theme="lacquer"]) :is(h1, h2, h3).font-heading,
+html[data-theme]:not([data-theme="lacquer"]) :is(.blog-title, .prose-blog h2, .prose-blog h3) {
+  font-weight: var(--bv-heading-weight, 400);
+  text-transform: var(--bv-heading-case, none);
+  letter-spacing: var(--bv-heading-tracking, 0);
+}
+
+/* Paper, Mist and Jade set the home hero text on the left, like their magazines. */
+html:is([data-theme="paper"], [data-theme="mist"], [data-theme="jade"]) .home-hero-text {
+  margin-inline: 0;
+  text-align: left;
+}
+
+html:is([data-theme="paper"], [data-theme="mist"], [data-theme="jade"]) .home-hero-text > p {
+  margin-inline: 0;
+}
+
+html:is([data-theme="paper"], [data-theme="mist"], [data-theme="jade"]) .home-hero-actions {
+  justify-content: flex-start;
+}

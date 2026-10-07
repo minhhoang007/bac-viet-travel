@@ -258,3 +258,44 @@ test("staff roles: admins add sales and managers; sales see bookings without con
   await expect(page.getByTestId("staff-table")).toHaveCount(0);
   expect((await staff.goto("/admin/bookings"))?.status()).toBe(404);
 });
+
+test("appearance: admins switch the site theme and light/dark mode; every theme passes axe on the home page", async ({ page, browser, request }) => {
+  test.setTimeout(180_000);
+  expect((await request.get("/admin/appearance")).status()).toBe(404);
+  await signInAsAdmin(page, "theme-admin@bacviet.example");
+  const visitor = await (await browser.newContext()).newPage();
+
+  async function pick(theme: RegExp, mode: string) {
+    await page.goto("/admin/appearance");
+    const form = page.getByTestId("theme-form");
+    await form.getByRole("radio", { name: theme }).check();
+    await form.getByRole("radio", { name: mode }).check();
+    await form.getByRole("button", { name: "Lưu giao diện" }).click();
+    await expect(page.getByRole("status")).toContainText("Đã lưu.");
+  }
+  async function homeIs(theme: string, scheme: string) {
+    await visitor.goto("/");
+    await expect(visitor.locator("html")).toHaveAttribute("data-theme", theme);
+    await expect(visitor.locator("html")).toHaveAttribute("data-scheme", scheme);
+    const result = await new AxeBuilder({ page: visitor }).withTags(["wcag2a", "wcag2aa"]).analyze();
+    expect(result.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => `${theme}.${scheme}: ${v.id}`)).toEqual([]);
+  }
+
+  const themes = [
+    ["lacquer", /^A · Sơn Mài/, "dark", "light"],
+    ["paper", /^B · Giấy Dó/, "light", "dark"],
+    ["mist", /^C · Sương/, "light", "dark"],
+    ["tomato", /^D · Tạp chí/, "light", "dark"],
+    ["jade", /^E · Ngọc Vịnh/, "dark", "light"],
+  ] as const;
+  for (const [name, label, native, other] of themes) {
+    await pick(label, "Gốc của theme");
+    await homeIs(name, native);
+    await pick(label, other === "light" ? "Luôn sáng" : "Luôn tối");
+    await homeIs(name, other);
+  }
+
+  // Back to the default for the other tests.
+  await pick(/^A · Sơn Mài/, "Gốc của theme");
+  await homeIs("lacquer", "dark");
+});
