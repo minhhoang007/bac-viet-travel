@@ -4,7 +4,7 @@ import { setRequestLocale } from "next-intl/server";
 import { Container } from "@/components/ui/container";
 import type { Locale } from "@/config/app";
 import { getProductContent } from "@/product/content";
-import { photoCredits, unsplashPhotoUrl, unsplashUserUrl } from "@/product/tours/credits";
+import { photoCredits, unsplashPhotoUrl, unsplashUserUrl, videoCredits } from "@/product/tours/credits";
 
 type Props = { params: Promise<{ locale: Locale }> };
 
@@ -35,6 +35,19 @@ export default async function CreditsPage({ params }: Props) {
               <a href={unsplashUserUrl(p.username)} target="_blank" rel="noopener noreferrer" className="hover:underline">
                 {p.author}
               </a>
+            </span>
+          </li>
+        ))}
+        {videoCredits.map((v) => (
+          <li key={v.file} className="flex items-center gap-3 text-sm" data-testid="video-credit">
+            <span className="relative h-16 w-24 shrink-0 overflow-hidden rounded">
+              <Image src={v.file} alt="" fill sizes="96px" className="object-cover" />
+            </span>
+            <span>
+              <a href={v.url} className="underline" target="_blank" rel="noopener noreferrer">
+                Pexels
+              </a>{" "}
+              · {v.author}
             </span>
           </li>
         ))}

@@ -6,6 +6,11 @@ import { expect, test } from "@playwright/test";
 test("home: destinations, featured tours, TravelAgency JSON-LD, quick contact (Zalo first in Vietnamese)", async ({ page }) => {
   await page.goto("/");
   await expect(page.locator("[data-destination-card]")).toHaveCount(3);
+  // Background film: muted loop with the still poster (also the LCP image); a lighter cut for phones.
+  const video = page.getByTestId("hero-video");
+  await expect(video).toHaveAttribute("poster", "/video/hero-poster.jpg");
+  expect(await video.evaluate((v: HTMLVideoElement) => v.muted && v.loop)).toBe(true);
+  expect((await page.request.get("/video/hero-desktop.mp4")).status()).toBe(200);
   await expect(page.getByRole("heading", { name: "Tour được đặt nhiều" })).toBeVisible();
   const ld = await page.locator('script[type="application/ld+json"]').allTextContents();
   expect(ld.some((s) => s.includes('"@type":"TravelAgency"'))).toBe(true);
@@ -90,7 +95,8 @@ test("blog posts link their translation; sitemap lists tours and posts; unknown 
 
 test("photo credits page links every Unsplash photographer", async ({ page }) => {
   await page.goto("/credits");
-  await expect(page.locator('a[href^="https://unsplash.com/@"]')).toHaveCount(9);
+  await expect(page.locator('a[href^="https://unsplash.com/@"]')).toHaveCount(12);
+  await expect(page.getByTestId("video-credit")).toContainText("Sergey Guk");
 });
 
 test("tour gallery, mobile menu and accessibility (axe) on travel pages", async ({ page }) => {

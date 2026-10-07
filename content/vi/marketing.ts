@@ -7,14 +7,14 @@ export const marketing: MarketingContent = {
   },
   nav: { switchLocale: "English", menu: "Mở menu", close: "Đóng" },
   hero: {
-    eyebrow: "Bắc Việt Travel · Tour miền Bắc từ Hà Nội",
-    title: "Khám phá Hạ Long, Ninh Bình và Sapa theo cách của bạn",
+    eyebrow: "Hạ Long · Ninh Bình · Sapa — tour riêng và nhóm nhỏ từ Hà Nội",
+    title: "Miền Bắc, theo nhịp của riêng bạn.",
     subtitle: "Du thuyền ngủ đêm trên vịnh, thuyền qua hang động Tràng An, trekking ruộng bậc thang. Nhóm nhỏ, giá trọn gói, hỗ trợ 24/7 qua Zalo.",
     primaryCta: "Xem tour",
     primaryHref: "/tours",
     secondaryCta: "Nhận tư vấn",
     secondaryHref: "#contact",
-    image: { src: "/tours/halong-1.jpg", alt: "Du thuyền giữa các đảo đá vôi trên vịnh Hạ Long" },
+    image: { src: "/video/hero-poster.jpg", alt: "Vịnh Hạ Long lúc hoàng hôn nhìn từ trên cao" },
   },
   features: {
     title: "Đặt tour dễ dàng",

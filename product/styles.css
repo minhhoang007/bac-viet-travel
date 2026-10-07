@@ -1,5 +1,89 @@
 /*
- * Project-owned CSS, loaded after app/globals.css (so equal selectors here win). Use the theme variables
- * (var(--primary), var(--font-heading)…) and the stable hooks the starter renders: .prose-blog, .blog-post,
- * .blog-title, .blog-meta, .blog-cover, .blog-tags.
+ * Project-owned CSS, loaded after app/globals.css (so equal selectors here win). "Sơn Mài" editorial typography
+ * for the blog (travel notes) and Markdown bodies (tour overviews).
  */
+
+.blog-title {
+  font-family: var(--font-heading);
+  font-weight: 400;
+  font-size: clamp(2.25rem, 5vw, 3.5rem);
+  line-height: 1.1;
+  text-wrap: balance;
+}
+
+.blog-meta {
+  font-size: 0.75rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.blog-cover {
+  border-radius: 0;
+}
+
+.blog-tags a {
+  border-radius: 0;
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.prose-blog {
+  font-size: 1.0625rem;
+  line-height: 1.85;
+}
+
+/*
+ * Markdown bodies render inside display:contents wrappers (div.contents), which the starter's
+ * `.prose-blog > * + *` spacing does not reach. TODO(starter): space wrapped children there too.
+ */
+.prose-blog .contents > * + * {
+  margin-top: 1.25em;
+}
+
+/* The opening paragraph of a post reads as a lead, in the heading serif. */
+.blog-post .prose-blog > p:first-child,
+.blog-post .prose-blog > .contents:first-child > p:first-child {
+  font-family: var(--font-heading);
+  font-size: 1.6rem;
+  line-height: 1.5;
+}
+
+.prose-blog h2 {
+  margin-top: 2.4em;
+  font-family: var(--font-heading);
+  font-weight: 400;
+  font-size: 2rem;
+  line-height: 1.2;
+}
+
+.prose-blog h3 {
+  margin-top: 1.8em;
+  font-family: var(--font-heading);
+  font-weight: 500;
+  font-size: 1.5rem;
+}
+
+.prose-blog a {
+  color: var(--primary);
+  text-underline-offset: 4px;
+}
+
+.prose-blog blockquote {
+  border-left: 1px solid var(--primary);
+  padding-left: 1.5em;
+  font-family: var(--font-heading);
+  font-style: italic;
+  font-size: 1.4rem;
+  line-height: 1.5;
+  color: var(--foreground);
+}
+
+.prose-blog img {
+  width: 100%;
+  height: auto;
+}
+
+.prose-blog ul li::marker {
+  color: var(--primary);
+}

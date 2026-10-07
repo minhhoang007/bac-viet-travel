@@ -19,9 +19,9 @@ import { DESTINATIONS, type Destination } from "./tours/catalog";
 import { formatPrice } from "./tours/format";
 
 const DESTINATION_IMAGE: Record<Destination, string> = {
-  "ha-long": "/tours/halong-2.jpg",
-  "ninh-binh": "/tours/ninhbinh-1.jpg",
-  sapa: "/tours/sapa-2.jpg",
+  "ha-long": "/tours/halong-4.jpg",
+  "ninh-binh": "/tours/ninhbinh-4.jpg",
+  sapa: "/tours/sapa-4.jpg",
 };
 const TRUST_ICON = { license: BadgeCheck, pickup: Car, payment: CreditCard, support: MessageCircle } as const;
 const ROMAN = ["I.", "II.", "III.", "IV.", "V."];
@@ -84,8 +84,17 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
 
       {/* Hero: the photo fills the screen; the text sits low and centred, the search bar under it. */}
       <section className="relative isolate flex min-h-[88svh] items-end overflow-hidden text-[#f5f1ea]" aria-labelledby="hero-title">
-        <Image src={m.hero.image!.src} alt={m.hero.image!.alt} fill priority sizes="100vw" className="-z-10 object-cover saturate-[.88]" />
-        <div className="absolute inset-0 -z-10 bg-gradient-to-b from-black/55 via-black/40 to-background" />
+        <Image src={m.hero.image!.src} alt={m.hero.image!.alt} fill priority sizes="100vw" className="-z-10 object-cover" />
+        {/*
+          Background film: 10 s, muted, no controls; the poster (same first frame) is the LCP image. Phones get a lighter
+          portrait cut. Hidden for visitors who ask for reduced motion: they keep the still photo.
+          Demo files in public/video (Pexels); real footage should move to a video CDN (bandwidth).
+        */}
+        <video autoPlay muted loop playsInline preload="metadata" poster={m.hero.image!.src} aria-hidden="true" className="absolute inset-0 -z-10 size-full object-cover motion-reduce:hidden" data-testid="hero-video">
+          <source src="/video/hero-mobile.mp4" type="video/mp4" media="(max-width: 767px)" />
+          <source src="/video/hero-desktop.mp4" type="video/mp4" />
+        </video>
+        <div className="absolute inset-0 -z-10 bg-gradient-to-b from-black/40 via-black/20 to-background" />
         <Container className="grid gap-10 pb-12 pt-32 text-center">
           <div className="mx-auto max-w-4xl [text-shadow:0_1px_14px_rgb(0_0_0/0.55)]">
             <p className="text-xs font-medium uppercase tracking-[0.4em] opacity-90">{m.hero.eyebrow}</p>

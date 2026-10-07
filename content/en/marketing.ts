@@ -7,14 +7,14 @@ export const marketing: MarketingContent = {
   },
   nav: { switchLocale: "Tiếng Việt", menu: "Open menu", close: "Close" },
   hero: {
-    eyebrow: "Bac Viet Travel · Northern Vietnam tours from Hanoi",
-    title: "Discover Ha Long Bay, Ninh Binh and Sapa your way",
+    eyebrow: "Ha Long · Ninh Binh · Sapa — private and small-group tours from Hanoi",
+    title: "Northern Vietnam, at your own pace.",
     subtitle: "Overnight cruises on the bay, boat rides through the caves of Trang An, treks across rice terraces. Small groups, all-inclusive prices, 24/7 support on WhatsApp.",
     primaryCta: "See tours",
     primaryHref: "/tours",
     secondaryCta: "Ask us",
     secondaryHref: "#contact",
-    image: { src: "/tours/halong-1.jpg", alt: "Cruise boats among the limestone islands of Ha Long Bay" },
+    image: { src: "/video/hero-poster.jpg", alt: "Ha Long Bay at sunset from above" },
   },
   features: {
     title: "Booking is easy",
