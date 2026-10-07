@@ -379,6 +379,10 @@ export function getBookingContent(locale: Locale): BookingContent {
 export const formatVnd = (n: number, locale: Locale) =>
   new Intl.NumberFormat(locale === "vi" ? "vi-VN" : "en-US", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(n);
 
+/** "09/10/2026" / "9 Oct 2026" for tables. Calendar days, formatted in UTC so they never shift. */
+export const formatShortDay = (day: string, locale: Locale) =>
+  new Intl.DateTimeFormat(locale === "vi" ? "vi-VN" : "en-GB", { day: locale === "vi" ? "2-digit" : "numeric", month: locale === "vi" ? "2-digit" : "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${day}T00:00:00Z`));
+
 /** "Thứ Sáu, 09/10/2026" / "Fri, 9 Oct 2026" — dates are calendar days, formatted in UTC so they never shift. */
 export const formatDay = (day: string, locale: Locale) =>
   new Intl.DateTimeFormat(locale === "vi" ? "vi-VN" : "en-GB", { weekday: locale === "vi" ? "long" : "short", day: "numeric", month: locale === "vi" ? "2-digit" : "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${day}T00:00:00Z`));

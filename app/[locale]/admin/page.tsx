@@ -4,6 +4,7 @@ import { BarChart } from "@/components/admin/bar-chart";
 import { Stat } from "@/components/admin/stat";
 import { formatBytes } from "@/components/ui/format-bytes";
 import type { Locale } from "@/config/app";
+import { localePath } from "@/core/i18n/routing";
 import { getAppContent } from "@/content";
 import { PageHeader } from "@/components/app-shell/page-header";
 
@@ -35,18 +36,26 @@ export default async function AdminOverviewPage({ params }: { params: Promise<{ 
   const { admin, container } = await requireAdmin();
   const c = getAppContent(locale).admin.overview;
 
-  const [signups, users, pro, stats, storage] = await Promise.all([
+  const [signups, users, pro, stats, storage, product] = await Promise.all([
     admin.signupsByDay(DAYS),
     admin.listUsers({ pageSize: 1 }),
     container.entitlements?.countActiveOwners("pro"),
     container.analytics?.stats(DAYS),
     container.storage?.totals(),
+    container.app?.adminOverview?.(locale) ?? [],
   ]);
   const sum = (values: number[]) => values.reduce((a, b) => a + b, 0);
 
   return (
     <div className="grid gap-6">
       <PageHeader title={getAppContent(locale).admin.nav.overview} description={c.last30Days} />
+      {product.length > 0 && (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" data-testid="product-stats">
+          {product.map((s) => (
+            <Stat key={s.label} label={s.label} value={s.value} href={s.href && localePath(locale, s.href)} />
+          ))}
+        </div>
+      )}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label={c.totalUsers} value={users.total} />
         <Stat label={c.newUsers} value={sum(signups.map((d) => d.count))} />

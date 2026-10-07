@@ -13,8 +13,7 @@ const optionalInt = (max: number) =>
   z.preprocess((v) => (v === "" || v === undefined || v === null ? null : v), z.coerce.number({ message: "invalid" }).int("invalid").min(0, "invalid").max(max, "invalid").nullable());
 
 /** Staff form for a new discount code (D6). Errors are codes; the admin page maps them to text. */
-const discountInputSchema = z
-  .object({
+const discountFields = z.object({
     code: z
       .string()
       .trim()
@@ -28,17 +27,31 @@ const discountInputSchema = z
     minTotalVnd: optionalInt(1_000_000_000).transform((v) => v ?? 0),
     maxUses: optionalInt(100_000),
     note: z.string().trim().max(200, "too_long").default(""),
-  })
-  .refine((v) => v.kind !== "percent" || v.value <= 90, { path: ["value"], message: "invalid" })
-  .refine((v) => v.validFrom <= v.validTo, { path: ["validTo"], message: "invalid" });
+  });
+const checked = <T extends z.ZodType<{ kind: string; value: number; validFrom: string; validTo: string }>>(schema: T) =>
+  schema
+    .refine((v) => v.kind !== "percent" || v.value <= 90, { path: ["value"], message: "invalid" })
+    .refine((v) => v.validFrom <= v.validTo, { path: ["validTo"], message: "invalid" });
+const discountInputSchema = checked(discountFields);
+/** Editing keeps the code (guests and past bookings refer to it); everything else can change. */
+const discountUpdateSchema = checked(discountFields.omit({ code: true }));
+
+const fieldErrorsOf = (error: z.ZodError) => {
+  const fieldErrors: Record<string, string> = {};
+  for (const issue of error.issues) fieldErrors[String(issue.path[0])] ??= issue.message === "too_long" ? "too_long" : "invalid";
+  return fieldErrors;
+};
 
 export type DiscountRow = DiscountCode & { used: number };
 export type CreateDiscountResult = { status: "created" } | { status: "invalid"; fieldErrors: Record<string, string> } | { status: "taken" };
+export type UpdateDiscountResult = { status: "updated" } | { status: "invalid"; fieldErrors: Record<string, string> } | { status: "not_found" };
 
 export interface DiscountAdmin {
   /** Every code, newest first, with its live uses (held, paid, confirmed bookings). */
   list(): Promise<DiscountRow[]>;
   create(actor: Actor, raw: Record<string, unknown>): Promise<CreateDiscountResult>;
+  /** Change dates, value, limits or note (not the code). Bookings that used it keep their price. Audited. */
+  update(actor: Actor, id: string, raw: Record<string, unknown>): Promise<UpdateDiscountResult>;
   /** Turn a code off (or on again). Bookings that used it keep their price. */
   setActive(actor: Actor, id: string, active: boolean): Promise<boolean>;
 }
@@ -66,11 +79,7 @@ export function createDiscountAdmin(deps: { db: Db; audit?: ProductContext["audi
 
     async create(actor, raw) {
       const parsed = discountInputSchema.safeParse(raw);
-      if (!parsed.success) {
-        const fieldErrors: Record<string, string> = {};
-        for (const issue of parsed.error.issues) fieldErrors[String(issue.path[0])] ??= issue.message === "too_long" ? "too_long" : "invalid";
-        return { status: "invalid", fieldErrors };
-      }
+      if (!parsed.success) return { status: "invalid", fieldErrors: fieldErrorsOf(parsed.error) };
       const input = parsed.data;
       let taken = false;
       await audited(actor, "discount.create", input.code, { kind: input.kind, value: input.value, validFrom: input.validFrom, validTo: input.validTo }, async () => {
@@ -79,6 +88,18 @@ export function createDiscountAdmin(deps: { db: Db; audit?: ProductContext["audi
         return !taken;
       });
       return taken ? { status: "taken" } : { status: "created" };
+    },
+
+    async update(actor, id, raw) {
+      if (!z.uuid().safeParse(id).success) return { status: "not_found" };
+      const parsed = discountUpdateSchema.safeParse(raw);
+      if (!parsed.success) return { status: "invalid", fieldErrors: fieldErrorsOf(parsed.error) };
+      const input = parsed.data;
+      const done = await audited(actor, "discount.update", id, { kind: input.kind, value: input.value, validFrom: input.validFrom, validTo: input.validTo, maxUses: input.maxUses }, async () => {
+        const updated = await db.update(discountCodes).set(input).where(eq(discountCodes.id, id)).returning({ id: discountCodes.id });
+        return updated.length > 0;
+      });
+      return done ? { status: "updated" } : { status: "not_found" };
     },
 
     async setActive(actor, id, active) {

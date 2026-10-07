@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { localePath } from "@/core/i18n/routing";
 import type { Locale } from "@/config/app";
 import { getBookingAdminContent } from "@/product/booking/admin-content";
+import { formatShortDay } from "@/product/booking/content";
 import { bookingRules, vietnamToday } from "@/product/booking/rules";
 import { getTours } from "@/app/_lib/tours";
 
@@ -117,8 +118,8 @@ export default async function AdminDeparturesPage({ params, searchParams }: Prop
               const form = `dep-${d.id}`;
               return (
                 <tr key={d.id} className="border-t border-border" data-departure-row={`${d.tourSlug}:${d.date}`}>
-                  <td className="py-2 pr-3 font-mono">
-                    {d.date}
+                  <td className="py-2 pr-3">
+                    <span className="whitespace-nowrap tabular-nums">{formatShortDay(d.date, locale)}</span>
                     {d.sold > 0 && (
                       <a href={localePath(locale, `/admin/departures/${d.id}`)} className="ml-2 font-sans text-xs text-primary underline underline-offset-2" data-testid="passengers-link">
                         {c.passengers.open}

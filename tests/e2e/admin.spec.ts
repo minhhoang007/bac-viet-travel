@@ -54,6 +54,19 @@ test("staff confirm one booking and cancel another; seats return to sale; everyt
   await expect(page.locator("[data-admin-status=confirmed]")).toBeVisible();
   await expect(page.getByTestId("admin-history")).toContainText("booking.confirm");
 
+  // Fix the guest's contact details; seats and status stay.
+  await page.getByTestId("admin-contact").getByText("Sửa thông tin liên hệ").click();
+  await page.getByTestId("admin-contact").getByLabel("Số điện thoại").fill("0988777666");
+  await page.getByTestId("admin-contact-save").click();
+  await expect(page.getByRole("status")).toContainText("Đã lưu.");
+  await expect(page.getByText("0988777666").first()).toBeVisible();
+  await expect(page.locator("[data-admin-status=confirmed]")).toBeVisible();
+
+  // The admin overview shows the booking figures, each a link to the list.
+  await page.goto("/admin");
+  await expect(page.getByTestId("product-stats").getByRole("link", { name: /Cần xử lý/ })).toHaveAttribute("href", "/admin/bookings?filter=attention");
+  await page.goto("/admin/bookings/BV-ADMN22");
+
   await page.goto("/admin/bookings/BV-ADMN33");
   await page.getByLabel("Lý do huỷ (gửi cho khách)").fill("Khách đổi lịch");
   await page.getByTestId("admin-cancel").click();
@@ -177,6 +190,16 @@ test("discount codes: staff create one; the guest applies it in the booking form
   await expect(guest.getByTestId("booking-discount")).toBeVisible();
   await page.reload();
   await expect(page.locator('[data-discount="E2E-10"]').getByTestId("discount-used")).toHaveText("1");
+
+  // Edit: the form switches to this code (prefilled, code fixed); a new limit and end date are saved.
+  await page.getByRole("link", { name: "Sửa E2E-10" }).click();
+  await expect(form.getByText("Sửa mã E2E-10")).toBeVisible();
+  await expect(form.getByLabel("Giá trị (% hoặc VND)")).toHaveValue("10");
+  await form.getByLabel("Số lượt tối đa").fill("50");
+  await page.getByTestId("discount-save").click();
+  await expect(page.getByRole("status")).toContainText("Đã lưu.");
+  await expect(page.locator('[data-discount="E2E-10"]').getByTestId("discount-used")).toHaveText("1 / 50");
+  await expect(page.getByTestId("discount-create")).toBeVisible();
 });
 
 test("reports: revenue and fill rate per tour for a month range; guests get a 404", async ({ page, request }) => {

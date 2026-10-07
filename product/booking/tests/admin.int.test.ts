@@ -29,7 +29,7 @@ beforeEach(async () => {
   clock = new Date("2026-10-01T03:00:00Z");
   clearMail();
   await resetDb(db);
-  await db.execute(sql`TRUNCATE booking_payments, bookings, departures RESTART IDENTITY CASCADE`);
+  await db.execute(sql`TRUNCATE booking_payments, bookings, departures, discount_codes RESTART IDENTITY CASCADE`);
   const [u] = await db.insert(users).values({ email: "staff@example.com", role: "admin" }).returning();
   staff = { id: u!.id, email: u!.email };
 });
@@ -163,11 +163,46 @@ describe("booking admin", () => {
     expect(s.depositsWeekVnd).toBeGreaterThan(0);
     expect(s.upcoming).toEqual([]);
   });
+
+  it("admin overview: booking figures linking to the lists", async () => {
+    await paidBooking();
+    const figures = await container.app!.adminOverview!("vi");
+    expect(figures[0]).toEqual({ label: "Cần xử lý", value: 1, href: "/admin/bookings?filter=attention" });
+    expect(figures.map((f) => f.href)).toEqual(["/admin/bookings?filter=attention", "/admin/bookings?filter=all", "/admin/reports", "/admin/departures"]);
+  });
+
+  it("contact: fixes name, email and phone; audits field names only; never empties the email of a guest who gets emails", async () => {
+    const { code } = await paidBooking();
+    const before = await row(code);
+    expect(await bookingAdmin.updateContact(staff, code, { name: "Nguyễn Lan", email: "lan.nguyen@example.com", phone: before.phone })).toBe(true);
+    expect(await row(code)).toMatchObject({ name: "Nguyễn Lan", email: "lan.nguyen@example.com", seats: before.seats, totalVnd: before.totalVnd, status: "deposit_paid" });
+    const { rows } = await container.admin!.listAudit({ targetId: code });
+    expect(rows.map((r) => [r.action, r.metadata])).toEqual([["booking.contact", { changed: ["name", "email"] }]]);
+
+    expect(await bookingAdmin.updateContact(staff, code, { name: "Nguyễn Lan", email: "", phone: "" })).toBe(false);
+    expect(await bookingAdmin.updateContact(staff, code, { name: "L", email: "lan@example.com" })).toBe(false);
+    expect(await bookingAdmin.updateContact(staff, "BV-ZZZZZZ", { name: "Lan Anh", email: "a@example.com" })).toBe(false);
+    expect((await row(code)).email).toBe("lan.nguyen@example.com");
+  });
+
+  it("discount edit: dates, value and limits change, the code does not; invalid input rejected; audited", async () => {
+    const { discounts } = container.app!.product;
+    const raw = { code: "TET2027", kind: "percent", value: "10", validFrom: "2026-10-01", validTo: "2026-10-31", tourSlug: "", minTotalVnd: "", maxUses: "5", note: "" };
+    expect(await discounts.create(staff, raw)).toEqual({ status: "created" });
+    const [code] = await discounts.list();
+    expect(await discounts.update(staff, code!.id, { ...raw, code: "OTHER", value: "15", validTo: "2026-12-31", maxUses: "" })).toEqual({ status: "updated" });
+    expect((await discounts.list())[0]).toMatchObject({ code: "TET2027", value: 15, validTo: "2026-12-31", maxUses: null });
+    expect(await discounts.update(staff, code!.id, { ...raw, value: "95" })).toMatchObject({ status: "invalid", fieldErrors: { value: "invalid" } });
+    expect(await discounts.update(staff, code!.id, { ...raw, validTo: "2026-09-01" })).toMatchObject({ status: "invalid", fieldErrors: { validTo: "invalid" } });
+    expect(await discounts.update(staff, "019a0000-0000-7000-8000-000000000000", raw)).toEqual({ status: "not_found" });
+    const { rows } = await container.admin!.listAudit({ targetId: code!.id });
+    expect(rows.map((r) => r.action)).toEqual(["discount.update"]);
+  });
 });
 
 describe("reports (H3)", () => {
   it("per tour: departures, capacity, sold seats, revenue and deposits; per source; refunds owed; held and other months left out", async () => {
-    await db.execute(sql`TRUNCATE booking_payments, bookings, departures RESTART IDENTITY CASCADE`);
+    await db.execute(sql`TRUNCATE booking_payments, bookings, departures, discount_codes RESTART IDENTITY CASCADE`);
     const [a] = await db.insert(departures).values({ tourSlug: "sapa-trekking-2d1n", date: "2026-11-05", capacity: 10 }).returning();
     await db.insert(departures).values({ tourSlug: "sapa-trekking-2d1n", date: "2026-11-12", capacity: 10 });
     const [other] = await db.insert(departures).values({ tourSlug: "ninh-binh-day-tour", date: "2026-12-01", capacity: 10 }).returning();

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
 import { requireAdmin } from "@/app/_lib/admin";
-import { cancelBooking, confirmBooking, markBalancePaid, markBookingRefunded, receiveTransfer, saveStaffNote } from "@/app/actions/booking-admin";
+import { cancelBooking, confirmBooking, markBalancePaid, markBookingRefunded, receiveTransfer, saveContact, saveStaffNote } from "@/app/actions/booking-admin";
 import { Input } from "@/components/ui/input";
 import { balanceDue, transferNote } from "@/product/booking/deposits";
 import { awaitsDeposit, canMove } from "@/product/booking/lifecycle";
@@ -13,6 +13,7 @@ import type { Locale } from "@/config/app";
 import { getBookingAdminContent } from "@/product/booking/admin-content";
 import { formatDay, formatVnd, getBookingContent } from "@/product/booking/content";
 import { ConfirmButton } from "@/product/components/confirm-button";
+import { BookingStatusBadge } from "@/product/components/booking-status-badge";
 import { getTours } from "@/app/_lib/tours";
 
 type Props = { params: Promise<{ locale: Locale; code: string }>; searchParams: Promise<{ result?: string }> };
@@ -57,7 +58,7 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
         {c.detail.back}
       </a>
       <h1 className="text-2xl font-bold">
-        <span className="font-mono">{b.code}</span> · <span data-admin-status={b.status}>{c.filters[b.status]}</span>
+        <span className="font-mono">{b.code}</span> <BookingStatusBadge status={b.status} label={c.filters[b.status]} />
       </h1>
       {result && (
         <p role="status" className={`rounded-md border p-3 text-sm ${result === "done" ? "border-success/40 bg-success/10 text-foreground" : result === "refund_due" || result === "extra" ? "border-warning/40 bg-warning/10 text-foreground" : "border-danger/40 bg-danger/10 text-foreground"}`}>
@@ -76,6 +77,26 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
             {row(c.source, <span data-testid="detail-source">{c.sources[b.source]}{b.externalRef && ` · ${b.externalRef}`}</span>)}
           </dl>
           {!b.guestEmails && <p className="mt-2 text-xs font-medium text-warning">{c.noGuestEmails}</p>}
+          <details className="mt-3 text-sm" data-testid="admin-contact">
+            <summary className="cursor-pointer text-primary">{c.detail.editContact}</summary>
+            <form action={saveContact} className="mt-2 grid gap-2">
+              {hidden}
+              <p className="text-xs text-muted-foreground">{c.detail.contactHint}</p>
+              <label className="grid gap-1">
+                {g.name}
+                <Input name="name" required minLength={2} maxLength={100} defaultValue={b.name} />
+              </label>
+              <label className="grid gap-1">
+                {g.email}
+                <Input name="email" type="email" required={b.guestEmails} maxLength={200} defaultValue={b.email} />
+              </label>
+              <label className="grid gap-1">
+                {g.phone}
+                <Input name="phone" maxLength={30} defaultValue={b.phone} />
+              </label>
+              <Button type="submit" variant="outline" className="w-fit" data-testid="admin-contact-save">{c.detail.saveContact}</Button>
+            </form>
+          </details>
         </section>
         <section className="rounded-lg border border-border p-4">
           <h2 className="font-semibold">{c.detail.trip}</h2>

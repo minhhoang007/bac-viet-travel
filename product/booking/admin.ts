@@ -11,7 +11,7 @@ import type { ReceiveTransferResult } from "./deposits";
 import { createDepartureAdmin, type DepartureAdmin } from "./admin-departures";
 import { addDays, bookingRules, vietnamDayStart, vietnamToday } from "./rules";
 import { canBecome, SOLD_STATUSES, takesSeats } from "./status";
-import { manualBookingSchema } from "./validations";
+import { contactUpdateSchema, manualBookingSchema } from "./validations";
 
 export interface Actor {
   id: string;
@@ -34,6 +34,8 @@ export interface BookingAdmin extends DepartureAdmin {
   cancel(actor: Actor, code: string, input: { reason: string; refund: boolean }): Promise<boolean>;
   markRefunded(actor: Actor, code: string, input: { note: string }): Promise<boolean>;
   setStaffNote(actor: Actor, code: string, note: string): Promise<boolean>;
+  /** Fix the guest's name, email or phone (typos, a new number). Seats and money do not change. Audited (field names only). */
+  updateContact(actor: Actor, code: string, raw: Record<string, unknown>): Promise<boolean>;
   /** Staff got the rest of the total outside the website (cash, transfer) (D5). Audited. */
   markBalancePaid(actor: Actor, code: string, note: string): Promise<boolean>;
   /** Staff saw the bank transfer for a held (or just expired) booking: records the deposit. Audited. */
@@ -235,6 +237,20 @@ export function createBookingAdmin(deps: {
           })
           .where(and(eq(bookings.code, code), sql`${bookings.refundDueVnd} > 0`, isNull(bookings.refundedAt)))
           .returning({ id: bookings.id });
+        return done.length > 0;
+      });
+    },
+
+    async updateContact(actor, code, raw) {
+      const parsed = contactUpdateSchema.safeParse(raw);
+      const found = parsed.success ? await load(code) : null;
+      if (!parsed.success || !found) return false;
+      const input = parsed.data;
+      if (input.email === "" && found.b.guestEmails) return false;
+      const changed = (["name", "email", "phone"] as const).filter((k) => input[k] !== found.b[k]);
+      if (changed.length === 0) return true;
+      return audited(actor, "booking.contact", code, { changed }, async () => {
+        const done = await db.update(bookings).set(input).where(eq(bookings.code, code)).returning({ id: bookings.id });
         return done.length > 0;
       });
     },
