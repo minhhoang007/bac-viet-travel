@@ -17,6 +17,7 @@ const PAGES: [path: string, status: number][] = [
   ["/blog/kinh-nghiem-trekking-sapa", 200],
   ["/about", 200],
   ["/contact", 200],
+  ["/faq", 200],
   ["/cancellation", 200],
   ["/khong-ton-tai", 404],
 ];

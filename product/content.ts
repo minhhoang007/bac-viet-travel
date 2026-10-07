@@ -194,6 +194,13 @@ const vi = {
     moit: "Đã thông báo Bộ Công Thương",
   },
   credits: { title: "Nguồn ảnh", text: "Ảnh minh hoạ từ Unsplash (Unsplash License)." },
+  faqPage: {
+    nav: "Câu hỏi thường gặp",
+    title: "Câu hỏi thường gặp",
+    description: "Đặt tour, đặt cọc, huỷ đổi ngày, đón khách và những điều cần biết trước chuyến đi.",
+    more: "Chưa thấy câu trả lời?",
+    contact: "Liên hệ chúng tôi",
+  },
   contactPage: {
     nav: "Liên hệ",
     title: "Liên hệ Bắc Việt Travel",
@@ -394,6 +401,13 @@ const en: ProductContent = {
     email: "Email",
     whatsappText: (tour?: string) => (tour ? `Hello, I would like to ask about the tour "${tour}".` : "Hello, I would like some advice on a tour."),
     license: "Tour operator licence",
+  },
+  faqPage: {
+    nav: "FAQ",
+    title: "Frequently asked questions",
+    description: "Booking, deposits, cancellations, pick-up and what to know before your trip.",
+    more: "Did not find your answer?",
+    contact: "Contact us",
   },
   contactPage: {
     nav: "Contact",
