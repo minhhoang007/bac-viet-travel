@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { addonSchema, DESTINATIONS, privateTourSchema, tourPricingSchema, type Tour } from "./model";
+import { ACTIVITY_LEVELS, addonSchema, DESTINATIONS, privateTourSchema, tourPricingSchema, type Tour } from "./model";
 
 /**
  * A tour as stored in the content module (content type "tour", one item per tour, slug shared by every locale).
@@ -29,6 +29,10 @@ export const tourTextSchema = z.object({
   itinerary: z.array(z.object({ title: text(200), description: text(2000) })).min(1).max(30),
   includes: list(200).min(1),
   excludes: list(200),
+  /** Pick-up time and place detail (B7), e.g. "7:30–8:00, hotels in the Old Quarter". */
+  pickupTime: z.string().trim().max(100).default(""),
+  /** What to bring (B7). */
+  bring: list(200).default([]),
   /** Overview in Markdown (MDX components such as <Callout> allowed). */
   body: z.string().max(20_000).default(""),
   /** Google title and description; empty = the tour name and summary. */
@@ -46,6 +50,7 @@ export const tourSharedSchema = z
     /** The first image is the cover. */
     images: z.array(tourImageSchema).min(1).max(20),
     featured: z.boolean().default(false),
+    activity: z.enum(ACTIVITY_LEVELS).optional(),
     /** Display order inside a destination (lower first). */
     order: z.number().int().min(0).max(1000).default(100),
     private: privateTourSchema.optional(),
@@ -95,6 +100,9 @@ export function toTour(doc: TourDocument, slug: string, locale: TourLocale, imag
     itinerary: t.itinerary,
     includes: t.includes,
     excludes: t.excludes,
+    pickupTime: t.pickupTime,
+    bring: t.bring,
+    activity: shared.activity,
     body: t.body,
     seoTitle: t.seoTitle || undefined,
     seoDescription: t.seoDescription || undefined,
@@ -123,6 +131,8 @@ export function fromMdxTours(byLocale: Record<TourLocale, Tour>): TourDocument {
     itinerary: t.itinerary,
     includes: t.includes,
     excludes: t.excludes,
+    pickupTime: t.pickupTime,
+    bring: t.bring,
     body: t.body.trim(),
     seoTitle: "",
     seoDescription: "",
@@ -135,6 +145,7 @@ export function fromMdxTours(byLocale: Record<TourLocale, Tour>): TourDocument {
       price: vi.price,
       images: vi.images.map((src) => ({ src })),
       featured: vi.featured,
+      activity: vi.activity,
       order: vi.order,
       private: vi.private,
       pricing: vi.pricing,

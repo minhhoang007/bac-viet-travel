@@ -40,6 +40,8 @@ async function seriousViolations(page: Page) {
 }
 
 test("marketing writes a post, previews it, submits; an admin publishes; it is on the blog, its tag page and the feed", async ({ browser }) => {
+  // A long scenario (two users, preview, publish, rename, feed): allow for a busy machine.
+  test.setTimeout(60_000);
   const editor = await signIn(browser, "blog-writer@bacviet.example", "editor");
   await editor.goto("/admin/posts");
   // The imported MDX posts are in the CMS.

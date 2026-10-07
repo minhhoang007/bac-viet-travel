@@ -3,7 +3,7 @@ import { notFound, permanentRedirect } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
 import { getPublicEnv } from "@/bootstrap/env";
 import { submitTourInquiry } from "@/app/actions/tour-inquiry";
-import { Check, Clock, Languages, MapPin, ShieldCheck, Users, X } from "lucide-react";
+import { AlarmClock, Backpack, Check, Clock, Footprints, Languages, MapPin, ShieldCheck, Users, X } from "lucide-react";
 import { MarkdownContent } from "@/components/blog/markdown";
 import { ButtonLink } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
@@ -100,6 +100,8 @@ export default async function TourPage({ params }: Props) {
     { icon: MapPin, label: c.tours.departure, value: tour.departure },
     { icon: Users, label: c.tours.groupSize, value: tour.groupSize },
     { icon: Languages, label: c.tours.languages, value: c.tours.languagesValue },
+    ...(tour.pickupTime ? [{ icon: AlarmClock, label: c.tours.pickupTime, value: tour.pickupTime }] : []),
+    ...(tour.activity ? [{ icon: Footprints, label: c.tours.activity, value: c.tours.activityLevels[tour.activity] }] : []),
   ];
 
   const jsonLd = {
@@ -234,6 +236,19 @@ export default async function TourPage({ params }: Props) {
               </section>
             )}
           </div>
+          {tour.bring.length > 0 && (
+            <section className="mt-10" data-testid="bring">
+              <h2 className="font-semibold">{c.tours.bring}</h2>
+              <ul className="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+                {tour.bring.map((x) => (
+                  <li key={x} className="flex gap-2">
+                    <Backpack aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-primary" />
+                    {x}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
           <p className="mt-6 text-xs text-muted-foreground">{c.tours.priceNote}</p>
         </div>
 

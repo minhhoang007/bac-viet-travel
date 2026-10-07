@@ -271,3 +271,12 @@ test("tour page month calendar: switch views, move between months, book from a d
   await day.click();
   await expect(page).toHaveURL(/\/book\?d=[0-9a-f-]+$/);
 });
+
+test("practical info: pick-up time and activity level in the facts, what to bring listed", async ({ page }) => {
+  await page.goto("/tours/sapa-trekking-2d1n");
+  await expect(page.getByTestId("tour-facts")).toContainText("Giờ đón");
+  await expect(page.getByTestId("tour-facts")).toContainText("Vừa phải");
+  await expect(page.getByTestId("bring")).toContainText("Giày trekking");
+  await page.goto("/tours/ha-long-day-trip");
+  await expect(page.getByTestId("bring")).toHaveCount(0);
+});
