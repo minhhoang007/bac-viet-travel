@@ -81,7 +81,47 @@ export function createDepositService(deps: {
     }
   };
 
-  type Settled = { kind: "duplicate" | "failed" } | { kind: "deposit_paid" | "refund_due" | "extra" | "balance_paid"; booking: Booking; departure: Departure; token: string | null };
+  type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
+  type Recorded = "deposit_paid" | "refund_due" | "extra" | "balance_paid";
+  type Settled = { kind: "duplicate" | "failed" } | { kind: Recorded; booking: Booking; departure: Departure; token: string | null };
+  /** The email each recorded payment sends, and whether it names the amount paid (extra money, balance). */
+  const SETTLED_EMAIL: Record<Recorded, [Parameters<typeof notify>[3], boolean]> = {
+    deposit_paid: ["paid", false],
+    refund_due: ["refund_due", false],
+    extra: ["extra", true],
+    balance_paid: ["balance", true],
+  };
+
+  /** Balance (D5): settles the total of a live paid booking; anything else is money to give back. */
+  async function recordBalance(tx: Tx, booking: Booking, payment: BookingPayment, at: Date): Promise<{ kind: "balance_paid" | "extra"; booking: Booking }> {
+    const live = isSold(booking.status) && !booking.balancePaidAt;
+    const [updated] = await tx
+      .update(bookings)
+      .set(live ? { balancePaidAt: at } : { refundDueVnd: sql`${bookings.refundDueVnd} + ${payment.amountVnd}` })
+      .where(eq(bookings.id, booking.id))
+      .returning();
+    return { kind: live ? "balance_paid" : "extra", booking: updated! };
+  }
+
+  /** A deposit arrived. Keep the seats if we still can; never lose the guest's payment. */
+  async function recordDeposit(tx: Tx, booking: Booking, departure: Departure, payment: BookingPayment, at: Date): Promise<{ kind: "deposit_paid" | "refund_due" | "extra"; booking: Booking }> {
+    // Not waiting for a deposit (already paid by another attempt, or cancelled): the money is extra.
+    const waiting = booking.status === "held" || booking.status === "expired";
+    let kind: "deposit_paid" | "refund_due" | "extra" = waiting ? "deposit_paid" : "extra";
+    if (waiting && (booking.status === "expired" || booking.holdExpiresAt <= at)) {
+      const [row] = await tx
+        .select({ taken: sql<number>`coalesce(sum(${bookings.seats}), 0)::int` })
+        .from(bookings)
+        .where(and(eq(bookings.departureId, departure.id), ne(bookings.id, booking.id), takesSeats(at)));
+      if (departure.capacity - (row?.taken ?? 0) < booking.seats) kind = "refund_due";
+    }
+    const [updated] = await tx
+      .update(bookings)
+      .set(kind === "deposit_paid" ? { status: kind, depositPaidAt: at } : { ...(waiting ? { status: "refund_due" as const } : {}), refundDueVnd: sql`${bookings.refundDueVnd} + ${payment.amountVnd}` })
+      .where(eq(bookings.id, booking.id))
+      .returning();
+    return { kind, booking: updated ?? booking };
+  }
 
   /**
    * Records the result of one pending attempt exactly once (VNPay IPN, querydr, or a transfer staff saw). Money that
@@ -94,59 +134,26 @@ export function createDepositService(deps: {
   ): Promise<Settled> {
     const { success, ...fields } = result;
     const outcome: Settled = await db.transaction(async (tx) => {
-        const at = now();
-        const [b] = await tx.select().from(bookings).where(eq(bookings.id, payment.bookingId));
-        // Same lock order as holds (departure first), so the two never deadlock.
-        const [departure] = await tx.select().from(departures).where(eq(departures.id, b!.departureId)).for("update");
-        const [booking] = await tx.select().from(bookings).where(eq(bookings.id, payment.bookingId)).for("update");
-        // Claim the attempt exactly once (a duplicate IPN loses this race and changes nothing).
-        const claimed = await tx
-          .update(bookingPayments)
-          .set({ status: success ? "paid" : "failed", ...fields, paidAt: success ? at : null, linkToken: null })
-          .where(and(eq(bookingPayments.id, payment.id), eq(bookingPayments.status, "pending")))
-          .returning({ id: bookingPayments.id, linkToken: bookingPayments.linkToken });
-        if (claimed.length === 0) return { kind: "duplicate" as const };
-        if (!success) return { kind: "failed" as const };
-
-        // Balance (D5): settles the total of a live paid booking; anything else is money to give back.
-        if (payment.purpose === "balance") {
-          const live = isSold(booking!.status) && !booking!.balancePaidAt;
-          const [updated] = await tx
-            .update(bookings)
-            .set(live ? { balancePaidAt: at } : { refundDueVnd: sql`${bookings.refundDueVnd} + ${payment.amountVnd}` })
-            .where(eq(bookings.id, booking!.id))
-            .returning();
-          return { kind: live ? ("balance_paid" as const) : ("extra" as const), booking: updated!, departure: departure!, token: payment.linkToken };
-        }
-
-        // Money arrived. Keep the seats if we still can; never lose the guest's payment.
-        let status: Booking["status"] = "deposit_paid";
-        const extra = booking!.status !== "held" && booking!.status !== "expired"; // already paid by another attempt, or cancelled
-        if (extra) status = "refund_due";
-        else if (booking!.status === "expired" || booking!.holdExpiresAt <= at) {
-          const [row] = await tx
-            .select({ taken: sql<number>`coalesce(sum(${bookings.seats}), 0)::int` })
-            .from(bookings)
-            .where(
-              and(
-                eq(bookings.departureId, departure!.id),
-                ne(bookings.id, booking!.id),
-                takesSeats(at),
-              ),
-            );
-          if (departure!.capacity - (row?.taken ?? 0) < booking!.seats) status = "refund_due";
-        }
-        const [updated] = await tx
-          .update(bookings)
-          .set(status === "deposit_paid" ? { status, depositPaidAt: at } : { ...(booking!.status === "held" || booking!.status === "expired" ? { status } : {}), refundDueVnd: sql`${bookings.refundDueVnd} + ${payment.amountVnd}` })
-          .where(eq(bookings.id, booking!.id))
-          .returning();
-        return { kind: extra ? "extra" : status, booking: updated ?? booking!, departure: departure!, token: payment.linkToken };
-      });
-    if (outcome.kind === "deposit_paid") await notify(outcome.booking, outcome.departure, { ...links, token: outcome.token }, "paid");
-    if (outcome.kind === "refund_due") await notify(outcome.booking, outcome.departure, { ...links, token: outcome.token }, "refund_due");
-    if (outcome.kind === "extra") await notify(outcome.booking, outcome.departure, { ...links, token: outcome.token }, "extra", payment.amountVnd);
-    if (outcome.kind === "balance_paid") await notify(outcome.booking, outcome.departure, { ...links, token: outcome.token }, "balance", payment.amountVnd);
+      const at = now();
+      const [b] = await tx.select().from(bookings).where(eq(bookings.id, payment.bookingId));
+      // Same lock order as holds (departure first), so the two never deadlock.
+      const [departure] = await tx.select().from(departures).where(eq(departures.id, b!.departureId)).for("update");
+      const [booking] = await tx.select().from(bookings).where(eq(bookings.id, payment.bookingId)).for("update");
+      // Claim the attempt exactly once (a duplicate IPN loses this race and changes nothing).
+      const claimed = await tx
+        .update(bookingPayments)
+        .set({ status: success ? "paid" : "failed", ...fields, paidAt: success ? at : null, linkToken: null })
+        .where(and(eq(bookingPayments.id, payment.id), eq(bookingPayments.status, "pending")))
+        .returning({ id: bookingPayments.id });
+      if (claimed.length === 0) return { kind: "duplicate" as const };
+      if (!success) return { kind: "failed" as const };
+      const recorded = payment.purpose === "balance" ? await recordBalance(tx, booking!, payment, at) : await recordDeposit(tx, booking!, departure!, payment, at);
+      return { ...recorded, departure: departure!, token: payment.linkToken };
+    });
+    if ("booking" in outcome) {
+      const [email, withAmount] = SETTLED_EMAIL[outcome.kind];
+      await notify(outcome.booking, outcome.departure, { ...links, token: outcome.token }, email, withAmount ? payment.amountVnd : undefined);
+    }
     return outcome;
   }
 
