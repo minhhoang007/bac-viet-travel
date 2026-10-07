@@ -5,7 +5,7 @@ import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/a
 import { nextCookies } from "better-auth/next-js";
 import { magicLink } from "better-auth/plugins/magic-link";
 import { twoFactor } from "better-auth/plugins/two-factor";
-import { count, eq } from "drizzle-orm";
+import { and, count, eq, ne } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import type { MailPort } from "@/core/ports/mail";
 import { users } from "@/core/users/schema";
@@ -55,7 +55,8 @@ export function createBetterAuth(deps: BetterAuthDeps) {
   const factorCount = async (userId: string) => {
     const [[p], [t]] = await Promise.all([
       db.select({ n: count() }).from(passkeys).where(eq(passkeys.userId, userId)),
-      db.select({ n: count() }).from(twoFactors).where(eq(twoFactors.userId, userId)),
+      // An authenticator app counts once confirmed: a setup started but not finished must not block finishing it.
+      db.select({ n: count() }).from(twoFactors).where(and(eq(twoFactors.userId, userId), ne(twoFactors.verified, false))),
     ]);
     return (p?.n ?? 0) + (t?.n ?? 0);
   };
