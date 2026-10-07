@@ -10,7 +10,7 @@ import { bookingStatusEmail, reminderEmail } from "./emails";
 import type { ReceiveTransferResult } from "./deposits";
 import { createDepartureAdmin, type DepartureAdmin } from "./admin-departures";
 import { addDays, bookingRules, vietnamDayStart, vietnamToday } from "./rules";
-import { SOLD_STATUSES, takesSeats } from "./status";
+import { canBecome, SOLD_STATUSES, takesSeats } from "./status";
 import { manualBookingSchema } from "./validations";
 
 export type { AdminDepartureRow, PassengerRow } from "./admin-departures";
@@ -69,7 +69,7 @@ const needsAttention = () =>
     eq(bookings.status, "deposit_paid"),
     and(sql`${bookings.refundDueVnd} > 0`, isNull(bookings.refundedAt)),
     and(
-      inArray(bookings.status, ["held", "expired"]),
+      inArray(bookings.status, canBecome("deposit_paid")),
       sql`exists (select 1 from ${bookingPayments} p where p.booking_id = ${bookings.id} and p.method = 'transfer' and p.status = 'pending')`,
     ),
   )!;
@@ -167,7 +167,7 @@ export function createBookingAdmin(deps: {
         [updated] = await db
           .update(bookings)
           .set({ status: "confirmed", confirmedAt: now() })
-          .where(and(eq(bookings.code, code), eq(bookings.status, "deposit_paid")))
+          .where(and(eq(bookings.code, code), inArray(bookings.status, canBecome("confirmed"))))
           .returning();
         return Boolean(updated);
       });
@@ -190,9 +190,9 @@ export function createBookingAdmin(deps: {
             cancelledAt: now(),
             cancelReason: text,
             // Refund the deposit only when it was paid (held bookings paid nothing).
-            ...(refund ? { refundDueVnd: sql`${bookings.refundDueVnd} + case when ${inArray(bookings.status, [...SOLD_STATUSES])} then ${bookings.depositVnd} else 0 end` } : {}),
+            ...(refund ? { refundDueVnd: sql`${bookings.refundDueVnd} + case when ${inArray(bookings.status, SOLD_STATUSES)} then ${bookings.depositVnd} else 0 end` } : {}),
           })
-          .where(and(eq(bookings.code, code), inArray(bookings.status, ["held", "deposit_paid", "confirmed"])))
+          .where(and(eq(bookings.code, code), inArray(bookings.status, canBecome("cancelled"))))
           .returning();
         return Boolean(updated);
       });

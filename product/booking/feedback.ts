@@ -89,7 +89,7 @@ export function createFeedbackService(deps: {
     async sendRequests() {
       const today = vietnamToday(now());
       const waiting = and(
-        inArray(bookings.status, [...SOLD_STATUSES]),
+        inArray(bookings.status, SOLD_STATUSES),
         isNull(bookings.feedbackRequestedAt),
         eq(bookings.guestEmails, true),
         sql`${bookings.email} <> ''`,

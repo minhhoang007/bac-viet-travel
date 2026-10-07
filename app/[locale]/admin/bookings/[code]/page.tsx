@@ -5,6 +5,7 @@ import { requireAdmin } from "@/app/_lib/admin";
 import { cancelBooking, confirmBooking, markBalancePaid, markBookingRefunded, receiveTransfer, saveStaffNote } from "@/app/actions/booking-admin";
 import { Input } from "@/components/ui/input";
 import { balanceDue, transferNote } from "@/product/booking/deposits";
+import { awaitsDeposit, canMove } from "@/product/booking/lifecycle";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { localePath } from "@/core/i18n/routing";
@@ -36,7 +37,7 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
   const time = (t: Date | null) => (t ? t.toLocaleString(locale === "vi" ? "vi-VN" : "en-GB", { timeZone: "Asia/Ho_Chi_Minh" }) : "—");
   const refundOwed = b.refundDueVnd > 0 && !b.refundedAt;
   const transferChosen = payments.some((p) => p.method === "transfer" && p.status === "pending");
-  const waitingDeposit = b.status === "held" || b.status === "expired";
+  const waitingDeposit = awaitsDeposit(b.status);
   const hidden = (
     <>
       <input type="hidden" name="locale" value={locale} />
@@ -167,7 +168,7 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
             <ConfirmButton question={c.detail.transferAsk} className="w-fit" data-testid="admin-transfer-save">{c.detail.transferSave}</ConfirmButton>
           </form>
         )}
-        {["held", "deposit_paid", "confirmed"].includes(b.status) && (
+        {canMove(b.status, "cancelled") && (
           <form action={cancelBooking} className="grid max-w-lg gap-2">
             {hidden}
             <label htmlFor="cancel-reason" className="text-sm font-medium">{c.detail.cancelReason}</label>
