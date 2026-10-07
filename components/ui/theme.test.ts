@@ -24,7 +24,7 @@ describe("themeCss", () => {
     expect(css).toContain(":root:root{--radius:0}");
     expect(css).toContain("@media print{:root:root{color-scheme:light;--background:#ffffff;--foreground:#111111;");
     expect(css).not.toContain("prefers-color-scheme");
-    expect(css).not.toContain("#ffffff");
+    expect(css).not.toContain("--background:#ffffff;--foreground:#0f172a"); // no light palette on screen
   });
 
   it("light-only brand ignores the dark palette", () => {
