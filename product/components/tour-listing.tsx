@@ -1,3 +1,5 @@
+import Form from "next/form";
+import { IntentLink } from "./intent-link";
 import { SlidersHorizontal } from "lucide-react";
 import { localePath } from "@/core/i18n/routing";
 import type { Locale } from "@/config/app";
@@ -28,7 +30,8 @@ export function TourListing({ locale, tours, filters, destination }: { locale: L
 
   return (
     <div className="grid gap-8 lg:grid-cols-[16rem_minmax(0,1fr)]">
-      <form action={base} method="get" aria-label={t.title} data-testid="tour-filters" className="grid h-fit grid-cols-2 gap-3 border border-border px-4 py-1 lg:sticky lg:top-24 lg:grid-cols-1 lg:py-4">
+      {/* next/form: a GET submit changes the URL in place (no page load); the listing re-filters from it. */}
+      <Form action={base} aria-label={t.title} data-testid="tour-filters" className="grid h-fit grid-cols-2 gap-3 border border-border px-4 py-1 lg:sticky lg:top-24 lg:grid-cols-1 lg:py-4">
         <p className="col-span-2 hidden items-center gap-2 font-semibold lg:col-span-1 lg:flex">
           <SlidersHorizontal className="size-4" aria-hidden="true" />
           {t.title}
@@ -96,12 +99,12 @@ export function TourListing({ locale, tours, filters, destination }: { locale: L
           {t.apply}
         </button>
         {narrowing > 0 && (
-          <a href={`${base}${tourFilterQuery(trip)}`} className="col-span-2 text-center text-sm text-primary underline underline-offset-4 lg:col-span-1">
+          <IntentLink href={`${base}${tourFilterQuery(trip)}`} className="col-span-2 text-center text-sm text-primary underline underline-offset-4 lg:col-span-1">
             {t.reset}
-          </a>
+          </IntentLink>
         )}
         </FilterToggle>
-      </form>
+      </Form>
 
       <div>
         <h2 className="font-sans text-sm font-normal text-muted-foreground" aria-live="polite" data-testid="tour-count">

@@ -1,3 +1,4 @@
+import { IntentButtonLink, IntentLink } from "@/product/components/intent-link";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
@@ -5,7 +6,6 @@ import { getPublicEnv } from "@/bootstrap/env";
 import { submitTourInquiry } from "@/app/actions/tour-inquiry";
 import { AlarmClock, Backpack, Check, Clock, Footprints, Languages, MapPin, ShieldCheck, Users, X } from "lucide-react";
 import { MarkdownContent } from "@/components/blog/markdown";
-import { ButtonLink } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { localePath } from "@/core/i18n/routing";
 import { createMetadata, localizedUrl, serializeJsonLd } from "@/core/seo";
@@ -132,13 +132,13 @@ export default async function TourPage({ params }: Props) {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd([jsonLd, breadcrumbLd(site, locale, [{ path: "/tours", name: c.tours.title }, { path: `/tours/${tour.destination}`, name: c.destinations[tour.destination].name }, { path: `/tours/${slug}`, name: tour.title }])]) }} />
       <Container className="pt-6 lg:pt-10">
         <nav aria-label="breadcrumb" className="type-label text-muted-foreground">
-          <a href={localePath(locale, "/tours")} className="hover:underline">
+          <IntentLink href={localePath(locale, "/tours")} className="hover:underline">
             {c.tours.title}
-          </a>
+          </IntentLink>
           {" / "}
-          <a href={localePath(locale, `/tours/${tour.destination}`)} className="hover:underline">
+          <IntentLink href={localePath(locale, `/tours/${tour.destination}`)} className="hover:underline">
             {c.destinations[tour.destination].name}
-          </a>
+          </IntentLink>
         </nav>
         <h1 className="mt-4 max-w-4xl font-heading type-h1">{tour.title}</h1>
         <div className="mt-8">
@@ -280,9 +280,9 @@ export default async function TourPage({ params }: Props) {
                 <div className="mt-4 border-t border-border pt-4" data-testid="private-offer">
                   <p className="text-sm font-medium">{b.privateFrom(formatVnd(tour.private.tiers.at(-1)!.vnd, locale))}</p>
                   <p className="mt-1 type-small text-muted-foreground">{b.privateHint}</p>
-                  <ButtonLink href={localePath(locale, `/tours/${slug}/book?type=private`)} variant="outline" className="mt-2 w-full">
+                  <IntentButtonLink href={localePath(locale, `/tours/${slug}/book?type=private`)} variant="outline" className="mt-2 w-full">
                     {b.privateCta}
-                  </ButtonLink>
+                  </IntentButtonLink>
                 </div>
               )}
               {features.email && (

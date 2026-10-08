@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+import { IntentLink } from "./components/intent-link";
 import Image from "next/image";
 import type { Locale } from "@/config/app";
 import { localePath } from "@/core/i18n/routing";
@@ -10,6 +12,7 @@ import type { ProductTheme } from "@/components/ui/theme";
 import { fontVariables } from "./brand/fonts";
 import { themeColors } from "./theme/themes";
 import { ContactButtons } from "./components/contact-buttons";
+import { NavigationProgress } from "./components/navigation-progress";
 import { SiteFooter } from "./components/site-footer";
 import { SiteHeader } from "./components/site-header";
 import { getProductContent } from "./content";
@@ -41,7 +44,7 @@ export function ProductFooter({ locale }: { locale: Locale }) {
   return <SiteFooter locale={locale} />;
 }
 
-/** Floating quick-contact buttons on every page. */
+/** Page-change progress bar and the floating quick-contact buttons on every page. */
 export function ProductLayoutExtras({ locale }: { locale: Locale }) {
   const c = getProductContent(locale).contact;
   const zalo = { key: "zalo" as const, label: c.zalo, href: zaloUrl() };
@@ -49,7 +52,15 @@ export function ProductLayoutExtras({ locale }: { locale: Locale }) {
   const call = { key: "call" as const, label: c.call, href: telUrl() };
   // Vietnamese visitors: Zalo first. International visitors: WhatsApp first.
   const items = locale === "vi" ? [zalo, whatsapp, call] : [whatsapp, zalo, call];
-  return <ContactButtons label={c.title} items={items} />;
+  return (
+    <>
+      {/* useSearchParams: inside Suspense so the pages stay static. */}
+      <Suspense>
+        <NavigationProgress />
+      </Suspense>
+      <ContactButtons label={c.title} items={items} />
+    </>
+  );
 }
 
 const NOT_FOUND_IMAGE: Record<Destination, string> = { "ha-long": "/tours/halong-1.jpg", "ninh-binh": "/tours/ninhbinh-1.jpg", sapa: "/tours/sapa-1.jpg" };
@@ -62,17 +73,17 @@ export function ProductNotFound({ locale }: { locale: Locale }) {
       <p className="text-center text-muted-foreground">{c.notFound.text}</p>
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
         {DESTINATIONS.map((d) => (
-          <a key={d} href={localePath(locale, `/tours/${d}`)} className="group relative block aspect-[4/3] overflow-hidden">
+          <IntentLink key={d} href={localePath(locale, `/tours/${d}`)} className="group relative block aspect-[4/3] overflow-hidden">
             <Image src={NOT_FOUND_IMAGE[d]} alt="" fill sizes="(min-width: 640px) 33vw, 100vw" className="object-cover transition duration-500 group-hover:scale-105" />
             <span className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
             <span className="absolute inset-x-0 bottom-0 p-4 font-semibold text-white">{c.destinations[d].name}</span>
-          </a>
+          </IntentLink>
         ))}
       </div>
       <p className="mt-6 text-center">
-        <a href={localePath(locale, "/tours")} className="font-medium text-primary underline underline-offset-4">
+        <IntentLink href={localePath(locale, "/tours")} className="font-medium text-primary underline underline-offset-4">
           {c.notFound.search} →
-        </a>
+        </IntentLink>
       </p>
     </div>
   );

@@ -1,3 +1,4 @@
+import { IntentLink } from "./intent-link";
 import Image from "next/image";
 import { ArrowRight, ChevronDown, Phone } from "lucide-react";
 import { ButtonLink } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import { Logo } from "../brand/logo";
 import { getProductContent } from "../content";
 import { DESTINATIONS } from "../tours/catalog";
 import { DESTINATION_PHOTO } from "../tours/photos";
+import { HoverMenu } from "./hover-menu";
 import { MobileNav } from "./mobile-nav";
 import { NavLink } from "./nav-link";
 
@@ -51,40 +53,40 @@ export function SiteHeader({ locale }: { locale: Locale }) {
       </div>
       <div className="relative border-b border-border">
         <Container className="flex h-16 items-center justify-between gap-4 lg:h-20">
-          <a href={href("/")} aria-label={h.home} className="shrink-0">
+          <IntentLink href={href("/")} aria-label={h.home} className="shrink-0">
             <Logo size="sm" />
-          </a>
+          </IntentLink>
 
           <nav aria-label={h.nav} className="type-label hidden h-full items-stretch gap-7 whitespace-nowrap lg:flex xl:gap-9">
-            {/* Opens on hover and on keyboard focus (focus-within), links stay real links. */}
-            <div className="group flex">
-              <a href={href("/tours")} className={`${navItem} inline-flex items-center gap-1.5 group-hover:text-primary group-hover:after:scale-x-100 group-focus-within:after:scale-x-100`}>
+            {/* Opens on hover and on keyboard focus (focus-within), links stay real links; closes after a choice. */}
+            <HoverMenu className="group flex">
+              <IntentLink href={href("/tours")} className={`${navItem} inline-flex items-center gap-1.5 group-hover:text-primary group-hover:after:scale-x-100 group-focus-within:after:scale-x-100`}>
                 {h.destinations}
                 <ChevronDown className="size-3.5 transition duration-300 group-hover:rotate-180 group-focus-within:rotate-180" aria-hidden="true" />
-              </a>
+              </IntentLink>
               {/* Full-width panel under the header bar: intro with all tours, then one photo card per destination. */}
-              <div className="invisible absolute inset-x-0 top-full border-y border-border bg-background normal-case tracking-normal opacity-0 shadow-[0_24px_48px_-24px_rgb(0_0_0/0.35)] transition duration-200 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+              <div className="invisible absolute inset-x-0 top-full border-y border-border bg-background normal-case tracking-normal opacity-0 shadow-[0_24px_48px_-24px_rgb(0_0_0/0.35)] transition duration-200 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100 group-data-[closed]:hidden">
                 <Container className="grid grid-cols-[minmax(11rem,0.8fr)_1fr_1fr_1fr] gap-6 py-8 xl:gap-8">
                   <div className="flex flex-col gap-3 border-r border-border pr-6">
                     <span className="type-eyebrow text-primary">{c.home.eyebrows.destinations}</span>
                     <span className="font-heading text-2xl leading-tight text-balance whitespace-normal">{c.home.destinationsTitle}</span>
-                    <a href={href("/tours")} className="type-label mt-auto inline-flex items-center gap-2 text-primary hover:underline hover:underline-offset-4">
+                    <IntentLink href={href("/tours")} className="type-label mt-auto inline-flex items-center gap-2 text-primary hover:underline hover:underline-offset-4">
                       {h.allTours}
                       <ArrowRight className="size-4" aria-hidden="true" />
-                    </a>
+                    </IntentLink>
                   </div>
                   {DESTINATIONS.map((d) => (
-                    <a key={d} href={href(`/tours/${d}`)} className="group/card grid content-start gap-3">
+                    <IntentLink key={d} href={href(`/tours/${d}`)} className="group/card grid content-start gap-3">
                       <span className="relative block aspect-[16/10] overflow-hidden bg-muted">
                         <Image src={DESTINATION_PHOTO[d]} alt="" fill sizes="22vw" className="object-cover saturate-[.88] transition duration-700 group-hover/card:scale-[1.04]" />
                       </span>
                       <span className="font-heading text-xl group-hover/card:text-primary">{c.destinations[d].name}</span>
                       <span className="type-small line-clamp-3 whitespace-normal text-muted-foreground">{c.destinations[d].tagline}</span>
-                    </a>
+                    </IntentLink>
                   ))}
                 </Container>
               </div>
-            </div>
+            </HoverMenu>
             {links.map((l) => (
               <NavLink key={l.href} href={l.href} className={`${navItem} flex items-center`}>
                 {l.label}

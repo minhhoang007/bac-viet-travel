@@ -1,3 +1,4 @@
+import { IntentLink } from "@/product/components/intent-link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
@@ -40,9 +41,9 @@ export default async function BookTourPage({ params, searchParams }: Props) {
 
   return (
     <Container className="py-10">
-      <a href={localePath(locale, `/tours/${slug}`)} className="text-sm text-muted-foreground hover:underline">
+      <IntentLink href={localePath(locale, `/tours/${slug}`)} className="text-sm text-muted-foreground hover:underline">
         ← {tour.title}
-      </a>
+      </IntentLink>
       <div className="mt-4 max-w-2xl">
         <BookingSteps locale={locale} current={1} />
       </div>
@@ -52,12 +53,12 @@ export default async function BookTourPage({ params, searchParams }: Props) {
       </p>
       {tour.private && (
         <nav className="mt-6 flex flex-wrap items-center gap-2" aria-label={t.modePrivate}>
-          <a href={localePath(locale, `/tours/${slug}/book`)} aria-current={!isPrivate ? "page" : undefined} className={tab(!isPrivate)}>
+          <IntentLink href={localePath(locale, `/tours/${slug}/book`)} aria-current={!isPrivate ? "page" : undefined} className={tab(!isPrivate)}>
             {t.modeGroup}
-          </a>
-          <a href={localePath(locale, `/tours/${slug}/book?type=private`)} aria-current={isPrivate ? "page" : undefined} className={tab(isPrivate)}>
+          </IntentLink>
+          <IntentLink href={localePath(locale, `/tours/${slug}/book?type=private`)} aria-current={isPrivate ? "page" : undefined} className={tab(isPrivate)}>
             {t.modePrivate}
-          </a>
+          </IntentLink>
           {isPrivate && <span className="text-sm text-muted-foreground">{t.privateHint}</span>}
         </nav>
       )}

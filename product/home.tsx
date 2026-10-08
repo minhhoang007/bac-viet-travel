@@ -1,3 +1,5 @@
+import Form from "next/form";
+import { IntentLink } from "./components/intent-link";
 import Image from "next/image";
 import { BadgeCheck, CalendarDays, Car, CreditCard, MapPin, MessageCircle, Star, Users } from "lucide-react";
 import { submitContact } from "@/app/actions/contact";
@@ -109,9 +111,8 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
             </div>
           </div>
 
-          <form
+          <Form
             action={localePath(locale, "/tours")}
-            method="get"
             role="search"
             aria-label={h.search.title}
             data-testid="tour-search"
@@ -148,7 +149,7 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
             <button type="submit" className="type-label col-span-2 h-11 bg-primary px-7 text-primary-foreground hover:bg-primary/90 lg:col-span-1">
               {h.search.submit}
             </button>
-          </form>
+          </Form>
 
           <ul className="type-small grid grid-cols-2 gap-x-4 gap-y-3 text-left text-muted-foreground lg:flex lg:flex-wrap lg:justify-between" data-testid="trust-strip">
             {h.trust.map((t) => {
@@ -193,20 +194,20 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
                 {h.destinationsTitle}
               </h2>
             </div>
-            <a href={localePath(locale, "/tours")} className={textLink}>
+            <IntentLink href={localePath(locale, "/tours")} className={textLink}>
               {h.viewAll}
-            </a>
+            </IntentLink>
           </div>
           <div className="mt-14 grid gap-12 md:grid-cols-3 md:gap-8">
             {DESTINATIONS.map((d, i) => (
-              <a key={d} href={localePath(locale, `/tours/${d}`)} className={`group block ${i === 1 ? "md:mt-24" : ""}`} data-destination-card={d}>
+              <IntentLink key={d} href={localePath(locale, `/tours/${d}`)} className={`group block ${i === 1 ? "md:mt-24" : ""}`} data-destination-card={d}>
                 <div className="relative aspect-[4/3] overflow-hidden md:aspect-[4/5]">
                   <Image src={DESTINATION_PHOTO[d]} alt={c.destinations[d].name} fill sizes="(min-width: 768px) 33vw, 100vw" className="object-cover saturate-[.88] transition duration-700 group-hover:scale-[1.03]" />
                 </div>
                 <p className="mt-6 type-eyebrow text-primary">{h.chapter(i + 1)}</p>
                 <h3 className="mt-2 font-heading type-h2">{c.destinations[d].name}</h3>
                 <p className="mt-3 type-body text-muted-foreground">{c.destinations[d].tagline}</p>
-              </a>
+              </IntentLink>
             ))}
           </div>
         </Container>
@@ -248,9 +249,9 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
                 {h.featuredTitle}
               </h2>
             </div>
-            <a href={localePath(locale, "/tours")} className={textLink}>
+            <IntentLink href={localePath(locale, "/tours")} className={textLink}>
               {h.viewAll}
-            </a>
+            </IntentLink>
           </div>
           <div className="mt-14 grid gap-x-8 gap-y-14 sm:grid-cols-2 lg:grid-cols-3">
             {catalog.featured(locale).map((t) => (
@@ -314,13 +315,13 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
                   {h.blogTitle}
                 </h2>
               </div>
-              <a href={localePath(locale, "/blog")} className={textLink}>
+              <IntentLink href={localePath(locale, "/blog")} className={textLink}>
                 {h.blogAll}
-              </a>
+              </IntentLink>
             </div>
             <div className="mt-14 grid gap-10 md:grid-cols-3">
               {posts.map((p) => (
-                <a key={p.slug} href={localePath(locale, `/blog/${p.slug}`)} className="group flex flex-col border-t border-border pt-5" data-testid="home-post">
+                <IntentLink key={p.slug} href={localePath(locale, `/blog/${p.slug}`)} className="group flex flex-col border-t border-border pt-5" data-testid="home-post">
                   {p.cover && (
                     <div className="relative aspect-[3/2] overflow-hidden">
                       <Image src={p.cover} alt="" fill sizes="(min-width: 768px) 33vw, 100vw" className="object-cover transition duration-700 group-hover:scale-[1.03]" />
@@ -328,7 +329,7 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
                   )}
                   <h3 className="mt-5 font-heading type-h3 group-hover:text-primary">{p.title}</h3>
                   <p className="mt-2 line-clamp-3 type-body text-muted-foreground">{p.description}</p>
-                </a>
+                </IntentLink>
               ))}
             </div>
           </Container>

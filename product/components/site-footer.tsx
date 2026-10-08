@@ -1,3 +1,4 @@
+import { IntentLink } from "./intent-link";
 import { Container } from "@/components/ui/container";
 import { localePath } from "@/core/i18n/routing";
 import type { Locale } from "@/config/app";
@@ -43,9 +44,9 @@ export function SiteFooter({ locale }: { locale: Locale }) {
     <footer className="mt-24 border-t border-border bg-muted text-sm text-muted-foreground">
       <Container className="grid gap-10 py-14 md:grid-cols-[1.5fr_1fr_1fr_1fr]">
         <div className="grid content-start gap-4" data-testid="company-info">
-          <a href={href("/")} aria-label={c.header.home} className="w-fit">
+          <IntentLink href={href("/")} aria-label={c.header.home} className="w-fit">
             <Logo size="sm" />
-          </a>
+          </IntentLink>
           <div className="grid gap-1 leading-relaxed">
             <p className="font-semibold text-foreground">{contactConfig.legalName}</p>
             <p>
@@ -81,9 +82,10 @@ export function SiteFooter({ locale }: { locale: Locale }) {
             <ul className="grid gap-2.5">
               {col.links.map((l) => (
                 <li key={l.href}>
-                  <a href={href(l.href)} className="hover:text-foreground hover:underline">
+                  {/* Shown on every page, rarely followed: prefetched on intent only. */}
+                  <IntentLink href={href(l.href)} className="hover:text-foreground hover:underline">
                     {l.label}
-                  </a>
+                  </IntentLink>
                 </li>
               ))}
             </ul>

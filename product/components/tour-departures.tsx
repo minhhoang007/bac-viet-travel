@@ -2,13 +2,13 @@
 
 import { CalendarDays } from "lucide-react";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { ButtonLink } from "@/components/ui/button";
 import { localePath } from "@/core/i18n/routing";
 import type { Locale } from "@/config/app";
 import { formatDay, getBookingContent } from "../booking/content";
 import { getProductContent } from "../content";
 import { parseTourFilters } from "../tours/filters";
 import { formatAmount } from "../tours/format";
+import { IntentButtonLink, IntentLink } from "./intent-link";
 import { DepartureCalendar } from "./departure-calendar";
 
 /** One departure as /api/tours/<slug>/departures returns it (live seats). */
@@ -117,9 +117,9 @@ export function TourDepartureList({ locale, price }: { locale: Locale; price: { 
               <div className="flex shrink-0 items-center gap-2 sm:gap-3">
                 <span className="text-sm font-semibold tabular-nums">{money(d.unitPriceVnd)}</span>
                 {d.bookable ? (
-                  <ButtonLink href={bookHref(d.id)} className="h-9 px-3 sm:px-4" variant={chosen?.id === d.id ? "primary" : "outline"} aria-label={c.tours.chooseDay(formatDay(d.date, locale))}>
+                  <IntentButtonLink href={bookHref(d.id)} variant={chosen?.id === d.id ? "primary" : "outline"} className="h-9 px-3 sm:px-4" aria-label={c.tours.chooseDay(formatDay(d.date, locale))}>
                     {b.choose}
-                  </ButtonLink>
+                  </IntentButtonLink>
                 ) : (
                   <span className="w-16 text-center text-xs text-muted-foreground">—</span>
                 )}
@@ -129,9 +129,9 @@ export function TourDepartureList({ locale, price }: { locale: Locale; price: { 
         </ul>
       )}
       {view === "list" && departures.length > upcoming.length && (
-        <a href={bookHref(chosen?.id)} className="mt-3 inline-block text-sm font-medium text-primary underline underline-offset-4">
+        <IntentLink href={bookHref(chosen?.id)} className="mt-3 inline-block text-sm font-medium text-primary underline underline-offset-4">
           {c.tours.departuresAll} →
-        </a>
+        </IntentLink>
       )}
     </div>
   );
@@ -143,14 +143,14 @@ export function TourBookButton({ locale, place, className }: { locale: Locale; p
   const c = getProductContent(locale);
   if (place === "mobile") {
     return (
-      <ButtonLink href={bookHref(chosen?.id)} data-testid="mobile-book" className={className}>
+      <IntentButtonLink href={bookHref(chosen?.id)} data-testid="mobile-book" className={className}>
         {c.tours.chooseDate}
-      </ButtonLink>
+      </IntentButtonLink>
     );
   }
   return (
-    <ButtonLink href={bookHref(chosen?.id)} className={className} data-testid="book-online">
+    <IntentButtonLink href={bookHref(chosen?.id)} className={className} data-testid="book-online">
       {chosen ? c.tours.bookDate(formatDay(chosen.date, locale)) : c.tours.chooseDate}
-    </ButtonLink>
+    </IntentButtonLink>
   );
 }

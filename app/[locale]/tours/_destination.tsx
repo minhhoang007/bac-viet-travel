@@ -1,3 +1,4 @@
+import { IntentLink } from "@/product/components/intent-link";
 import type { Metadata } from "next";
 import Image from "next/image";
 import { getPublicEnv } from "@/bootstrap/env";
@@ -62,9 +63,9 @@ export function DestinationPage({ locale, destination, tours }: { locale: Locale
         )}
         <div className="absolute inset-0 -z-10 bg-gradient-to-t from-background via-black/30 to-black/30" />
         <Container className="pb-12 pt-32 [text-shadow:0_1px_14px_rgb(0_0_0/0.55)] sm:pt-40">
-          <a href={localePath(locale, "/tours")} className="type-label text-white/90 underline underline-offset-8">
+          <IntentLink href={localePath(locale, "/tours")} className="type-label text-white/90 underline underline-offset-8">
             ← {c.tours.allDestinationsLink}
-          </a>
+          </IntentLink>
           <h1 className="mt-5 font-heading type-display">{c.tours.destinationTitle(d.name)}</h1>
           <p className="mt-4 max-w-2xl type-lead text-white/90">{d.tagline}</p>
         </Container>
