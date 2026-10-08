@@ -1,11 +1,10 @@
+import { getSeoSite } from "@/bootstrap/seo";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
-import { getPublicEnv } from "@/bootstrap/env";
 import { Pricing } from "@/components/marketing/pricing";
 import { localePath } from "@/core/i18n/routing";
 import { createMetadata } from "@/core/seo";
-import { seoSite } from "@/core/seo/site";
 import type { Locale } from "@/config/app";
 import { billingConfig } from "@/config/billing";
 import type { PlanId } from "@/config/billing.defaults";
@@ -17,7 +16,7 @@ type Props = { params: Promise<{ locale: Locale }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
   const c = getAppContent(locale).billing;
-  return createMetadata(seoSite(getPublicEnv().NEXT_PUBLIC_SITE_URL), { title: c.pricingTitle, description: c.pricingSubtitle, path: "/pricing", locale });
+  return createMetadata(getSeoSite(), { title: c.pricingTitle, description: c.pricingSubtitle, path: "/pricing", locale });
 }
 
 /** Public pricing page, from config/billing.ts. Exists only when the billing module is on. */

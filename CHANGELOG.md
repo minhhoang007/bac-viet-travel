@@ -4,6 +4,15 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.21.0] - 2026-10-08
+
+### Security
+- Sign-in codes (6 digits by email): the code row is locked while a guess is checked. Before, guesses sent at the same time could each read the attempt count before any was written, so more than 5 were checked (a test sends 20 at once).
+- Share images (`/api/og`) draw only page titles the site signed (`&s=`, HMAC with `OG_IMAGE_SECRET`, else `BETTER_AUTH_SECRET`). Any other title gets the generic brand image, so nobody can make an image with the brand and their own text on your domain. Without a key (e.g. a build without secrets) pages use the generic image.
+
+### Changed
+- `bootstrap/seo.ts` `getSeoSite()` replaces `seoSite(getPublicEnv().NEXT_PUBLIC_SITE_URL)` in starter pages, sitemap and feed. **Projects:** do the same in your own pages (`grep -rn "seoSite(getPublicEnv" app product`), otherwise their share images are the generic one.
+
 ## [1.20.0] - 2026-10-08
 
 ### Added — page transitions
