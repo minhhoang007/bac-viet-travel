@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import Link from "next/link";
+import { PageLink } from "@/components/layout/page-transition";
 import { useLocale } from "next-intl";
 import type { Locale } from "@/config/app";
 import { getMarketingContent } from "@/content";
@@ -17,9 +17,9 @@ export default function NotFound() {
   return (
     <Container className="py-24 text-center">
       <h1 className="text-3xl font-bold">{c.notFound.title}</h1>
-      <Link href={localePath(locale)} className="mt-6 inline-block text-primary underline">
+      <PageLink href={localePath(locale)} className="mt-6 inline-block text-primary underline">
         {c.notFound.back}
-      </Link>
+      </PageLink>
       {ProductNotFound && <ProductNotFound locale={locale} />}
     </Container>
   );

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PageLink } from "@/components/layout/page-transition";
 
 export interface PostListItem {
   href: string;
@@ -17,9 +17,9 @@ export function PostList({ posts, empty }: { posts: PostListItem[]; empty: strin
         <li key={p.href}>
           <article>
             <h2 className="text-xl font-semibold">
-              <Link href={p.href} className="hover:underline">
+              <PageLink href={p.href} className="hover:underline">
                 {p.title}
-              </Link>
+              </PageLink>
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
               {p.date} · {p.readingTime}
@@ -29,9 +29,9 @@ export function PostList({ posts, empty }: { posts: PostListItem[]; empty: strin
               <ul className="mt-2 flex flex-wrap gap-2 text-xs">
                 {p.tags.map((t) => (
                   <li key={t.href}>
-                    <Link href={t.href} className="rounded-full border border-border px-2 py-0.5 hover:bg-muted">
+                    <PageLink href={t.href} className="rounded-full border border-border px-2 py-0.5 hover:bg-muted">
                       #{t.label}
-                    </Link>
+                    </PageLink>
                   </li>
                 ))}
               </ul>
@@ -47,8 +47,8 @@ export function Pagination({ previous, next }: { previous?: { href: string; labe
   if (!previous && !next) return null;
   return (
     <nav className="mt-10 flex justify-between text-sm">
-      {previous ? <Link href={previous.href}>← {previous.label}</Link> : <span />}
-      {next && <Link href={next.href}>{next.label} →</Link>}
+      {previous ? <PageLink href={previous.href}>← {previous.label}</PageLink> : <span />}
+      {next && <PageLink href={next.href}>{next.label} →</PageLink>}
     </nav>
   );
 }
