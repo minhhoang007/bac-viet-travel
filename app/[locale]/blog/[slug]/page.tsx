@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 import { connection } from "next/server";
 import { setRequestLocale } from "next-intl/server";
@@ -104,9 +105,9 @@ export default async function BlogPostPage({ params }: Props) {
     {preview && <PreviewBanner label={w.previewing} exit={w.exitPreview} href={`/api/content/preview?exit=1&locale=${locale}`} />}
     <Container className="max-w-3xl py-16">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
-      <a href={localePath(locale, "/blog")} className="text-sm text-muted-foreground hover:underline">
+      <Link href={localePath(locale, "/blog")} className="text-sm text-muted-foreground hover:underline">
         ← {c.allPosts}
-      </a>
+      </Link>
       {/* blog-* class names are stable hooks for project CSS (product/styles.css). */}
       <article className="blog-post mt-4">
         <header>
@@ -135,9 +136,9 @@ export default async function BlogPostPage({ params }: Props) {
           <ul className="blog-tags mt-10 flex flex-wrap gap-2 text-sm">
             {post.tags.map((t) => (
               <li key={t}>
-                <a href={localePath(locale, `/blog/tag/${t}`)} className="rounded-full border border-border px-3 py-1 hover:bg-muted">
+                <Link href={localePath(locale, `/blog/tag/${t}`)} className="rounded-full border border-border px-3 py-1 hover:bg-muted">
                   #{t}
-                </a>
+                </Link>
               </li>
             ))}
           </ul>

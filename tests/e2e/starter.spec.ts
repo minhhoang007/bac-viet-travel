@@ -35,9 +35,10 @@ test("header links come from config/navigation.ts", async ({ page }) => {
   await page.goto(`/${otherLocale}`);
   const header = page.getByRole("banner");
   for (const link of siteNavigation) {
+    // next/link drops the slash before an anchor ("/en/#features" → "/en#features"): same page.
     await expect(header.getByRole("link", { name: link.label[otherLocale], exact: true })).toHaveAttribute(
       "href",
-      `/${otherLocale}${link.href}`,
+      `/${otherLocale}${link.href}`.replace("/#", "#"),
     );
   }
 });

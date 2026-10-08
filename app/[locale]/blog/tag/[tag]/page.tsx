@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
 import { fileBlog } from "@/app/_lib/blog";
@@ -47,9 +48,9 @@ export default async function BlogTagPage({ params }: Props) {
 
   return (
     <Container className="max-w-3xl py-16">
-      <a href={localePath(locale, "/blog")} className="text-sm text-muted-foreground hover:underline">
+      <Link href={localePath(locale, "/blog")} className="text-sm text-muted-foreground hover:underline">
         ← {c.allPosts}
-      </a>
+      </Link>
       <h1 className="mt-4 text-3xl font-bold">
         {c.tagTitle} #{tag}
       </h1>
