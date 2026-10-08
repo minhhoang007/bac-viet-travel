@@ -242,9 +242,9 @@ export const app: AppContent = {
     cancel: "Cancel",
   },
   blog: {
-    nav: "Blog",
-    title: "Blog",
-    subtitle: "News, tips and guides.",
+    nav: "Travel notes",
+    title: "Travel notes",
+    subtitle: "Tips for Ha Long, Ninh Binh and Sapa from people who live here.",
     readingTime: "{n} min read",
     tagTitle: "Posts about",
     tags: "Topics",

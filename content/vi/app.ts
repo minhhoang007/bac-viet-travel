@@ -242,9 +242,9 @@ export const app: AppContent = {
     cancel: "Huỷ",
   },
   blog: {
-    nav: "Blog",
-    title: "Blog",
-    subtitle: "Tin tức, kinh nghiệm và hướng dẫn.",
+    nav: "Cẩm nang",
+    title: "Cẩm nang du lịch",
+    subtitle: "Kinh nghiệm đi Hạ Long, Ninh Bình và Sapa từ người địa phương.",
     readingTime: "{n} phút đọc",
     tagTitle: "Bài viết về",
     tags: "Chủ đề",

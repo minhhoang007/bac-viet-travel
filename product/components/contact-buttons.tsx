@@ -18,7 +18,7 @@ function Links({ items }: { items: ContactButtonsProps["items"] }) {
         data-contact={item.key}
         {...(item.href.startsWith("http") ? { target: "_blank", rel: "noopener noreferrer" } : {})}
         // Quiet on the dark "Sơn Mài" theme: same pill for every channel, the brass icon tells them apart.
-        className="flex h-11 items-center gap-2 rounded-full border border-border bg-background/95 px-4 text-sm text-foreground shadow-lg backdrop-blur transition hover:border-primary"
+        className="flex h-11 items-center gap-2 rounded-full border border-border bg-background/95 px-4 text-sm whitespace-nowrap text-foreground shadow-lg backdrop-blur transition hover:border-primary"
       >
         <Icon aria-hidden="true" className="size-5 text-primary" />
         {item.label}
