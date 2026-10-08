@@ -1,9 +1,8 @@
+import { getSeoSite } from "@/bootstrap/seo";
 import type { Metadata } from "next";
 import { setRequestLocale } from "next-intl/server";
-import { getPublicEnv } from "@/bootstrap/env";
 import { localePath } from "@/core/i18n/routing";
 import { createMetadata } from "@/core/seo";
-import { seoSite } from "@/core/seo/site";
 import type { Locale } from "@/config/app";
 import { getAppContent } from "@/content";
 import { BlogIndex } from "./_index-view";
@@ -16,7 +15,7 @@ export const revalidate = 3600;
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
   const c = getAppContent(locale).blog;
-  const m = createMetadata(seoSite(getPublicEnv().NEXT_PUBLIC_SITE_URL), { title: c.title, description: c.subtitle, path: "/blog", locale });
+  const m = createMetadata(getSeoSite(), { title: c.title, description: c.subtitle, path: "/blog", locale });
   return { ...m, alternates: { ...m.alternates, types: { "application/rss+xml": localePath(locale, "/blog/rss.xml") } } };
 }
 

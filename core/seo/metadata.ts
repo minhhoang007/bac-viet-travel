@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ogImagePath } from "./og";
 
 export interface SeoSite {
   siteUrl: string;
@@ -7,6 +8,8 @@ export interface SeoSite {
   defaultOgImage: string;
   /** Generate per-page images at /api/og?title=… when a page has no image. */
   dynamicOgImage?: boolean;
+  /** Signs those titles (core/seo/og.ts); without it pages get the generic image. Server only. */
+  ogSecret?: string;
   locales: readonly string[];
   defaultLocale: string;
   twitterHandle?: string;
@@ -33,7 +36,7 @@ export function localizedUrl(site: SeoSite, locale: string, path: string): strin
 
 export function createMetadata(site: SeoSite, page: PageSeo): Metadata {
   const url = localizedUrl(site, page.locale, page.path);
-  const fallback = site.dynamicOgImage ? `/api/og?title=${encodeURIComponent(page.title)}` : site.defaultOgImage;
+  const fallback = site.dynamicOgImage ? ogImagePath(page.title, site.ogSecret) : site.defaultOgImage;
   const image = new URL(page.image ?? fallback, site.siteUrl).toString();
   const paths = page.alternatePaths ?? Object.fromEntries(site.locales.map((l) => [l, page.path]));
   const languages = Object.fromEntries(Object.entries({ ...paths, [page.locale]: page.path }).map(([l, p]) => [l, localizedUrl(site, l, p)]));

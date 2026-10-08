@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createMetadata, localizedUrl, type SeoSite } from ".";
+import { ogSignature, verifiedOgTitle } from "./og";
 
 const site: SeoSite = {
   siteUrl: "https://example.com",
@@ -56,9 +57,22 @@ describe("SEO", () => {
   });
 
   it("pages without an image get a generated one with their title when dynamicOgImage is on", () => {
-    const m = createMetadata({ ...site, dynamicOgImage: true }, { title: "Tour Hạ Long", description: "d", path: "/", locale: "vi" });
-    expect(m.openGraph?.images).toEqual([{ url: "https://example.com/api/og?title=Tour%20H%E1%BA%A1%20Long" }]);
+    const m = createMetadata({ ...site, dynamicOgImage: true, ogSecret: "k" }, { title: "Tour Hạ Long", description: "d", path: "/", locale: "vi" });
+    expect(m.openGraph?.images).toEqual([{ url: `https://example.com/api/og?title=Tour%20H%E1%BA%A1%20Long&s=${ogSignature("k", "Tour Hạ Long")}` }]);
     const own = createMetadata({ ...site, dynamicOgImage: true }, { title: "T", description: "d", path: "/", locale: "vi", image: "/a.jpg" });
     expect(own.openGraph?.images).toEqual([{ url: "https://example.com/a.jpg" }]);
+    // No key (a build without secrets): the generic brand image, never an unsigned title.
+    expect(createMetadata({ ...site, dynamicOgImage: true }, { title: "T", description: "d", path: "/", locale: "vi" }).openGraph?.images).toEqual([{ url: "https://example.com/api/og" }]);
+  });
+});
+
+describe("share image titles (og)", () => {
+  it("draws only titles signed with the site key", () => {
+    const s = ogSignature("key", "Tour Hạ Long");
+    expect(verifiedOgTitle("Tour Hạ Long", s, "key")).toBe("Tour Hạ Long");
+    expect(verifiedOgTitle("Bắc Việt lừa đảo", s, "key")).toBeNull();
+    expect(verifiedOgTitle("Tour Hạ Long", s, "other-key")).toBeNull();
+    expect(verifiedOgTitle("Tour Hạ Long", null, "key")).toBeNull();
+    expect(verifiedOgTitle("Tour Hạ Long", s, undefined)).toBeNull();
   });
 });

@@ -1,10 +1,9 @@
+import { getSeoSite } from "@/bootstrap/seo";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
 import { fileBlog } from "@/app/_lib/blog";
-import { getPublicEnv } from "@/bootstrap/env";
 import { createMetadata } from "@/core/seo";
-import { seoSite } from "@/core/seo/site";
 import type { Locale } from "@/config/app";
 import { getAppContent } from "@/content";
 import { BlogIndex } from "../../_index-view";
@@ -27,7 +26,7 @@ export function generateStaticParams({ params }: { params: { locale: string } })
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale, n } = await params;
   const c = getAppContent(locale).blog;
-  return createMetadata(seoSite(getPublicEnv().NEXT_PUBLIC_SITE_URL), { title: `${c.title} (${n})`, description: c.subtitle, path: `/blog/page/${n}`, locale });
+  return createMetadata(getSeoSite(), { title: `${c.title} (${n})`, description: c.subtitle, path: `/blog/page/${n}`, locale });
 }
 
 export default async function BlogPagedPage({ params }: Props) {

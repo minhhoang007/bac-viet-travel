@@ -1,8 +1,7 @@
+import { getSeoSite } from "@/bootstrap/seo";
 import type { MetadataRoute } from "next";
 import { loadBlog } from "@/app/_lib/blog";
-import { getPublicEnv } from "@/bootstrap/env";
 import { localizedUrl } from "@/core/seo";
-import { seoSite } from "@/core/seo/site";
 import type { SitemapContext } from "@/core/product/context";
 import * as manifest from "@/product/manifest";
 
@@ -24,7 +23,7 @@ async function sitemapContext(): Promise<SitemapContext> {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const site = seoSite(getPublicEnv().NEXT_PUBLIC_SITE_URL);
+  const site = getSeoSite();
   const blog = await loadBlog();
   const extra = typeof productPaths === "function" ? await productPaths(await sitemapContext()) : productPaths;
   const shared = [...PATHS, ...(blog ? ["/blog"] : []), ...extra].map((path) => ({
