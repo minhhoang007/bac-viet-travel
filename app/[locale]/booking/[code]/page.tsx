@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { setRequestLocale } from "next-intl/server";
 import { getBooking, getDeposits, isPaymentsSandbox, isTransferAvailable, isVnpayConfigured } from "@/app/_lib/booking";
@@ -41,16 +42,8 @@ export default async function BookingPage({ params, searchParams }: Props) {
   const { t: token, pay } = await searchParams;
   const booking = token ? await getBooking().getForGuest(code, token) : null;
 
-  if (!booking) {
-    return (
-      <Container className="max-w-2xl py-16">
-        <h1 className="text-2xl font-bold">{t.booking.title}</h1>
-        <p className="mt-4" data-booking="not-found">
-          {t.booking.notFound}
-        </p>
-      </Container>
-    );
-  }
+  // Wrong code or token: a 404 with the booking hint (not-found.tsx), same answer for both.
+  if (!booking) notFound();
 
   const tour = (await getTours()).get(locale, booking.departure.tourSlug);
   const status = booking.isExpired ? "expired" : booking.status;

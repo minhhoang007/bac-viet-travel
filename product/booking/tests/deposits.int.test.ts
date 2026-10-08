@@ -44,8 +44,8 @@ const deposits = createDepositService({
 });
 const LINKS = { siteUrl: "https://bacviet.example", teamEmail: "team@example.com" };
 
-async function holdOn(capacity: number, adults = 1) {
-  const [d] = await db.insert(departures).values({ tourSlug: "ninh-binh-day-tour", date: "2026-10-10", capacity }).returning();
+async function holdOn(capacity: number, adults = 1, date = "2026-10-10") {
+  const [d] = await db.insert(departures).values({ tourSlug: "ninh-binh-day-tour", date, capacity }).returning();
   const held = await bookingService.hold({ departureId: d!.id, name: "Lan", email: "lan@example.com", phone: "0912345678", adults: String(adults), locale: "vi", agree: "on" }, "ip");
   if (held.status !== "held") throw new Error(held.status);
   return { departure: d!, ...held };
@@ -360,5 +360,75 @@ describe("balance payment (D5)", () => {
     await db.update(bookings).set({ status: "cancelled" }).where(eq(bookings.code, code));
     expect((await deposits.handleIpn(ipn(req), LINKS)).RspCode).toBe("00");
     expect(await status(code)).toMatchObject({ status: "cancelled", balancePaidAt: null, refundDueVnd: 1_400_000 });
+  });
+});
+
+describe("review fixes 2026-10-08", () => {
+  /** Deposit service whose VNPay query() says every asked attempt was paid with `request`'s amount. */
+  const paidAtVnpay = (request: Record<string, string>, asked: string[] = []) =>
+    createDepositService({
+      db,
+      logger,
+      mail: { send: async (m) => void sent.push(m) },
+      bookings: bookingService,
+      transferHoldMinutes: 120,
+      vnpay: {
+        ...vnpay,
+        query: async (input) => {
+          asked.push(input.txnRef);
+          return { status: "paid", params: { vnp_TxnRef: input.txnRef, vnp_Amount: request.vnp_Amount!, vnp_ResponseCode: "00", vnp_TransactionStatus: "00", vnp_TransactionNo: "15695399", vnp_BankCode: "NCB" } };
+        },
+      },
+      tourTitle: async () => "Ninh Bình 1 ngày",
+      now: () => clock,
+    });
+
+  it("return URL: paid at VNPay but no IPN yet → asks VNPay and confirms right away (once)", async () => {
+    const held = await holdOn(4);
+    const request = await startPayment(held.code, held.token);
+    const asked: string[] = [];
+    const service = paidAtVnpay(request, asked);
+    const back = ipn(request);
+
+    expect(await service.returnStatus(back, LINKS)).toEqual({ valid: true, code: held.code, status: "paid" });
+    expect((await status(held.code)).status).toBe("deposit_paid");
+    // Already confirmed: no second question, the IPN that comes later is a duplicate.
+    expect(await service.returnStatus(back, LINKS)).toMatchObject({ status: "paid" });
+    expect(asked).toHaveLength(1);
+    expect(await deposits.handleIpn(back, LINKS)).toEqual({ RspCode: "02", Message: "Order already confirmed" });
+    // Without links (display only) nothing is asked.
+    expect((await paidAtVnpay(request, asked).returnStatus(ipn(request, { vnp_TxnRef: "NOPE" }))).status).toBe("unknown");
+  });
+
+  it("a late deposit for a date that is over, or closed meanwhile, is owed back (refund_due)", async () => {
+    const past = await holdOn(4);
+    const pastReq = await startPayment(past.code, past.token);
+    const closed = await holdOn(4, 1, "2026-10-12");
+    const closedReq = await startPayment(closed.code, closed.token);
+    await db.update(departures).set({ status: "closed" }).where(eq(departures.id, closed.departure.id));
+
+    clock = new Date(clock.getTime() + 20 * 60_000); // both holds ran out
+    expect((await deposits.handleIpn(ipn(closedReq), LINKS)).RspCode).toBe("00");
+    expect((await status(closed.code)).status).toBe("refund_due");
+
+    clock = new Date("2026-10-11T03:00:00Z"); // the day after the trip
+    expect((await deposits.handleIpn(ipn(pastReq), LINKS)).RspCode).toBe("00");
+    expect((await status(past.code)).status).toBe("refund_due");
+  });
+
+  it("guest link tokens on payment attempts are erased once settled, or after a week", async () => {
+    const paid = await holdOn(4);
+    const paidReq = await startPayment(paid.code, paid.token);
+    await deposits.handleIpn(ipn(paidReq), LINKS); // settle() erases it already
+    const pending = await holdOn(4, 1, "2026-10-12");
+    await startPayment(pending.code, pending.token);
+    const tokens = async () => (await db.select({ t: bookingPayments.linkToken }).from(bookingPayments)).map((r) => r.t).filter(Boolean);
+
+    expect(await deposits.purgeLinkTokens()).toBe(0); // the pending attempt still needs its link
+    expect(await tokens()).toHaveLength(1);
+    // createdAt is the database's own time: age the attempt instead of the clock.
+    await db.update(bookingPayments).set({ createdAt: new Date(clock.getTime() - 8 * 24 * 60 * 60_000) }).where(eq(bookingPayments.status, "pending"));
+    expect(await deposits.purgeLinkTokens()).toBe(1);
+    expect(await tokens()).toEqual([]);
   });
 });

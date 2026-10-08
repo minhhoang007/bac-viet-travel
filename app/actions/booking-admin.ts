@@ -106,7 +106,7 @@ export async function createManualBooking(_prev: ManualBookingState, formData: F
   const l = locale.parse(formData.get("locale"));
   let result: ManualBookingResult;
   try {
-    result = await service(ctx).createManual(ctx.user, Object.fromEntries(formData));
+    result = await service(ctx).createManual(ctx.user, Object.fromEntries(formData), { confirm: ctx.allowed("bookings.confirm"), money: ctx.allowed("bookings.money") });
   } catch (error) {
     ctx.container.logger.warn(EVENT, { error });
     return { status: "error" };

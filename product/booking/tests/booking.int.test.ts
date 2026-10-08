@@ -264,3 +264,34 @@ describe("add-ons (B6)", () => {
     expect(b).toMatchObject({ totalVnd: 4_200_000, addons: [{ id: "pickup", name: { vi: "Đón khách sạn", en: "Hotel pick-up" }, qty: 1, vnd: 200_000 }] });
   });
 });
+
+describe("review fixes 2026-10-08", () => {
+  it("a visitor holds one date at most 3 times an hour; other visitors and dates are not affected", async () => {
+    const d = await departure({ capacity: 20 });
+    const other = await departure({ capacity: 20, date: "2026-10-11" });
+    const s = service({ departureLimiter: createMemoryRateLimiter({ max: 3, windowMs: 60 * 60_000 }) });
+    for (let i = 0; i < 3; i++) expect((await s.hold(guest(d.id), "ip-a")).status).toBe("held");
+    expect(await s.hold(guest(d.id), "ip-a")).toEqual({ status: "rate_limited" });
+    expect((await s.hold(guest(d.id), "ip-b")).status).toBe("held");
+    expect((await s.hold(guest(other.id), "ip-a")).status).toBe("held");
+  });
+
+  it("abandoned holds older than 30 days are deleted with the private departures they leave empty", async () => {
+    const d = await departure({ capacity: 10 });
+    const s = service();
+    const old = await s.hold(guest(d.id), "ip");
+    const priv = await s.holdPrivate({ ...guest(""), departureId: undefined, tourSlug: "ha-long-cruise-2d1n", date: "2026-10-20", adults: "2" }, "ip");
+    expect(old.status).toBe("held");
+    expect(priv.status).toBe("held");
+    clock = new Date("2026-11-05T03:00:00Z");
+    const recent = await s.hold(guest((await departure({ date: "2026-11-20" })).id), "ip");
+    expect(recent.status).toBe("held");
+    await s.expireStale();
+
+    expect(await s.purgeAbandoned()).toBe(2);
+    const left = await db.select({ code: bookings.code }).from(bookings);
+    expect(left.map((b) => b.code)).toEqual([recent.status === "held" ? recent.code : ""]);
+    expect(await db.select().from(departures).where(eq(departures.kind, "private"))).toEqual([]);
+    expect((await db.select().from(departures)).length).toBe(2); // group departures stay
+  });
+});

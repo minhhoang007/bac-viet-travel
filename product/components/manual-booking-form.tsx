@@ -17,9 +17,12 @@ export function ManualBookingForm({
   locale,
   departures,
   action,
+  canConfirm = true,
 }: {
   locale: Locale;
   departures: ManualDepartureOption[];
+  /** Staff with bookings.confirm: may enter a booking as confirmed (others: deposit paid only). */
+  canConfirm?: boolean;
   action: (state: ManualBookingState, formData: FormData) => Promise<ManualBookingState>;
 }) {
   const [state, formAction, pending] = useActionState(action, null);
@@ -103,10 +106,11 @@ export function ManualBookingForm({
         {field("amountVnd", m.amount, { type: "number", min: 0, step: 1000, required: true })}
         <label className="grid text-sm">
           {m.status}
-          <select name="status" defaultValue="confirmed" className={input}>
-            <option value="confirmed">{m.statusConfirmed}</option>
+          <select name="status" defaultValue={canConfirm ? "confirmed" : "deposit_paid"} className={input}>
+            {canConfirm && <option value="confirmed">{m.statusConfirmed}</option>}
             <option value="deposit_paid">{m.statusPaid}</option>
           </select>
+          {fieldError("status") && <span className="mt-1 text-danger">{m.errors[fieldError("status")!] ?? m.errors.invalid}</span>}
         </label>
       </div>
 

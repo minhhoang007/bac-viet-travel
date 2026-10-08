@@ -44,13 +44,22 @@ export interface BookingAdmin extends DepartureAdmin {
    * Staff-entered booking (phone, Zalo, OTA), paid outside the website. Takes seats under the same departure lock as
    * online holds, so the website and OTAs never oversell. Audited.
    */
-  createManual(actor: Actor, raw: Record<string, unknown>): Promise<ManualBookingResult>;
+  createManual(actor: Actor, raw: Record<string, unknown>, may?: ManualBookingRights): Promise<ManualBookingResult>;
 
 
   stats(): Promise<{ paidToday: number; paidWeek: number; depositsWeekVnd: number; attention: number; upcoming: { date: string; tourSlug: string; seats: number }[] }>;
   /** Periodic: reminder emails 3 days before departure (once per booking). Returns how many were sent. */
   sendReminders(): Promise<number>;
 }
+
+/**
+ * What the staff member may decide on a manual booking (H2): without bookings.confirm only "deposit paid"; without
+ * bookings.money no amount below half the website price (OTA net prices are lower, never that low). Default: all.
+ */
+export type ManualBookingRights = { confirm: boolean; money: boolean };
+
+/** Lowest amount, as a share of the website price, that staff without bookings.money may enter. */
+export const MANUAL_MIN_SHARE = 0.5;
 
 export type ManualBookingResult =
   | { status: "created"; code: string }
@@ -83,6 +92,8 @@ export function createBookingAdmin(deps: {
   audit?: ProductContext["audit"];
   tourTitle: (slug: string, locale: string) => Promise<string>;
   tourExists: (slug: string) => Promise<boolean>;
+  /** Adult website price of a tour (VND): the floor of manual amounts for staff without bookings.money. */
+  tourPrice?: (slug: string) => Promise<number | null>;
   /** Deposit service's receiveTransfer with the site links bound (emails). */
   receiveTransfer?: (code: string, input: { amountVnd: number; bankRef: string }) => Promise<ReceiveTransferResult>;
   now?: () => Date;
@@ -262,7 +273,7 @@ export function createBookingAdmin(deps: {
       });
     },
 
-    async createManual(actor, raw) {
+    async createManual(actor, raw, may = { confirm: true, money: true }) {
       const parsed = manualBookingSchema.safeParse(raw);
       if (!parsed.success) {
         const fieldErrors: Record<string, string> = {};
@@ -270,6 +281,7 @@ export function createBookingAdmin(deps: {
         return { status: "invalid", fieldErrors };
       }
       const input = parsed.data;
+      if (input.status === "confirmed" && !may.confirm) return { status: "invalid", fieldErrors: { status: "not_allowed" } };
       let result = { status: "unavailable" } as ManualBookingResult; // set inside the audited transaction
       const code = `BV-${Array.from({ length: 6 }, () => CODE_ALPHABET[randomInt(CODE_ALPHABET.length)]).join("")}`;
       await audited(actor, "booking.create_manual", code, { source: input.source, externalRef: input.externalRef || null }, async () => {
@@ -286,6 +298,10 @@ export function createBookingAdmin(deps: {
           const seats = input.adults + input.children;
           const seatsLeft = departure.capacity - (row?.taken ?? 0);
           if (seats > seatsLeft) return { status: "sold_out", seatsLeft: Math.max(0, seatsLeft) };
+          if (!may.money) {
+            const listPrice = departure.priceVnd ?? (await deps.tourPrice?.(departure.tourSlug)) ?? 0;
+            if (input.amountVnd < listPrice * seats * MANUAL_MIN_SHARE) return { status: "invalid", fieldErrors: { amountVnd: "amount_low" } };
+          }
 
           await tx.insert(bookings).values({
             code,

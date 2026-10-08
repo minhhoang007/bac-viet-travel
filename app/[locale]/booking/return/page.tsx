@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { setRequestLocale } from "next-intl/server";
 import { BOOKING_COOKIE, getDeposits } from "@/app/_lib/booking";
+import { getEnv } from "@/bootstrap/env";
 import { Container } from "@/components/ui/container";
 import { localePath } from "@/core/i18n/routing";
 import type { Locale } from "@/config/app";
@@ -23,7 +24,8 @@ export default async function BookingReturnPage({ params, searchParams }: Props)
   setRequestLocale(locale);
   const t = getBookingContent(locale).booking;
   const query = Object.fromEntries(Object.entries(await searchParams).filter((e): e is [string, string] => typeof e[1] === "string"));
-  const result = await getDeposits().returnStatus(query);
+  const env = getEnv();
+  const result = await getDeposits().returnStatus(query, { siteUrl: env.NEXT_PUBLIC_SITE_URL, teamEmail: env.extra.CONTACT_TO_EMAIL });
 
   if (result.valid && result.code) {
     const token = (await cookies()).get(BOOKING_COOKIE(result.code))?.value;

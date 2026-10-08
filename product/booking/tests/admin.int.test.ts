@@ -154,6 +154,16 @@ describe("booking admin", () => {
       expect(await bookingAdmin.createManual(staff, klook(past!.id))).toEqual({ status: "unavailable" });
       expect(await bookingAdmin.createManual(staff, klook(closed!.id))).toEqual({ status: "unavailable" });
     });
+
+    it("sales (no confirm, no money): deposit paid only, and never below half the website price; managers may", async () => {
+      const [d] = await db.insert(departures).values({ tourSlug: "ninh-binh-day-tour", date: "2026-10-10", capacity: 10, priceVnd: 1_000_000 }).returning();
+      const sale = { confirm: false, money: false };
+      expect(await bookingAdmin.createManual(staff, klook(d!.id), sale)).toEqual({ status: "invalid", fieldErrors: { status: "not_allowed" } });
+      // 2 adults on the website: 2,000,000. Half is the floor.
+      expect(await bookingAdmin.createManual(staff, klook(d!.id, { status: "deposit_paid", amountVnd: "900000" }), sale)).toEqual({ status: "invalid", fieldErrors: { amountVnd: "amount_low" } });
+      expect((await bookingAdmin.createManual(staff, klook(d!.id, { status: "deposit_paid", amountVnd: "1000000" }), sale)).status).toBe("created");
+      expect((await bookingAdmin.createManual(staff, klook(d!.id, { amountVnd: "0" }), { confirm: true, money: true })).status).toBe("created");
+    });
   });
 
   it("stats: deposits this week and what needs action", async () => {

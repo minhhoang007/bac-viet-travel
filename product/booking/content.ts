@@ -77,8 +77,9 @@ const vi = {
     sold_out: (n: number) => (n > 0 ? `Chỉ còn ${n} chỗ cho ngày này. Vui lòng giảm số khách hoặc chọn ngày khác.` : "Ngày này vừa hết chỗ. Vui lòng chọn ngày khác."),
     unavailable: "Ngày này không còn nhận đặt. Vui lòng chọn ngày khác.",
     rate_limited: "Bạn thao tác quá nhiều lần. Vui lòng thử lại sau ít phút hoặc nhắn Zalo cho chúng tôi.",
+    captcha: "Vui lòng xác nhận lại ô kiểm tra chống bot rồi gửi lại.",
     error: "Không giữ được chỗ. Vui lòng thử lại.",
-  } satisfies Record<BookingFieldError | "unavailable" | "rate_limited" | "error", string> & { sold_out: (n: number) => string },
+  } satisfies Record<BookingFieldError | "unavailable" | "rate_limited" | "captcha" | "error", string> & { sold_out: (n: number) => string },
   feedback: {
     title: "Chuyến đi của bạn thế nào?",
     notFound: "Không tìm thấy đơn này. Hãy mở lại đường link trong email của bạn.",
@@ -263,6 +264,7 @@ const en: BookingContent = {
     sold_out: (n) => (n > 0 ? `Only ${n} seats left on this date. Reduce the group or choose another date.` : "This date just sold out. Please choose another date."),
     unavailable: "This date is no longer bookable. Please choose another date.",
     rate_limited: "Too many attempts. Please try again in a few minutes or message us on WhatsApp.",
+    captcha: "Please complete the bot check again, then send.",
     error: "Could not hold your seats. Please try again.",
   },
   feedback: {

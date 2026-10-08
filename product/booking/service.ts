@@ -1,9 +1,9 @@
 import { createHash, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
-import { and, asc, eq, gte, inArray, lte, sql } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, lt, lte, notExists, sql } from "drizzle-orm";
 import type { Logger } from "@/core/logger";
 import type { RateLimiter } from "@/core/security/rate-limit";
 import type { Db } from "@/db/client";
-import { bookings, departures, discountCodes, type Booking, type Departure } from "../schema/booking";
+import { bookingPayments, bookings, departures, discountCodes, type Booking, type Departure } from "../schema/booking";
 import type { Addon } from "../tours/model";
 import { addDays, applyDiscount, bookingRules, DEFAULT_TOUR_PRICING, type Discount, isBookableDate, privateQuote, privateTier, quote, vietnamToday, type PrivatePricing, type TourPricing } from "./rules";
 import { canBecome, isSold, SOLD_STATUSES, takesSeats, takesSeatsB } from "./status";
@@ -65,6 +65,11 @@ export interface BookingService {
   saveTravellers(code: string, token: string, raw: Record<string, unknown>): Promise<SaveTravellersResult>;
   /** Marks stale holds as expired. Returns how many. */
   expireStale(): Promise<number>;
+  /**
+   * Data minimisation: deletes abandoned holds (expired, never any payment attempt) older than `days`, with the
+   * private departures they leave empty. Their contact details are not kept. Returns how many bookings.
+   */
+  purgeAbandoned(days?: number): Promise<number>;
 }
 
 const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // no 0/O, 1/I/L
@@ -87,6 +92,11 @@ export function createBookingService(deps: {
   tourPricing?: (slug: string) => Promise<TourPricing>;
   /** Limits discount previews per visitor (shared across server instances when Redis is configured). */
   discountLimiter?: RateLimiter;
+  /**
+   * Holds per visitor on one departure (or one private tour): with `rateLimiter` (all holds), it keeps one visitor
+   * from holding every seat of a date again and again.
+   */
+  departureLimiter?: RateLimiter;
   /** Add-ons the guest may choose on this tour (B6); none when absent. */
   tourAddons?: (slug: string) => Promise<Addon[]>;
   now?: () => Date;
@@ -136,6 +146,12 @@ export function createBookingService(deps: {
       if ((used?.n ?? 0) >= row.maxUses) return null;
     }
     return { code: row.code, kind: row.kind, value: row.value };
+  };
+  /** The rate limits (all holds, then this departure or private tour). Null when the hold may go on. */
+  const admit = async (clientKey: string, target: string): Promise<HoldResult | null> => {
+    if (!(await deps.rateLimiter.limit(clientKey)).success) return { status: "rate_limited" };
+    if (deps.departureLimiter && !(await deps.departureLimiter.limit(`${target}:${clientKey}`)).success) return { status: "rate_limited" };
+    return null;
   };
   const pricingOf = async (slug: string) => (await deps.tourPricing?.(slug)) ?? DEFAULT_TOUR_PRICING;
   const addonsOf = async (slug: string) => (await deps.tourAddons?.(slug)) ?? [];
@@ -214,8 +230,9 @@ export function createBookingService(deps: {
       }
       const parsed = bookingInputSchema.safeParse(raw);
       if (!parsed.success) return invalid(parsed.error.issues);
-      if (!(await deps.rateLimiter.limit(clientKey)).success) return { status: "rate_limited" };
       const input = parsed.data;
+      const refused = await admit(clientKey, input.departureId);
+      if (refused) return refused;
       const token = randomBytes(24).toString("base64url");
 
       const result = await db.transaction(async (tx): Promise<HoldResult> => {
@@ -266,7 +283,8 @@ export function createBookingService(deps: {
       if (!singleRoomsAllowed(input, tourPricing)) return { status: "invalid", fieldErrors: { singleRooms: "invalid" } };
       const q = privateQuote(pricing, { ...input, addons: chosenAddons(raw) }, tourPricing, await addonsOf(input.tourSlug));
       if (!q) return { status: "invalid", fieldErrors: { adults: input.adults + input.children > pricing.maxGuests ? "too_many" : "invalid" } };
-      if (!(await deps.rateLimiter.limit(clientKey)).success) return { status: "rate_limited" };
+      const refused = await admit(clientKey, `private:${input.tourSlug}`);
+      if (refused) return refused;
       const token = randomBytes(24).toString("base64url");
 
       const result = await db.transaction(async (tx): Promise<HoldResult> => {
@@ -309,6 +327,29 @@ export function createBookingService(deps: {
         .where(and(inArray(bookings.status, canBecome("expired")), lte(bookings.holdExpiresAt, now())))
         .returning({ id: bookings.id });
       return done.length;
+    },
+
+    async purgeAbandoned(days = 30) {
+      const before = new Date(now().getTime() - days * 24 * 60 * 60_000);
+      return db.transaction(async (tx) => {
+        const gone = await tx
+          .delete(bookings)
+          .where(
+            and(
+              eq(bookings.status, "expired"),
+              lt(bookings.holdExpiresAt, before),
+              notExists(tx.select({ id: bookingPayments.id }).from(bookingPayments).where(eq(bookingPayments.bookingId, bookings.id))),
+            ),
+          )
+          .returning({ departureId: bookings.departureId });
+        // Private departures exist for one booking: drop the ones left without any.
+        const emptied = [...new Set(gone.map((g) => g.departureId))];
+        if (emptied.length)
+          await tx
+            .delete(departures)
+            .where(and(inArray(departures.id, emptied), eq(departures.kind, "private"), notExists(tx.select({ id: bookings.id }).from(bookings).where(eq(bookings.departureId, departures.id)))));
+        return gone.length;
+      });
     },
   };
 }

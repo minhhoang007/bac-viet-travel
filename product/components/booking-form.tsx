@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useState, useSyncExternalStore } from "react";
+import { useActionState, useEffect, useState, useSyncExternalStore } from "react";
 import Image from "next/image";
+import Script from "next/script";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -53,6 +54,8 @@ export interface BookingFormProps {
   /** Tour of the form and the discount preview (D6); without it no code field. */
   tourSlug?: string;
   previewDiscount?: (code: string, tourSlug: string, totalVnd: number) => Promise<Discount | null>;
+  /** Cloudflare Turnstile site key: shows the bot check (the hold verifies it). */
+  turnstileSiteKey?: string;
 }
 
 const noopSubscribe = () => () => {};
@@ -69,6 +72,7 @@ export function BookingForm({
   tourSlug,
   previewDiscount,
   addons = [],
+  turnstileSiteKey,
 }: BookingFormProps) {
   const t = getBookingContent(locale);
   const [state, formAction, pending] = useActionState(action, null);
@@ -87,6 +91,10 @@ export function BookingForm({
   const q = privateTour ? privateQuote(privateTour.pricing, party, pricing, addons) : group ? quote(group.unitPriceVnd, party, pricing, addons) : null;
   const guestsOutOfRange = Boolean(privateTour) && q === null;
   const discount = useDiscountPreview(previewDiscount, tourSlug, q);
+  // A Turnstile token works once: after any answer from the server, ask for a fresh one.
+  useEffect(() => {
+    if (state) (window as { turnstile?: { reset: () => void } }).turnstile?.reset();
+  }, [state]);
 
   if (!privateTour && departures.length === 0) return <p className="rounded-md border border-border bg-muted p-4 text-sm">{t.noDepartures}</p>;
 
@@ -180,6 +188,13 @@ export function BookingForm({
           <p role="alert" className="mt-4 rounded-md border border-danger/40 bg-danger/10 p-3 text-sm text-danger">
             {fields.formError}
           </p>
+        )}
+        {turnstileSiteKey && (
+          <>
+            <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" strategy="afterInteractive" />
+            {/* Turnstile adds a hidden "cf-turnstile-response" field to this form. */}
+            <div className="cf-turnstile mt-4" data-sitekey={turnstileSiteKey} data-language={locale} />
+          </>
         )}
         <Button type="submit" className="mt-4 w-full" disabled={pending || !chosen || !q}>
           {pending ? t.sending : t.submit}

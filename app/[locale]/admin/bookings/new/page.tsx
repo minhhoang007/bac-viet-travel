@@ -20,7 +20,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function NewManualBookingPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const { container } = await requirePermission("bookings.edit");
+  const { container, allowed } = await requirePermission("bookings.edit");
   const c = getBookingAdminContent(locale);
   const today = vietnamToday(new Date());
   const tours = (await getTours()).list(locale);
@@ -40,7 +40,7 @@ export default async function NewManualBookingPage({ params }: Props) {
       </a>
       <h1 className="text-2xl font-bold">{c.manual.title}</h1>
       <p className="max-w-2xl text-sm text-muted-foreground">{c.manual.intro}</p>
-      <ManualBookingForm locale={locale} departures={departures} action={createManualBooking} />
+      <ManualBookingForm locale={locale} departures={departures} action={createManualBooking} canConfirm={allowed("bookings.confirm")} />
     </div>
   );
 }

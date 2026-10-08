@@ -16,7 +16,7 @@ import type { BookingField, HoldResult } from "../booking/service";
 import type { Addon } from "../tours/model";
 
 type Content = ReturnType<typeof getBookingContent>;
-export type FormState = Exclude<HoldResult, { status: "held" }> | { status: "error" } | null;
+export type FormState = Exclude<HoldResult, { status: "held" }> | { status: "error" | "captcha" } | null;
 export type Party = { adults: number; children: number; infants: number; singleRooms: number; addons: Record<string, number> };
 
 export interface DepartureOption {
@@ -41,9 +41,11 @@ export function fieldHelpers(state: FormState, t: Content) {
         ? t.errors.unavailable
         : state?.status === "rate_limited"
           ? t.errors.rate_limited
-          : state?.status === "error"
-            ? t.errors.error
-            : undefined;
+          : state?.status === "captcha"
+            ? t.errors.captcha
+            : state?.status === "error"
+              ? t.errors.error
+              : undefined;
   const aria = (name: BookingField) => ({
     id: `booking-${name}`,
     name,

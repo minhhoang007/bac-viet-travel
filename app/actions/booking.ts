@@ -3,13 +3,14 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { clientKeyFrom } from "@/app/_lib/client-ip";
-import { BOOKING_COOKIE, getBooking, getDeposits, isTransferAvailable } from "@/app/_lib/booking";
+import { BOOKING_COOKIE, getBooking, getDeposits, isTransferAvailable, passesBotCheck } from "@/app/_lib/booking";
 import { getPublicEnv } from "@/bootstrap/env";
 import { localePath } from "@/core/i18n/routing";
 import type { HoldResult } from "@/product/booking/service";
 import type { TravellersState } from "@/product/components/travellers-form";
 
-export type HoldFormState = Exclude<HoldResult, { status: "held" }> | { status: "error" } | null;
+/** captcha: the bot check (Turnstile, when configured) failed or expired; the guest ticks it again. */
+export type HoldFormState = Exclude<HoldResult, { status: "held" }> | { status: "error" | "captcha" } | null;
 export type DepositFormState = { status: "not_payable" | "error" } | null;
 
 const localeOf = (formData: FormData) => (formData.get("locale") === "en" ? "en" : "vi");
@@ -17,9 +18,11 @@ const localeOf = (formData: FormData) => (formData.get("locale") === "en" ? "en"
 /** Thin action: client key → booking service; on success go to the guest's private booking page. */
 export async function holdSeats(_prev: HoldFormState, formData: FormData): Promise<HoldFormState> {
   const raw = Object.fromEntries(formData);
+  const clientKey = clientKeyFrom(await headers());
+  if (!(await passesBotCheck(formData, clientKey))) return { status: "captcha" };
   let result: HoldResult;
   try {
-    result = await getBooking().hold(raw, clientKeyFrom(await headers()));
+    result = await getBooking().hold(raw, clientKey);
   } catch {
     return { status: "error" };
   }
@@ -30,9 +33,11 @@ export async function holdSeats(_prev: HoldFormState, formData: FormData): Promi
 /** Private tour: same as holdSeats, with a guest-chosen date and group size. */
 export async function holdPrivateSeats(_prev: HoldFormState, formData: FormData): Promise<HoldFormState> {
   const raw = Object.fromEntries(formData);
+  const clientKey = clientKeyFrom(await headers());
+  if (!(await passesBotCheck(formData, clientKey))) return { status: "captcha" };
   let result: HoldResult;
   try {
-    result = await getBooking().holdPrivate(raw, clientKeyFrom(await headers()));
+    result = await getBooking().holdPrivate(raw, clientKey);
   } catch {
     return { status: "error" };
   }

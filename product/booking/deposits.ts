@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { and, eq, gt, lte, ne, sql } from "drizzle-orm";
+import { and, eq, gt, isNotNull, lt, lte, ne, or, sql } from "drizzle-orm";
 import type { Logger } from "@/core/logger";
 import type { MailPort } from "@/core/ports/mail";
 import type { OneTimePaymentProvider } from "@/core/ports/payments";
@@ -51,8 +51,13 @@ export interface DepositService {
    * the seats gone becomes refund_due). Callers audit it.
    */
   receiveTransfer(code: string, input: { amountVnd: number; bankRef: string }, links: { siteUrl: string; teamEmail?: string }): Promise<ReceiveTransferResult>;
-  /** Return URL (display only): signature check + what we know about that attempt. */
-  returnStatus(params: Record<string, string>): Promise<{ valid: boolean; code?: string; status: "paid" | "failed" | "pending" | "unknown" }>;
+  /**
+   * Return URL: signature check + what we know about that attempt. When VNPay says paid but no IPN has arrived yet,
+   * asks VNPay (querydr) and confirms it now with `links`, instead of waiting for the next jobs run.
+   */
+  returnStatus(params: Record<string, string>, links?: { siteUrl: string; teamEmail?: string }): Promise<{ valid: boolean; code?: string; status: "paid" | "failed" | "pending" | "unknown" }>;
+  /** Erases guest link tokens kept on payment attempts once no email needs them (settled, or older than a week). */
+  purgeLinkTokens(): Promise<number>;
 }
 
 const OK = (Message: string): IpnResult => ({ RspCode: "00", Message });
@@ -108,7 +113,11 @@ export function createDepositService(deps: {
     // Not waiting for a deposit (already paid by another attempt, or cancelled): the money is extra.
     const waiting = awaitsDeposit(booking.status);
     let kind: "deposit_paid" | "refund_due" | "extra" = waiting ? "deposit_paid" : "extra";
-    if (waiting && (booking.status === "expired" || booking.holdExpiresAt <= at)) {
+    // The trip day is over: nothing to keep, the money goes back.
+    if (waiting && departure.date < vietnamToday(at)) kind = "refund_due";
+    // Late, and staff closed the date meanwhile: no new seats on it.
+    else if (waiting && (booking.status === "expired" || booking.holdExpiresAt <= at) && departure.status !== "open") kind = "refund_due";
+    else if (waiting && (booking.status === "expired" || booking.holdExpiresAt <= at)) {
       const [row] = await tx
         .select({ taken: sql<number>`coalesce(sum(${bookings.seats}), 0)::int` })
         .from(bookings)
@@ -268,7 +277,7 @@ export function createDepositService(deps: {
           if (result.status === "paid" && (await confirm(result.params, links)).RspCode === "00") confirmed.push(payment.code);
           // Not paid and past VNPay's 15-minute payment window: the guest gave up. Close it, so it is not asked again.
           else if (result.status !== "paid" && payment.createdAt.getTime() < at.getTime() - 20 * 60_000)
-            await db.update(bookingPayments).set({ status: "failed" }).where(and(eq(bookingPayments.txnRef, payment.txnRef), eq(bookingPayments.status, "pending")));
+            await db.update(bookingPayments).set({ status: "failed", linkToken: null }).where(and(eq(bookingPayments.txnRef, payment.txnRef), eq(bookingPayments.status, "pending")));
         } catch (error) {
           failed += 1;
           logger.error("booking.deposit_reconcile_failed", { txnRef: payment.txnRef, error });
@@ -281,6 +290,16 @@ export function createDepositService(deps: {
         await deps.mail.send(message).catch((error) => logger.error("booking.email_failed", { kind: message.kind, error }));
       }
       return confirmed.length;
+    },
+
+    async purgeLinkTokens() {
+      const weekAgo = new Date(now().getTime() - 7 * DAY_MS);
+      const done = await db
+        .update(bookingPayments)
+        .set({ linkToken: null })
+        .where(and(isNotNull(bookingPayments.linkToken), or(ne(bookingPayments.status, "pending"), lt(bookingPayments.createdAt, weekAgo))))
+        .returning({ id: bookingPayments.id });
+      return done.length;
     },
 
     async chooseTransfer({ code, token }) {
@@ -329,13 +348,30 @@ export function createDepositService(deps: {
       return outcome.kind === "duplicate" || outcome.kind === "failed" || outcome.kind === "balance_paid" ? "not_payable" : outcome.kind;
     },
 
-    async returnStatus(params) {
-      if (!deps.vnpay?.verify(params)) return { valid: false, status: "unknown" };
-      const [row] = await db
-        .select({ status: bookingPayments.status, code: bookings.code })
-        .from(bookingPayments)
-        .innerJoin(bookings, eq(bookings.id, bookingPayments.bookingId))
-        .where(eq(bookingPayments.txnRef, params.vnp_TxnRef ?? ""));
+    async returnStatus(params, links) {
+      const vnpay = deps.vnpay;
+      if (!vnpay?.verify(params)) return { valid: false, status: "unknown" };
+      const lookup = async () =>
+        (
+          await db
+            .select({ status: bookingPayments.status, code: bookings.code, txnRef: bookingPayments.txnRef, createdAt: bookingPayments.createdAt })
+            .from(bookingPayments)
+            .innerJoin(bookings, eq(bookings.id, bookingPayments.bookingId))
+            .where(eq(bookingPayments.txnRef, params.vnp_TxnRef ?? ""))
+        )[0];
+      let row = await lookup();
+      // Paid at VNPay, no IPN yet (late or lost): ask VNPay now. confirm() records it once, as the IPN would.
+      if (row?.status === "pending" && params.vnp_ResponseCode === "00" && links) {
+        try {
+          const result = await vnpay.query({ txnRef: row.txnRef, createdAt: row.createdAt });
+          if (result.status === "paid") {
+            await confirm(result.params, links);
+            row = await lookup();
+          }
+        } catch (error) {
+          logger.error("booking.return_query_failed", { txnRef: params.vnp_TxnRef, error });
+        }
+      }
       if (!row) return { valid: true, status: "unknown" };
       // The IPN may arrive after the guest is back: trust VNPay's failure code, wait for the IPN on success.
       const status = row.status === "pending" ? (params.vnp_ResponseCode === "00" ? "pending" : "failed") : row.status;
