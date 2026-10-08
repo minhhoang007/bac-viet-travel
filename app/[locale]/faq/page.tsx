@@ -1,3 +1,4 @@
+import { IntentLink } from "@/product/components/intent-link";
 import type { Metadata } from "next";
 import { setRequestLocale } from "next-intl/server";
 import { getPublicEnv } from "@/bootstrap/env";
@@ -50,9 +51,9 @@ export default async function FaqPage({ params }: Props) {
                 </summary>
                 <p className="mt-2 max-w-prose type-body text-muted-foreground">{i.a}</p>
                 {i.link && (
-                  <a href={localePath(locale, i.link.href)} className="mt-2 inline-block text-sm font-medium text-primary underline underline-offset-4">
+                  <IntentLink href={localePath(locale, i.link.href)} className="mt-2 inline-block text-sm font-medium text-primary underline underline-offset-4">
                     {i.link.label} →
-                  </a>
+                  </IntentLink>
                 )}
               </details>
             ))}
@@ -61,9 +62,9 @@ export default async function FaqPage({ params }: Props) {
       ))}
       <p className="mt-10 bg-muted p-5 type-body">
         {c.more}{" "}
-        <a href={localePath(locale, "/contact")} className="font-medium text-primary underline underline-offset-4">
+        <IntentLink href={localePath(locale, "/contact")} className="font-medium text-primary underline underline-offset-4">
           {c.contact}
-        </a>
+        </IntentLink>
       </p>
     </Container>
   );

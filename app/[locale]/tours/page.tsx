@@ -1,3 +1,4 @@
+import { IntentLink } from "@/product/components/intent-link";
 import type { Metadata } from "next";
 import { setRequestLocale } from "next-intl/server";
 import { getPublicEnv } from "@/bootstrap/env";
@@ -36,9 +37,9 @@ export default async function ToursPage({ params }: Props) {
       <p className="mt-2 max-w-2xl text-muted-foreground">{c.tours.subtitle}</p>
       <nav aria-label={c.home.destinationsTitle} className="mt-6 flex gap-2 overflow-x-auto pb-1 text-sm">
         {DESTINATIONS.map((d) => (
-          <a key={d} href={localePath(locale, `/tours/${d}`)} className="whitespace-nowrap rounded-full border border-border px-4 py-1.5 hover:bg-muted">
+          <IntentLink key={d} href={localePath(locale, `/tours/${d}`)} className="whitespace-nowrap rounded-full border border-border px-4 py-1.5 hover:bg-muted">
             {c.destinations[d].name}
-          </a>
+          </IntentLink>
         ))}
       </nav>
       <div className="mt-8">

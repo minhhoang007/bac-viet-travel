@@ -310,3 +310,42 @@ test("structured data: tour and destination pages carry a BreadcrumbList for Goo
     expect(crumbs.itemListElement.at(-1).item).toMatch(new RegExp(`${path}$`));
   }
 });
+
+test("pages change in place: header, menus and filters keep the page loaded; menus close after a choice", async ({ page }) => {
+  await page.goto("/");
+  // A marker on window survives an in-place navigation and is gone after a full page load.
+  await page.evaluate(() => Object.assign(window, { __stay: true }));
+  const stayed = () => page.evaluate(() => (window as unknown as { __stay?: boolean }).__stay === true);
+
+  const nav = page.getByRole("navigation", { name: "Menu chính" });
+  await nav.getByRole("link", { name: "Tour ghép" }).click();
+  await expect(page).toHaveURL(/\/tours$/);
+  await expect(nav.getByRole("link", { name: "Tour ghép" })).toHaveAttribute("aria-current", "page");
+  expect(await stayed()).toBe(true);
+
+  // Destinations panel: open on hover, a card navigates, the panel closes although the pointer is still on it.
+  await nav.getByRole("link", { name: "Điểm đến" }).hover();
+  const card = nav.getByRole("link", { name: /Sapa/ });
+  await card.click();
+  await expect(page).toHaveURL(/\/tours\/sapa$/);
+  await expect(card).toBeHidden();
+
+  // Filters change the URL in place and the list follows it.
+  await page.goto("/tours");
+  await page.evaluate(() => Object.assign(window, { __stay: true }));
+  const filters = page.getByRole("form", { name: "Lọc tour" });
+  await filters.getByLabel("Số ngày").selectOption("1");
+  await filters.getByRole("button", { name: "Áp dụng" }).click();
+  await expect(page).toHaveURL(/duration=1/);
+  await expect(filters.getByLabel("Số ngày")).toHaveValue("1");
+  expect(await stayed()).toBe(true);
+
+  // Phone menu closes itself after a choice.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("button", { name: "Mở menu" }).click();
+  const menu = page.getByTestId("mobile-menu");
+  await menu.getByRole("link", { name: "Về chúng tôi" }).click();
+  await expect(page).toHaveURL(/\/about$/);
+  await expect(menu).toBeHidden();
+  expect(await stayed()).toBe(true);
+});
