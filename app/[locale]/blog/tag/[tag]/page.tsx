@@ -1,14 +1,13 @@
+import { getSeoSite } from "@/bootstrap/seo";
 import type { Metadata } from "next";
 import { PageLink } from "@/components/layout/page-transition";
 import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
 import { fileBlog } from "@/app/_lib/blog";
-import { getPublicEnv } from "@/bootstrap/env";
 import { PostList } from "@/components/blog/post-list";
 import { Container } from "@/components/ui/container";
 import { localePath } from "@/core/i18n/routing";
 import { createMetadata } from "@/core/seo";
-import { seoSite } from "@/core/seo/site";
 import type { Locale } from "@/config/app";
 import { getAppContent } from "@/content";
 import { requireBlog, toListItem } from "../../_shared";
@@ -29,7 +28,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale, tag } = await params;
   const c = getAppContent(locale).blog;
   // Tag pages exist per locale only: no hreflang alternates.
-  return createMetadata(seoSite(getPublicEnv().NEXT_PUBLIC_SITE_URL), {
+  return createMetadata(getSeoSite(), {
     title: `${c.tagTitle} #${tag}`,
     description: c.subtitle,
     path: `/blog/tag/${tag}`,

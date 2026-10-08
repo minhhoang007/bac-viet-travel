@@ -1,6 +1,7 @@
 import { createHmac } from "node:crypto";
 import { and, eq, isNotNull, sql } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { createLoginCodes } from "@/core/auth/login-code";
 import { authEvents, sessions } from "@/core/auth/schema";
 import { users } from "@/core/users/schema";
 import { resetDb, testDb } from "./setup/db";
@@ -62,6 +63,14 @@ describe("sign-in email: confirmation link and 6-digit code", () => {
     const wrong = code === "000000" ? "111111" : "000000";
     for (let i = 0; i < 5; i++) expect(await auth.redeemLoginCode({ email: "guess@example.com", code: wrong, clientKey: "c2" })).toBeNull();
     expect(await auth.redeemLoginCode({ email: "guess@example.com", code, clientKey: "c2" })).toBeNull();
+  });
+
+  it("guesses sent at the same time are counted one by one: twenty at once still drop the code", async () => {
+    const codes = createLoginCodes({ db: handle.db, secret: "test-secret" });
+    const code = await codes.issue("burst@example.com", "https://example.com/link");
+    const wrong = code === "000000" ? "111111" : "000000";
+    expect(await Promise.all(Array.from({ length: 20 }, () => codes.redeem("burst@example.com", wrong)))).toEqual(Array(20).fill(null));
+    expect(await codes.redeem("burst@example.com", code)).toBeNull();
   });
 });
 

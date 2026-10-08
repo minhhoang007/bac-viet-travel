@@ -1,11 +1,10 @@
+import { getSeoSite } from "@/bootstrap/seo";
 import { IntentLink } from "@/product/components/intent-link";
 import type { Metadata } from "next";
 import { setRequestLocale } from "next-intl/server";
-import { getPublicEnv } from "@/bootstrap/env";
 import { Container } from "@/components/ui/container";
 import { localePath } from "@/core/i18n/routing";
 import { createMetadata } from "@/core/seo";
-import { seoSite } from "@/core/seo/site";
 import type { Locale } from "@/config/app";
 import { TourListingFromUrl } from "@/product/components/tour-listing-url";
 import { getProductContent } from "@/product/content";
@@ -21,7 +20,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
   const c = getProductContent(locale).tours;
   // Filtered variants share the canonical /tours (createMetadata sets it).
-  return createMetadata(seoSite(getPublicEnv().NEXT_PUBLIC_SITE_URL), { title: c.title, description: c.subtitle, path: "/tours", locale, image: "/tours/halong-1.jpg" });
+  return createMetadata(getSeoSite(), { title: c.title, description: c.subtitle, path: "/tours", locale, image: "/tours/halong-1.jpg" });
 }
 
 /** All tours with filters (?destination=&duration=&price=&type=&sort=), links to each destination page. */

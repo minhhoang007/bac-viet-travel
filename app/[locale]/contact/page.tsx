@@ -1,12 +1,11 @@
+import { getSeoSite } from "@/bootstrap/seo";
 import type { Metadata } from "next";
 import { Clock, ExternalLink, Mail, MapPin, MessageCircle, Phone } from "lucide-react";
 import { setRequestLocale } from "next-intl/server";
 import { submitContact } from "@/app/actions/contact";
-import { getPublicEnv } from "@/bootstrap/env";
 import { ContactForm } from "@/components/marketing/contact-form";
 import { Container } from "@/components/ui/container";
 import { createMetadata, serializeJsonLd } from "@/core/seo";
-import { seoSite } from "@/core/seo/site";
 import type { Locale } from "@/config/app";
 import { contactConfig, telUrl, whatsappUrl, zaloUrl } from "@/config/contact";
 import { features } from "@/config/features";
@@ -18,7 +17,7 @@ type Props = { params: Promise<{ locale: Locale }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
   const c = getProductContent(locale).contactPage;
-  return createMetadata(seoSite(getPublicEnv().NEXT_PUBLIC_SITE_URL), { title: c.title, description: c.description, path: "/contact", locale });
+  return createMetadata(getSeoSite(), { title: c.title, description: c.description, path: "/contact", locale });
 }
 
 // The map opens in Google Maps (a new tab): the site's CSP allows no third-party frames, and no Google cookies here.
