@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PageLink } from "@/components/layout/page-transition";
 import { notFound } from "next/navigation";
 import { Pagination, PostList } from "@/components/blog/post-list";
 import { Container } from "@/components/ui/container";
@@ -29,9 +29,9 @@ export async function BlogIndex({ locale, page }: { locale: Locale; page: number
       {tags.length > 0 && (
         <nav aria-label={c.tags} className="blog-tags mt-6 flex flex-wrap gap-2 text-sm">
           {tags.map((t) => (
-            <Link key={t.tag} href={localePath(locale, `/blog/tag/${t.tag}`)} className="rounded-full border border-border px-3 py-1 hover:bg-muted">
+            <PageLink key={t.tag} href={localePath(locale, `/blog/tag/${t.tag}`)} className="rounded-full border border-border px-3 py-1 hover:bg-muted">
               #{t.tag} <span className="text-muted-foreground">{t.count}</span>
-            </Link>
+            </PageLink>
           ))}
         </nav>
       )}

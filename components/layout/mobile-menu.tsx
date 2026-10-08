@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { PageLink } from "@/components/layout/page-transition";
 import { MenuIcon } from "lucide-react";
 import { Sheet, SheetClose, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
@@ -24,9 +24,9 @@ export function MobileMenu({ title, openLabel, closeLabel, links }: MobileMenuPr
           {links.map((l) => (
             // SheetClose: the page changes in place, so the sheet has to close itself.
             <SheetClose key={l.href} asChild>
-              <Link href={l.href} className="rounded-md px-3 py-3 text-base hover:bg-muted">
+              <PageLink href={l.href} className="rounded-md px-3 py-3 text-base hover:bg-muted">
                 {l.label}
-              </Link>
+              </PageLink>
             </SheetClose>
           ))}
         </nav>

@@ -1,6 +1,6 @@
 import type { ComponentProps, ReactNode } from "react";
 import Image from "next/image";
-import NextLink from "next/link";
+import { PageLink } from "@/components/layout/page-transition";
 import { isPagePath } from "@/components/ui/button";
 import { evaluate } from "@mdx-js/mdx";
 import * as runtime from "react/jsx-runtime";
@@ -26,7 +26,7 @@ export function Figure({ caption, ...props }: ComponentProps<typeof Image> & { c
 }
 
 function Link({ href = "", ...props }: ComponentProps<"a">) {
-  if (isPagePath(href)) return <NextLink href={href} {...props} />;
+  if (isPagePath(href)) return <PageLink href={href} {...props} />;
   const external = /^https?:\/\//.test(href);
   return <a href={href} {...props} {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})} />;
 }
