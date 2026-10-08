@@ -1,11 +1,10 @@
+import { getSeoSite } from "@/bootstrap/seo";
 import { IntentLink } from "@/product/components/intent-link";
 import type { Metadata } from "next";
 import Image from "next/image";
-import { getPublicEnv } from "@/bootstrap/env";
 import { Container } from "@/components/ui/container";
 import { localePath } from "@/core/i18n/routing";
 import { createMetadata, serializeJsonLd, localizedUrl } from "@/core/seo";
-import { seoSite } from "@/core/seo/site";
 import type { Locale } from "@/config/app";
 import { TourListingFromUrl } from "@/product/components/tour-listing-url";
 import { getProductContent } from "@/product/content";
@@ -27,7 +26,7 @@ const DESTINATION_FILM: Partial<Record<Destination, { desktop: string; mobile: s
 export function destinationMetadata(locale: Locale, destination: Destination): Metadata {
   const c = getProductContent(locale);
   const name = c.destinations[destination].name;
-  return createMetadata(seoSite(getPublicEnv().NEXT_PUBLIC_SITE_URL), {
+  return createMetadata(getSeoSite(), {
     title: c.tours.destinationTitle(name),
     description: c.destinations[destination].tagline,
     path: `/tours/${destination}`,
@@ -40,7 +39,7 @@ export function destinationMetadata(locale: Locale, destination: Destination): M
 export function DestinationPage({ locale, destination, tours }: { locale: Locale; destination: Destination; tours: Tour[] }) {
   const c = getProductContent(locale);
   const d = c.destinations[destination];
-  const site = seoSite(getPublicEnv().NEXT_PUBLIC_SITE_URL);
+  const site = getSeoSite();
   const inDestination = tours.filter((t) => t.destination === destination);
   const film = DESTINATION_FILM[destination];
   const listLd = {

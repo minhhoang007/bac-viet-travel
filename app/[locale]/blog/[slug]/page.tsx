@@ -1,3 +1,4 @@
+import { getSeoSite } from "@/bootstrap/seo";
 import type { Metadata } from "next";
 import Image from "next/image";
 import { PageLink } from "@/components/layout/page-transition";
@@ -9,12 +10,10 @@ import { readContent } from "@/app/_lib/content";
 import { POST_CONTENT_TYPE } from "@/bootstrap/content-types";
 import { PreviewBanner } from "@/components/content/preview-banner";
 import { MarkdownContent } from "@/components/blog/markdown";
-import { getPublicEnv } from "@/bootstrap/env";
 import { MdxContent } from "@/components/blog/mdx";
 import { Container } from "@/components/ui/container";
 import { localePath } from "@/core/i18n/routing";
 import { articleJsonLd, createMetadata, localizedUrl, serializeJsonLd } from "@/core/seo";
-import { seoSite } from "@/core/seo/site";
 import { appConfig, type Locale } from "@/config/app";
 import { blogConfig } from "@/config/blog";
 import { getAppContent } from "@/content";
@@ -55,7 +54,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!found) return {};
   const { post } = found;
   const translations = found.blog.translations(post);
-  return createMetadata(seoSite(getPublicEnv().NEXT_PUBLIC_SITE_URL), {
+  return createMetadata(getSeoSite(), {
     title: post.title,
     description: post.description,
     path: `/blog/${slug}`,
@@ -85,7 +84,7 @@ export default async function BlogPostPage({ params }: Props) {
   const { blog, post, preview } = found;
   const c = getAppContent(locale).blog;
   const w = getAppContent(locale).admin.content;
-  const site = seoSite(getPublicEnv().NEXT_PUBLIC_SITE_URL);
+  const site = getSeoSite();
   const translations = Object.entries(blog.translations(post));
   const author = post.author ?? (blogConfig.defaultAuthor || undefined);
   const jsonLd = articleJsonLd({

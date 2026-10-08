@@ -1,13 +1,12 @@
+import { getSeoSite } from "@/bootstrap/seo";
 import type { Metadata } from "next";
 import Image from "next/image";
 import { BadgeCheck } from "lucide-react";
 import { setRequestLocale } from "next-intl/server";
-import { getPublicEnv } from "@/bootstrap/env";
 import { ButtonLink } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { localePath } from "@/core/i18n/routing";
 import { createMetadata } from "@/core/seo";
-import { seoSite } from "@/core/seo/site";
 import type { Locale } from "@/config/app";
 import { contactConfig } from "@/config/contact";
 import { getAboutContent } from "@/product/about";
@@ -18,7 +17,7 @@ type Props = { params: Promise<{ locale: Locale }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
   const c = getAboutContent(locale);
-  return createMetadata(seoSite(getPublicEnv().NEXT_PUBLIC_SITE_URL), { title: c.metaTitle, description: c.description, path: "/about", locale, image: "/tours/hanoi-1.jpg" });
+  return createMetadata(getSeoSite(), { title: c.metaTitle, description: c.description, path: "/about", locale, image: "/tours/hanoi-1.jpg" });
 }
 
 const initials = (name: string) =>

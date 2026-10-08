@@ -11,3 +11,5 @@ test-results/
 tsconfig.tsbuildinfo
 
 .vercel
+# Screenshots and snapshots of the Playwright MCP browser tool (agent sessions)
+.playwright-mcp/

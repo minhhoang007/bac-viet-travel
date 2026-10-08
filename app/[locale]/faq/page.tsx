@@ -1,11 +1,10 @@
+import { getSeoSite } from "@/bootstrap/seo";
 import { IntentLink } from "@/product/components/intent-link";
 import type { Metadata } from "next";
 import { setRequestLocale } from "next-intl/server";
-import { getPublicEnv } from "@/bootstrap/env";
 import { Container } from "@/components/ui/container";
 import { localePath } from "@/core/i18n/routing";
 import { createMetadata, serializeJsonLd } from "@/core/seo";
-import { seoSite } from "@/core/seo/site";
 import type { Locale } from "@/config/app";
 import { getProductContent } from "@/product/content";
 import { getFaq } from "@/product/faq";
@@ -15,7 +14,7 @@ type Props = { params: Promise<{ locale: Locale }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
   const c = getProductContent(locale).faqPage;
-  return createMetadata(seoSite(getPublicEnv().NEXT_PUBLIC_SITE_URL), { title: c.title, description: c.description, path: "/faq", locale });
+  return createMetadata(getSeoSite(), { title: c.title, description: c.description, path: "/faq", locale });
 }
 
 /** Questions guests ask before booking (E5), with FAQPage structured data. Static. */

@@ -1,15 +1,14 @@
+import { getSeoSite } from "@/bootstrap/seo";
 import { IntentButtonLink, IntentLink } from "@/product/components/intent-link";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
-import { getPublicEnv } from "@/bootstrap/env";
 import { submitTourInquiry } from "@/app/actions/tour-inquiry";
 import { AlarmClock, Backpack, Check, Clock, Footprints, Languages, MapPin, ShieldCheck, Users, X } from "lucide-react";
 import { MarkdownContent } from "@/components/blog/markdown";
 import { Container } from "@/components/ui/container";
 import { localePath } from "@/core/i18n/routing";
 import { createMetadata, localizedUrl, serializeJsonLd } from "@/core/seo";
-import { seoSite } from "@/core/seo/site";
 import type { Locale } from "@/config/app";
 import { contactConfig, whatsappUrl, zaloUrl } from "@/config/contact";
 import { features } from "@/config/features";
@@ -45,7 +44,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const page = await getTourPage(locale, slug);
   if (!page || !("tour" in page)) return {};
   const { tour } = page;
-  return createMetadata(seoSite(getPublicEnv().NEXT_PUBLIC_SITE_URL), {
+  return createMetadata(getSeoSite(), {
     title: tour.seoTitle ?? tour.title,
     description: tour.seoDescription ?? tour.summary,
     path: `/tours/${slug}`,
@@ -88,7 +87,7 @@ export default async function TourPage({ params }: Props) {
   const catalog = await getPublicTours();
   const c = getProductContent(locale);
   const b = getBookingContent(locale);
-  const site = seoSite(getPublicEnv().NEXT_PUBLIC_SITE_URL);
+  const site = getSeoSite();
   const url = localizedUrl(site, locale, `/tours/${slug}`);
   const price = formatPrice(tour, locale);
   const pricing = { ...DEFAULT_TOUR_PRICING, ...tour.pricing };

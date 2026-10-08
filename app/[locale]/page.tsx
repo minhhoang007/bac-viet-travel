@@ -1,3 +1,4 @@
+import { getSeoSite } from "@/bootstrap/seo";
 import type { ReactNode } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -7,8 +8,6 @@ import type { Locale } from "@/config/app";
 import { getMarketingContent } from "@/content";
 import { localePath, routing } from "@/core/i18n/routing";
 import { createMetadata } from "@/core/seo";
-import { seoSite } from "@/core/seo/site";
-import { getPublicEnv } from "@/bootstrap/env";
 import { Hero } from "@/components/marketing/hero";
 import { Features } from "@/components/marketing/features";
 import { Faq } from "@/components/marketing/faq";
@@ -48,7 +47,7 @@ const heroHref = (locale: Locale, href: string) => (href.startsWith("#") ? href 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const locale = knownLocale((await params).locale);
   const c = getMarketingContent(locale);
-  return createMetadata(seoSite(getPublicEnv().NEXT_PUBLIC_SITE_URL), {
+  return createMetadata(getSeoSite(), {
     title: c.meta.title,
     description: c.meta.description,
     path: "/",

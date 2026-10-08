@@ -32,24 +32,31 @@ export function createLoginCodes(deps: { db: Db; secret: string; now?: () => Dat
       return code;
     },
 
-    /** The link the code stands for (once), or null: unknown, expired, wrong (counts an attempt) or used up. */
+    /**
+     * The link the code stands for (once), or null: unknown, expired, wrong (counts an attempt) or used up. The row
+     * is locked while it is checked, so guesses sent at the same time are counted one after another (never more
+     * than MAX_ATTEMPTS checks in all).
+     */
     async redeem(email: string, code: string): Promise<string | null> {
       if (!/^\d{6}$/.test(code)) return null;
-      const [row] = await deps.db
-        .select()
-        .from(verifications)
-        .where(and(eq(verifications.identifier, identifier(email)), gt(verifications.expiresAt, now())));
-      if (!row) return null;
-      const stored = JSON.parse(row.value) as Stored;
-      const expected = Buffer.from(stored.hash);
-      const given = Buffer.from(hash(email, code));
-      if (expected.length === given.length && timingSafeEqual(expected, given)) {
-        await deps.db.delete(verifications).where(eq(verifications.id, row.id));
-        return stored.link;
-      }
-      if (stored.attempts + 1 >= MAX_ATTEMPTS) await deps.db.delete(verifications).where(eq(verifications.id, row.id));
-      else await deps.db.update(verifications).set({ value: JSON.stringify({ ...stored, attempts: stored.attempts + 1 }) }).where(eq(verifications.id, row.id));
-      return null;
+      return deps.db.transaction(async (tx) => {
+        const [row] = await tx
+          .select()
+          .from(verifications)
+          .where(and(eq(verifications.identifier, identifier(email)), gt(verifications.expiresAt, now())))
+          .for("update");
+        if (!row) return null;
+        const stored = JSON.parse(row.value) as Stored;
+        const expected = Buffer.from(stored.hash);
+        const given = Buffer.from(hash(email, code));
+        if (expected.length === given.length && timingSafeEqual(expected, given)) {
+          await tx.delete(verifications).where(eq(verifications.id, row.id));
+          return stored.link;
+        }
+        if (stored.attempts + 1 >= MAX_ATTEMPTS) await tx.delete(verifications).where(eq(verifications.id, row.id));
+        else await tx.update(verifications).set({ value: JSON.stringify({ ...stored, attempts: stored.attempts + 1 }) }).where(eq(verifications.id, row.id));
+        return null;
+      });
     },
   };
 }

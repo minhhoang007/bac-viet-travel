@@ -1,7 +1,6 @@
+import { getSeoSite } from "@/bootstrap/seo";
 import { loadBlog } from "@/app/_lib/blog";
-import { getPublicEnv } from "@/bootstrap/env";
 import { localizedUrl } from "@/core/seo";
-import { seoSite } from "@/core/seo/site";
 import { appConfig, type Locale } from "@/config/app";
 import { getAppContent } from "@/content";
 
@@ -15,7 +14,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ loc
   if (!blog) return new Response("Not found", { status: 404 });
   const { locale } = await params;
   if (!appConfig.locales.includes(locale as Locale)) return new Response("Not found", { status: 404 });
-  const site = seoSite(getPublicEnv().NEXT_PUBLIC_SITE_URL);
+  const site = getSeoSite();
   const c = getAppContent(locale as Locale).blog;
   const items = blog
     .list(locale)
