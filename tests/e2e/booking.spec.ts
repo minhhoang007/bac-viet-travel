@@ -56,7 +56,8 @@ test("guest holds seats: live quote, then a private booking page with a 15-minut
   const url = new URL(page.url());
   await page.goto(url.pathname);
   await expect(page.locator("[data-booking=not-found]")).toBeVisible();
-  await page.goto(`${url.pathname}?t=wrong-token-wrong-token-wrong`);
+  const wrong = await page.goto(`${url.pathname}?t=wrong-token-wrong-token-wrong`);
+  expect(wrong?.status()).toBe(404);
   await expect(page.locator("[data-booking=not-found]")).toBeVisible();
 });
 

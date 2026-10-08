@@ -1,4 +1,6 @@
 import { getContainer } from "@/bootstrap/container";
+import { getEnv } from "@/bootstrap/env";
+import { createTurnstileCheck, type TurnstileCheck } from "@/core/security/turnstile";
 import { bankTransferConfig } from "@/config/bank-transfer";
 
 /** Booking services built in product/manifest.ts (profile app). */
@@ -14,3 +16,15 @@ export const isTransferAvailable = () => !bankTransferConfig.demo || isPaymentsS
 
 /** Cookie that brings the guest back to their private page after VNPay (the return URL cannot carry the token). */
 export const BOOKING_COOKIE = (code: string) => `bk_${code}`;
+
+let turnstile: TurnstileCheck | undefined;
+/**
+ * Bot check of the booking forms (Cloudflare Turnstile): passes when the keys are not set, otherwise verifies the
+ * token the widget put in the form (one use per token: the form asks for a fresh one after each answer).
+ */
+export async function passesBotCheck(formData: FormData, clientKey: string): Promise<boolean> {
+  const secret = getEnv().TURNSTILE_SECRET_KEY;
+  if (!secret) return true;
+  const token = formData.get("cf-turnstile-response");
+  return (turnstile ??= createTurnstileCheck(secret))(typeof token === "string" ? token : null, clientKey);
+}
