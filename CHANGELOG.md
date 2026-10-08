@@ -4,6 +4,14 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.19.0] - 2026-10-08
+
+### Changed — in-place page navigation
+- `ButtonLink` renders `next/link` for same-site page paths (exported helper `isPagePath`): clicking it changes the page in place (header, footer and floating buttons stay, pages are prefetched) instead of reloading the whole document. Anchors (`#contact`), other sites, `mailto:`/`tel:` and `/api/` routes stay plain links.
+- Starter header and mobile menu, blog lists, tags, pagination, back links, MDX links to site pages and the 404 back link use `next/link`. The mobile menu closes itself after a choice.
+- Language switches and the error page keep a full page load on purpose (new `<html lang>`, fresh state after an error).
+- `next/link` writes `/en/#features` as `/en#features` (same page): tests that compare `href` values should expect that form.
+
 ## [1.18.3] - 2026-10-08
 
 ### Changed
