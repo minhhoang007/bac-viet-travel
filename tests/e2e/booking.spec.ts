@@ -20,6 +20,8 @@ test("tour page links to online booking; departures show live seats, sold-out da
   await expect(buttons.filter({ hasText: "Chỉ còn 3 chỗ" })).toHaveCount(1);
   await expect(buttons.filter({ hasText: "Hết chỗ" })).toBeDisabled();
 
+  // In-place navigation to a dynamic page: its <title> streams in just after the content.
+  await expect(page).toHaveTitle(/Đặt tour/);
   const result = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
   expect(result.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id)).toEqual([]);
 });
