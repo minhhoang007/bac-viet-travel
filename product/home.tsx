@@ -15,14 +15,10 @@ import { features } from "@/config/features";
 import { getMarketingContent } from "@/content";
 import { TourCard } from "./components/tour-card";
 import { getProductContent } from "./content";
-import { DESTINATIONS, type Destination } from "./tours/catalog";
+import { DESTINATIONS } from "./tours/catalog";
 import { formatPrice } from "./tours/format";
+import { DESTINATION_PHOTO } from "./tours/photos";
 
-const DESTINATION_IMAGE: Record<Destination, string> = {
-  "ha-long": "/tours/halong-4.jpg",
-  "ninh-binh": "/tours/ninhbinh-4.jpg",
-  sapa: "/tours/sapa-4.jpg",
-};
 const TRUST_ICON = { license: BadgeCheck, pickup: Car, payment: CreditCard, support: MessageCircle } as const;
 const ROMAN = ["I.", "II.", "III.", "IV.", "V."];
 
@@ -205,7 +201,7 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
             {DESTINATIONS.map((d, i) => (
               <a key={d} href={localePath(locale, `/tours/${d}`)} className={`group block ${i === 1 ? "md:mt-24" : ""}`} data-destination-card={d}>
                 <div className="relative aspect-[4/3] overflow-hidden md:aspect-[4/5]">
-                  <Image src={DESTINATION_IMAGE[d]} alt={c.destinations[d].name} fill sizes="(min-width: 768px) 33vw, 100vw" className="object-cover saturate-[.88] transition duration-700 group-hover:scale-[1.03]" />
+                  <Image src={DESTINATION_PHOTO[d]} alt={c.destinations[d].name} fill sizes="(min-width: 768px) 33vw, 100vw" className="object-cover saturate-[.88] transition duration-700 group-hover:scale-[1.03]" />
                 </div>
                 <p className="mt-6 type-eyebrow text-primary">{h.chapter(i + 1)}</p>
                 <h3 className="mt-2 font-heading type-h2">{c.destinations[d].name}</h3>
