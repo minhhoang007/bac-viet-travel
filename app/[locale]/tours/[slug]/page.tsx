@@ -142,7 +142,7 @@ export default async function TourPage({ params }: Props) {
         </nav>
         <h1 className="mt-4 max-w-4xl font-heading type-h1">{tour.title}</h1>
         <div className="mt-8">
-          <TourGallery images={tour.images} title={tour.title} locale={locale} />
+          <TourGallery images={tour.images} title={tour.title} locale={locale} slug={tour.slug} />
         </div>
       </Container>
 
@@ -326,6 +326,7 @@ export default async function TourPage({ params }: Props) {
             {related.map((t) => (
               <TourCard
                 key={t.slug}
+                slug={t.slug}
                 href={localePath(locale, `/tours/${t.slug}`)}
                 image={t.images[0]!}
                 title={t.title}

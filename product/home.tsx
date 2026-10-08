@@ -257,6 +257,7 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
             {catalog.featured(locale).map((t) => (
               <TourCard
                 key={t.slug}
+                slug={t.slug}
                 href={localePath(locale, `/tours/${t.slug}`)}
                 image={t.images[0]!}
                 title={t.title}

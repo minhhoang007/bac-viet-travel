@@ -1,5 +1,6 @@
 import { IntentLink } from "./intent-link";
 import Image from "next/image";
+import { ViewTransition } from "react";
 
 export interface TourCardProps {
   href: string;
@@ -15,15 +16,22 @@ export interface TourCardProps {
   priority?: boolean;
   /** next/image sizes for the grid it sits in. */
   sizes?: string;
+  /** Tour slug: the photo grows into the tour page's first photo on the way there (tourPhotoTransition). */
+  slug: string;
 }
+
+/** Shared name of a tour's card photo and its tour page's first photo (one per page: a tour has one card per list). */
+export const tourPhotoTransition = (slug: string) => `tour-photo-${slug}`;
 
 export function TourCard(p: TourCardProps) {
   return (
     // Editorial card ("Sơn Mài"): a hairline above, the photo, small capitals, the title in the heading serif.
     <article className="group flex flex-col border-t border-border pt-5">
-      <IntentLink href={p.href} className="relative block aspect-[3/2] overflow-hidden">
-        <Image src={p.image} alt={p.title} fill priority={p.priority} sizes={p.sizes ?? "(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"} className="object-cover transition duration-700 group-hover:scale-[1.03]" />
-      </IntentLink>
+      <ViewTransition name={tourPhotoTransition(p.slug)} share="tour-photo" default="none">
+        <IntentLink href={p.href} className="relative block aspect-[3/2] overflow-hidden">
+          <Image src={p.image} alt={p.title} fill priority={p.priority} sizes={p.sizes ?? "(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"} className="object-cover transition duration-700 group-hover:scale-[1.03]" />
+        </IntentLink>
+      </ViewTransition>
       <div className="flex flex-1 flex-col pt-5">
         <p className="type-label text-muted-foreground">
           {p.destination} · {p.duration}

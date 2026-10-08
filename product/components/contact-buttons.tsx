@@ -33,7 +33,7 @@ function Links({ items }: { items: ContactButtonsProps["items"] }) {
  */
 export function ContactButtons({ label, items }: ContactButtonsProps) {
   return (
-    <nav aria-label={label} data-contact-buttons className="fixed bottom-4 right-4 z-40 max-lg:in-[body:has([data-mobile-book-bar])]:bottom-24">
+    <nav aria-label={label} data-contact-buttons className="fixed bottom-4 right-4 z-40 [view-transition-name:contact-buttons] max-lg:in-[body:has([data-mobile-book-bar])]:bottom-24">
       <div className="hidden flex-col items-end gap-2 sm:flex">
         <Links items={items} />
       </div>

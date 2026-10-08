@@ -118,6 +118,7 @@ export function TourListing({ locale, tours, filters, destination }: { locale: L
             {results.map((tour, i) => (
               <div key={tour.slug} data-destination={tour.destination} className="contents">
                 <TourCard
+                  slug={tour.slug}
                   href={`${localePath(locale, `/tours/${tour.slug}`)}${tourFilterQuery({ ...trip, sort: "popular" })}`}
                   image={tour.images[0]!}
                   title={tour.title}
