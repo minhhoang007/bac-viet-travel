@@ -2,20 +2,23 @@
 
 import Link from "next/link";
 import { useState, type ComponentProps } from "react";
+import { PAGE_TRANSITION } from "@/components/layout/page-transition";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/components/ui/cn";
 
 /**
  * next/link that prefetches only once the visitor shows intent (pointer over it, touch, keyboard focus) instead of as
  * soon as it scrolls into view. For links many pages show but few visitors follow (footer) and links to dynamic
- * pages (booking: every prefetch would run the server and the database).
+ * pages (booking: every prefetch would run the server and the database). Navigates with the page animation.
  */
-export function IntentLink({ onMouseEnter, onTouchStart, onFocus, ...props }: ComponentProps<typeof Link>) {
+export function IntentLink({ onMouseEnter, onTouchStart, onFocus, transitionTypes, ...props }: ComponentProps<typeof Link>) {
   const [intent, setIntent] = useState(false);
   return (
     <Link
       {...props}
       prefetch={intent ? null : false}
+      // A page change: the page animation of the starter's PageTransition.
+      transitionTypes={transitionTypes ?? [PAGE_TRANSITION]}
       onMouseEnter={(e) => {
         setIntent(true);
         onMouseEnter?.(e);

@@ -349,3 +349,23 @@ test("pages change in place: header, menus and filters keep the page loaded; men
   await expect(menu).toBeHidden();
   expect(await stayed()).toBe(true);
 });
+
+test("page changes animate (view transition) without reloading; a tour card's photo leads into the tour page", async ({ page }) => {
+  await page.addInitScript(() => {
+    const start = document.startViewTransition?.bind(document);
+    if (!start) return;
+    document.startViewTransition = ((...args: Parameters<typeof start>) => {
+      (window as unknown as { __transitions: number }).__transitions = ((window as unknown as { __transitions?: number }).__transitions ?? 0) + 1;
+      return start(...args);
+    }) as typeof document.startViewTransition;
+  });
+  await page.goto("/tours");
+  await page.evaluate(() => Object.assign(window, { __stay: true }));
+  const card = page.locator("main article").first();
+  const title = (await card.getByRole("heading").textContent())!.trim();
+  await card.getByRole("link").first().click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(title);
+  const state = await page.evaluate(() => ({ stay: (window as unknown as { __stay?: boolean }).__stay, transitions: (window as unknown as { __transitions?: number }).__transitions ?? 0 }));
+  expect(state.stay).toBe(true);
+  expect(state.transitions).toBeGreaterThan(0);
+});

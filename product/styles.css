@@ -241,3 +241,20 @@ html:is([data-theme="paper"], [data-theme="mist"], [data-theme="jade"]) .home-he
 html:is([data-theme="paper"], [data-theme="mist"], [data-theme="jade"]) .home-hero-actions {
   justify-content: flex-start;
 }
+
+/* View transitions (page changes animate the page area: starter app/globals.css). */
+/* A tour card's photo grows into the tour page's first photo: cropped, never stretched, on a slow ease-out. */
+::view-transition-group(.tour-photo) {
+  animation-duration: 450ms;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+::view-transition-old(.tour-photo),
+::view-transition-new(.tour-photo) {
+  height: 100%;
+  object-fit: cover;
+}
+/* The sticky header and the floating contact buttons stay above the page while it changes. */
+::view-transition-group(site-header),
+::view-transition-group(contact-buttons) {
+  z-index: 1;
+}

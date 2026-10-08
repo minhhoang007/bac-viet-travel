@@ -35,7 +35,7 @@ export function SiteHeader({ locale }: { locale: Locale }) {
   const m = getMarketingContent(locale).nav;
 
   return (
-    <header className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85">
+    <header className="sticky top-0 z-40 [view-transition-name:site-header] bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85">
       <div className="hidden border-b border-border bg-muted text-xs text-muted-foreground md:block">
         <Container className="flex h-8 items-center justify-between gap-4">
           <span className="truncate">

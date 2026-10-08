@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PageLink } from "./page-transition";
 import { Container } from "@/components/ui/container";
 import { MobileMenu } from "./mobile-menu";
 
@@ -15,14 +15,14 @@ export function SiteHeader({ logoText, homeHref, links, localeSwitch, menu }: Si
   return (
     <header className="border-b border-border">
       <Container className="flex h-16 items-center justify-between gap-4">
-        <Link href={homeHref} className="font-semibold">
+        <PageLink href={homeHref} className="font-semibold">
           {logoText}
-        </Link>
+        </PageLink>
         <nav className="flex items-center gap-4 text-sm">
           {links.map((l) => (
-            <Link key={l.href} href={l.href} className="hidden text-muted-foreground hover:text-foreground sm:inline">
+            <PageLink key={l.href} href={l.href} className="hidden text-muted-foreground hover:text-foreground sm:inline">
               {l.label}
-            </Link>
+            </PageLink>
           ))}
           <a href={localeSwitch.href} hrefLang={localeSwitch.hrefLang} className="rounded border border-border px-2 py-1">
             {localeSwitch.label}
