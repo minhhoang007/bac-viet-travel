@@ -10,6 +10,7 @@ import { getAppContent, getMarketingContent } from "@/content";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteChrome } from "@/components/layout/site-chrome";
+import { PageTransition } from "@/components/layout/page-transition";
 import { resolveTheme, toastTheme, type ProductTheme } from "@/components/ui/theme";
 import { AnalyticsTracker } from "@/components/analytics/tracker";
 import { ConsentBanner } from "@/components/analytics/consent-banner";
@@ -76,7 +77,10 @@ export default async function LocaleLayout({
               />
             )}
           </SiteChrome>
-          <main className="flex-1">{children}</main>
+          {/* Page changes from a PageLink animate the page area only; header and footer stay put. */}
+          <PageTransition>
+            <main className="flex-1">{children}</main>
+          </PageTransition>
           <SiteChrome>
             {ProductFooter ? (
               <ProductFooter locale={locale as Locale} />

@@ -4,6 +4,14 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.20.0] - 2026-10-08
+
+### Added — page transitions
+- `components/layout/page-transition.tsx`: `PageTransition` wraps the layout's `<main>`; a page change made with `PageLink` (or a link with `transitionTypes={[PAGE_TRANSITION]}`) fades the old page out and the new one in (React `<ViewTransition>`, no Next.js config needed). Form actions and filter updates inside a page do not animate.
+- `ButtonLink`, the starter header, mobile menu, blog links and the 404 back link use `PageLink`.
+- `app/globals.css`: the page animation classes, and every view transition is instant for visitors who prefer reduced motion.
+- Projects can name their own elements (shared photos, a sticky header kept above the page) with `<ViewTransition name>` or `view-transition-name`.
+
 ## [1.19.0] - 2026-10-08
 
 ### Changed — in-place page navigation
