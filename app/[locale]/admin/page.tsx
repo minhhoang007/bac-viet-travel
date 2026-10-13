@@ -53,17 +53,8 @@ export default async function AdminOverviewPage({ params }: { params: Promise<{ 
   ]);
   const sum = (values: number[]) => values.reduce((a, b) => a + b, 0);
 
-  return (
-    <div className="grid gap-6">
-      <PageHeader title={getAppContent(locale).admin.nav.overview} description={c.last30Days} />
-      {ProductAdminOverview && <ProductAdminOverview locale={locale} />}
-      {product.length > 0 && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" data-testid="product-stats">
-          {product.map((s) => (
-            <Stat key={s.label} label={s.label} value={s.value} href={s.href && localePath(locale, s.href)} />
-          ))}
-        </div>
-      )}
+  const figures = (
+    <>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label={c.totalUsers} value={users.total} />
         <Stat label={c.newUsers} value={sum(signups.map((d) => d.count))} />
@@ -92,6 +83,29 @@ export default async function AdminOverviewPage({ params }: { params: Promise<{ 
             <List title={c.events} rows={stats.events.map((r) => ({ label: r.name, value: r.count }))} empty={c.noData} />
           </div>
         </>
+      )}
+    </>
+  );
+
+  return (
+    <div className="grid gap-6">
+      <PageHeader title={getAppContent(locale).admin.nav.overview} description={ProductAdminOverview ? undefined : c.last30Days} />
+      {ProductAdminOverview && <ProductAdminOverview locale={locale} />}
+      {product.length > 0 && (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" data-testid="product-stats">
+          {product.map((s) => (
+            <Stat key={s.label} label={s.label} value={s.value} href={s.href && localePath(locale, s.href)} />
+          ))}
+        </div>
+      )}
+      {ProductAdminOverview ? (
+        // The project's own overview comes first; the starter's site figures stay one click away.
+        <details className="rounded-lg border border-border p-4" data-testid="site-figures">
+          <summary className="cursor-pointer font-semibold">{c.siteFigures}</summary>
+          <div className="mt-4 grid gap-6">{figures}</div>
+        </details>
+      ) : (
+        figures
       )}
     </div>
   );

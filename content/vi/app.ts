@@ -91,8 +91,9 @@ export const app: AppContent = {
   },
   admin: {
     title: "Quản trị",
-    backToApp: "Về dashboard",
-    nav: { overview: "Tổng quan", users: "Người dùng", jobs: "Job nền", billing: "Thanh toán", audit: "Nhật ký", media: "Thư viện ảnh", content: "Duyệt nội dung", posts: "Bài viết" },
+    backToApp: "Trang tài khoản",
+    nav: { overview: "Tổng quan", users: "Tài khoản người dùng", jobs: "Tác vụ tự động", billing: "Thanh toán", audit: "Nhật ký thao tác", media: "Thư viện ảnh", content: "Duyệt nội dung", posts: "Bài viết" },
+    navGroups: { content: "Nội dung", settings: "Cài đặt", system: "Hệ thống (kỹ thuật)" },
     overview: {
       newUsers: "Người dùng mới",
       proUsers: "Đang dùng Pro",
@@ -105,6 +106,7 @@ export const app: AppContent = {
       storage: "Lưu trữ",
       noData: "Chưa có dữ liệu.",
       last30Days: "30 ngày qua",
+      siteFigures: "Số liệu website (tài khoản, lượt xem, dung lượng)",
     },
     users: {
       search: "Tìm theo email",

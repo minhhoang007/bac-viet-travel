@@ -137,6 +137,8 @@ export interface ProductNavItem {
   roles?: readonly ("editor" | "admin")[];
   /** productAdminNav only: narrows `roles` per user (starter v1.15): here, the staff permission of the page. */
   allow?: (user: { id: string; role: "user" | "editor" | "admin" }) => boolean | Promise<boolean>;
+  /** productAdminNav only: menu section. "main" (default): the business pages at the top; "content"; "settings". */
+  group?: "main" | "content" | "settings";
 }
 
 /**

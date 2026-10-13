@@ -5,6 +5,8 @@ Mỗi task có **tiêu chí kiểm chứng** (theo skill `karpathy-guidelines`: 
 
 Trạng thái: ⬜ chưa làm · 🟨 đang làm · ✅ xong
 
+**Tình trạng (2026-10-08):** `v1.21.0`. Phase 0 → V1.2 và các mục tuỳ chọn đã xong; dùng thật ở 2 dự án (Hạ Long Tours: site, Bắc Việt Travel: app, đang chạy production). Việc tiếp theo: **V2 — Vận hành SaaS thật** (cuối file), chờ duyệt.
+
 ---
 
 ## Phase 0 — Chốt thiết kế (không code) ✅
@@ -95,8 +97,9 @@ Trạng thái: ⬜ chưa làm · 🟨 đang làm · ✅ xong
 - [x] `billing`: Polar (checkout, portal, webhook state machine, sweeper, reconcile), VNPay (URL ký HMAC-SHA512, IPN, trang trả về).
 - [x] Email: gửi trực tiếp, lỗi thì xếp job retry.
 - [x] Xoá tài khoản huỷ subscription Polar trước; export có dữ liệu thanh toán; bản ghi tài chính được ẩn danh.
-- [ ] Thanh toán thật trên sandbox Polar + VNPay (cần tài khoản của chủ repo).
-- [ ] `usage` (giới hạn sử dụng): hoãn theo quyết định.
+- [x] VNPay sandbox chạy thật qua Bắc Việt Travel (IPN, querydr, 2026-10-05).
+- [ ] Polar sandbox chạy thật (cần tài khoản của chủ repo).
+- [ ] `usage` (giới hạn sử dụng): hoãn theo quyết định → V2 #6.
 
 <details><summary>Kế hoạch gốc</summary>
 
@@ -179,6 +182,18 @@ Mỗi module chỉ được gắn nhãn **Stable** khi đạt Module DoD ([REQUI
 | ✅ 1 | G12: `/favicon.ico` và đường dẫn có dấu chấm → 404 (không còn 500); favicon từ brand (`app/icon.tsx`); `launch:check` kiểm favicon | E2E starter; unit test |
 | ✅ 2 | G11: `query()` (querydr) trên adapter VNPay; `billing.reconcile_vnpay` xác nhận đơn đã trả mà mất IPN | Unit test (VNPay giả có ký); integration; chữ ký querydr kiểm chứng với sandbox thật |
 
+### Sau v1.0 — phát hành theo nhu cầu dự án thật ✅ (v1.1.0 → v1.21.0, 2026-10-05 → 10-08)
+Chi tiết từng bản: [CHANGELOG.md](CHANGELOG.md). Mỗi bản sinh ra từ một nhu cầu của Bắc Việt Travel, có test và được dự án nâng cấp ngay.
+
+| Bản | Nội dung |
+|---|---|
+| v1.1 – v1.7 | CMS có quy trình duyệt (ADR-0009), thư viện ảnh Cloudinary (ADR-0008), vai trò `editor`; `ProductHeader`/`ProductFooter`/`productFontVariables`; xem trước bản nháp (Draft Mode), đổi slug → 308, tab SEO; blog viết trong admin; Markdown an toàn cho nội dung lưu DB (v1.5.2 security) |
+| v1.8 – v1.12 | VietQR chuyển khoản; guardrail chống phình code (max-lines, knip, dup); bộ cấu hình agent; số liệu dự án trên trang admin; Vercel chỉ build production |
+| v1.13 – v1.16 | Brand chỉ tối/chỉ sáng, bo góc; CSS riêng của dự án + style blog; menu admin theo quyền từng người; **theme đổi lúc chạy** (`productTheme`) |
+| v1.17 – v1.18 | **Xác thực 2 lớp cho nhân viên** (passkey, app OTP, mã dự phòng), phiên nhân viên 12 giờ, xác thực lại trước thao tác nhạy cảm, đăng nhập bằng mã 6 số qua email, nhật ký bảo mật; dashboard dự án trên `/admin` (`ProductAdminOverview`); Next.js 16.4 |
+| v1.19 – v1.20 | Chuyển trang tại chỗ (`next/link`, `ButtonLink`), hiệu ứng chuyển trang (`PageTransition`, `PageLink`) |
+| v1.21 | Code review starter: khoá dòng khi kiểm mã đăng nhập; ảnh chia sẻ `/api/og` chỉ vẽ tiêu đề có chữ ký |
+
 ### rc.17 — DataTable kit ⬜ (làm khi một project cần bảng quản lý)
 | # | Task | Kiểm chứng |
 |---|---|---|
@@ -186,8 +201,31 @@ Mỗi module chỉ được gắn nhãn **Stable** khi đạt Module DoD ([REQUI
 | 2 | Chuyển 4 bảng admin (users, audit, billing, jobs) sang kit | E2E phân trang/tìm kiếm; axe |
 | 3 | Mẫu dùng trong `_example-notes` + skill `product-feature` | Review docs |
 
+### V2 — Vận hành SaaS thật ⬜ (đề xuất 2026-10-08, chờ duyệt)
+Đánh giá: starter đã đủ để chạy một **site bán hàng / đặt chỗ** (Bắc Việt đang chạy). Để chạy một **SaaS thu phí định kỳ** còn thiếu các mục dưới. Thứ tự = mức cần thiết.
+
+**P1 — trước khi thu tiền khách SaaS**
+| # | Task | Vì sao |
+|---|---|---|
+| 1 | Email vòng đời gói: biên nhận VNPay; nhắc gia hạn 7/3/1 ngày trước khi hết hạn (VNPay gia hạn tay); báo hết hạn / mất quyền; email chào mừng | Hiện billing không gửi email nào: khách VNPay quên gia hạn là mất |
+| 2 | `setup:check` và `launch:check` cảnh báo: production chưa có Upstash (rate limit theo từng instance), `EMAIL_FROM` còn `resend.dev`, nội dung pháp lý còn mẫu | Hai lỗi vận hành thật đã gặp ở Bắc Việt |
+| 3 | Theo dõi lỗi: adapter Sentry (hoặc tương đương) tuỳ chọn trong `instrumentation.ts` + lỗi client, cảnh báo qua email | Hiện lỗi chỉ nằm trong log Vercel, không ai được báo |
+| 4 | Job định kỳ nhiều hơn 1 lần/ngày trên Vercel Hobby: mẫu GitHub Actions gọi `/api/jobs/run` (như Bắc Việt) | Đối soát thanh toán, nhắc gia hạn cần chạy theo giờ |
+
+**P2 — đa số SaaS cần sớm**
+| # | Task | Vì sao |
+|---|---|---|
+| 5 | Tổ chức / workspace: thành viên, lời mời qua email, vai trò trong workspace, gói tính theo workspace | SaaS B2B bán cho công ty, không cho từng người |
+| 6 | `usage`: đo và giới hạn mức dùng theo gói (đã hoãn) | Gói theo số lượng (dự án, lượt, dung lượng) |
+| 7 | Hỗ trợ khách: admin "xem như người dùng" (impersonate, có audit), ghi chú nội bộ | Giải quyết ticket nhanh |
+| 8 | Feature flag đơn giản (bật theo user/workspace/phần trăm) | Ra mắt dần, thử nghiệm |
+| 9 | Hoá đơn điện tử VAT (VNPT / Viettel / MISA) qua port, provider do dự án chọn | Doanh nghiệp Việt Nam cần hoá đơn |
+
+**P3 — khi sản phẩm cần**
+DataTable kit (rc.17), API key + webhook gửi đi cho khách, onboarding trong app, trang changelog / status, `ai`, CLI `create-minh-app`, command menu ⌘K.
+
 ### Còn lại ⬜
-`ai` (+ `usage`), CLI `create-minh-app`, command menu ⌘K.
+Xem V2 ở trên. Chạy thật còn chờ tài khoản chủ repo: sandbox Polar, Cloudflare R2, Cloudinary.
 
 ---
 

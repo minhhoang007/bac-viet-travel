@@ -56,6 +56,18 @@ describe("auth (magic link, real DB)", () => {
     expect(sentBefore).toBe(3);
   });
 
+  it("the magic-link HTTP endpoint is closed: no email without the service's CAPTCHA and limits", async () => {
+    const res = await t.app.auth.handler(
+      new Request(`${BASE_URL}/api/auth/sign-in/magic-link`, {
+        method: "POST",
+        headers: { origin: BASE_URL, "content-type": "application/json" },
+        body: JSON.stringify({ email: "direct@example.com", callbackURL: "/dashboard" }),
+      }),
+    );
+    expect(res.status).toBe(404);
+    expect(t.sent.some((m) => m.to === "direct@example.com")).toBe(false);
+  });
+
   it("magic links are rate limited per client across recipients", async () => {
     const send = (i: number) =>
       t.app.auth.signInMagicLink(

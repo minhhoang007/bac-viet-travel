@@ -1,6 +1,7 @@
 import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { createLogger } from "@/core/logger";
+import { users } from "@/core/users/schema";
 import { resetDb, testDb } from "@/tests/integration/setup/db";
 import { createJobsModule, type JobHandler } from "..";
 import { jobs } from "../schema";
@@ -44,6 +45,66 @@ describe("jobs module (real Postgres)", () => {
     expect(seen).toEqual([2]);
     const [row] = await db.select().from(jobs);
     expect(row).toMatchObject({ status: "succeeded", attempts: 2 });
+  });
+
+  it("a worker that died on the last attempt makes the job dead instead of running it again", async () => {
+    let runs = 0;
+    const m = moduleWith({ work: async () => void runs++ });
+    await m.enqueue("work", {}, { maxAttempts: 2 });
+    await db.update(jobs).set({ status: "running", attempts: 2, lockedUntil: sql`now() - interval '1 minute'` });
+
+    expect((await m.runDue()).claimed).toBe(0);
+    expect(runs).toBe(0);
+    const [row] = await db.select().from(jobs);
+    expect(row).toMatchObject({ status: "dead", attempts: 2, lockedUntil: null });
+  });
+
+  it("a worker whose lease was taken over cannot overwrite the newer claim", async () => {
+    const m = moduleWith({
+      work: async (_p, job) => {
+        // Meanwhile the lease expired and another worker re-claimed the job.
+        await db.update(jobs).set({ attempts: job.attempts + 1, lockedUntil: sql`now() + interval '5 minutes'` }).where(eq(jobs.id, job.id));
+      },
+    });
+    await m.enqueue("work");
+    expect(await m.runDue()).toMatchObject({ claimed: 1, succeeded: 0 });
+    const [row] = await db.select().from(jobs);
+    expect(row).toMatchObject({ status: "running", attempts: 2 });
+  });
+
+  it("tick shares one time budget: periodic tasks that use it up leave the jobs queued", async () => {
+    let clock = 0;
+    let runs = 0;
+    const m = createJobsModule({ db, logger, handlers: { work: async () => void runs++ }, periodic: { slow: async () => void (clock += 30_000) }, now: () => clock });
+    await m.enqueue("work");
+    expect(await m.tick({ budgetMs: 20_000 })).toMatchObject({ claimed: 0 });
+    expect(runs).toBe(0);
+    const [row] = await db.select().from(jobs);
+    expect(row).toMatchObject({ status: "queued", attempts: 0 });
+  });
+
+  it("jobs claimed but not started before the deadline go back to the queue with their attempt", async () => {
+    let clock = 0;
+    const m = createJobsModule({ db, logger, handlers: { work: async () => void (clock += 30_000) }, now: () => clock });
+    for (let i = 0; i < 3; i++) await m.enqueue("work", { i });
+    expect(await m.runDue({ batchSize: 3, budgetMs: 20_000 })).toMatchObject({ claimed: 1, succeeded: 1 });
+    const rows = await db.select().from(jobs).where(eq(jobs.status, "queued"));
+    expect(rows).toHaveLength(2);
+    expect(rows.every((r) => r.attempts === 0 && r.lockedUntil === null)).toBe(true);
+  });
+
+  it("lastError keeps a database error's code, not its parameters (personal data)", async () => {
+    const m = moduleWith({
+      work: async () => {
+        await db.insert(users).values({ email: "dup@example.com" });
+        await db.insert(users).values({ email: "dup@example.com" });
+      },
+    });
+    await m.enqueue("work");
+    await m.runDue();
+    const [row] = await db.select().from(jobs);
+    expect(row!.lastError).toMatch(/^Database error 23505/);
+    expect(row!.lastError).not.toContain("dup@example.com");
   });
 
   it("does not claim a running job whose lease is still valid", async () => {
