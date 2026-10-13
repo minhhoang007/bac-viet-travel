@@ -12,7 +12,8 @@ import { Container } from "@/components/ui/container";
 import { localePath } from "@/core/i18n/routing";
 import { serializeJsonLd } from "@/core/seo";
 import type { Locale } from "@/config/app";
-import { contactConfig, whatsappUrl, zaloUrl } from "@/config/contact";
+import { whatsappUrl, zaloUrl } from "@/config/contact";
+import { currentCompany } from "@/app/_lib/company";
 import { features } from "@/config/features";
 import { getMarketingContent } from "@/content";
 import { TourCard } from "./components/tour-card";
@@ -53,6 +54,7 @@ function Stars({ label }: { label?: string }) {
  * contact form (#contact).
  */
 export async function ProductHomePage({ locale }: { locale: Locale }) {
+  const contactConfig = await currentCompany();
   const c = getProductContent(locale);
   const h = c.home;
   const m = getMarketingContent(locale);
@@ -74,7 +76,7 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
     "@type": "FAQPage",
     mainEntity: m.faq.items.map((q) => ({ "@type": "Question", name: q.question, acceptedAnswer: { "@type": "Answer", text: q.answer } })),
   };
-  const chat = locale === "vi" ? { href: zaloUrl(), label: c.contact.zalo } : { href: whatsappUrl(), label: c.contact.whatsapp };
+  const chat = locale === "vi" ? { href: zaloUrl(contactConfig.zalo), label: c.contact.zalo } : { href: whatsappUrl(undefined, contactConfig.whatsapp), label: c.contact.whatsapp };
 
   return (
     <>

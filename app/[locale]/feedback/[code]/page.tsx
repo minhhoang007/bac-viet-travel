@@ -7,7 +7,7 @@ import { getTours } from "@/app/_lib/tours";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import type { Locale } from "@/config/app";
-import { contactConfig } from "@/config/contact";
+import { currentCompany } from "@/app/_lib/company";
 import { formatDay, getBookingContent } from "@/product/booking/content";
 import { isSold } from "@/product/booking/lifecycle";
 
@@ -19,6 +19,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 /** Post-trip feedback (E4), from the signed link in the feedback email: stars and a comment, once per booking. */
 export default async function FeedbackPage({ params, searchParams }: Props) {
+  const contactConfig = await currentCompany();
   await connection();
   const { locale, code } = await params;
   setRequestLocale(locale);

@@ -2,14 +2,16 @@ import { IntentLink } from "./intent-link";
 import { Container } from "@/components/ui/container";
 import { localePath } from "@/core/i18n/routing";
 import type { Locale } from "@/config/app";
-import { contactConfig, telUrl, whatsappUrl, zaloUrl } from "@/config/contact";
+import { telUrl, whatsappUrl, zaloUrl } from "@/config/contact";
+import { currentCompany } from "@/app/_lib/company";
 import { features } from "@/config/features";
 import { Logo } from "../brand/logo";
 import { getProductContent } from "../content";
 import { DESTINATIONS } from "../tours/catalog";
 
 /** The one site footer (ProductFooter): company identity and licence, tours, company pages, policies. */
-export function SiteFooter({ locale }: { locale: Locale }) {
+export async function SiteFooter({ locale }: { locale: Locale }) {
+  const contactConfig = await currentCompany();
   const c = getProductContent(locale);
   const f = c.footer;
   const n = c.footerNav;
@@ -63,7 +65,7 @@ export function SiteFooter({ locale }: { locale: Locale }) {
             </p>
             <p>
               {f.hotline}:{" "}
-              <a href={telUrl()} className="text-foreground underline underline-offset-2">
+              <a href={telUrl(contactConfig.hotline)} className="text-foreground underline underline-offset-2">
                 {contactConfig.hotline}
               </a>{" "}
               · {contactConfig.businessHours[locale]}
@@ -103,10 +105,10 @@ export function SiteFooter({ locale }: { locale: Locale }) {
                 ✓ {f.moit}
               </a>
             )}
-            <a href={zaloUrl()} className="hover:text-foreground">
+            <a href={zaloUrl(contactConfig.zalo)} className="hover:text-foreground">
               Zalo
             </a>
-            <a href={whatsappUrl(c.contact.whatsappText())} className="hover:text-foreground">
+            <a href={whatsappUrl(c.contact.whatsappText(), contactConfig.whatsapp)} className="hover:text-foreground">
               WhatsApp
             </a>
           </span>

@@ -66,6 +66,11 @@ describe("checkLaunch", () => {
     expect(results.filter((r) => !r.ok)).toEqual([{ ok: false, name: "No demo content", detail: 'page has data-demo ("reviews"): replace it with real content' }]);
   });
 
+  it("blocks a home page that still shows (demo) company details", async () => {
+    const results = await checkLaunch(ORIGIN, fakeFetch({ ...healthySite, "/": { body: HOME.replace("</head>", "</head><footer>MST: 0100000000 (demo)</footer>"), headers: SECURE } }));
+    expect(results.filter((r) => !r.ok)).toEqual([{ ok: false, name: "Company details", detail: 'the page shows "(demo)" values: fill in Admin → Thông tin công ty' }]);
+  });
+
   it("does not mistake other attributes for demo content", async () => {
     const results = await checkLaunch(ORIGIN, fakeFetch({ ...healthySite, "/": { body: HOME.replace("</head>", '</head><div data-demonstration="x" class="data-demo">'), headers: SECURE } }));
     expect(results.filter((r) => !r.ok)).toEqual([]);

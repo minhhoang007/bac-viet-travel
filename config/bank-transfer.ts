@@ -1,7 +1,8 @@
-// Project-owned: the account guests transfer deposits to (VietQR). Replace the demo values before going live:
-// while `demo` is true the transfer option shows only in payments sandbox mode, with a "do not transfer" warning.
+// Project-owned: defaults for the account guests transfer deposits to (VietQR). Admins set the real account in
+// Admin → Thông tin công ty (pages read it through app/_lib/company.ts `currentBank()`). While `demo` is true the
+// transfer option shows only in payments sandbox mode, with a "do not transfer" warning.
 
-export const bankTransferConfig = {
+export const defaultBankTransfer = {
   demo: true,
   /** NAPAS bank BIN (6 digits): 970436 Vietcombank, 970415 VietinBank, 970418 BIDV, 970422 MB, 970407 Techcombank, 970416 ACB. */
   bankBin: "970436",

@@ -7,6 +7,7 @@ import { DESTINATIONS, type Destination } from "./tours/model";
 import { telUrl, whatsappUrl, zaloUrl } from "@/config/contact";
 import { loadDashboard } from "@/app/_lib/dashboard";
 import { currentTheme } from "@/app/_lib/theme";
+import { currentCompany } from "@/app/_lib/company";
 import { AdminDashboard, DashboardUnavailable } from "./components/admin-dashboard";
 import type { ProductTheme } from "@/components/ui/theme";
 import { fontVariables } from "./brand/fonts";
@@ -45,11 +46,12 @@ export function ProductFooter({ locale }: { locale: Locale }) {
 }
 
 /** Page-change progress bar and the floating quick-contact buttons on every page. */
-export function ProductLayoutExtras({ locale }: { locale: Locale }) {
+export async function ProductLayoutExtras({ locale }: { locale: Locale }) {
   const c = getProductContent(locale).contact;
-  const zalo = { key: "zalo" as const, label: c.zalo, href: zaloUrl() };
-  const whatsapp = { key: "whatsapp" as const, label: c.whatsapp, href: whatsappUrl(c.whatsappText()) };
-  const call = { key: "call" as const, label: c.call, href: telUrl() };
+  const co = await currentCompany();
+  const zalo = { key: "zalo" as const, label: c.zalo, href: zaloUrl(co.zalo) };
+  const whatsapp = { key: "whatsapp" as const, label: c.whatsapp, href: whatsappUrl(c.whatsappText(), co.whatsapp) };
+  const call = { key: "call" as const, label: c.call, href: telUrl(co.hotline) };
   // Vietnamese visitors: Zalo first. International visitors: WhatsApp first.
   const items = locale === "vi" ? [zalo, whatsapp, call] : [whatsapp, zalo, call];
   return (

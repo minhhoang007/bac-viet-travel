@@ -1,7 +1,7 @@
 import { getBooking } from "@/app/_lib/booking";
 import { getTours } from "@/app/_lib/tours";
 import { getPublicEnv } from "@/bootstrap/env";
-import { contactConfig } from "@/config/contact";
+import { currentCompany } from "@/app/_lib/company";
 import { getContainer } from "@/bootstrap/container";
 import { localePath } from "@/core/i18n/routing";
 import { isSold } from "@/product/booking/lifecycle";
@@ -12,6 +12,7 @@ const esc = (s: string) => s.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace
 
 /** Calendar file (D8) for a paid booking: one all-day event over the tour days. The guest's token is required. */
 export async function GET(request: Request, { params }: { params: Promise<{ code: string }> }) {
+  const contactConfig = await currentCompany();
   const { code } = await params;
   const url = new URL(request.url);
   const token = url.searchParams.get("t") ?? "";

@@ -9,7 +9,8 @@ import { travellerKinds, vietnamToday } from "@/product/booking/rules";
 import { travellersEditable } from "@/product/booking/service";
 import { isSold } from "@/product/booking/lifecycle";
 import { TravellersForm } from "@/product/components/travellers-form";
-import { bankTransferConfig } from "@/config/bank-transfer";
+import { currentBank } from "@/app/_lib/company";
+import type { BankTransfer } from "@/product/company/settings";
 import { vietQrSvg } from "@/core/payments/vietqr";
 import { transferNote } from "@/product/booking/deposits";
 import { CopyButton } from "@/product/components/copy-button";
@@ -23,7 +24,8 @@ import { AutoRefresh } from "@/product/components/auto-refresh";
 import { DepositButton } from "@/product/components/deposit-button";
 import { HoldCountdown } from "@/product/components/hold-countdown";
 import { BookingSteps } from "@/product/components/booking-steps";
-import { contactConfig, telUrl, whatsappUrl, zaloUrl } from "@/config/contact";
+import { telUrl, whatsappUrl, zaloUrl } from "@/config/contact";
+import { currentCompany } from "@/app/_lib/company";
 import { getTours } from "@/app/_lib/tours";
 
 type Props = { params: Promise<{ locale: Locale; code: string }>; searchParams: Promise<{ t?: string; pay?: string }> };
@@ -35,6 +37,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 /** Private guest page: the secret token in the link is the only key (no login for guests). */
 export default async function BookingPage({ params, searchParams }: Props) {
+  const contactConfig = await currentCompany();
   await connection();
   const { locale, code } = await params;
   setRequestLocale(locale);
@@ -50,7 +53,8 @@ export default async function BookingPage({ params, searchParams }: Props) {
   const sandbox = isPaymentsSandbox();
   const today = vietnamToday(new Date());
   const kinds = travellerKinds(booking);
-  const transferOffered = status === "held" && isTransferAvailable();
+  const transferOffered = status === "held" && (await isTransferAvailable());
+  const bank = await currentBank();
   const transfer = transferOffered && (await getDeposits().transferPending(booking.id));
   const holdUntil = booking.holdExpiresAt.toLocaleTimeString(locale === "vi" ? "vi-VN" : "en-GB", { timeZone: "Asia/Ho_Chi_Minh", hour: "2-digit", minute: "2-digit" });
   // Back from VNPay with a success code, but the IPN has not arrived yet.
@@ -58,7 +62,7 @@ export default async function BookingPage({ params, searchParams }: Props) {
   const rebook = localePath(locale, `/tours/${booking.departure.tourSlug}/book?d=${booking.departure.id}`);
   const step = status === "held" ? 2 : isSold(status) ? 3 : null;
   const next = status === "held" ? t.booking.nextHeld : isSold(status) ? t.booking.nextPaid : null;
-  const chat = locale === "vi" ? { href: zaloUrl(), label: "Zalo" } : { href: whatsappUrl(), label: "WhatsApp" };
+  const chat = locale === "vi" ? { href: zaloUrl(contactConfig.zalo), label: "Zalo" } : { href: whatsappUrl(undefined, contactConfig.whatsapp), label: "WhatsApp" };
   const guests = [
     booking.adults && `${booking.adults} ${t.adults.toLowerCase()}`,
     booking.children && `${booking.children} ${t.children.toLowerCase()}`,
@@ -133,7 +137,7 @@ export default async function BookingPage({ params, searchParams }: Props) {
               {pay === "failed" ? t.booking.payFailed : t.booking.transferFailed}
             </p>
           )}
-          {transfer && <TransferPanel locale={locale} code={booking.code} amountVnd={booking.depositVnd} />}
+          {transfer && <TransferPanel locale={locale} code={booking.code} amountVnd={booking.depositVnd} bank={bank} />}
           {transfer && <p className="mt-6 text-sm font-medium">{t.booking.transferOrPay}</p>}
           <DepositButton action={startDeposit} code={booking.code} token={token!} locale={locale} label={t.booking.pay(formatVnd(booking.depositVnd, locale))} errorText={t.booking.payUnavailable} />
           <p className="mt-2 type-small text-muted-foreground">{t.booking.payHint}</p>
@@ -230,7 +234,7 @@ export default async function BookingPage({ params, searchParams }: Props) {
           <a href={chat.href} target="_blank" rel="noopener noreferrer" className="font-medium text-primary underline underline-offset-4">
             {chat.label}
           </a>
-          <a href={telUrl()} className="font-medium text-primary underline underline-offset-4">
+          <a href={telUrl(contactConfig.hotline)} className="font-medium text-primary underline underline-offset-4">
             {contactConfig.hotline}
           </a>
         </p>
@@ -240,9 +244,8 @@ export default async function BookingPage({ params, searchParams }: Props) {
 }
 
 /** VietQR and account details for a bank transfer of the deposit (staff confirm it in the admin). */
-function TransferPanel({ locale, code, amountVnd }: { locale: Locale; code: string; amountVnd: number }) {
+function TransferPanel({ locale, code, amountVnd, bank }: { locale: Locale; code: string; amountVnd: number; bank: BankTransfer }) {
   const t = getBookingContent(locale).booking;
-  const bank = bankTransferConfig;
   const note = transferNote(code);
   const amount = formatVnd(amountVnd, locale);
   const qr = vietQrSvg({ bankBin: bank.bankBin, accountNumber: bank.accountNumber, amountVnd, note });

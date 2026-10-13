@@ -79,6 +79,9 @@ export async function checkLaunch(base: string, fetch: Fetch): Promise<LaunchRes
     // Placeholder content (sample reviews, demo figures) is marked data-demo in the markup and must be gone.
     const demo = home.body.match(/\sdata-demo(?=[\s=>/])(?:=["']?([^"'\s>]*))?/i);
     add(!demo, "No demo content", demo ? `page has data-demo${demo[1] ? ` ("${demo[1]}")` : ""}: replace it with real content` : undefined);
+    // Company details (footer, licence bar) still hold the "(demo)" placeholders: Admin → Thông tin công ty.
+    const placeholder = home.body.includes("(demo)");
+    add(!placeholder, "Company details", placeholder ? 'the page shows "(demo)" values: fill in Admin → Thông tin công ty' : undefined);
     const missing = SECURITY_HEADERS.filter((h) => !home.headers.get(h));
     add(missing.length === 0, "Security headers", missing.length ? `missing ${missing.join(", ")}` : undefined);
   }

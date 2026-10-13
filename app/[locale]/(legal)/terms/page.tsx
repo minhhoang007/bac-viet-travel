@@ -4,6 +4,7 @@ import { LegalPage } from "@/components/layout/legal-page";
 import type { Locale } from "@/config/app";
 import { getAppContent } from "@/content";
 import { getLegalDocument } from "@/content/legal";
+import { currentCompany } from "@/app/_lib/company";
 
 type Props = { params: Promise<{ locale: Locale }> };
 
@@ -16,6 +17,6 @@ export default async function TermsPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
   const c = getAppContent(locale).legal;
-  const doc = getLegalDocument(locale, "terms");
+  const doc = getLegalDocument(locale, "terms", await currentCompany());
   return <LegalPage title={c.terms} updatedLabel={c.lastUpdated} updated={doc.updated} notice={c.templateNotice} sections={doc.sections} />;
 }

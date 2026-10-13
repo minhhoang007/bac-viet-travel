@@ -9,7 +9,7 @@ import { getPublicEnv } from "@/bootstrap/env";
 import { Container } from "@/components/ui/container";
 import { localePath } from "@/core/i18n/routing";
 import type { Locale } from "@/config/app";
-import { contactConfig } from "@/config/contact";
+import { currentCompany } from "@/app/_lib/company";
 import { formatDay, formatVnd, getBookingContent } from "@/product/booking/content";
 import { PrintButton } from "@/product/components/print-button";
 
@@ -25,6 +25,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
  * the booking in the staff admin (no secret in it); the guest's own link stays private.
  */
 export default async function VoucherPage({ params, searchParams }: Props) {
+  const contactConfig = await currentCompany();
   await connection();
   const { locale, code } = await params;
   setRequestLocale(locale);

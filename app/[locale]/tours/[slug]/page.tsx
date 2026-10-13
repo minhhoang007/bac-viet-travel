@@ -10,7 +10,8 @@ import { Container } from "@/components/ui/container";
 import { localePath } from "@/core/i18n/routing";
 import { createMetadata, localizedUrl, serializeJsonLd } from "@/core/seo";
 import type { Locale } from "@/config/app";
-import { contactConfig, whatsappUrl, zaloUrl } from "@/config/contact";
+import { whatsappUrl, zaloUrl } from "@/config/contact";
+import { currentCompany } from "@/app/_lib/company";
 import { features } from "@/config/features";
 import { formatVnd, getBookingContent } from "@/product/booking/content";
 import { DEFAULT_TOUR_PRICING } from "@/product/booking/rules";
@@ -54,6 +55,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function TourPage({ params }: Props) {
+  const contactConfig = await currentCompany();
   const { locale, slug } = await params;
   // Destination landing pages share the /tours/<slug> segment (tour slugs cannot be destination names).
   if (isDestination(slug)) {
@@ -296,10 +298,10 @@ export default async function TourPage({ params }: Props) {
             </>
           )}
           <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
-            <a href={whatsappUrl(c.contact.whatsappText(tour.title))} target="_blank" rel="noopener noreferrer" className="border border-border px-3 py-2 text-center font-medium hover:border-primary">
+            <a href={whatsappUrl(c.contact.whatsappText(tour.title), contactConfig.whatsapp)} target="_blank" rel="noopener noreferrer" className="border border-border px-3 py-2 text-center font-medium hover:border-primary">
               {c.contact.whatsapp}
             </a>
-            <a href={zaloUrl()} target="_blank" rel="noopener noreferrer" className="border border-border px-3 py-2 text-center font-medium hover:border-primary">
+            <a href={zaloUrl(contactConfig.zalo)} target="_blank" rel="noopener noreferrer" className="border border-border px-3 py-2 text-center font-medium hover:border-primary">
               {c.contact.zalo}
             </a>
           </div>
