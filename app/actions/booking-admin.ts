@@ -50,6 +50,19 @@ export async function saveStaffNote(formData: FormData): Promise<void> {
   await run(formData, `/admin/bookings/${c}`, "bookings.edit", (ctx) => service(ctx).setStaffNote(ctx.user, c, String(formData.get("note") ?? "")));
 }
 
+/** "Khởi hành khi đủ" field: empty = no minimum; anything else must be a whole number (the service checks the range). */
+const minGuestsOf = (formData: FormData): number | null | undefined => {
+  const raw = String(formData.get("minGuests") ?? "").trim();
+  return raw === "" ? null : /^\d+$/.test(raw) ? Number(raw) : Number.NaN;
+};
+
+/** The company cancels a whole departure: every guest is emailed and refunded what they paid. */
+export async function cancelDeparture(formData: FormData): Promise<void> {
+  const id = z.uuid().parse(formData.get("id"));
+  const reason = String(formData.get("reason") ?? "");
+  await run(formData, `/admin/departures/${id}`, "bookings.cancel", async (ctx) => (await service(ctx).cancelDeparture(ctx.user, id, reason)) !== null);
+}
+
 /** One date, or the same weekdays every week for N weeks starting at `from`. */
 export async function addDepartures(formData: FormData): Promise<void> {
   const tourSlug = String(formData.get("tourSlug") ?? "");
@@ -58,6 +71,7 @@ export async function addDepartures(formData: FormData): Promise<void> {
   const weekdays = formData.getAll("weekday").map(Number).filter((n) => n >= 0 && n <= 6);
   const capacity = z.coerce.number().int().catch(0).parse(formData.get("capacity"));
   const priceRaw = String(formData.get("priceVnd") ?? "").replace(/\D/g, "");
+  const minGuests = minGuestsOf(formData);
   const dates: string[] = [];
   if (weekdays.length === 0) dates.push(from);
   else for (let i = 0; i < weeks * 7; i++) {
@@ -67,9 +81,9 @@ export async function addDepartures(formData: FormData): Promise<void> {
   // Invalid input (past dates, seats out of range) says so instead of a generic failure.
   await adminAction(formData, `/admin/departures?tour=${encodeURIComponent(tourSlug)}`, EVENT, "departures", async (ctx) => {
     try {
-      return (await service(ctx).addDepartures(ctx.user, { tourSlug, dates, capacity, priceVnd: priceRaw ? Number(priceRaw) : null })) > 0 ? "done" : "failed";
+      return (await service(ctx).addDepartures(ctx.user, { tourSlug, dates, capacity, priceVnd: priceRaw ? Number(priceRaw) : null, minGuests: minGuests ?? null })) > 0 ? "done" : "failed";
     } catch (error) {
-      if (error instanceof AppError && error.code === "VALIDATION_ERROR") return "dates";
+      if (error instanceof AppError && error.code === "VALIDATION_ERROR") return error.message === "Invalid minimum" ? "min" : "dates";
       throw error;
     }
   });
@@ -88,11 +102,13 @@ export async function updateDeparture(formData: FormData): Promise<void> {
         ...(capacity !== null && { capacity: Number(capacity) }),
         ...(priceRaw !== null && { priceVnd: String(priceRaw).replace(/\D/g, "") ? Number(String(priceRaw).replace(/\D/g, "")) : null }),
         ...((status === "open" || status === "closed") && { status }),
+        ...(formData.has("minGuests") && { minGuests: minGuestsOf(formData) ?? null }),
       });
       return changed ? "done" : "failed";
     } catch (error) {
       const taken = error instanceof AppError ? error.details?.taken : undefined;
       if (typeof taken === "number") return `capacity&taken=${taken}`;
+      if (error instanceof AppError && error.message === "Invalid minimum") return "min";
       throw error;
     }
   });

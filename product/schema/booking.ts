@@ -17,12 +17,15 @@ export const departures = pgTable(
     status: text("status", { enum: ["open", "closed"] }).notNull().default("open"),
     /** group: shared seats, listed for guests. private: created by one private booking (capacity = its seats), never listed. */
     kind: text("kind", { enum: ["group", "private"] }).notNull().default("group"),
+    /** Guests needed for the trip to run (policy: the company may cancel below it, full refund); null = no minimum. */
+    minGuests: integer("min_guests"),
     ...timestamps(),
   },
   (t) => [
     // One group departure per tour and day; private departures may share the day.
     uniqueIndex("departures_tour_date_idx").on(t.tourSlug, t.date).where(sql`${t.kind} = 'group'`),
     check("departures_capacity_check", sql`${t.capacity} > 0`),
+    check("departures_min_guests_check", sql`${t.minGuests} is null or ${t.minGuests} > 0`),
   ],
 );
 

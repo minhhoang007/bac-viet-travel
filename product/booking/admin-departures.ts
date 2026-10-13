@@ -10,6 +10,8 @@ type Actor = Parameters<NonNullable<ProductContext["audit"]>["audited"]>[0];
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
+/** A minimum of guests is 1…capacity, or none. */
+const validMin = (min: number | null, capacity: number) => min === null || (Number.isInteger(min) && min >= 1 && min <= capacity);
 
 export interface AdminDepartureRow extends Departure {
   /** Seats in paid/confirmed bookings. */
@@ -48,8 +50,8 @@ export interface DepartureAdmin {
   listDepartures(options: { tourSlug?: string; from: string; to: string }): Promise<AdminDepartureRow[]>;
   /** Passenger list of one departure (H1): paid and confirmed bookings, one row per traveller, for the guide. */
   passengers(departureId: string): Promise<{ departure: Departure; rows: PassengerRow[] } | null>;
-  addDepartures(actor: Actor, input: { tourSlug: string; dates: string[]; capacity: number; priceVnd: number | null }): Promise<number>;
-  updateDeparture(actor: Actor, id: string, input: { capacity?: number; priceVnd?: number | null; status?: Departure["status"] }): Promise<boolean>;
+  addDepartures(actor: Actor, input: { tourSlug: string; dates: string[]; capacity: number; priceVnd: number | null; minGuests?: number | null }): Promise<number>;
+  updateDeparture(actor: Actor, id: string, input: { capacity?: number; priceVnd?: number | null; status?: Departure["status"]; minGuests?: number | null }): Promise<boolean>;
 }
 
 export function createDepartureAdmin(deps: {
@@ -91,18 +93,19 @@ export function createDepartureAdmin(deps: {
       return rows.map((r) => ({ ...r.d, sold: r.sold, held: r.held }));
     },
 
-    async addDepartures(actor, { tourSlug, dates, capacity, priceVnd }) {
+    async addDepartures(actor, { tourSlug, dates, capacity, priceVnd, minGuests = null }) {
       if (!(await deps.tourExists(tourSlug))) throw new AppError("VALIDATION_ERROR", "Unknown tour");
       if (!Number.isInteger(capacity) || capacity < 1 || capacity > 100) throw new AppError("VALIDATION_ERROR", "Invalid capacity");
       if (priceVnd !== null && (!Number.isInteger(priceVnd) || priceVnd < 10_000 || priceVnd > 100_000_000)) throw new AppError("VALIDATION_ERROR", "Invalid price");
+      if (!validMin(minGuests, capacity)) throw new AppError("VALIDATION_ERROR", "Invalid minimum");
       const today = vietnamToday(now());
       const valid = [...new Set(dates)].filter((d) => DAY.test(d) && d >= today && d <= addDays(today, 730)).slice(0, 120);
       if (valid.length === 0) throw new AppError("VALIDATION_ERROR", "No valid dates");
       let added = 0;
-      await audited(actor, "departure.add", tourSlug, { dates: valid, capacity, priceVnd }, async () => {
+      await audited(actor, "departure.add", tourSlug, { dates: valid, capacity, priceVnd, minGuests }, async () => {
         const rows = await db
           .insert(departures)
-          .values(valid.map((date) => ({ tourSlug, date, capacity, priceVnd })))
+          .values(valid.map((date) => ({ tourSlug, date, capacity, priceVnd, minGuests })))
           .onConflictDoNothing()
           .returning({ id: departures.id });
         added = rows.length;
@@ -120,6 +123,7 @@ export function createDepartureAdmin(deps: {
           // Same lock as holds: no seat can be sold between the check and the update.
           const [d] = await tx.select().from(departures).where(eq(departures.id, id)).for("update");
           if (!d) throw new AppError("NOT_FOUND");
+          if (input.minGuests !== undefined && !validMin(input.minGuests, input.capacity ?? d.capacity)) throw new AppError("VALIDATION_ERROR", "Invalid minimum");
           if (input.capacity !== undefined) {
             const [row] = await tx
               .select({ taken: sql<number>`coalesce(sum(${bookings.seats}), 0)::int` })

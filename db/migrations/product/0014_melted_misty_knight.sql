@@ -1,0 +1,2 @@
+ALTER TABLE "departures" ADD COLUMN "min_guests" integer;--> statement-breakpoint
+ALTER TABLE "departures" ADD CONSTRAINT "departures_min_guests_check" CHECK ("departures"."min_guests" is null or "departures"."min_guests" > 0);

@@ -43,7 +43,7 @@ export default async function AdminDeparturesPage({ params, searchParams }: Prop
       <h1 className="text-2xl font-bold">{c.departures}</h1>
       {sp.result && (
         <p role="status" className={`rounded-md border p-3 text-sm ${sp.result === "done" ? "border-success/40 bg-success/10 text-foreground" : "border-danger/40 bg-danger/10 text-foreground"}`}>
-          {sp.result === "done" ? c.result.done : sp.result === "capacity" ? c.dep.capacityBelowTaken(Number(sp.taken) || 0) : sp.result === "dates" ? c.dep.noValidDates : c.result.failed}
+          {sp.result === "done" ? c.result.done : sp.result === "capacity" ? c.dep.capacityBelowTaken(Number(sp.taken) || 0) : sp.result === "dates" ? c.dep.noValidDates : sp.result === "min" ? c.dep.minInvalid : c.result.failed}
         </p>
       )}
 
@@ -74,6 +74,10 @@ export default async function AdminDeparturesPage({ params, searchParams }: Prop
           <label className="grid gap-1 text-sm">
             {c.dep.price}
             <input name="priceVnd" inputMode="numeric" className={`${input} w-40`} />
+          </label>
+          <label className="grid gap-1 text-sm">
+            {c.dep.minGuests}
+            <input type="number" name="minGuests" min={1} max={100} className={`${input} w-24`} />
           </label>
         </div>
         <fieldset className="flex flex-wrap items-center gap-3 text-sm">
@@ -120,17 +124,27 @@ export default async function AdminDeparturesPage({ params, searchParams }: Prop
                 <tr key={d.id} className="border-t border-border" data-departure-row={`${d.tourSlug}:${d.date}`}>
                   <td className="py-2 pr-3">
                     <span className="whitespace-nowrap tabular-nums">{formatShortDay(d.date, locale)}</span>
-                    {d.sold > 0 && (
+                    {d.sold + d.held > 0 && (
                       <a href={localePath(locale, `/admin/departures/${d.id}`)} className="ml-2 font-sans text-xs text-primary underline underline-offset-2" data-testid="passengers-link">
                         {c.passengers.open}
                       </a>
                     )}
                   </td>
                   <td className="py-2 pr-3">{title(d.tourSlug)}</td>
-                  <td className="py-2 pr-3">{d.sold}</td>
+                  <td className="py-2 pr-3">
+                    {d.sold}
+                    {d.minGuests !== null && d.status === "open" && (
+                      <span className={`block whitespace-nowrap text-xs font-medium ${d.sold >= d.minGuests ? "text-success" : "text-warning"}`} data-testid="min-status">
+                        {d.sold >= d.minGuests ? c.dep.enough : c.dep.short(d.minGuests - d.sold)}
+                      </span>
+                    )}
+                  </td>
                   <td className="py-2 pr-3">{d.held}</td>
                   <td className="py-2 pr-3">
                     <input form={form} type="number" name="capacity" min={Math.max(1, d.sold + d.held)} max={100} defaultValue={d.capacity} aria-label={`${c.dep.cols.capacity} ${d.date}`} className={`${input} w-20`} />
+                  </td>
+                  <td className="py-2 pr-3">
+                    <input form={form} type="number" name="minGuests" min={1} max={d.capacity} defaultValue={d.minGuests ?? ""} aria-label={`${c.dep.cols.min} ${d.date}`} className={`${input} w-20`} />
                   </td>
                   <td className="py-2 pr-3">
                     <input form={form} name="priceVnd" inputMode="numeric" defaultValue={d.priceVnd ?? ""} placeholder={c.dep.listPrice} aria-label={`${c.dep.cols.price} ${d.date}`} className={`${input} w-32`} />

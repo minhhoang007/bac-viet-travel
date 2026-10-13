@@ -126,6 +126,37 @@ test("staff add a departure date and close another; guests see the change", asyn
   await expect(page.locator(`[data-departure="${newDate}"]`)).toContainText("Đã đóng");
 });
 
+test("a departure short of its minimum is flagged; the company cancels it and every guest is refunded", async ({ page }) => {
+  test.setTimeout(60_000);
+  // Own address: magic links are limited to 3 per recipient in 10 minutes, and other tests sign in STAFF.
+  await signInAsAdmin(page, "min-guests-staff@bacviet.example");
+  const [d] = await sql<{ id: string; date: string }[]>`
+    insert into departures (tour_slug, date, capacity) select ${TOUR}, max(date) + 10, 12 from departures where tour_slug = ${TOUR} returning id, date::text`;
+  await sql`
+    insert into bookings (code, token_hash, departure_id, status, hold_expires_at, deposit_paid_at, name, email, phone, locale, adults, seats, unit_price_vnd, total_vnd, deposit_vnd)
+    values ('BV-MINC22', 'e2e', ${d!.id}, 'deposit_paid', now(), now(), 'Khách E2E', 'guest@example.com', '0900000001', 'vi', 2, 2, 1000000, 2000000, 600000)`;
+
+  await page.goto(`/admin/departures?tour=${TOUR}&month=${d!.date.slice(0, 7)}`);
+  const row = page.locator(`[data-departure-row="${TOUR}:${d!.date}"]`);
+  await row.getByLabel(`Tối thiểu ${d!.date}`).fill("6");
+  await row.getByRole("button", { name: "Lưu" }).click();
+  await expect(page.getByRole("status")).toContainText("Đã lưu.");
+  await expect(page.locator(`[data-departure-row="${TOUR}:${d!.date}"]`).getByTestId("min-status")).toHaveText("Thiếu 4");
+
+  page.on("dialog", (dialog) => dialog.accept());
+  await page.locator(`[data-departure-row="${TOUR}:${d!.date}"]`).getByTestId("passengers-link").click();
+  await page.getByTestId("cancel-departure").getByText("Huỷ cả chuyến…").click();
+  await page.getByLabel("Lý do (gửi cho khách)").fill("Không đủ khách tối thiểu");
+  await page.getByTestId("cancel-departure-submit").click();
+  await expect(page.getByRole("status")).toContainText("Đã lưu.");
+  await expect(page.getByText("Chuyến này đã đóng.")).toBeVisible();
+
+  const [b] = await sql<{ status: string; refund_due_vnd: number }[]>`select status, refund_due_vnd from bookings where code = 'BV-MINC22'`;
+  expect(b).toEqual({ status: "cancelled", refund_due_vnd: 600_000 });
+  await page.goto(`/tours/${TOUR}/book`);
+  await expect(page.locator(`[data-departure="${d!.date}"]`)).toContainText("Đã đóng");
+});
+
 test("staff enter an OTA booking: seats shared with the website, source shown, no guest email by default", async ({ page }) => {
   await signInAsAdmin(page);
   await page.goto("/admin/bookings");

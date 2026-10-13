@@ -107,12 +107,14 @@ export function createDashboard(deps: { db: Db; now?: () => Date }) {
         .from(bookings);
 
       const upcomingRows = await db
-        .select({ id: departures.id, date: departures.date, tourSlug: departures.tourSlug, capacity: departures.capacity, sold: soldSeats })
+        .select({ id: departures.id, date: departures.date, tourSlug: departures.tourSlug, capacity: departures.capacity, minGuests: departures.minGuests, sold: soldSeats })
         .from(departures)
         .where(and(eq(departures.status, "open"), gte(departures.date, today), lte(departures.date, addDays(today, 14))))
         .orderBy(asc(departures.date), asc(departures.tourSlug));
       const upcoming = upcomingRows.filter((d) => d.sold > 0);
-      const lowFill = upcomingRows.filter((d) => d.date <= addDays(today, 7) && d.sold > 0 && d.sold / d.capacity < 0.5).length;
+      // Below the departure's minimum of guests when it has one, else under half full.
+      const short = (d: (typeof upcomingRows)[number]) => (d.minGuests !== null ? d.sold < d.minGuests : d.sold / d.capacity < 0.5);
+      const lowFill = upcomingRows.filter((d) => d.date <= addDays(today, 7) && d.sold > 0 && short(d)).length;
 
       const recent = await db
         .select({ code: bookings.code, name: bookings.name, status: bookings.status, totalVnd: bookings.totalVnd, tourSlug: departures.tourSlug, createdAt: bookings.createdAt })

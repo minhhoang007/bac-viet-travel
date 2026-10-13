@@ -215,6 +215,49 @@ describe("booking admin", () => {
   });
 });
 
+describe("departure minimum and company cancellation", () => {
+  it("a minimum of guests is 1…capacity or none, on new and existing dates", async () => {
+    expect(await bookingAdmin.addDepartures(staff, { tourSlug: "sapa-trekking-2d1n", dates: ["2026-10-20"], capacity: 12, priceVnd: null, minGuests: 6 })).toBe(1);
+    const [d] = await db.select().from(departures).where(eq(departures.date, "2026-10-20"));
+    expect(d!.minGuests).toBe(6);
+    await expect(bookingAdmin.addDepartures(staff, { tourSlug: "sapa-trekking-2d1n", dates: ["2026-10-21"], capacity: 12, priceVnd: null, minGuests: 13 })).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    await expect(bookingAdmin.updateDeparture(staff, d!.id, { minGuests: 0 })).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    expect(await bookingAdmin.updateDeparture(staff, d!.id, { minGuests: null })).toBe(true);
+    expect((await db.select().from(departures).where(eq(departures.id, d!.id)))[0]!.minGuests).toBeNull();
+  });
+
+  it("the dashboard counts a departure short of its minimum, even when half full", async () => {
+    const { departure } = await paidBooking(4, "2026-10-04", 2); // 2 of 4 seats: not under 50%
+    const data = () => createDashboard({ db, now: () => clock }).data();
+    expect((await data()).queue.lowFill).toBe(0);
+    await db.update(departures).set({ minGuests: 3 }).where(eq(departures.id, departure.id));
+    expect((await data()).queue.lowFill).toBe(1);
+  });
+
+  it("cancelling a departure closes it and cancels every live booking with a full refund of what was paid", async () => {
+    const a = await paidBooking(10, "2026-10-10", 2);
+    const b = await paidBooking(10, "2026-10-10", 1);
+    await bookingAdmin.confirm(staff, b.code);
+    await bookingAdmin.markBalancePaid(staff, b.code, "tiền mặt");
+    const held = await booking.hold({ departureId: a.departure.id, name: "Mai", email: "mai@example.com", phone: "0912345679", adults: "1", locale: "vi", agree: "on" }, "ip-held");
+    if (held.status !== "held") throw new Error(held.status);
+    clearMail();
+
+    await expect(bookingAdmin.cancelDeparture(staff, a.departure.id, " ")).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    expect(await bookingAdmin.cancelDeparture(staff, a.departure.id, "Không đủ khách tối thiểu")).toEqual({ cancelled: 3 });
+
+    expect((await db.select().from(departures).where(eq(departures.id, a.departure.id)))[0]!.status).toBe("closed");
+    const [ra, rb, rh] = [await row(a.code), await row(b.code), await row(held.code)];
+    expect(ra).toMatchObject({ status: "cancelled", refundDueVnd: ra.depositVnd, cancelReason: "Không đủ khách tối thiểu" });
+    expect(rb).toMatchObject({ status: "cancelled", refundDueVnd: rb.totalVnd }); // deposit and the paid balance
+    expect(rh).toMatchObject({ status: "cancelled", refundDueVnd: 0 }); // a hold paid nothing
+    expect(sent.filter((m) => m.kind === "booking_cancelled")).toHaveLength(3);
+    const { rows } = await container.admin!.listAudit({ targetId: a.departure.id });
+    expect(rows.map((r) => r.action)).toEqual(["departure.cancel"]);
+    expect(await bookingAdmin.cancelDeparture(staff, crypto.randomUUID(), "x")).toBeNull();
+  });
+});
+
 describe("reports (H3)", () => {
   it("per tour: departures, capacity, sold seats, revenue and deposits; per source; refunds owed; held and other months left out", async () => {
     await db.execute(sql`TRUNCATE booking_payments, bookings, departures, discount_codes RESTART IDENTITY CASCADE`);
