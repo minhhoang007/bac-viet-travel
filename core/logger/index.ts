@@ -2,12 +2,28 @@ export type LogLevel = "debug" | "info" | "warn" | "error";
 export type LogFields = Record<string, unknown>;
 
 const LEVEL_ORDER: Record<LogLevel, number> = { debug: 10, info: 20, warn: 30, error: 40 };
-const SENSITIVE_KEY = /pass(word)?|secret|token|authorization|cookie|api[-_]?key|session/i;
+const SENSITIVE_KEY = /pass(word)?|secret|token|authorization|cookie|api[-_]?key|session|e-?mail|phone/i;
 const REDACTED = "[REDACTED]";
+
+const isQueryError = (e: Error) => "query" in e && "params" in e;
+const isPostgresError = (e: Error) => e.name === "PostgresError";
+
+/**
+ * Error text that is safe to log or store. Database errors carry the query parameters (Drizzle) or the offending
+ * values (Postgres) in their message, so only their SQLSTATE code and constraint are kept.
+ */
+export function errorSummary(error: unknown): string {
+  if (!(error instanceof Error)) return "Non-error value thrown";
+  const chain: Error[] = [];
+  for (let e: unknown = error; e instanceof Error && chain.length < 5; e = e.cause) chain.push(e);
+  if (!chain.some((e) => isQueryError(e) || isPostgresError(e))) return error.message.slice(0, 1000);
+  const pg = chain.find(isPostgresError) as (Error & { code?: string; constraint_name?: string }) | undefined;
+  return ["Database error", pg?.code, pg?.constraint_name].filter(Boolean).join(" ");
+}
 
 export function redact(value: unknown, depth = 0): unknown {
   if (depth > 6 || value === null || typeof value !== "object") return value;
-  if (value instanceof Error) return { name: value.name, message: value.message };
+  if (value instanceof Error) return { name: value.name, message: errorSummary(value) };
   if (Array.isArray(value)) return value.map((v) => redact(v, depth + 1));
   return Object.fromEntries(
     Object.entries(value).map(([k, v]) => [k, SENSITIVE_KEY.test(k) ? REDACTED : redact(v, depth + 1)]),
