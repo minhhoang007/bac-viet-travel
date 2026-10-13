@@ -4,6 +4,8 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.22.0] - 2026-10-13
+
 ### Security
 - Magic links: `POST /api/auth/sign-in/magic-link` now answers 404. Calling it directly skipped the CAPTCHA and the per-recipient limit (3 emails / 10 min) of `auth.signInMagicLink`, so anyone could flood an inbox and keep replacing that person's sign-in code. Links are sent only through the sign-in form's server action.
 - Logs and `jobs.last_error` no longer carry personal data from database errors: Drizzle puts the query parameters (e.g. an email) in the message, Postgres the offending value. New `errorSummary(error)` (`core/logger`) keeps only `Database error <SQLSTATE> <constraint>` for them; other errors keep their message. Log fields named like `email` or `phone` are redacted. `instrumentation.ts` goes through the same filter.

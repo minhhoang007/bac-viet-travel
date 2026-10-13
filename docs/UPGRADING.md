@@ -37,7 +37,7 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
-### Unreleased — security review fixes (magic-link endpoint, paid periods, jobs, logs)
+### v1.22.0 (2026-10-13) — security review fixes (magic-link endpoint, paid periods, jobs, logs)
 - Breaking (only if you call it): a client calling `POST /api/auth/sign-in/magic-link` (e.g. `authClient.signIn.magicLink`) gets 404. Send links through `auth.signInMagicLink` in a server action, like the starter's login form.
 - Project code passing its own executor to `entitlements.grantPeriod(grant, tx)` must pass a Drizzle transaction (it now needs `execute`). Without `tx` it opens its own transaction.
 - Project logs: fields named like `email`/`phone` are now `[REDACTED]`; log ids instead.
