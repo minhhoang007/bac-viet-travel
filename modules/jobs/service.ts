@@ -1,5 +1,5 @@
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
-import type { Logger } from "@/core/logger";
+import { errorSummary, type Logger } from "@/core/logger";
 import type { Db } from "@/db/client";
 import { jobs, type JobRow } from "./schema";
 
@@ -64,7 +64,7 @@ export function createJobsModule(deps: JobsModuleDeps): JobsModule {
       where id in (
         select id from jobs
         where (status in ('queued', 'failed') and run_at <= now())
-           or (status = 'running' and locked_until < now())
+           or (status = 'running' and locked_until < now() and attempts < max_attempts)
         order by run_at
         limit ${batchSize}
         for update skip locked
@@ -82,35 +82,63 @@ export function createJobsModule(deps: JobsModuleDeps): JobsModule {
     );
   }
 
-  async function finish(job: JobRow, error?: unknown): Promise<"succeeded" | "failed" | "dead"> {
-    if (!error) {
-      await deps.db.update(jobs).set({ status: "succeeded", lockedUntil: null, lastError: null }).where(eq(jobs.id, job.id));
-      return "succeeded";
+  /** Running jobs whose worker died on the last allowed attempt: dead, not re-claimed forever. */
+  async function buryExhausted() {
+    const rows = await deps.db.execute<Record<string, unknown>>(sql`
+      update jobs set status = 'dead', locked_until = null, last_error = 'Lease expired on the last attempt', updated_at = now()
+      where status = 'running' and locked_until < now() and attempts >= max_attempts
+      returning id, name, attempts`);
+    for (const r of rows as unknown as Record<string, unknown>[]) {
+      deps.logger.error("job.dead", { jobId: r.id, name: r.name, attempts: Number(r.attempts) });
     }
-    const message = error instanceof Error ? error.message : String(error);
-    const dead = job.attempts >= job.maxAttempts;
-    await deps.db
+  }
+
+  async function finish(job: JobRow, error?: unknown): Promise<"succeeded" | "failed" | "dead" | "stale"> {
+    // Only the current claim may record a result: a worker whose lease was taken over must not overwrite it.
+    const ownClaim = and(eq(jobs.id, job.id), eq(jobs.status, "running"), eq(jobs.attempts, job.attempts));
+    const dead = Boolean(error) && job.attempts >= job.maxAttempts;
+    const updated = await deps.db
       .update(jobs)
-      .set({
-        status: dead ? "dead" : "failed",
-        lockedUntil: null,
-        lastError: message.slice(0, 1000),
-        runAt: new Date(now() + backoffMs(job.attempts)),
-      })
-      .where(eq(jobs.id, job.id));
+      .set(
+        error
+          ? { status: dead ? "dead" : "failed", lockedUntil: null, lastError: errorSummary(error), runAt: new Date(now() + backoffMs(job.attempts)) }
+          : { status: "succeeded", lockedUntil: null, lastError: null },
+      )
+      .where(ownClaim)
+      .returning({ id: jobs.id });
+    if (updated.length === 0) {
+      deps.logger.warn("job.stale_finish", { jobId: job.id, name: job.name, attempts: job.attempts });
+      return "stale";
+    }
+    if (!error) return "succeeded";
     if (dead) deps.logger.error("job.dead", { jobId: job.id, name: job.name, attempts: job.attempts });
     else deps.logger.warn("job.failed", { jobId: job.id, name: job.name, attempts: job.attempts });
     return dead ? "dead" : "failed";
   }
 
-  async function runDue({ batchSize = 10, budgetMs = 20_000 } = {}): Promise<RunResult> {
-    const deadline = now() + budgetMs;
+  /** Claimed but not started before the deadline: back to the queue without using up an attempt. */
+  async function release(rest: JobRow[]) {
+    if (rest.length === 0) return;
+    await deps.db
+      .update(jobs)
+      .set({ status: "queued", attempts: sql`${jobs.attempts} - 1`, lockedUntil: null })
+      .where(and(inArray(jobs.id, rest.map((j) => j.id)), eq(jobs.status, "running")));
+  }
+
+  async function runUntil(deadline: number, batchSize: number): Promise<RunResult> {
     const result: RunResult = { claimed: 0, succeeded: 0, failed: 0, dead: 0 };
+    if (now() >= deadline) return result;
+    await buryExhausted();
     while (now() < deadline) {
       const batch = await claim(batchSize);
       if (batch.length === 0) break;
       result.claimed += batch.length;
-      for (const job of batch) {
+      for (const [i, job] of batch.entries()) {
+        if (now() >= deadline) {
+          await release(batch.slice(i));
+          result.claimed -= batch.length - i;
+          break;
+        }
         const handler = deps.handlers[job.name];
         let error: unknown;
         if (!handler) error = new Error(`No handler registered for job "${job.name}"`);
@@ -121,11 +149,14 @@ export function createJobsModule(deps: JobsModuleDeps): JobsModule {
             error = e;
           }
         }
-        result[await finish(job, error)] += 1;
+        const outcome = await finish(job, error);
+        if (outcome !== "stale") result[outcome] += 1;
       }
     }
     return result;
   }
+
+  const runDue: JobsModule["runDue"] = ({ batchSize = 10, budgetMs = 20_000 } = {}) => runUntil(now() + budgetMs, batchSize);
 
   async function purgeFinished({ succeededDays = 7, deadDays = 30 } = {}): Promise<number> {
     const deleted = await deps.db.execute(sql`
@@ -183,7 +214,9 @@ export function createJobsModule(deps: JobsModuleDeps): JobsModule {
         throw error;
       }
     },
-    async tick(options = {}) {
+    async tick({ budgetMs = 20_000 } = {}) {
+      // One budget for the whole tick: periodic tasks use it first, jobs get what is left.
+      const deadline = now() + budgetMs;
       try {
         await purgeFinished();
       } catch (error) {
@@ -196,7 +229,7 @@ export function createJobsModule(deps: JobsModuleDeps): JobsModule {
           deps.logger.error("job.periodic_failed", { task: name, error });
         }
       }
-      return runDue({ budgetMs: options.budgetMs });
+      return runUntil(deadline, 10);
     },
   };
 }

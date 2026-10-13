@@ -82,7 +82,7 @@ test.describe("admin", () => {
     expect((await adminPage.request.get("/api/content/preview?id=x")).status()).toBe(404);
     await adminPage.goto("/admin");
 
-    await adminPage.getByRole("link", { name: "Người dùng", exact: true }).click();
+    await adminPage.getByRole("link", { name: "Tài khoản người dùng", exact: true }).click();
     await adminPage.getByLabel("Tìm theo email").fill(userEmail);
     await adminPage.getByRole("button", { name: "Tìm theo email" }).click();
     await adminPage.getByRole("link", { name: userEmail }).click();
@@ -99,7 +99,7 @@ test.describe("admin", () => {
     await userPage.goto("/dashboard");
     await expect(userPage).toHaveURL(/\/login$/);
 
-    await adminPage.getByRole("link", { name: "Nhật ký" }).click();
+    await adminPage.getByRole("link", { name: "Nhật ký thao tác" }).click();
     await expect(adminPage.getByTestId("audit-log")).toContainText("user.disable");
     await expect(adminPage.getByTestId("audit-log")).toContainText(adminEmail);
 
@@ -142,6 +142,14 @@ test.describe("analytics", () => {
     const ok = await request.post("/api/analytics/collect", { data: '{"path":"/en/login?token=abc"}', headers: { "x-forwarded-for": "203.0.113.250" } });
     expect(ok.status()).toBe(204);
     expect(await sql`select 1 from analytics_events where path like '%token%'`).toHaveLength(0);
+  });
+
+  test("collect endpoint answers bad input with 4xx, never a server error", async ({ request }) => {
+    const headers = { "x-forwarded-for": "203.0.113.251" };
+    for (const data of ["null", "[]", '"x"', "{", '{"path":1}']) {
+      expect((await request.post("/api/analytics/collect", { data, headers })).status(), data).toBe(400);
+    }
+    expect((await request.post("/api/analytics/collect", { data: `{"path":"/${"a".repeat(3000)}"}`, headers })).status()).toBe(413);
   });
 });
 

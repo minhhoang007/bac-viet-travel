@@ -4,6 +4,29 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.23.0] - 2026-10-14
+
+### Changed — admin for non-technical owners
+- Admin menu in sections: business pages first (Tổng quan, Thanh toán, the project's pages), then **Nội dung**, **Cài đặt**, and **Hệ thống (kỹ thuật)** last (accounts, automatic tasks, audit log, "Trang tài khoản"). `AppNavItem.group` (section title) and `groupNav()` in `components/app-shell/app-sidebar.tsx`.
+- `ProductNavItem.group?: "main" | "content" | "settings"` puts a project admin page in a section (default "main").
+- Labels: "Job nền" → "Tác vụ tự động", "Người dùng" → "Tài khoản người dùng", "Nhật ký" → "Nhật ký thao tác", "Về dashboard" → "Trang tài khoản" (en: Automatic tasks, User accounts, My account).
+- `/admin` with a project overview (`ProductAdminOverview`): the starter's site figures (accounts, page views, storage) fold into "Số liệu website" below it, and the "30 ngày qua" subtitle is left to the project.
+
+### Fixed
+- App-profile blog E2E checks the SEO tags on a full page load. After in-place navigation the previous page's hreflang links can stay in `<head>` next to the new ones (failed locally, then on CI); crawlers always load pages fully.
+
+## [1.22.0] - 2026-10-13
+
+### Security
+- Magic links: `POST /api/auth/sign-in/magic-link` now answers 404. Calling it directly skipped the CAPTCHA and the per-recipient limit (3 emails / 10 min) of `auth.signInMagicLink`, so anyone could flood an inbox and keep replacing that person's sign-in code. Links are sent only through the sign-in form's server action.
+- Logs and `jobs.last_error` no longer carry personal data from database errors: Drizzle puts the query parameters (e.g. an email) in the message, Postgres the offending value. New `errorSummary(error)` (`core/logger`) keeps only `Database error <SQLSTATE> <constraint>` for them; other errors keep their message. Log fields named like `email` or `phone` are redacted. `instrumentation.ts` goes through the same filter.
+
+### Fixed
+- Paid periods (VNPay): two payments for the same plan confirmed at the same time could both start from the same date, so the user lost a paid period (8 parallel 30-day grants gave 120 days). `grantPeriod` now takes a per-user-and-plan lock for its transaction.
+- Jobs: a job whose worker died on the last allowed attempt was re-claimed forever; it now becomes `dead`. A worker whose lease expired and was taken over can no longer overwrite the newer run's result (`job.stale_finish` in the log).
+- Jobs: `tick()` shares one time budget between periodic tasks and jobs, and jobs claimed but not started before the deadline go back to the queue without using an attempt. VNPay `querydr` and Resend calls time out after 10 s.
+- `/api/analytics/collect`: a JSON body that is not an object (`null`, a list) answered 500; it now answers 400. Bodies announced larger than 2 KB are refused before reading.
+
 ## [1.21.0] - 2026-10-08
 
 ### Security

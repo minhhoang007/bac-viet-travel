@@ -96,6 +96,6 @@ Status changes since the V1.0 checklist below:
 
 1. **CSP `'unsafe-inline'` scripts.** Acceptable while pages load no third-party scripts. Move to nonces (`proxy.ts`) before adding analytics or user-generated HTML.
 2. **Client IP from `x-forwarded-for`.** Correct on Vercel (the platform overwrites it). Behind another proxy, configure it to overwrite the header, or clients can rotate IPs to bypass the contact-form limit. See `docs/DEPLOY.md`.
-3. **Better Auth's built-in limiter is in-memory** and only guards direct HTTP calls to `/api/auth/*`. App flows are limited by the app limiters (finding 6). For several instances, also set Better Auth `rateLimit.storage` in V1.1.
+3. **Better Auth's built-in limiter is in-memory** and only guards direct HTTP calls to `/api/auth/*`. App flows are limited by the app limiters (finding 6). For several instances, also set Better Auth `rateLimit.storage` in V1.1. *Update (2026-10-13):* the HTTP magic-link endpoint is closed (404), so sending a link always goes through the app limiters and CAPTCHA.
 4. **Google OAuth untested in the browser** (needs real or mocked credentials). **Account linking untested automatically.** Add a mocked OAuth provider test when Google sign-in is used in a real project.
 5. **Disabled users** can still complete a magic link, but every check treats them as signed out. Consider revoking their sessions when disabling (admin module, V1.2).

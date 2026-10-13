@@ -277,6 +277,8 @@ export function createAuthService(
       await auth.api.signOut({ headers });
     },
     security,
-    handler: (request) => auth.handler(request),
+    handler: (request) =>
+      // Sending a link only through signInMagicLink: the HTTP endpoint would skip its CAPTCHA and per-recipient limit.
+      new URL(request.url).pathname.endsWith("/sign-in/magic-link") ? Promise.resolve(new Response("Not found", { status: 404 })) : auth.handler(request),
   };
 }
