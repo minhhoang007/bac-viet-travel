@@ -3,7 +3,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { users } from "@/core/users/schema";
 import { testApp } from "@/tests/integration/setup/app";
 import { resetDb, testDb } from "@/tests/integration/setup/db";
-import { bookings, departures } from "../../schema/booking";
+import { bookingPayments, bookings, departures } from "../../schema/booking";
 import { createDashboard } from "../dashboard";
 import { createReports } from "../reports";
 
@@ -240,6 +240,43 @@ describe("reports (H3)", () => {
       { source: "website", bookings: 1, seats: 2, revenueVnd: 2_000_000 },
     ]);
     expect(report.refundsOwedVnd).toBe(300_000);
+  });
+
+  it("cash: money in by the day it arrived, per channel; refunds paid out; receivables by trip date", async () => {
+    await db.execute(sql`TRUNCATE booking_payments, bookings, departures, discount_codes RESTART IDENTITY CASCADE`);
+    const [soon] = await db.insert(departures).values({ tourSlug: "sapa-trekking-2d1n", date: "2026-11-05", capacity: 10 }).returning();
+    const [past] = await db.insert(departures).values({ tourSlug: "ninh-binh-day-tour", date: "2026-10-01", capacity: 10 }).returning();
+    const b = (code: string, departureId: string, status: "deposit_paid" | "confirmed" | "cancelled", seats: number, extra: Record<string, unknown> = {}) => ({
+      code, tokenHash: "x", departureId, status, holdExpiresAt: new Date("2030-01-01"), name: "A", email: "a@example.com", phone: "0900000000", locale: "vi",
+      adults: seats, seats, unitPriceVnd: 1_000_000, totalVnd: seats * 1_000_000, depositVnd: seats * 300_000, ...extra,
+    });
+    const oct = (day: number) => new Date(`2026-10-${String(day).padStart(2, "0")}T03:00:00Z`);
+    const inserted = await db.insert(bookings).values([
+      b("BV-CSHA22", soon!.id, "deposit_paid", 2, { depositPaidAt: oct(10) }), // VNPay deposit 600k
+      b("BV-CSHB22", soon!.id, "confirmed", 1, { depositPaidAt: oct(11), balancePaidAt: oct(20) }), // transfer 300k + staff balance 700k
+      b("BV-CSHC22", soon!.id, "confirmed", 3, { depositPaidAt: new Date("2026-09-30T03:00:00Z"), source: "klook" }), // September: not in October cash; still owes 2.1M
+      b("BV-CSHD22", past!.id, "cancelled", 1, { depositPaidAt: oct(2), refundDueVnd: 300_000, refundedAt: oct(5) }), // staff 300k in, 300k back
+    ]).returning({ id: bookings.id, code: bookings.code });
+    const id = (code: string) => inserted.find((r) => r.code === code)!.id;
+    await db.insert(bookingPayments).values([
+      { bookingId: id("BV-CSHA22"), method: "vnpay", purpose: "deposit", txnRef: "T1", amountVnd: 600_000, status: "paid", paidAt: oct(10) },
+      { bookingId: id("BV-CSHB22"), method: "transfer", purpose: "deposit", txnRef: "T2", amountVnd: 300_000, status: "paid", paidAt: oct(11) },
+      { bookingId: id("BV-CSHB22"), method: "vnpay", purpose: "balance", txnRef: "T3", amountVnd: 700_000, status: "failed" },
+    ]);
+
+    const cash = await createReports({ db }).cash("2026-10-01", "2026-10-31");
+    expect(cash.byChannel).toEqual([
+      { channel: "vnpay", depositsVnd: 600_000, balancesVnd: 0 },
+      { channel: "transfer", depositsVnd: 300_000, balancesVnd: 0 },
+      { channel: "staff", depositsVnd: 300_000, balancesVnd: 700_000 },
+    ]);
+    expect(cash).toMatchObject({ collectedVnd: 1_900_000, refundedVnd: 300_000 });
+
+    // Owed from trips on or after the given day, balance unpaid: A (1.4M) and C (2.1M); B paid, D past and cancelled.
+    expect((await createReports({ db }).receivables("2026-10-14")).map((r) => [r.code, r.dueVnd])).toEqual([
+      ["BV-CSHA22", 1_400_000],
+      ["BV-CSHC22", 2_100_000],
+    ]);
   });
 });
 
