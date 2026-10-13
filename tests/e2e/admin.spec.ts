@@ -52,7 +52,8 @@ test("staff confirm one booking and cancel another; seats return to sale; everyt
   await page.getByTestId("admin-confirm").click();
   await expect(page.getByRole("status")).toContainText("Đã lưu.");
   await expect(page.locator("[data-admin-status=confirmed]")).toBeVisible();
-  await expect(page.getByTestId("admin-history")).toContainText("booking.confirm");
+  await expect(page.getByTestId("admin-history").locator('[data-action="booking.confirm"]')).toContainText("Xác nhận đơn");
+  await expect(page.getByTestId("admin-next-step")).toContainText("Thu nốt");
 
   // Fix the guest's contact details; seats and status stay.
   await page.getByTestId("admin-contact").getByText("Sửa thông tin liên hệ").click();
@@ -68,6 +69,11 @@ test("staff confirm one booking and cancel another; seats return to sale; everyt
   await expect(page.locator('[data-queue="toConfirm"]')).toHaveAttribute("href", "/admin/bookings?filter=deposit_paid");
   await expect(page.getByTestId("dashboard-upcoming")).toContainText("chỗ");
   await expect(page.getByTestId("dashboard-recent")).toContainText("BV-ADMN33");
+  // The search at the top finds a booking from the bank transfer note.
+  await page.getByTestId("dashboard-search").getByRole("textbox").fill("BVADMN22");
+  await page.getByTestId("dashboard-search").getByRole("button").click();
+  await expect(page.getByTestId("bookings-table")).toContainText("BV-ADMN22");
+  await page.goto("/admin");
   for (const scheme of ["dark", "light"] as const) {
     await page.emulateMedia({ colorScheme: scheme });
     const result = await new AxeBuilder({ page }).include('[data-testid="admin-dashboard"]').withTags(["wcag2a", "wcag2aa"]).analyze();
@@ -76,13 +82,18 @@ test("staff confirm one booking and cancel another; seats return to sale; everyt
   await page.goto("/admin/bookings/BV-ADMN22");
 
   await page.goto("/admin/bookings/BV-ADMN33");
+  // Cancelling is folded away, and staff must say whether the deposit goes back.
+  await expect(page.getByTestId("admin-cancel")).toBeHidden();
+  await page.getByTestId("admin-cancel-panel").getByText("Huỷ đơn…").click();
   await page.getByLabel("Lý do huỷ (gửi cho khách)").fill("Khách đổi lịch");
+  await page.getByLabel("Hoàn tiền cọc cho khách").check();
   await page.getByTestId("admin-cancel").click();
   await expect(page.locator("[data-admin-status=cancelled]")).toBeVisible();
+  await expect(page.getByTestId("admin-next-step")).toContainText("Cần hoàn");
   await page.getByLabel("Ghi chú hoàn tiền (mã GD hoàn, kênh…)").fill("Hoàn qua VNPay");
   await page.getByTestId("admin-refunded").click();
   await expect(page.getByRole("status")).toContainText("Đã lưu.");
-  await expect(page.getByTestId("admin-history")).toContainText("booking.refunded");
+  await expect(page.getByTestId("admin-history").locator('[data-action="booking.refunded"]')).toBeVisible();
 
   expect(await seatsLeftText(page, departure.date)).toContain("Còn 10 chỗ");
 
@@ -118,14 +129,14 @@ test("staff add a departure date and close another; guests see the change", asyn
 test("staff enter an OTA booking: seats shared with the website, source shown, no guest email by default", async ({ page }) => {
   await signInAsAdmin(page);
   await page.goto("/admin/bookings");
-  await page.getByRole("link", { name: "+ Nhập booking" }).click();
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Nhập booking (điện thoại, Zalo, OTA)");
+  await page.getByRole("link", { name: "+ Thêm đơn" }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Thêm đơn (điện thoại, Zalo, OTA)");
 
   await page.getByLabel("Mã đặt chỗ bên OTA").fill("KL-E2E-1");
   await page.getByLabel("Họ tên khách").fill("John Smith");
   await page.getByLabel("Người lớn").fill("2");
   await page.getByLabel("Số tiền thực thu (VND)").fill("1500000");
-  await page.getByRole("button", { name: "Tạo booking" }).click();
+  await page.getByRole("button", { name: "Tạo đơn" }).click();
 
   await expect(page).toHaveURL(/\/admin\/bookings\/BV-[A-Z2-9]{6}\?result=done$/);
   await expect(page.getByTestId("detail-source")).toHaveText("Klook · KL-E2E-1");
@@ -331,7 +342,9 @@ test("two-step verification: staff set up a second factor first, pass it each se
   await paidBooking("BV-MFA222", 1);
   await page.goto("/admin/bookings/BV-MFA222");
   page.on("dialog", (dialog) => dialog.accept());
+  await page.getByTestId("admin-cancel-panel").getByText("Huỷ đơn…").click();
   await page.getByLabel("Lý do huỷ (gửi cho khách)").fill("Thử xác thực lại");
+  await page.getByLabel("Không hoàn cọc (theo chính sách huỷ)").check();
   await page.getByTestId("admin-cancel").click();
   await expect(page).toHaveURL(/\/verify\?fresh=1&next=%2Fadmin%2Fbookings%2FBV-MFA222$/);
   await expect(page.getByText("Thao tác này cần xác thực lại")).toBeVisible();

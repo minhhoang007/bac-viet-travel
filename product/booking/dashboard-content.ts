@@ -30,6 +30,8 @@ const vi = {
   recentTitle: "Đơn mới nhất",
   all: "Xem tất cả",
   noData: "Chưa có dữ liệu.",
+  search: "Tìm đơn: mã đơn, nội dung chuyển khoản, tên hoặc số điện thoại",
+  searchButton: "Tìm",
   unavailable: "Chưa tải được số liệu tổng quan. Thử tải lại trang sau ít phút; các mục quản trị khác vẫn dùng bình thường.",
 };
 
@@ -62,6 +64,8 @@ const en: typeof vi = {
   recentTitle: "Latest bookings",
   all: "See all",
   noData: "No data yet.",
+  search: "Find a booking: code, transfer note, name or phone",
+  searchButton: "Search",
   unavailable: "The overview figures could not be loaded. Reload in a few minutes; the rest of the admin works as usual.",
 };
 

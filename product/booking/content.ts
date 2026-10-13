@@ -385,6 +385,14 @@ export const formatVnd = (n: number, locale: Locale) =>
 export const formatShortDay = (day: string, locale: Locale) =>
   new Intl.DateTimeFormat(locale === "vi" ? "vi-VN" : "en-GB", { day: locale === "vi" ? "2-digit" : "numeric", month: locale === "vi" ? "2-digit" : "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${day}T00:00:00Z`));
 
+/** "01:57, 14/10" in Vietnam time, for deadlines staff act on (hold end). */
+export const formatShortTime = (t: Date) => {
+  const p = Object.fromEntries(
+    new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit", hourCycle: "h23", timeZone: "Asia/Ho_Chi_Minh" }).formatToParts(t).map((x) => [x.type, x.value]),
+  );
+  return `${p.hour}:${p.minute}, ${p.day}/${p.month}`;
+};
+
 /** "Thứ Sáu, 09/10/2026" / "Fri, 9 Oct 2026" — dates are calendar days, formatted in UTC so they never shift. */
 export const formatDay = (day: string, locale: Locale) =>
   new Intl.DateTimeFormat(locale === "vi" ? "vi-VN" : "en-GB", { weekday: locale === "vi" ? "long" : "short", day: "numeric", month: locale === "vi" ? "2-digit" : "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${day}T00:00:00Z`));

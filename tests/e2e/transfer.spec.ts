@@ -64,7 +64,10 @@ test("bank transfer: VietQR with amount and reference, seats held 2 hours, staff
   await expect(admin.getByRole("status")).toContainText("Đã lưu.");
   await expect(admin.locator("[data-admin-status=deposit_paid]")).toBeVisible();
   await expect(admin.getByTestId("admin-transfer")).toHaveCount(0);
-  await expect(admin.getByTestId("admin-history")).toContainText("booking.transfer_received");
+  await expect(admin.getByTestId("admin-history")).toContainText("Ghi nhận chuyển khoản");
+  await expect(admin.getByTestId("admin-payments")).toContainText("Chuyển khoản");
+  await expect(admin.getByTestId("admin-payments")).toContainText("Mã NH FT26100100001");
+  await expect(admin.getByTestId("admin-next-step")).toContainText("Xác nhận đơn");
 
   await page.reload();
   await expect(page.getByTestId("paid")).toBeVisible();

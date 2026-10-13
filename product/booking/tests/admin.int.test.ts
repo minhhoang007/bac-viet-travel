@@ -81,6 +81,10 @@ describe("booking admin", () => {
     expect((await bookingAdmin.list({ filter: "confirmed" })).rows.map((r) => r.code)).toEqual([b.code]);
     expect((await bookingAdmin.list({ filter: "all", to: "2026-10-15" })).rows.map((r) => r.code)).toEqual([a.code]);
     expect((await bookingAdmin.list({ filter: "all", query: a.code.slice(3) })).rows.map((r) => r.code)).toEqual([a.code]);
+    // The bank transfer note (code without its dash) and a phone typed with spaces find the booking too.
+    expect((await bookingAdmin.list({ filter: "all", query: ` ${a.code.replace("-", "").toLowerCase()} ` })).rows.map((r) => r.code)).toEqual([a.code]);
+    const { phone } = (await db.select({ phone: bookings.phone }).from(bookings).where(eq(bookings.code, b.code)))[0]!;
+    expect((await bookingAdmin.list({ filter: "all", query: phone.replace(/(\d{4})(\d{3})/, "$1 $2 ") })).rows.map((r) => r.code)).toContain(b.code);
     expect((await bookingAdmin.list({ filter: "all", query: "%" })).total).toBe(0); // LIKE wildcards are escaped
     expect((await bookingAdmin.list({ filter: "all", tourSlug: "sapa-trekking-2d1n" })).total).toBe(0);
   });

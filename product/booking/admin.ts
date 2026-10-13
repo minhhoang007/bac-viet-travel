@@ -21,7 +21,7 @@ export interface Actor {
 /** "attention" = what staff must act on: refunds owed, paid deposits not yet confirmed, bank transfers to check. */
 export type BookingFilter = BookingStatus | "attention" | "all";
 
-export interface AdminBookingRow extends Pick<Booking, "id" | "code" | "status" | "name" | "email" | "phone" | "seats" | "totalVnd" | "depositVnd" | "refundDueVnd" | "refundedAt" | "createdAt" | "source" | "externalRef"> {
+export interface AdminBookingRow extends Pick<Booking, "id" | "code" | "status" | "holdExpiresAt" | "name" | "email" | "phone" | "seats" | "totalVnd" | "depositVnd" | "refundDueVnd" | "refundedAt" | "createdAt" | "source" | "externalRef"> {
   tourSlug: string;
   date: string;
   kind: Departure["kind"];
@@ -132,7 +132,19 @@ export function createBookingAdmin(deps: {
       if (from && DAY.test(from)) where.push(gte(departures.date, from));
       if (to && DAY.test(to)) where.push(lte(departures.date, to));
       const q = query?.trim().slice(0, 100);
-      if (q) where.push(or(ilike(bookings.code, like(q)), ilike(bookings.name, like(q)), ilike(bookings.email, like(q)), ilike(bookings.phone, like(q)))!);
+      if (q) {
+        // Staff paste what the bank shows: the transfer note is the code without its dash; phones come with spaces.
+        const compact = q.replace(/[\s.]/g, "");
+        const transferCode = /^bv-?[a-z0-9]{6}$/i.test(compact) ? `BV-${compact.slice(-6).toUpperCase()}` : null;
+        where.push(or(
+          ilike(bookings.code, like(q)),
+          ilike(bookings.name, like(q)),
+          ilike(bookings.email, like(q)),
+          ilike(bookings.phone, like(q)),
+          ilike(bookings.phone, like(compact)),
+          ...(transferCode ? [eq(bookings.code, transferCode)] : []),
+        )!);
+      }
       const condition = where.length ? and(...where) : undefined;
       const size = Math.min(Math.max(pageSize, 1), 100);
       const rows = await db
@@ -140,6 +152,7 @@ export function createBookingAdmin(deps: {
           id: bookings.id,
           code: bookings.code,
           status: bookings.status,
+          holdExpiresAt: bookings.holdExpiresAt,
           name: bookings.name,
           email: bookings.email,
           phone: bookings.phone,
