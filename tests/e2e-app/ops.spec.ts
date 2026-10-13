@@ -143,6 +143,14 @@ test.describe("analytics", () => {
     expect(ok.status()).toBe(204);
     expect(await sql`select 1 from analytics_events where path like '%token%'`).toHaveLength(0);
   });
+
+  test("collect endpoint answers bad input with 4xx, never a server error", async ({ request }) => {
+    const headers = { "x-forwarded-for": "203.0.113.251" };
+    for (const data of ["null", "[]", '"x"', "{", '{"path":1}']) {
+      expect((await request.post("/api/analytics/collect", { data, headers })).status(), data).toBe(400);
+    }
+    expect((await request.post("/api/analytics/collect", { data: `{"path":"/${"a".repeat(3000)}"}`, headers })).status()).toBe(413);
+  });
 });
 
 test.describe("storage", () => {
