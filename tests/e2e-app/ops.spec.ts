@@ -82,7 +82,7 @@ test.describe("admin", () => {
     expect((await adminPage.request.get("/api/content/preview?id=x")).status()).toBe(404);
     await adminPage.goto("/admin");
 
-    await adminPage.getByRole("link", { name: "Người dùng", exact: true }).click();
+    await adminPage.getByRole("link", { name: "Tài khoản người dùng", exact: true }).click();
     await adminPage.getByLabel("Tìm theo email").fill(userEmail);
     await adminPage.getByRole("button", { name: "Tìm theo email" }).click();
     await adminPage.getByRole("link", { name: userEmail }).click();
@@ -99,7 +99,7 @@ test.describe("admin", () => {
     await userPage.goto("/dashboard");
     await expect(userPage).toHaveURL(/\/login$/);
 
-    await adminPage.getByRole("link", { name: "Nhật ký" }).click();
+    await adminPage.getByRole("link", { name: "Nhật ký thao tác" }).click();
     await expect(adminPage.getByTestId("audit-log")).toContainText("user.disable");
     await expect(adminPage.getByTestId("audit-log")).toContainText(adminEmail);
 

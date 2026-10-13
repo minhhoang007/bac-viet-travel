@@ -1,10 +1,12 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { useId } from "react";
 import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -15,6 +17,19 @@ import {
 export interface AppNavItem {
   label: string;
   href: string;
+  /** Section title; items without one form the first, untitled section. */
+  group?: string;
+}
+
+/** Sections in the order their first item appears; items keep their order inside a section. */
+export function groupNav(items: AppNavItem[]): { title?: string; items: AppNavItem[] }[] {
+  const sections: { title?: string; items: AppNavItem[] }[] = [];
+  for (const item of items) {
+    const section = sections.find((s) => s.title === item.group);
+    if (section) section.items.push(item);
+    else sections.push({ title: item.group, items: [item] });
+  }
+  return sections;
 }
 
 /** Active item: the longest href that is the current path or a parent of it (so /dashboard is not active on /dashboard/account). */
@@ -26,6 +41,7 @@ export function activeHref(pathname: string, hrefs: string[]): string | undefine
 
 export function AppSidebar({ brand, nav, mobileTitle }: { brand: AppNavItem; nav: AppNavItem[]; mobileTitle: string }) {
   const pathname = usePathname();
+  const groupId = useId();
   const { setOpenMobile } = useSidebar();
   const active = activeHref(pathname, nav.map((item) => item.href));
 
@@ -38,25 +54,28 @@ export function AppSidebar({ brand, nav, mobileTitle }: { brand: AppNavItem; nav
         </a>
       </SidebarHeader>
       <SidebarContent>
-        <SidebarGroup>
-          <nav aria-label={mobileTitle}>
-            <SidebarMenu>
-              {nav.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton asChild isActive={item.href === active}>
-                    <a
-                      href={item.href}
-                      aria-current={item.href === active ? "page" : undefined}
-                      onClick={() => setOpenMobile(false)}
-                    >
-                      {item.label}
-                    </a>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </nav>
-        </SidebarGroup>
+        <nav aria-label={mobileTitle}>
+          {groupNav(nav).map((section, i) => (
+            <SidebarGroup key={section.title ?? `section-${i}`}>
+              {section.title && <SidebarGroupLabel id={`${groupId}-${i}`}>{section.title}</SidebarGroupLabel>}
+              <SidebarMenu aria-labelledby={section.title ? `${groupId}-${i}` : undefined}>
+                {section.items.map((item) => (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton asChild isActive={item.href === active}>
+                      <a
+                        href={item.href}
+                        aria-current={item.href === active ? "page" : undefined}
+                        onClick={() => setOpenMobile(false)}
+                      >
+                        {item.label}
+                      </a>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroup>
+          ))}
+        </nav>
       </SidebarContent>
     </Sidebar>
   );

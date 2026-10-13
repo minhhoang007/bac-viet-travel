@@ -91,8 +91,9 @@ export const app: AppContent = {
   },
   admin: {
     title: "Admin",
-    backToApp: "Back to dashboard",
-    nav: { overview: "Overview", users: "Users", jobs: "Jobs", billing: "Billing", audit: "Audit log", media: "Media library", content: "Content review", posts: "Posts" },
+    backToApp: "My account",
+    nav: { overview: "Overview", users: "User accounts", jobs: "Automatic tasks", billing: "Billing", audit: "Audit log", media: "Media library", content: "Content review", posts: "Posts" },
+    navGroups: { content: "Content", settings: "Settings", system: "System (technical)" },
     overview: {
       newUsers: "New users",
       proUsers: "Pro users",
@@ -105,6 +106,7 @@ export const app: AppContent = {
       storage: "Storage",
       noData: "No data yet.",
       last30Days: "Last 30 days",
+      siteFigures: "Website figures (accounts, page views, storage)",
     },
     users: {
       search: "Search by email",

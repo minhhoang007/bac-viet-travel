@@ -72,6 +72,8 @@ export interface AppContent {
     title: string;
     backToApp: string;
     nav: { overview: string; users: string; jobs: string; billing: string; audit: string; media: string; content: string; posts: string };
+    /** Menu section titles (the first section, "main", has none). */
+    navGroups: { content: string; settings: string; system: string };
     overview: {
       newUsers: string;
       proUsers: string;
@@ -84,6 +86,8 @@ export interface AppContent {
       storage: string;
       noData: string;
       last30Days: string;
+      /** Folded section with these figures when the project has its own overview (ProductAdminOverview). */
+      siteFigures: string;
     };
     users: {
       search: string;
