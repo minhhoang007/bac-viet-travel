@@ -7,7 +7,8 @@ import { ContactForm } from "@/components/marketing/contact-form";
 import { Container } from "@/components/ui/container";
 import { createMetadata, serializeJsonLd } from "@/core/seo";
 import type { Locale } from "@/config/app";
-import { contactConfig, telUrl, whatsappUrl, zaloUrl } from "@/config/contact";
+import { telUrl, whatsappUrl, zaloUrl } from "@/config/contact";
+import { currentCompany } from "@/app/_lib/company";
 import { features } from "@/config/features";
 import { getMarketingContent } from "@/content";
 import { getProductContent } from "@/product/content";
@@ -21,23 +22,24 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 // The map opens in Google Maps (a new tab): the site's CSP allows no third-party frames, and no Google cookies here.
-const mapUrl = () => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${contactConfig.address}, ${contactConfig.city}`)}`;
+const mapUrl = (co: { address: string; city: string }) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${co.address}, ${co.city}`)}`;
 
 /** Contact channels (chat first), office with a map link, opening hours and the contact form. */
 export default async function ContactPage({ params }: Props) {
+  const contactConfig = await currentCompany();
   const { locale } = await params;
   setRequestLocale(locale);
   const p = getProductContent(locale);
   const c = p.contactPage;
   const m = getMarketingContent(locale);
   const chat = [
-    { key: "zalo", icon: MessageCircle, label: p.contact.zalo, value: contactConfig.hotline, hint: c.zaloHint, href: zaloUrl() },
-    { key: "whatsapp", icon: MessageCircle, label: p.contact.whatsapp, value: contactConfig.hotline, hint: c.whatsappHint, href: whatsappUrl() },
+    { key: "zalo", icon: MessageCircle, label: p.contact.zalo, value: contactConfig.hotline, hint: c.zaloHint, href: zaloUrl(contactConfig.zalo) },
+    { key: "whatsapp", icon: MessageCircle, label: p.contact.whatsapp, value: contactConfig.hotline, hint: c.whatsappHint, href: whatsappUrl(undefined, contactConfig.whatsapp) },
   ];
   // Vietnamese visitors use Zalo first, international visitors WhatsApp.
   const channels = [
     ...(locale === "vi" ? chat : [...chat].reverse()),
-    { key: "hotline", icon: Phone, label: "Hotline", value: contactConfig.hotline, hint: c.hotlineHint, href: telUrl() },
+    { key: "hotline", icon: Phone, label: "Hotline", value: contactConfig.hotline, hint: c.hotlineHint, href: telUrl(contactConfig.hotline) },
     { key: "email", icon: Mail, label: "Email", value: contactConfig.email, hint: c.emailHint, href: `mailto:${contactConfig.email}` },
   ];
   const agencyLd = {
@@ -97,7 +99,7 @@ export default async function ContactPage({ params }: Props) {
               <Clock aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-primary" />
               {contactConfig.businessHours[locale]}
             </p>
-            <a href={mapUrl()} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-primary underline underline-offset-4" data-testid="map-link">
+            <a href={mapUrl(contactConfig)} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-primary underline underline-offset-4" data-testid="map-link">
               {c.openMap}
               <ExternalLink aria-hidden="true" className="size-3.5" />
             </a>

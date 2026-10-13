@@ -1,4 +1,4 @@
-import { contactConfig } from "@/config/contact";
+import { defaultContact as contactConfig } from "@/config/contact";
 import { localizedUrl } from "@/core/seo";
 import type { SeoSite } from "@/core/seo/metadata";
 

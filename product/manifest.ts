@@ -13,7 +13,7 @@ import { createDiscountAdmin } from "./booking/discounts";
 import { createDashboard } from "./booking/dashboard";
 import { createReports } from "./booking/reports";
 import { DEFAULT_TOUR_PRICING } from "./booking/rules";
-import { bankTransferConfig } from "@/config/bank-transfer";
+import { defaultBankTransfer } from "@/config/bank-transfer";
 import { createBookingService } from "./booking/service";
 import { DESTINATIONS, getTourCatalog } from "./tours/catalog";
 import { tourProblems } from "./tours/document";
@@ -21,6 +21,7 @@ import { createInquiryService } from "./tours/inquiry";
 import { can, type Permission, type StaffRole } from "./staff/permissions";
 import { createStaffService } from "./staff/service";
 import { createThemeService } from "./theme/service";
+import { createCompanyService } from "./company/service";
 import { createTourSource, TOUR_CONTENT_TYPE, TOURS_CACHE_TAG } from "./tours/source";
 
 /** The only file bootstrap/ imports from product/. Declares product services, menu, exporters and jobs. */
@@ -58,7 +59,7 @@ export function createProduct(db: Db, ctx: ProductContext) {
     mail: ctx.mail,
     bookings: booking,
     vnpay: ctx.payments.vnpay,
-    transferHoldMinutes: bankTransferConfig.holdMinutes,
+    transferHoldMinutes: defaultBankTransfer.holdMinutes,
     tourTitle,
     now: ctx.now,
   });
@@ -114,6 +115,7 @@ export function createProduct(db: Db, ctx: ProductContext) {
   const staff = createStaffService({ db, audit: ctx.audit });
   roleLookup = staff.roleOf;
   const theme = createThemeService({ db, audit: ctx.audit });
+  const company = createCompanyService({ db, audit: ctx.audit });
   const reports = createReports({ db });
   const dashboard = createDashboard({ db, now: ctx.now });
   // Tour enquiry form: shared limiter (Redis when configured), like the starter contact form; the action checks
@@ -125,7 +127,7 @@ export function createProduct(db: Db, ctx: ProductContext) {
     to: () => getEnv().extra.CONTACT_TO_EMAIL ?? "",
     tourTitles: async (locale) => (await tours.catalog()).list(locale).map((t) => t.title),
   });
-  return { adminOverview: bookingOverview(bookingAdmin), services: { tours, booking, deposits, bookingAdmin, feedback, discounts, reports, dashboard, inquiry, staff, theme, paymentsSandbox: ctx.payments.vnpay?.sandbox ?? false }, exporters, jobs };
+  return { adminOverview: bookingOverview(bookingAdmin), services: { tours, booking, deposits, bookingAdmin, feedback, discounts, reports, dashboard, inquiry, staff, theme, company, paymentsSandbox: ctx.payments.vnpay?.sandbox ?? false }, exporters, jobs };
 }
 
 export interface ProductNavItem {
@@ -168,6 +170,7 @@ export const productAdminNav: ProductNavItem[] = [
   { href: "/admin/departures", label: { vi: "Lịch khởi hành", en: "Departures" }, roles: ["editor"], allow: staffMay("departures") },
   { href: "/admin/reports", label: { vi: "Báo cáo", en: "Reports" }, roles: ["editor"], allow: staffMay("reports") },
   { href: "/admin/staff", label: { vi: "Nhân viên", en: "Staff" } },
+  { href: "/admin/company", label: { vi: "Thông tin công ty", en: "Company details" } },
   { href: "/admin/appearance", label: { vi: "Giao diện", en: "Appearance" } },
 ];
 

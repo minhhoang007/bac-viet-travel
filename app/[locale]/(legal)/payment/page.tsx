@@ -7,6 +7,7 @@ import type { Locale } from "@/config/app";
 import { getAppContent } from "@/content";
 import { getProductContent } from "@/product/content";
 import { getPolicy } from "@/product/policies";
+import { currentCompany } from "@/app/_lib/company";
 
 type Props = { params: Promise<{ locale: Locale }> };
 
@@ -20,6 +21,6 @@ export default async function PaymentPolicyPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
   const c = getAppContent(locale).legal;
-  const doc = getPolicy(locale, "payment");
+  const doc = getPolicy(locale, "payment", await currentCompany());
   return <LegalPage title={getProductContent(locale).footer.payment} updatedLabel={c.lastUpdated} updated={doc.updated} notice={c.templateNotice} sections={doc.sections} />;
 }

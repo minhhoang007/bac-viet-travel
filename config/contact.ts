@@ -1,7 +1,7 @@
-// Project-owned: company identity and contact channels. The single place to edit before going live:
-// footer, About page, policies and JSON-LD all read from here. Values marked (demo) must be replaced.
+// Project-owned: company identity and contact channels, as defaults. Admins replace them in Admin → Thông tin công
+// ty (pages read them through app/_lib/company.ts `currentCompany()`). Values marked (demo) must be replaced there.
 
-export const contactConfig = {
+export const defaultContact = {
   /** Trading name shown in the header, emails and JSON-LD. */
   companyName: "Bắc Việt Travel",
   /** Registered company name (tên pháp nhân), as on the business registration. */
@@ -32,7 +32,7 @@ export const contactConfig = {
   googleReviewUrl: null as string | null,
 };
 
-export const zaloUrl = (number = contactConfig.zalo) => `https://zalo.me/${number}`;
-export const whatsappUrl = (text?: string, number = contactConfig.whatsapp) =>
+export const zaloUrl = (number: string) => `https://zalo.me/${number}`;
+export const whatsappUrl = (text: string | undefined, number: string) =>
   `https://wa.me/${number}${text ? `?text=${encodeURIComponent(text)}` : ""}`;
-export const telUrl = (phone = contactConfig.hotline) => `tel:${phone.replace(/[^\d+]/g, "")}`;
+export const telUrl = (phone: string) => `tel:${phone.replace(/[^\d+]/g, "")}`;

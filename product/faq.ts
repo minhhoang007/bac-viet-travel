@@ -1,5 +1,5 @@
 import type { Locale } from "@/config/app";
-import { bankTransferConfig } from "@/config/bank-transfer";
+import { defaultBankTransfer } from "@/config/bank-transfer";
 import { bookingRules } from "./booking/rules";
 
 // Project-owned: questions guests ask before booking (E5). Facts come from the booking rules and config, so the
@@ -17,7 +17,7 @@ export interface FaqGroup {
 }
 
 const deposit = Math.round(bookingRules.depositRate * 100);
-const transferHours = Math.round(bankTransferConfig.holdMinutes / 60);
+const transferHours = Math.round(defaultBankTransfer.holdMinutes / 60);
 
 const vi: FaqGroup[] = [
   {

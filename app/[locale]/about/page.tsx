@@ -8,7 +8,7 @@ import { Container } from "@/components/ui/container";
 import { localePath } from "@/core/i18n/routing";
 import { createMetadata } from "@/core/seo";
 import type { Locale } from "@/config/app";
-import { contactConfig } from "@/config/contact";
+import { currentCompany } from "@/app/_lib/company";
 import { getAboutContent } from "@/product/about";
 import { getProductContent } from "@/product/content";
 
@@ -28,6 +28,7 @@ const initials = (name: string) =>
     .join("");
 
 export default async function AboutPage({ params }: Props) {
+  const contactConfig = await currentCompany();
   const { locale } = await params;
   setRequestLocale(locale);
   const c = getAboutContent(locale);

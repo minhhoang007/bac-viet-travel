@@ -1,6 +1,6 @@
 import type { Locale } from "@/config/app";
-import { contactConfig as co } from "@/config/contact";
 import type { LegalDocument } from "@/content/legal";
+import type { Company } from "./company/settings";
 import { bookingRules } from "./booking/rules";
 
 // Project-owned: cancellation and payment policies. Deposit rate, hold time and cut-off come from the booking rules,
@@ -30,7 +30,7 @@ function tiersText(locale: Locale): string {
     .join(" ");
 }
 
-const policies: Record<Locale, { cancellation: LegalDocument; payment: LegalDocument }> = {
+const policies = (co: Company): Record<Locale, { cancellation: LegalDocument; payment: LegalDocument }> => ({
   vi: {
     cancellation: {
       updated: "2026-10-05",
@@ -75,8 +75,9 @@ const policies: Record<Locale, { cancellation: LegalDocument; payment: LegalDocu
       ],
     },
   },
-};
+});
 
-export function getPolicy(locale: Locale, doc: "cancellation" | "payment"): LegalDocument {
-  return policies[locale][doc];
+/** `company`: from app/_lib/company.ts `currentCompany()` (hotline and email in the texts). */
+export function getPolicy(locale: Locale, doc: "cancellation" | "payment", company: Company): LegalDocument {
+  return policies(company)[locale][doc];
 }

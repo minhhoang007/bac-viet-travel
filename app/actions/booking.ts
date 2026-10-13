@@ -85,7 +85,7 @@ export async function chooseTransfer(formData: FormData): Promise<void> {
   const locale = localeOf(formData);
   let ok = false;
   try {
-    ok = isTransferAvailable() && (await getDeposits().chooseTransfer({ code, token })).status === "ok";
+    ok = (await isTransferAvailable()) && (await getDeposits().chooseTransfer({ code, token })).status === "ok";
   } catch {
     ok = false;
   }

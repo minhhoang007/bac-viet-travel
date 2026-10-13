@@ -5,7 +5,8 @@ import { ButtonLink } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { localePath } from "@/core/i18n/routing";
 import { appConfig, type Locale } from "@/config/app";
-import { contactConfig, telUrl } from "@/config/contact";
+import { telUrl } from "@/config/contact";
+import { currentCompany } from "@/app/_lib/company";
 import { features } from "@/config/features";
 import { siteNavigation } from "@/config/navigation";
 import { getMarketingContent } from "@/content";
@@ -23,7 +24,9 @@ const navItem =
 const iconButton = "inline-flex size-10 items-center justify-center rounded-md border border-border transition-colors hover:border-primary hover:text-primary";
 
 /** Site header (ProductHeader): top bar with licence and contacts, main bar with menu, hotline and "Book". */
-export function SiteHeader({ locale }: { locale: Locale }) {
+export async function SiteHeader({ locale }: { locale: Locale }) {
+  const contactConfig = await currentCompany();
+  const tel = telUrl(contactConfig.hotline);
   const c = getProductContent(locale);
   const h = c.header;
   const href = (path: string) => localePath(locale, path);
@@ -95,13 +98,13 @@ export function SiteHeader({ locale }: { locale: Locale }) {
           </nav>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            <a href={telUrl()} className="hidden whitespace-nowrap text-right leading-tight 2xl:grid">
+            <a href={tel} className="hidden whitespace-nowrap text-right leading-tight 2xl:grid">
               <span className="text-xs text-muted-foreground">
                 {h.advice} {contactConfig.hoursShort}
               </span>
               <span className="font-semibold">{contactConfig.hotline}</span>
             </a>
-            <a href={telUrl()} aria-label={h.call} className={`${iconButton} 2xl:hidden`}>
+            <a href={tel} aria-label={h.call} className={`${iconButton} 2xl:hidden`}>
               <Phone className="size-4" aria-hidden="true" />
             </a>
             <ButtonLink href={href("/tours")} className="type-label hidden px-6 sm:inline-flex">
@@ -112,7 +115,7 @@ export function SiteHeader({ locale }: { locale: Locale }) {
               destinations={destinations}
               links={links}
               locale={{ label: switchLabel, href: localePath(other), hrefLang: other }}
-              phone={{ label: contactConfig.hotline, href: telUrl() }}
+              phone={{ label: contactConfig.hotline, href: tel }}
               book={{ label: h.book, href: href("/tours") }}
             />
           </div>

@@ -1,5 +1,7 @@
 import type { Locale } from "@/config/app";
-import { contactConfig as co } from "@/config/contact";
+import { defaultContact } from "@/config/contact";
+
+type Company = typeof defaultContact;
 
 export interface LegalDocument {
   updated: string;
@@ -8,7 +10,7 @@ export interface LegalDocument {
 
 // Draft for the demo: have the final text reviewed before taking real bookings.
 // Cancellation and payment policies live in product/policies.ts (they use the booking rules).
-const legal: Record<Locale, { terms: LegalDocument; privacy: LegalDocument }> = {
+const legal = (co: Company): Record<Locale, { terms: LegalDocument; privacy: LegalDocument }> => ({
   vi: {
     terms: {
       updated: "2026-10-05",
@@ -57,8 +59,9 @@ const legal: Record<Locale, { terms: LegalDocument; privacy: LegalDocument }> = 
       ],
     },
   },
-};
+});
 
-export function getLegalDocument(locale: Locale, doc: "terms" | "privacy"): LegalDocument {
-  return legal[locale][doc];
+/** `company`: the details saved in Admin → Thông tin công ty (app/_lib/company.ts), else the defaults. */
+export function getLegalDocument(locale: Locale, doc: "terms" | "privacy", company: Company = defaultContact): LegalDocument {
+  return legal(company)[locale][doc];
 }
