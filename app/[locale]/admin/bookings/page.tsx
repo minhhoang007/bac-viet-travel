@@ -5,7 +5,7 @@ import { localePath } from "@/core/i18n/routing";
 import type { Locale } from "@/config/app";
 import type { BookingFilter } from "@/product/booking/admin";
 import { getBookingAdminContent } from "@/product/booking/admin-content";
-import { formatShortDay, formatVnd } from "@/product/booking/content";
+import { formatShortDay, formatShortTime, formatVnd } from "@/product/booking/content";
 import { BookingStatusBadge } from "@/product/components/booking-status-badge";
 import { BOOKING_SOURCES, type BookingSource } from "@/product/booking/sources";
 import { getTours } from "@/app/_lib/tours";
@@ -92,7 +92,7 @@ export default async function AdminBookingsPage({ params, searchParams }: Props)
       </nav>
       <form method="get" className="flex flex-wrap items-end gap-2">
         <input type="hidden" name="filter" value={filter} />
-        <input name="q" defaultValue={sp.q} placeholder={c.search} aria-label={c.search} className={`${input} w-64`} />
+        <input name="q" defaultValue={sp.q} placeholder={c.search} aria-label={c.search} className={`${input} w-full sm:w-64`} />
         <select name="tour" defaultValue={tour ?? ""} aria-label={c.tour} className={input}>
           <option value="">{c.allTours}</option>
           {tours.map((t) => (
@@ -163,6 +163,11 @@ export default async function AdminBookingsPage({ params, searchParams }: Props)
                 <td className="py-2 pr-4">{formatVnd(b.totalVnd, locale)}</td>
                 <td className="py-2">
                   <BookingStatusBadge status={b.status} label={c.filters[b.status]} />
+                  {b.status === "held" && (
+                    <span className="block whitespace-nowrap text-xs text-muted-foreground" data-testid="hold-until">
+                      {c.holdUntil(formatShortTime(b.holdExpiresAt))}
+                    </span>
+                  )}
                   {b.refundDueVnd > 0 && !b.refundedAt && (
                     <span className="block text-xs font-semibold text-danger">
                       {c.refundOwed}: {formatVnd(b.refundDueVnd, locale)}

@@ -6,12 +6,14 @@ import { cancelBooking, confirmBooking, markBalancePaid, markBookingRefunded, re
 import { Input } from "@/components/ui/input";
 import { balanceDue, transferNote } from "@/product/booking/deposits";
 import { awaitsDeposit, canMove } from "@/product/booking/lifecycle";
+import { nextStep } from "@/product/booking/next-step";
+import { vietnamToday } from "@/product/booking/rules";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { localePath } from "@/core/i18n/routing";
 import type { Locale } from "@/config/app";
 import { getBookingAdminContent } from "@/product/booking/admin-content";
-import { formatDay, formatVnd, getBookingContent } from "@/product/booking/content";
+import { formatDay, formatShortTime, formatVnd, getBookingContent } from "@/product/booking/content";
 import { ConfirmButton } from "@/product/components/confirm-button";
 import { BookingStatusBadge } from "@/product/components/booking-status-badge";
 import { getTours } from "@/app/_lib/tours";
@@ -20,6 +22,14 @@ type Props = { params: Promise<{ locale: Locale; code: string }>; searchParams: 
 
 export async function generateMetadata({ params }: { params: Promise<{ code: string }> }): Promise<Metadata> {
   return { title: (await params).code };
+}
+
+/** Vietnamese mobile numbers open Zalo by their local form (0…). */
+function phoneLinks(phone: string): { tel: string; zalo: string } | null {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length < 9) return null;
+  const local = digits.startsWith("84") ? `0${digits.slice(2)}` : digits;
+  return { tel: `tel:${phone.replace(/[^\d+]/g, "")}`, zalo: `https://zalo.me/${local}` };
 }
 
 export default async function AdminBookingPage({ params, searchParams }: Props) {
@@ -39,6 +49,16 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
   const refundOwed = b.refundDueVnd > 0 && !b.refundedAt;
   const transferChosen = payments.some((p) => p.method === "transfer" && p.status === "pending");
   const waitingDeposit = awaitsDeposit(b.status);
+  const step = nextStep(b, { transferChosen });
+  const stepText =
+    step.kind === "refund" ? c.detail.next.refund(formatVnd(step.amountVnd, locale))
+    : step.kind === "await_transfer" ? c.detail.next.await_transfer(formatShortTime(step.until))
+    : step.kind === "await_online" ? c.detail.next.await_online(formatShortTime(step.until))
+    : step.kind === "collect_balance" ? c.detail.next.collect_balance(formatVnd(step.amountVnd, locale))
+    : step.kind === "travellers" ? c.detail.next.travellers(step.missing)
+    : c.detail.next[step.kind];
+  const contact = phoneLinks(b.phone);
+  const tripOver = d.date < vietnamToday(new Date());
   const hidden = (
     <>
       <input type="hidden" name="locale" value={locale} />
@@ -48,32 +68,114 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
   const row = (label: string, value: React.ReactNode) => (
     <>
       <dt className="text-muted-foreground">{label}</dt>
-      <dd>{value}</dd>
+      <dd className="min-w-0 break-words">{value}</dd>
     </>
   );
 
   return (
-    <div className="grid gap-6">
+    <div className="grid min-w-0 gap-6">
       <a href={localePath(locale, "/admin/bookings")} className="text-sm text-muted-foreground hover:underline">
         {c.detail.back}
       </a>
-      <h1 className="text-2xl font-bold">
-        <span className="font-mono">{b.code}</span> <BookingStatusBadge status={b.status} label={c.filters[b.status]} />
-      </h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold">
+          <span className="font-mono">{b.code}</span> <BookingStatusBadge status={b.status} label={c.filters[b.status]} />
+        </h1>
+        {contact && (
+          <div className="flex gap-2" data-testid="admin-contact-links">
+            <a href={contact.tel} className="rounded-md border border-border px-4 py-2 text-sm font-medium hover:bg-muted">{c.detail.call} {b.phone}</a>
+            <a href={contact.zalo} target="_blank" rel="noopener noreferrer" className="rounded-md border border-border px-4 py-2 text-sm font-medium hover:bg-muted">{c.detail.zalo}</a>
+          </div>
+        )}
+      </div>
       {result && (
         <p role="status" className={`rounded-md border p-3 text-sm ${result === "done" ? "border-success/40 bg-success/10 text-foreground" : result === "refund_due" || result === "extra" ? "border-warning/40 bg-warning/10 text-foreground" : "border-danger/40 bg-danger/10 text-foreground"}`}>
           {result === "done" ? c.result.done : result === "too_little" ? c.detail.transferTooLittle : result === "refund_due" ? c.detail.transferRefundDue : result === "extra" ? c.detail.transferExtra : c.result.failed}
         </p>
       )}
+      <section className="rounded-lg border border-primary/50 bg-primary/5 p-4" data-testid="admin-next-step">
+        <h2 className="font-semibold">{c.detail.nextTitle}</h2>
+        <p className="mt-1 text-sm">{stepText}</p>
+      </section>
+
+      <section className="grid gap-4 rounded-lg border border-border p-4">
+        <h2 className="font-semibold">{c.detail.actions}</h2>
+        <div className="flex flex-wrap gap-3">
+          {allowed("bookings.confirm") && canMove(b.status, "confirmed") && (
+            <form action={confirmBooking}>
+              {hidden}
+              <ConfirmButton question={c.detail.confirmAsk} data-testid="admin-confirm">{c.detail.confirm}</ConfirmButton>
+            </form>
+          )}
+          {allowed("bookings.money") && balanceDue(b) > 0 && (
+            <form action={markBalancePaid}>
+              {hidden}
+              <ConfirmButton question={c.detail.balanceAsk} variant="outline" data-testid="admin-balance">{c.detail.balanceMark}</ConfirmButton>
+            </form>
+          )}
+        </div>
+        {allowed("bookings.money") && (waitingDeposit || transferChosen) && (
+          <form action={receiveTransfer} className="grid max-w-lg gap-2 rounded-md border border-border p-3" data-testid="admin-transfer">
+            {hidden}
+            <p className="text-sm font-medium">{c.detail.transferTitle}</p>
+            {transferChosen && <p className="text-xs font-medium text-primary">{c.detail.transferChosen}</p>}
+            <p className="text-xs text-muted-foreground">{c.detail.transferHint(transferNote(b.code))}</p>
+            {!waitingDeposit && <p className="text-xs font-medium text-warning">{c.detail.transferExtraHint}</p>}
+            <label htmlFor="transfer-amount" className="text-sm">{c.detail.transferAmount}</label>
+            <Input id="transfer-amount" name="amountVnd" inputMode="numeric" required defaultValue={waitingDeposit ? String(b.depositVnd) : ""} className="max-w-48" />
+            <label htmlFor="transfer-ref" className="text-sm">{c.detail.transferRef}</label>
+            <Input id="transfer-ref" name="bankRef" maxLength={100} className="max-w-xs" />
+            <ConfirmButton question={c.detail.transferAsk} className="w-fit" data-testid="admin-transfer-save">{c.detail.transferSave}</ConfirmButton>
+          </form>
+        )}
+        {allowed("bookings.money") && refundOwed && (
+          <form action={markBookingRefunded} className="grid max-w-lg gap-2">
+            {hidden}
+            <label htmlFor="refund-note" className="text-sm font-medium">{c.detail.refundNote}</label>
+            <Textarea id="refund-note" name="note" rows={2} maxLength={500} />
+            <ConfirmButton question={c.detail.refundedAsk} variant="outline" className="w-fit" data-testid="admin-refunded">{c.detail.refunded}</ConfirmButton>
+          </form>
+        )}
+        {allowed("bookings.edit") && (
+          <form action={saveStaffNote} className="grid max-w-lg gap-2">
+            {hidden}
+            <label htmlFor="staff-note" className="text-sm font-medium">{c.detail.staffNote}</label>
+            <Textarea id="staff-note" name="note" rows={3} defaultValue={b.staffNote} maxLength={2000} />
+            <Button type="submit" variant="outline" className="w-fit">{c.detail.saveNote}</Button>
+          </form>
+        )}
+        {allowed("bookings.cancel") && canMove(b.status, "cancelled") && (
+          <details className="max-w-lg text-sm" data-testid="admin-cancel-panel">
+            <summary className="cursor-pointer text-danger">{c.detail.cancelOpen}</summary>
+            <form action={cancelBooking} className="mt-3 grid gap-2">
+              {hidden}
+              <label htmlFor="cancel-reason" className="font-medium">{c.detail.cancelReason}</label>
+              <Textarea id="cancel-reason" name="reason" rows={2} required maxLength={500} />
+              {b.status !== "held" && (
+                <fieldset className="grid gap-1">
+                  <legend className="font-medium">{c.detail.cancelRefundLegend}</legend>
+                  <label className="flex items-center gap-2">
+                    <input type="radio" name="refund" value="on" required /> {c.detail.cancelRefund}
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input type="radio" name="refund" value="off" /> {c.detail.cancelKeep}
+                  </label>
+                </fieldset>
+              )}
+              <ConfirmButton question={c.detail.cancelAsk} variant="destructive" className="w-fit" data-testid="admin-cancel">{c.detail.cancel}</ConfirmButton>
+            </form>
+          </details>
+        )}
+      </section>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <section className="rounded-lg border border-border p-4">
+        <section className="min-w-0 rounded-lg border border-border p-4">
           <h2 className="font-semibold">{c.detail.guest}</h2>
-          <dl className="mt-2 grid grid-cols-[110px_1fr] gap-1 text-sm">
+          <dl className="mt-2 grid grid-cols-[110px_minmax(0,1fr)] gap-1 text-sm">
             {row(g.name, b.name)}
             {row(g.email, <a href={`mailto:${b.email}`} className="underline">{b.email}</a>)}
-            {row(g.phone, b.phone)}
-            {row("Locale", b.locale)}
+            {row(g.phone, contact ? <a href={contact.tel} className="underline">{b.phone}</a> : b.phone)}
+            {row(c.detail.language, c.detail.languages[b.locale] ?? b.locale)}
             {row(c.source, <span data-testid="detail-source">{c.sources[b.source]}{b.externalRef && ` · ${b.externalRef}`}</span>)}
           </dl>
           {!b.guestEmails && <p className="mt-2 text-xs font-medium text-warning">{c.noGuestEmails}</p>}
@@ -100,9 +202,9 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
           </details>
           )}
         </section>
-        <section className="rounded-lg border border-border p-4">
+        <section className="min-w-0 rounded-lg border border-border p-4">
           <h2 className="font-semibold">{c.detail.trip}</h2>
-          <dl className="mt-2 grid grid-cols-[110px_1fr] gap-1 text-sm">
+          <dl className="mt-2 grid grid-cols-[110px_minmax(0,1fr)] gap-1 text-sm">
             {row(c.tour, d.kind === "private" ? <>{title} · <strong data-testid="private-tour">{c.privateTour}</strong></> : title)}
             {row(c.columns.date, <span className="capitalize">{formatDay(d.date, locale)}</span>)}
             {row(g.adults, b.adults)}
@@ -112,9 +214,9 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
             {b.addons.length > 0 && row(g.addonsTitle, b.addons.map((a) => `${g.addonLine(a.name[locale], a.qty)} (${formatVnd(a.vnd, locale)})`).join(", "))}
           </dl>
         </section>
-        <section className="rounded-lg border border-border p-4">
+        <section className="min-w-0 rounded-lg border border-border p-4">
           <h2 className="font-semibold">{c.detail.money}</h2>
-          <dl className="mt-2 grid grid-cols-[110px_1fr] gap-1 text-sm">
+          <dl className="mt-2 grid grid-cols-[110px_minmax(0,1fr)] gap-1 text-sm">
             {b.discountVnd > 0 && row(g.discount.line(b.discountCode ?? ""), `−${formatVnd(b.discountVnd, locale)}`)}
             {row(c.detail.total, formatVnd(b.totalVnd, locale))}
             {row(c.detail.deposit, formatVnd(b.depositVnd, locale))}
@@ -127,17 +229,12 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
         </section>
       </div>
 
-      <section className="rounded-lg border border-border p-4" data-testid="admin-feedback">
-        <h2 className="font-semibold">{g.feedback.staffTitle}</h2>
-        {feedback ? (
-          <p className="mt-1 text-sm">
-            <span aria-label={`${feedback.rating}/5`}>{"★".repeat(feedback.rating)}{"☆".repeat(5 - feedback.rating)}</span> {g.feedback.stars[feedback.rating as 1 | 2 | 3 | 4 | 5]}
-            {feedback.comment && <span className="mt-1 block whitespace-pre-line text-muted-foreground">{feedback.comment}</span>}
-          </p>
-        ) : (
-          <p className="mt-1 text-sm text-muted-foreground">{g.feedback.staffNone}</p>
-        )}
-      </section>
+      {(b.note || b.cancelReason) && (
+        <section className="grid gap-2 text-sm">
+          {b.note && <p><span className="text-muted-foreground">{c.detail.guestNote}:</span> {b.note}</p>}
+          {b.cancelReason && <p><span className="text-muted-foreground">{c.detail.cancelledReason}:</span> {b.cancelReason}</p>}
+        </section>
+      )}
 
       <section className="rounded-lg border border-border p-4" data-testid="admin-travellers">
         <h2 className="font-semibold">{g.travellers.title}</h2>
@@ -154,81 +251,27 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
         )}
       </section>
 
-      {(b.note || b.cancelReason) && (
-        <section className="grid gap-2 text-sm">
-          {b.note && <p><span className="text-muted-foreground">{c.detail.guestNote}:</span> {b.note}</p>}
-          {b.cancelReason && <p><span className="text-muted-foreground">{c.detail.cancelledReason}:</span> {b.cancelReason}</p>}
+      {(feedback || tripOver) && (
+        <section className="rounded-lg border border-border p-4" data-testid="admin-feedback">
+          <h2 className="font-semibold">{g.feedback.staffTitle}</h2>
+          {feedback ? (
+            <p className="mt-1 text-sm">
+              <span aria-label={`${feedback.rating}/5`}>{"★".repeat(feedback.rating)}{"☆".repeat(5 - feedback.rating)}</span> {g.feedback.stars[feedback.rating as 1 | 2 | 3 | 4 | 5]}
+              {feedback.comment && <span className="mt-1 block whitespace-pre-line text-muted-foreground">{feedback.comment}</span>}
+            </p>
+          ) : (
+            <p className="mt-1 text-sm text-muted-foreground">{g.feedback.staffNone}</p>
+          )}
         </section>
       )}
 
-      <section className="grid gap-4 rounded-lg border border-border p-4">
-        <h2 className="font-semibold">{c.detail.actions}</h2>
-        <div className="flex flex-wrap gap-3">
-          {allowed("bookings.money") && balanceDue(b) > 0 && (
-            <form action={markBalancePaid}>
-              {hidden}
-              <ConfirmButton question={c.detail.balanceAsk} variant="outline" data-testid="admin-balance">{c.detail.balanceMark}</ConfirmButton>
-            </form>
-          )}
-          {allowed("bookings.confirm") && canMove(b.status, "confirmed") && (
-            <form action={confirmBooking}>
-              {hidden}
-              <ConfirmButton question={c.detail.confirmAsk} data-testid="admin-confirm">{c.detail.confirm}</ConfirmButton>
-            </form>
-          )}
-        </div>
-        {allowed("bookings.money") && (waitingDeposit || transferChosen) && (
-          <form action={receiveTransfer} className="grid max-w-lg gap-2 rounded-md border border-border p-3" data-testid="admin-transfer">
-            {hidden}
-            <p className="text-sm font-medium">{c.detail.transferTitle}</p>
-            {transferChosen && <p className="text-xs font-medium text-primary">{c.detail.transferChosen}</p>}
-            <p className="text-xs text-muted-foreground">{c.detail.transferHint(transferNote(b.code))}</p>
-            {!waitingDeposit && <p className="text-xs font-medium text-warning">{c.detail.transferExtraHint}</p>}
-            <label htmlFor="transfer-amount" className="text-sm">{c.detail.transferAmount}</label>
-            <Input id="transfer-amount" name="amountVnd" inputMode="numeric" required defaultValue={waitingDeposit ? String(b.depositVnd) : ""} className="max-w-48" />
-            <label htmlFor="transfer-ref" className="text-sm">{c.detail.transferRef}</label>
-            <Input id="transfer-ref" name="bankRef" maxLength={100} className="max-w-xs" />
-            <ConfirmButton question={c.detail.transferAsk} className="w-fit" data-testid="admin-transfer-save">{c.detail.transferSave}</ConfirmButton>
-          </form>
-        )}
-        {allowed("bookings.cancel") && canMove(b.status, "cancelled") && (
-          <form action={cancelBooking} className="grid max-w-lg gap-2">
-            {hidden}
-            <label htmlFor="cancel-reason" className="text-sm font-medium">{c.detail.cancelReason}</label>
-            <Textarea id="cancel-reason" name="reason" rows={2} required maxLength={500} />
-            {b.status !== "held" && (
-              <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" name="refund" defaultChecked /> {c.detail.cancelRefund}
-              </label>
-            )}
-            <ConfirmButton question={c.detail.cancelAsk} variant="destructive" className="w-fit" data-testid="admin-cancel">{c.detail.cancel}</ConfirmButton>
-          </form>
-        )}
-        {allowed("bookings.money") && refundOwed && (
-          <form action={markBookingRefunded} className="grid max-w-lg gap-2">
-            {hidden}
-            <label htmlFor="refund-note" className="text-sm font-medium">{c.detail.refundNote}</label>
-            <Textarea id="refund-note" name="note" rows={2} maxLength={500} />
-            <ConfirmButton question={c.detail.refundedAsk} variant="outline" className="w-fit" data-testid="admin-refunded">{c.detail.refunded}</ConfirmButton>
-          </form>
-        )}
-        {allowed("bookings.edit") && (
-          <form action={saveStaffNote} className="grid max-w-lg gap-2">
-            {hidden}
-            <label htmlFor="staff-note" className="text-sm font-medium">{c.detail.staffNote}</label>
-            <Textarea id="staff-note" name="note" rows={3} defaultValue={b.staffNote} maxLength={2000} />
-            <Button type="submit" variant="outline" className="w-fit">{c.detail.saveNote}</Button>
-          </form>
-        )}
-      </section>
-
-      <section>
+      <section className="min-w-0">
         <h2 className="font-semibold">{c.detail.payments}</h2>
         {payments.length === 0 ? (
           <p className="mt-1 text-sm text-muted-foreground">{c.detail.noPayments}</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="mt-2 w-full text-left text-sm">
+            <table className="mt-2 w-full text-left text-sm" data-testid="admin-payments">
               <thead className="text-muted-foreground">
                 <tr>
                   {Object.values(c.detail.paymentCols).map((h) => (
@@ -239,11 +282,15 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
               <tbody>
                 {payments.map((p) => (
                   <tr key={p.id} className="border-t border-border">
-                    <td className="py-2 pr-4 font-mono text-xs">{p.txnRef}{p.providerTxnNo && <span className="block">VNPay {p.providerTxnNo}</span>}</td>
-                    <td className="py-2 pr-4">{formatVnd(p.amountVnd, locale)}</td>
-                    <td className="py-2 pr-4">{p.status}{p.responseCode && ` (${p.responseCode})`}</td>
-                    <td className="py-2 pr-4">{p.bankCode ?? "—"}</td>
-                    <td className="py-2">{time(p.paidAt ?? p.createdAt)}</td>
+                    <td className="py-2 pr-4">{c.detail.methods[p.method]}{p.bankCode && <span className="block text-xs text-muted-foreground">{p.bankCode}</span>}</td>
+                    <td className="py-2 pr-4">{c.detail.purposes[p.purpose]}</td>
+                    <td className="py-2 pr-4 font-mono text-xs">
+                      {p.txnRef}
+                      {p.providerTxnNo && <span className="block">{p.method === "transfer" ? c.detail.bankRef : "VNPay"} {p.providerTxnNo}</span>}
+                    </td>
+                    <td className="py-2 pr-4 whitespace-nowrap">{formatVnd(p.amountVnd, locale)}</td>
+                    <td className="py-2 pr-4">{c.detail.paymentStatuses[p.status]}{p.responseCode && ` (${p.responseCode})`}</td>
+                    <td className="py-2 whitespace-nowrap">{time(p.paidAt ?? p.createdAt)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -259,8 +306,8 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
         ) : (
           <ul className="mt-2 grid gap-1 text-sm" data-testid="admin-history">
             {history.map((h) => (
-              <li key={h.id}>
-                <span className="text-muted-foreground">{time(h.createdAt)}</span> · {h.actorEmail} · <span className="font-mono">{h.action}</span>
+              <li key={h.id} data-action={h.action}>
+                <span className="text-muted-foreground">{time(h.createdAt)}</span> · {h.actorEmail} · {c.detail.auditActions[h.action] ?? h.action}
               </li>
             ))}
           </ul>
