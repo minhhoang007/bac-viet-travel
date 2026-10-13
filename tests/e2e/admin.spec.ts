@@ -260,6 +260,14 @@ test("reports: revenue and fill rate per tour for a month range; guests get a 40
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Báo cáo");
   await expect(page.getByTestId("report-tours")).toBeVisible();
   await expect(page.getByTestId("report-total")).toContainText("Tổng");
+  await expect(page.getByTestId("report-cash")).toContainText("Tiền đã thu");
+  await expect(page.getByTestId("report-receivables")).toContainText("Khách còn nợ");
+  // Months read as "Tháng 10/2026", and each table downloads as a CSV Excel opens (BOM, header row).
+  await expect(page.getByLabel("Từ tháng").locator("option:checked")).toHaveText(/^Tháng \d{2}\/\d{4}$/);
+  const csv = await page.request.get(await page.getByTestId("csv-tours").getAttribute("href") ?? "");
+  expect(csv.headers()["content-type"]).toContain("text/csv");
+  expect(await csv.text()).toMatch(/^﻿"Tour","Chuyến"/);
+  expect((await request.get("/api/admin/reports?kind=cash")).status()).toBe(404); // signed out
   const result = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
   expect(result.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id)).toEqual([]);
 });
