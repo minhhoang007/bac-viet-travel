@@ -37,6 +37,12 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
+### v1.23.0 (2026-10-14) — grouped admin menu
+- `product/manifest.ts` (project-owned): to place admin pages in a section, add `group?: "main" | "content" | "settings"` to your `ProductNavItem` type and to entries. Without it everything stays in the first section.
+- Tests clicking admin menu links by name: "Người dùng" → "Tài khoản người dùng", "Nhật ký" → "Nhật ký thao tác", "Job nền" → "Tác vụ tự động", "Về dashboard" → "Trang tài khoản".
+- Projects overriding `content/` must add `admin.navGroups` and `admin.overview.siteFigures`.
+- No migration.
+
 ### v1.22.0 (2026-10-13) — security review fixes (magic-link endpoint, paid periods, jobs, logs)
 - Breaking (only if you call it): a client calling `POST /api/auth/sign-in/magic-link` (e.g. `authClient.signIn.magicLink`) gets 404. Send links through `auth.signInMagicLink` in a server action, like the starter's login form.
 - Project code passing its own executor to `entitlements.grantPeriod(grant, tx)` must pass a Drizzle transaction (it now needs `execute`). Without `tx` it opens its own transaction.

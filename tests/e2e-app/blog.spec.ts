@@ -22,6 +22,9 @@ test("index → post → translation, with SEO tags and rendered MDX", async ({ 
   await expect(page.locator("article table")).toBeVisible(); // GFM table
   await expect(page.locator('a[href="https://nextjs.org/docs"]')).toHaveAttribute("rel", "noopener noreferrer");
 
+  // SEO tags as search engines read them: a full load. After in-place navigation (v1.19) the previous page's
+  // hreflang links can linger in <head> next to the new ones; crawlers never navigate in place.
+  await page.reload();
   const ld = JSON.parse((await page.locator('script[type="application/ld+json"]').textContent())!);
   expect(ld).toMatchObject({ "@type": "BlogPosting", headline: "Chào mừng đến với blog", inLanguage: "vi" });
   await expect(page.locator('link[rel=alternate][hreflang=en]')).toHaveAttribute("href", /\/en\/blog\/welcome-to-the-blog$/);

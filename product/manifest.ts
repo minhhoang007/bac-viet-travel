@@ -30,6 +30,8 @@ export interface ProductNavItem {
   roles?: readonly ("editor" | "admin")[];
   /** productAdminNav only: narrows `roles` per user, e.g. a product staff permission (async allowed). */
   allow?: (user: { id: string; role: "user" | "editor" | "admin" }) => boolean | Promise<boolean>;
+  /** productAdminNav only: menu section. "main" (default): the business pages at the top; "content"; "settings". */
+  group?: "main" | "content" | "settings";
 }
 
 /** Dashboard menu entries for product pages (href without locale prefix). */
