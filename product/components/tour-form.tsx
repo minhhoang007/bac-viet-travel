@@ -5,6 +5,7 @@ import { Trash2 } from "lucide-react";
 import { saveTour } from "@/app/actions/tours";
 import { Notice } from "@/components/feedback/notice";
 import { SubmitButton } from "@/components/forms/submit-button";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui/cn";
 import type { Locale } from "@/config/app";
 import { getProductContent } from "../content";
@@ -29,12 +30,15 @@ export function TourForm({
   item,
   images,
   initialTab,
+  canPublish = false,
 }: {
   locale: Locale;
   item: { id: string; revision: number; slug: string; draft: TourDraft; slugLocked: boolean };
   /** Static images available under public/ (until the media library is on). */
   images: string[];
   initialTab: Tab;
+  /** Admins: "save and publish now" next to "save draft". */
+  canPublish?: boolean;
 }) {
   const c = getTourAdminContent(locale);
   const destinations = getProductContent(locale).destinations;
@@ -108,12 +112,6 @@ export function TourForm({
       <input type="hidden" name="revision" value={item.revision} />
       <input type="hidden" name="tab" value={tab} />
       <input type="hidden" name="data" value={JSON.stringify(data)} />
-
-      <Field label={c.create.slug} hint={item.slugLocked ? c.slugLocked : c.create.slugHint}>
-        {(id, describedBy) => (
-          <input id={id} name="slug" aria-describedby={describedBy} className={input} value={slug} pattern="[a-z0-9]+(-[a-z0-9]+)*" onChange={(e) => setSlug(e.target.value.toLowerCase())} />
-        )}
-      </Field>
 
       {problems.length > 0 && (
         <Notice tone="warning" role="note" title={c.problemsTitle} data-testid="tour-problems">
@@ -217,6 +215,12 @@ export function TourForm({
       </Panel>
 
       <Panel id={`${ids}-panel-seo`} labelledBy={`${ids}-tab-seo`} hidden={tab !== "seo"}>
+        {/* The web address: rarely changed, and a change moves the page (old links redirect), so it lives here. */}
+        <Field label={c.create.slug} hint={item.slugLocked ? c.slugLocked : c.create.slugHint}>
+          {(id, describedBy) => (
+            <input id={id} name="slug" aria-describedby={describedBy} className={input} value={slug} pattern="[a-z0-9]+(-[a-z0-9]+)*" onChange={(e) => setSlug(e.target.value.toLowerCase())} />
+          )}
+        </Field>
         <p className="text-sm text-muted-foreground">{c.seo.intro}</p>
         {(["vi", "en"] as const).map((s) => {
           const title = text(s, "seoTitle");
@@ -324,8 +328,16 @@ export function TourForm({
         </div>
       </Panel>
 
-      <div className="sticky bottom-0 -mx-4 border-t border-border bg-background/95 px-4 py-3 backdrop-blur">
-        <SubmitButton label={c.save} pendingLabel={c.saving} />
+      <div className="sticky bottom-0 -mx-4 flex flex-wrap items-center gap-3 border-t border-border bg-background/95 px-4 py-3 backdrop-blur">
+        <SubmitButton label={c.save} pendingLabel={c.saving} variant={canPublish ? "outline" : undefined} />
+        {canPublish && (
+          <>
+            <Button type="submit" name="publish" value="1" size="lg" disabled={problems.length > 0} aria-describedby={problems.length > 0 ? `${ids}-publish-hint` : undefined} data-testid="tour-save-publish">
+              {c.saveAndPublish}
+            </Button>
+            {problems.length > 0 && <span id={`${ids}-publish-hint`} className="text-sm text-muted-foreground">{c.publishBlocked}</span>}
+          </>
+        )}
       </div>
     </form>
   );

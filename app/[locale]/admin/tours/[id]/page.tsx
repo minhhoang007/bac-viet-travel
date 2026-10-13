@@ -64,6 +64,7 @@ export default async function EditTourPage({ params, searchParams }: Props) {
           item={{ id: item.id, revision: item.revision, slug: item.slug, draft, slugLocked: item.publishedSlug !== null }}
           images={staticImages()}
           initialTab={TABS.find((t) => t === tab) ?? "general"}
+          canPublish={hasRole(user, "admin")}
         />
       </div>
       <aside className="lg:sticky lg:top-24 lg:self-start">

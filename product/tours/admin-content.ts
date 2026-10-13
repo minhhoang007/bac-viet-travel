@@ -84,6 +84,8 @@ const vi = {
   down: "Xuống",
   save: "Lưu bản nháp",
   saving: "Đang lưu…",
+  saveAndPublish: "Lưu và đăng ngay",
+  publishBlocked: "Điền đủ các mục còn thiếu để đăng.",
   unsaved: "Có thay đổi chưa lưu. Rời trang và bỏ các thay đổi này?",
   slugLocked: "Đã công khai. Nếu đổi đường dẫn, link cũ sẽ tự chuyển sang link mới khi bản này được công khai.",
   problemsTitle: "Còn thiếu trước khi gửi duyệt:",
@@ -95,6 +97,7 @@ const vi = {
   } as Record<string, string>,
   result: {
     saved: "Đã lưu bản nháp.",
+    published: "Đã lưu và đăng lên website.",
     created: "Đã tạo bản nháp. Điền các tab rồi gửi duyệt.",
     duplicated: "Đã nhân bản. Đổi tên và đường dẫn rồi gửi duyệt.",
     slug_taken: "Đường dẫn này đã có tour khác dùng.",
@@ -188,6 +191,8 @@ const en: TourAdminContent = {
   down: "Down",
   save: "Save draft",
   saving: "Saving…",
+  saveAndPublish: "Save and publish now",
+  publishBlocked: "Fill in what is missing to publish.",
   unsaved: "You have unsaved changes. Leave the page and discard them?",
   slugLocked: "Published. If you change the URL, the old link redirects to the new one once this version is published.",
   problemsTitle: "Missing before you can submit:",
@@ -195,6 +200,7 @@ const en: TourAdminContent = {
   problemLabels: { shared: "General", vi: "Tiếng Việt", en: "English" },
   result: {
     saved: "Draft saved.",
+    published: "Saved and published on the website.",
     created: "Draft created. Fill in the tabs, then submit for review.",
     duplicated: "Duplicated. Change the name and URL, then submit for review.",
     slug_taken: "Another tour already uses this URL.",

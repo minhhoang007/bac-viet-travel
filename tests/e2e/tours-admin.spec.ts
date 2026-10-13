@@ -70,6 +70,7 @@ test("marketing duplicates and edits a tour, submits it; an admin publishes; vis
   await expect(panel(editor).getByLabel("Tên tour", { exact: true })).toHaveValue("Ninh Binh E2E");
 
   await expect(editor.getByRole("button", { name: "Duyệt và công khai ngay" })).toHaveCount(0);
+  await expect(editor.getByTestId("tour-save-publish")).toHaveCount(0); // marketing submits; only admins publish
   await editor.getByRole("button", { name: "Gửi duyệt" }).click();
   await expect(editor.locator("[data-status]").first()).toHaveAttribute("data-status", "pending");
   expect((await editor.goto("/tours/ninh-binh-day-tour-copy"))?.status()).toBe(404);
@@ -132,7 +133,9 @@ test("marketing previews a draft on the tour page; a renamed tour redirects its 
   const editor = await signIn(browser, EDITOR, "editor");
   await editor.goto(`/admin/tours/${row!.id}`);
   await formReady(editor);
-  await editor.getByLabel("Đường dẫn (slug)").fill("ninh-binh-e2e");
+  // The web address lives in the SEO tab.
+  await editor.getByRole("tab", { name: "SEO" }).click();
+  await panel(editor).getByLabel("Đường dẫn (slug)").fill("ninh-binh-e2e");
   await editor.getByRole("tab", { name: "Tiếng Việt" }).click();
   await panel(editor).getByLabel("Tên tour", { exact: true }).fill("Ninh Bình bản nháp");
   await editor.getByRole("tab", { name: "SEO" }).click();
@@ -270,4 +273,21 @@ test("text typed in the admin is shown as text: no code runs, no secret leaks", 
   await expect(editor.locator("strong", { hasText: "Đón khách" })).toBeVisible();
   await expect(editor.locator("aside", { hasText: "Mang áo ấm" })).toBeVisible();
   await editor.goto("/api/content/preview?exit=1&locale=vi");
+});
+
+test("an admin changes a live tour's price and publishes it in one step", async ({ browser }) => {
+  // The copy made by the first test: other files book the real tours, so their prices stay untouched.
+  const [row] = await sql<{ id: string }[]>`select id from content_items where slug = 'ninh-binh-day-tour-copy'`;
+  const admin = await signIn(browser, ADMIN, "admin");
+  const publishes = async () => (await sql<{ n: number }[]>`select count(*)::int as n from audit_logs where action = 'content.publish' and target_id = ${row!.id}`)[0]!.n;
+  const before = await publishes();
+  await admin.goto(`/admin/tours/${row!.id}`);
+  await formReady(admin);
+  await panel(admin).getByLabel("Giá người lớn (VND)").fill("1350000");
+  await admin.getByTestId("tour-save-publish").click();
+  await expect(admin.getByText("Đã lưu và đăng lên website.")).toBeVisible();
+  await expect(admin.locator("[data-status]").first()).toHaveAttribute("data-status", "published");
+  const [item] = await sql<{ vnd: string; status: string }[]>`select published->'shared'->'price'->>'vnd' as vnd, status from content_items where id = ${row!.id}`;
+  expect(item).toEqual({ vnd: "1350000", status: "published" });
+  expect(await publishes()).toBe(before + 1);
 });
