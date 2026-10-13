@@ -12,6 +12,9 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 - Labels: "Job nền" → "Tác vụ tự động", "Người dùng" → "Tài khoản người dùng", "Nhật ký" → "Nhật ký thao tác", "Về dashboard" → "Trang tài khoản" (en: Automatic tasks, User accounts, My account).
 - `/admin` with a project overview (`ProductAdminOverview`): the starter's site figures (accounts, page views, storage) fold into "Số liệu website" below it, and the "30 ngày qua" subtitle is left to the project.
 
+### Fixed
+- App-profile blog E2E checks the SEO tags on a full page load. After in-place navigation the previous page's hreflang links can stay in `<head>` next to the new ones (failed locally, then on CI); crawlers always load pages fully.
+
 ## [1.22.0] - 2026-10-13
 
 ### Security
