@@ -3,6 +3,7 @@
 import { notFound, redirect, unstable_rethrow } from "next/navigation";
 import { z } from "zod";
 import { requireStaff } from "@/app/_lib/admin";
+import { hasRole } from "@/core/auth";
 import { AppError } from "@/core/errors";
 import { localePath } from "@/core/i18n/routing";
 import { tourDraftSchema } from "@/product/tours/document";
@@ -78,7 +79,21 @@ export async function saveTour(formData: FormData): Promise<void> {
     const data = tourDraftSchema.parse(JSON.parse(String(formData.get("data") ?? "{}")));
     const slug = String(formData.get("slug") ?? item.slug).trim().toLowerCase();
     if (isDestination(slug)) throw new AppError("CONFLICT", "Slug reserved for a destination page");
-    await content.saveDraft(user, id, { revision: revision.parse(formData.get("revision")), slug, data });
+    const saved = await content.saveDraft(user, id, { revision: revision.parse(formData.get("revision")), slug, data });
+    // Admins may publish their own change in one step (the content module allows approving a draft directly).
+    if (formData.get("publish") === "1" && hasRole(user, "admin")) {
+      const publish = async () => Boolean(await content.approve(user, id, { revision: saved.revision }));
+      try {
+        // Audited like the workflow panel's "publish".
+        if (container.admin) await container.admin.audited(user, { action: "content.publish", targetType: "content", targetId: id }, publish);
+        else await publish();
+        result = "published";
+      } catch (error) {
+        // The draft is saved either way; an incomplete tour says what is missing (problems list, "incomplete").
+        if (error instanceof AppError && error.code === "VALIDATION_ERROR") result = "incomplete";
+        else throw error;
+      }
+    }
   } catch (error) {
     unstable_rethrow(error);
     result = error instanceof SyntaxError || error instanceof z.ZodError ? "invalid" : resultOf(error);
