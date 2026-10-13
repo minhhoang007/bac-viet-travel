@@ -20,15 +20,16 @@ export async function POST(request: Request): Promise<Response> {
   const ip = clientKeyFrom(request.headers);
   if (!(await limiter.limit(`analytics:${ip}`)).success) return new Response(null, { status: 429 });
 
+  if (Number(request.headers.get("content-length") ?? 0) > MAX_BODY) return new Response(null, { status: 413 });
   const text = await request.text();
   if (text.length > MAX_BODY) return new Response(null, { status: 413 });
-  let body: { path?: unknown; referrer?: unknown };
+  let body: { path?: unknown; referrer?: unknown } | null;
   try {
     body = JSON.parse(text) as typeof body;
   } catch {
     return new Response(null, { status: 400 });
   }
-  if (typeof body.path !== "string") return new Response(null, { status: 400 });
+  if (typeof body?.path !== "string") return new Response(null, { status: 400 });
 
   const consent = hasConsent(request.headers.get("cookie"));
   try {

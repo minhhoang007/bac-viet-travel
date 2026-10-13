@@ -3,7 +3,7 @@ import type { Db } from "@/db/client";
 import type { EntitlementKey, Entitlements, PlanDefinition, PlanId } from "@/config/billing.defaults";
 import { accessGrants } from "./schema";
 
-type DbExecutor = Pick<Db, "insert" | "update" | "select">;
+type DbExecutor = Pick<Db, "insert" | "update" | "select" | "execute">;
 type GrantSource = "polar_subscription" | "vnpay_order" | "manual";
 
 export interface Access {
@@ -62,6 +62,29 @@ export function createEntitlementsModule(db: Db, plans: Record<PlanId, PlanDefin
 
   const entitlementsOf = async (userId: string): Promise<Entitlements> => plans[(await getAccess(userId)).plan].entitlements;
 
+  type PeriodGrant = Parameters<EntitlementsModule["grantPeriod"]>[0];
+  const grantPeriodIn = async (tx: DbExecutor, grant: PeriodGrant) => {
+    // Concurrent payments for the same plan must stack: serialize them until the transaction ends.
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`grant:${grant.ownerId}:${grant.plan}`}))`);
+    const [existing] = await tx
+      .select({ startsAt: accessGrants.startsAt, endsAt: accessGrants.endsAt })
+      .from(accessGrants)
+      .where(and(eq(accessGrants.source, grant.source), eq(accessGrants.sourceId, grant.sourceId)));
+    if (existing?.endsAt) return { startsAt: existing.startsAt, endsAt: existing.endsAt };
+
+    const t = now();
+    const [latest] = await tx
+      .select({ endsAt: accessGrants.endsAt })
+      .from(accessGrants)
+      .where(and(eq(accessGrants.ownerId, grant.ownerId), eq(accessGrants.plan, grant.plan), gt(accessGrants.endsAt, t)))
+      .orderBy(desc(accessGrants.endsAt))
+      .limit(1);
+    const startsAt = latest?.endsAt && latest.endsAt > t ? latest.endsAt : t;
+    const endsAt = new Date(startsAt.getTime() + grant.days * 24 * 60 * 60_000);
+    await tx.insert(accessGrants).values({ ...grant, startsAt, endsAt }).onConflictDoNothing();
+    return { startsAt, endsAt };
+  };
+
   return {
     getAccess,
     async can(userId, key) {
@@ -80,25 +103,7 @@ export function createEntitlementsModule(db: Db, plans: Record<PlanId, PlanDefin
           set: { plan: grant.plan, startsAt: grant.startsAt, endsAt: grant.endsAt, updatedAt: sql`now()` },
         });
     },
-    async grantPeriod(grant, tx = db) {
-      const [existing] = await tx
-        .select({ startsAt: accessGrants.startsAt, endsAt: accessGrants.endsAt })
-        .from(accessGrants)
-        .where(and(eq(accessGrants.source, grant.source), eq(accessGrants.sourceId, grant.sourceId)));
-      if (existing?.endsAt) return { startsAt: existing.startsAt, endsAt: existing.endsAt };
-
-      const t = now();
-      const [latest] = await tx
-        .select({ endsAt: accessGrants.endsAt })
-        .from(accessGrants)
-        .where(and(eq(accessGrants.ownerId, grant.ownerId), eq(accessGrants.plan, grant.plan), gt(accessGrants.endsAt, t)))
-        .orderBy(desc(accessGrants.endsAt))
-        .limit(1);
-      const startsAt = latest?.endsAt && latest.endsAt > t ? latest.endsAt : t;
-      const endsAt = new Date(startsAt.getTime() + grant.days * 24 * 60 * 60_000);
-      await tx.insert(accessGrants).values({ ...grant, startsAt, endsAt }).onConflictDoNothing();
-      return { startsAt, endsAt };
-    },
+    grantPeriod: (grant, tx) => (tx ? grantPeriodIn(tx, grant) : db.transaction((t) => grantPeriodIn(t, grant))),
     async countActiveOwners(plan) {
       const t = now();
       const [row] = await db
