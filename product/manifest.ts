@@ -163,17 +163,17 @@ export async function sitemapPaths({ content }: SitemapContext): Promise<string[
 
 /** Admin menu entries (starter rc.11). */
 export const productAdminNav: ProductNavItem[] = [
+  // Selling (first menu section): editors with a staff role (H2); each page checks the same permission (app/_lib/staff.ts).
+  { href: "/admin/bookings", label: { vi: "Đơn đặt tour", en: "Bookings" }, roles: ["editor"], allow: staffMay("bookings.view") },
+  { href: "/admin/departures", label: { vi: "Lịch khởi hành", en: "Departures" }, roles: ["editor"], allow: staffMay("departures") },
+  { href: "/admin/discounts", label: { vi: "Mã giảm giá", en: "Discount codes" }, roles: ["editor"], allow: staffMay("discounts") },
+  { href: "/admin/reports", label: { vi: "Báo cáo", en: "Reports" }, roles: ["editor"], allow: staffMay("reports") },
   // Content: marketing (editor role) writes tours; publishing stays with admins (content workflow).
   // Sales staff do bookings only, not tour content.
-  { href: "/admin/tours", label: { vi: "Tour", en: "Tours" }, roles: ["editor"], allow: async (u) => (await staffRoleOf(u.id)) !== "sale" },
-  // Booking pages: editors with a staff role (H2); each page checks the same permission (app/_lib/staff.ts).
-  { href: "/admin/bookings", label: { vi: "Đơn đặt tour", en: "Bookings" }, roles: ["editor"], allow: staffMay("bookings.view") },
-  { href: "/admin/discounts", label: { vi: "Mã giảm giá", en: "Discount codes" }, roles: ["editor"], allow: staffMay("discounts") },
-  { href: "/admin/departures", label: { vi: "Lịch khởi hành", en: "Departures" }, roles: ["editor"], allow: staffMay("departures") },
-  { href: "/admin/reports", label: { vi: "Báo cáo", en: "Reports" }, roles: ["editor"], allow: staffMay("reports") },
-  { href: "/admin/staff", label: { vi: "Nhân viên", en: "Staff" } },
-  { href: "/admin/company", label: { vi: "Thông tin công ty", en: "Company details" } },
-  { href: "/admin/appearance", label: { vi: "Giao diện", en: "Appearance" } },
+  { href: "/admin/tours", label: { vi: "Tour", en: "Tours" }, roles: ["editor"], allow: async (u) => (await staffRoleOf(u.id)) !== "sale", group: "content" },
+  { href: "/admin/staff", label: { vi: "Nhân viên", en: "Staff" }, group: "settings" },
+  { href: "/admin/company", label: { vi: "Thông tin công ty", en: "Company details" }, group: "settings" },
+  { href: "/admin/appearance", label: { vi: "Giao diện", en: "Appearance" }, group: "settings" },
 ];
 
 export type Product = ReturnType<typeof createProduct>;
