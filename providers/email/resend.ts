@@ -16,6 +16,8 @@ export function resendProvider(options: { apiKey: string; fetch?: typeof fetch }
           ...(message.html ? { html: message.html } : {}),
           ...(message.replyTo ? { reply_to: message.replyTo } : {}),
         }),
+        // A hung provider must not use up a cron tick or a request: fail, and the job retries later.
+        signal: AbortSignal.timeout(10_000),
       });
       if (!res.ok) throw new Error(`Resend responded ${res.status}`);
       const body = (await res.json()) as { id?: string };

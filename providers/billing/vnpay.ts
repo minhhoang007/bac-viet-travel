@@ -89,7 +89,7 @@ export function vnpayProvider(options: {
         vnp_OrderInfo: `Query ${txnRef}`,
       };
       request.vnp_SecureHash = checksum(QUERY_REQUEST_FIELDS, request);
-      const res = await (options.fetch ?? fetch)(queryUrl, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(request) });
+      const res = await (options.fetch ?? fetch)(queryUrl, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(request), signal: AbortSignal.timeout(10_000) });
       if (!res.ok) throw new Error(`VNPay querydr responded ${res.status}`);
       const body = (await res.json()) as Record<string, string>;
       const received = String(body.vnp_SecureHash ?? "").toLowerCase();

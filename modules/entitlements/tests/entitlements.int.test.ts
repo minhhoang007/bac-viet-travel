@@ -48,6 +48,14 @@ describe("entitlements (time-bounded grants)", () => {
     expect((await ent.getAccess(id)).endsAt?.getTime()).toBe(clock.getTime() + 60 * DAY);
   });
 
+  it("stacks concurrent purchases (parallel IPNs for different orders)", async () => {
+    const id = await user();
+    await Promise.all(
+      Array.from({ length: 8 }, (_, i) => ent.grantPeriod({ ownerId: id, plan: "pro", source: "vnpay_order", sourceId: `o${i}`, days: 30 })),
+    );
+    expect((await ent.getAccess(id)).endsAt?.getTime()).toBe(clock.getTime() + 240 * DAY);
+  });
+
   it("grantPeriod is idempotent per source", async () => {
     const id = await user();
     const a = await ent.grantPeriod({ ownerId: id, plan: "pro", source: "vnpay_order", sourceId: "o1", days: 30 });
