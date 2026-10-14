@@ -4,6 +4,13 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.25.0] - 2026-10-14
+
+### Added — model roles for agents
+- `.claude/agents/haiku-search.md` (Haiku, read-only tools): finds locations and returns `path:line`, never conclusions.
+- `.claude/agents/sonnet-implementer.md` (Sonnet): one self-contained R0–R2 change, verified with `pnpm check` and the named tests; stops on money, payments, locks, auth, permissions, schema; never commits.
+- `CLAUDE.md`: the main session (Opus) decides, does R3–R4 itself, may use the two agents without asking, re-runs the checks after them; review by risk (R0–R1 CI, R2 Sonnet, R3 Opus, R4 Opus + owner).
+
 ## [1.24.0] - 2026-10-14
 
 ### Added — agent skills from upstream (pinned copies)
