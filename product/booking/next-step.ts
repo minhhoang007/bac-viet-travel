@@ -16,7 +16,7 @@ export type NextStep =
 
 type NextStepBooking = Pick<
   Booking,
-  "status" | "holdExpiresAt" | "totalVnd" | "depositVnd" | "balancePaidAt" | "refundDueVnd" | "refundedVnd" | "adults" | "children" | "infants" | "travellers"
+  "status" | "holdExpiresAt" | "totalVnd" | "depositVnd" | "balancePaidAt" | "receivedVnd" | "refundDueVnd" | "refundedVnd" | "adults" | "children" | "infants" | "travellers"
 >;
 
 export function nextStep(b: NextStepBooking, { transferChosen }: { transferChosen: boolean }): NextStep {

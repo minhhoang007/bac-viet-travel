@@ -6,6 +6,7 @@ import type { OneTimePaymentProvider } from "@/core/ports/payments";
 import type { Db } from "@/db/client";
 import { bookingPayments, bookings, departures, type Booking, type BookingPayment, type Departure } from "../schema/booking";
 import { depositEmails, reconcileAlertEmail } from "./emails";
+import { owedVnd, recordMoney } from "./ledger";
 import { vietnamToday } from "./rules";
 import type { BookingService } from "./service";
 import { awaitsDeposit, isSold, takesSeats } from "./status";
@@ -15,9 +16,9 @@ export type IpnResult = { RspCode: "00" | "01" | "02" | "04" | "97" | "99"; Mess
 
 export type StartDepositResult = { status: "redirect"; url: string } | { status: "not_found" } | { status: "not_payable" };
 /** Rest of the total still owed online (D5): paid bookings before departure, not yet settled. */
-export function balanceDue(booking: Pick<Booking, "status" | "totalVnd" | "depositVnd" | "balancePaidAt">): number {
+export function balanceDue(booking: Pick<Booking, "status" | "totalVnd" | "receivedVnd" | "refundDueVnd" | "balancePaidAt">): number {
   if (!isSold(booking.status) || booking.balancePaidAt) return 0;
-  return Math.max(0, booking.totalVnd - booking.depositVnd);
+  return owedVnd(booking);
 }
 
 export type ChooseTransferResult = { status: "ok" } | { status: "not_found" } | { status: "not_payable" };
@@ -91,7 +92,7 @@ export function createDepositService(deps: {
   type Settled = { kind: "duplicate" | "failed" } | { kind: Recorded; booking: Booking; departure: Departure; token: string | null };
   /** The email each recorded payment sends, and whether it names the amount paid (extra money, balance). */
   const SETTLED_EMAIL: Record<Recorded, [Parameters<typeof notify>[3], boolean]> = {
-    deposit_paid: ["paid", false],
+    deposit_paid: ["paid", true],
     refund_due: ["refund_due", false],
     extra: ["extra", true],
     balance_paid: ["balance", true],
@@ -100,12 +101,8 @@ export function createDepositService(deps: {
   /** Balance (D5): settles the total of a live paid booking; anything else is money to give back. */
   async function recordBalance(tx: Tx, booking: Booking, payment: BookingPayment, at: Date): Promise<{ kind: "balance_paid" | "extra"; booking: Booking }> {
     const live = isSold(booking.status) && !booking.balancePaidAt;
-    const [updated] = await tx
-      .update(bookings)
-      .set(live ? { balancePaidAt: at } : { refundDueVnd: sql`${bookings.refundDueVnd} + ${payment.amountVnd}` })
-      .where(eq(bookings.id, booking.id))
-      .returning();
-    return { kind: live ? "balance_paid" : "extra", booking: updated! };
+    const updated = await recordMoney(tx, { bookingId: booking.id, kind: "in", amountVnd: payment.amountVnd, channel: payment.method, at, paymentId: payment.id, owedBack: !live });
+    return { kind: live ? "balance_paid" : "extra", booking: updated ?? booking };
   }
 
   /** A deposit arrived. Keep the seats if we still can; never lose the guest's payment. */
@@ -124,11 +121,10 @@ export function createDepositService(deps: {
         .where(and(eq(bookings.departureId, departure.id), ne(bookings.id, booking.id), takesSeats(at)));
       if (departure.capacity - (row?.taken ?? 0) < booking.seats) kind = "refund_due";
     }
-    const [updated] = await tx
-      .update(bookings)
-      .set(kind === "deposit_paid" ? { status: kind, depositPaidAt: at } : { ...(waiting ? { status: "refund_due" as const } : {}), refundDueVnd: sql`${bookings.refundDueVnd} + ${payment.amountVnd}` })
-      .where(eq(bookings.id, booking.id))
-      .returning();
+    if (kind === "deposit_paid") await tx.update(bookings).set({ status: kind, depositPaidAt: at }).where(eq(bookings.id, booking.id));
+    else if (waiting) await tx.update(bookings).set({ status: "refund_due" }).where(eq(bookings.id, booking.id));
+    // All of it counts: more than the deposit lowers the balance (and beyond the total is owed back).
+    const updated = await recordMoney(tx, { bookingId: booking.id, kind: "in", amountVnd: payment.amountVnd, channel: payment.method, at, paymentId: payment.id, owedBack: kind !== "deposit_paid" });
     return { kind, booking: updated ?? booking };
   }
 

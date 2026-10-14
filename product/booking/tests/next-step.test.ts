@@ -9,6 +9,7 @@ const base = {
   totalVnd: 2_380_000,
   depositVnd: 714_000,
   balancePaidAt: null,
+  receivedVnd: 714_000, // the deposit (counts only once sold)
   refundDueVnd: 0,
   refundedVnd: 0,
   adults: 2,

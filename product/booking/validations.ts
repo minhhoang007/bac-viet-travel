@@ -79,12 +79,16 @@ export const manualBookingSchema = z
     note: z.string().trim().max(1000, "too_long").default(""),
     source: z.enum(MANUAL_SOURCES, { message: "invalid" }),
     externalRef: z.string().trim().max(100, "too_long").default(""),
+    /** Total value of the booking (OTA: its net price). */
     amountVnd: z.coerce.number({ message: "invalid" }).int("invalid").min(0, "invalid").max(1_000_000_000, "invalid"),
+    /** Money already received; empty = all of it (paid in full). The rest is collected on the trip. */
+    receivedVnd: z.preprocess((v) => (v === "" || v == null ? undefined : v), z.coerce.number({ message: "invalid" }).int("invalid").min(0, "invalid").max(1_000_000_000, "invalid").optional()),
     status: z.enum(["deposit_paid", "confirmed"], { message: "invalid" }),
     guestEmails: z.preprocess((v) => v === "on" || v === true, z.boolean()),
     locale: z.enum(["vi", "en"]).catch("vi"),
   })
-  .refine((v) => !v.guestEmails || v.email !== "", { path: ["email"], message: "required" });
+  .refine((v) => !v.guestEmails || v.email !== "", { path: ["email"], message: "required" })
+  .refine((v) => v.receivedVnd === undefined || v.receivedVnd <= v.amountVnd, { path: ["receivedVnd"], message: "received_high" });
 
 export type ManualBookingInput = z.infer<typeof manualBookingSchema>;
 

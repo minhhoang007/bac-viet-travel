@@ -1,6 +1,6 @@
-import { and, asc, count, desc, eq, gt, gte, inArray, lt, lte, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, gte, inArray, lt, lte, ne, sql } from "drizzle-orm";
 import type { Db } from "@/db/client";
-import { bookingPayments, bookings, departures } from "../schema/booking";
+import { bookingLedger, bookingPayments, bookings, departures } from "../schema/booking";
 import { needsAttention } from "./admin";
 import { addDays, vietnamDayStart, vietnamToday } from "./rules";
 import { canBecome, refundOwed, SOLD_STATUSES } from "./status";
@@ -9,7 +9,7 @@ const DAY = 86_400_000;
 const TZ = "Asia/Ho_Chi_Minh";
 
 export interface DashboardData {
-  /** Money received (deposits + balances, by the day it came in), this month to date vs the same days last month. */
+  /** Money into the company (ledger, by the day it came in), this month to date vs the same days last month. */
   collected: { month: number; previous: number };
   /** Bookings paid (deposit) in the last 7 days vs the 7 before: count and value. */
   bookings7d: { count: number; value: number; previousCount: number };
@@ -31,14 +31,15 @@ export function createDashboard(deps: { db: Db; now?: () => Date }) {
   const { db } = deps;
   const now = () => deps.now?.() ?? new Date();
 
+  // Money into the company (ledger), as the cash report counts it: money in and corrections, OTA collections apart.
+  const intoCompany = and(inArray(bookingLedger.kind, ["in", "adjust"]), ne(bookingLedger.channel, "ota"));
+
   async function collectedBetween(from: Date, to: Date): Promise<number> {
     const [row] = await db
-      .select({
-        deposits: sql<number>`coalesce(sum(${bookings.depositVnd}) filter (where ${bookings.depositPaidAt} >= ${from.toISOString()} and ${bookings.depositPaidAt} < ${to.toISOString()}), 0)::bigint`,
-        balances: sql<number>`coalesce(sum(${bookings.totalVnd} - ${bookings.depositVnd}) filter (where ${bookings.balancePaidAt} >= ${from.toISOString()} and ${bookings.balancePaidAt} < ${to.toISOString()}), 0)::bigint`,
-      })
-      .from(bookings);
-    return Number(row?.deposits ?? 0) + Number(row?.balances ?? 0);
+      .select({ vnd: sql<number>`coalesce(sum(${bookingLedger.amountVnd}), 0)::bigint` })
+      .from(bookingLedger)
+      .where(and(intoCompany, gte(bookingLedger.at, from), lt(bookingLedger.at, to)));
+    return Number(row?.vnd ?? 0);
   }
 
   return {
@@ -70,21 +71,13 @@ export function createDashboard(deps: { db: Db; now?: () => Date }) {
         .where(and(eq(departures.status, "open"), gte(departures.date, today), lte(departures.date, addDays(today, 30))));
 
       // A literal time zone (not a bind parameter): GROUP BY must see the same expression as SELECT.
-      const paidDay = (col: typeof bookings.depositPaidAt | typeof bookings.balancePaidAt) => sql<string>`to_char(${col} at time zone ${sql.raw(`'${TZ}'`)}, 'YYYY-MM-DD')`;
-      const [depositDays, balanceDays] = await Promise.all([
-        db
-          .select({ day: paidDay(bookings.depositPaidAt), vnd: sql<number>`sum(${bookings.depositVnd})::bigint` })
-          .from(bookings)
-          .where(gte(bookings.depositPaidAt, since30))
-          .groupBy(paidDay(bookings.depositPaidAt)),
-        db
-          .select({ day: paidDay(bookings.balancePaidAt), vnd: sql<number>`sum(${bookings.totalVnd} - ${bookings.depositVnd})::bigint` })
-          .from(bookings)
-          .where(gte(bookings.balancePaidAt, since30))
-          .groupBy(paidDay(bookings.balancePaidAt)),
-      ]);
-      const perDay = new Map<string, number>();
-      for (const r of [...depositDays, ...balanceDays]) perDay.set(r.day, (perDay.get(r.day) ?? 0) + Number(r.vnd));
+      const paidDay = sql<string>`to_char(${bookingLedger.at} at time zone ${sql.raw(`'${TZ}'`)}, 'YYYY-MM-DD')`;
+      const days = await db
+        .select({ day: paidDay, vnd: sql<number>`sum(${bookingLedger.amountVnd})::bigint` })
+        .from(bookingLedger)
+        .where(and(intoCompany, gte(bookingLedger.at, since30)))
+        .groupBy(paidDay);
+      const perDay = new Map(days.map((r) => [r.day, Number(r.vnd)]));
       const daily = Array.from({ length: 30 }, (_, i) => addDays(today, i - 29)).map((day) => ({ day, vnd: perDay.get(day) ?? 0 }));
 
       const byTour = await db

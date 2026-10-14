@@ -5,10 +5,11 @@ import type { MailPort } from "@/core/ports/mail";
 import type { ProductContext } from "@/core/product/context";
 import type { Db } from "@/db/client";
 import { createHash, randomBytes, randomInt } from "node:crypto";
-import { bookingPayments, bookings, departures, type Booking, type BookingPayment, type BookingSource, type BookingStatus, type Departure } from "../schema/booking";
+import { bookingLedger, bookingPayments, bookings, departures, type LedgerEntry, type Booking, type BookingPayment, type BookingSource, type BookingStatus, type Departure } from "../schema/booking";
 import { bookingStatusEmail, reminderEmail } from "./emails";
 import type { ReceiveTransferResult } from "./deposits";
 import { createDepartureAdmin, type DepartureAdmin } from "./admin-departures";
+import { manualChannel, owedVnd, recordMoney } from "./ledger";
 import { addDays, bookingRules, vietnamDayStart, vietnamToday } from "./rules";
 import { canBecome, refundOwed, SOLD_STATUSES, takesSeats } from "./status";
 import { contactUpdateSchema, manualBookingSchema } from "./validations";
@@ -50,6 +51,13 @@ export interface BookingAdmin extends DepartureAdmin {
    * online holds, so the website and OTAs never oversell. Audited.
    */
   createManual(actor: Actor, raw: Record<string, unknown>, may?: ManualBookingRights): Promise<ManualBookingResult>;
+  /**
+   * Corrects money recorded by mistake (admins only, checked by the action): an "adjust" ledger row, + or −, with a
+   * reason. Audited. False when the booking is unknown, the amount is 0 or the reason empty.
+   */
+  adjustMoney(actor: Actor, code: string, input: { amountVnd: number; reason: string }): Promise<boolean>;
+  /** The booking's money, row by row (oldest first). */
+  ledger(code: string): Promise<LedgerEntry[]>;
 
 
   stats(): Promise<{ paidToday: number; paidWeek: number; depositsWeekVnd: number; attention: number; upcoming: { date: string; tourSlug: string; seats: number }[] }>;
@@ -132,15 +140,17 @@ export function createBookingAdmin(deps: {
     if (!text) throw new AppError("VALIDATION_ERROR", "Reason required");
     let updated: Booking | undefined;
     const changed = await audited(actor, "booking.cancel", code, { reason: text, refund, ...(refundBalance ? { refundBalance } : {}) }, async () => {
-      const balance = refundBalance ? sql` + case when ${bookings.balancePaidAt} is not null then ${bookings.totalVnd} - ${bookings.depositVnd} else 0 end` : sql``;
+      // What the guest paid for the trip and we still keep (ledger): all of it when the company cancels, otherwise up
+      // to the deposit (a balance already paid stays, as before). Held bookings paid nothing.
+      const kept = sql`greatest(0, ${bookings.receivedVnd} - ${bookings.refundDueVnd})`;
+      const back = refundBalance ? kept : sql`least(${kept}, ${bookings.depositVnd})`;
       [updated] = await db
         .update(bookings)
         .set({
           status: "cancelled",
           cancelledAt: now(),
           cancelReason: text,
-          // Refund the deposit only when it was paid (held bookings paid nothing).
-          ...(refund ? { refundDueVnd: sql`${bookings.refundDueVnd} + case when ${inArray(bookings.status, SOLD_STATUSES)} then ${bookings.depositVnd}${balance} else 0 end` } : {}),
+          ...(refund ? { refundDueVnd: sql`${bookings.refundDueVnd} + ${back}` } : {}),
         })
         .where(and(eq(bookings.code, code), inArray(bookings.status, canBecome("cancelled"))))
         .returning();
@@ -273,32 +283,45 @@ export function createBookingAdmin(deps: {
     },
 
     async markBalancePaid(actor, code, note) {
-      return audited(actor, "booking.balance_paid", code, { note: note.trim().slice(0, 200) }, async () => {
-        const done = await db
-          .update(bookings)
-          .set({ balancePaidAt: now() })
-          .where(and(eq(bookings.code, code), inArray(bookings.status, SOLD_STATUSES), isNull(bookings.balancePaidAt)))
-          .returning({ id: bookings.id });
-        return done.length > 0;
-      });
+      return audited(actor, "booking.balance_paid", code, { note: note.trim().slice(0, 200) }, async () =>
+        db.transaction(async (tx) => {
+          const [b] = await tx
+            .select()
+            .from(bookings)
+            .where(and(eq(bookings.code, code), inArray(bookings.status, SOLD_STATUSES), isNull(bookings.balancePaidAt)))
+            .for("update");
+          if (!b) return false;
+          // The rest is paid on the trip, in one go (owner 2026-10-14): one row for exactly what is still owed.
+          const owed = owedVnd(b);
+          if (owed > 0) await recordMoney(tx, { bookingId: b.id, kind: "in", amountVnd: owed, channel: "staff", at: now(), actorId: actor.id, note });
+          else await tx.update(bookings).set({ balancePaidAt: now() }).where(eq(bookings.id, b.id));
+          return true;
+        }),
+      );
     },
 
     async markRefunded(actor, code, { note }) {
-      return audited(actor, "booking.refunded", code, { note: note.trim().slice(0, 500) }, async () => {
-        const done = await db
-          .update(bookings)
-          .set({
-            // Everything owed so far is now given back; a later refund (another cancellation) owes only its own amount.
-            refundedVnd: bookings.refundDueVnd,
-            refundedAt: now(),
-            refundNote: note.trim().slice(0, 500),
-            // A late deposit (refund_due) ends as cancelled once the money is back.
-            status: sql`case when ${bookings.status} = 'refund_due' then 'cancelled' else ${bookings.status} end`,
-          })
-          .where(and(eq(bookings.code, code), refundOwed()))
-          .returning({ id: bookings.id });
-        return done.length > 0;
-      });
+      return audited(actor, "booking.refunded", code, { note: note.trim().slice(0, 500) }, async () =>
+        db.transaction(async (tx) => {
+          const [b] = await tx.select().from(bookings).where(and(eq(bookings.code, code), refundOwed())).for("update");
+          if (!b) return false;
+          const at = now();
+          await tx
+            .update(bookings)
+            .set({
+              // Everything owed so far is now given back; a later refund (another cancellation) owes only its own amount.
+              refundedVnd: b.refundDueVnd,
+              refundedAt: at,
+              refundNote: note.trim().slice(0, 500),
+              // A late deposit (refund_due) ends as cancelled once the money is back.
+              ...(b.status === "refund_due" ? { status: "cancelled" as const } : {}),
+            })
+            .where(eq(bookings.id, b.id));
+          // Each refund is its own row on its own day (reports by month).
+          await recordMoney(tx, { bookingId: b.id, kind: "refund", amountVnd: b.refundDueVnd - b.refundedVnd, channel: "staff", at, actorId: actor.id, note });
+          return true;
+        }),
+      );
     },
 
     async updateContact(actor, code, raw) {
@@ -313,6 +336,31 @@ export function createBookingAdmin(deps: {
         const done = await db.update(bookings).set(input).where(eq(bookings.code, code)).returning({ id: bookings.id });
         return done.length > 0;
       });
+    },
+
+    async adjustMoney(actor, code, { amountVnd, reason }) {
+      const note = reason.trim().slice(0, 500);
+      if (!CODE.test(code) || !Number.isInteger(amountVnd) || amountVnd === 0 || Math.abs(amountVnd) > 1_000_000_000 || !note) return false;
+      return audited(actor, "booking.money_adjusted", code, { amountVnd, reason: note }, async () =>
+        db.transaction(async (tx) => {
+          const [b] = await tx.select({ id: bookings.id }).from(bookings).where(eq(bookings.code, code)).for("update");
+          if (!b) return false;
+          // simplification: a negative adjust does not clear "paid in full"; staff correct that by hand if ever needed.
+          await recordMoney(tx, { bookingId: b.id, kind: "adjust", amountVnd, channel: "staff", at: now(), actorId: actor.id, note });
+          return true;
+        }),
+      );
+    },
+
+    async ledger(code) {
+      if (!CODE.test(code)) return [];
+      return db
+        .select({ l: bookingLedger })
+        .from(bookingLedger)
+        .innerJoin(bookings, eq(bookings.id, bookingLedger.bookingId))
+        .where(eq(bookings.code, code))
+        .orderBy(asc(bookingLedger.at), asc(bookingLedger.createdAt))
+        .then((rows) => rows.map((r) => r.l));
     },
 
     async setStaffNote(actor, code, note) {
@@ -351,8 +399,11 @@ export function createBookingAdmin(deps: {
             const listPrice = departure.priceVnd ?? (await deps.tourPrice?.(departure.tourSlug)) ?? 0;
             if (input.amountVnd < listPrice * seats * MANUAL_MIN_SHARE) return { status: "invalid", fieldErrors: { amountVnd: "amount_low" } };
           }
+          const depositVnd = Math.min(input.amountVnd, Math.ceil((input.amountVnd * bookingRules.depositRate) / 1000) * 1000);
+          const received = input.receivedVnd ?? input.amountVnd;
+          if (received < depositVnd) return { status: "invalid", fieldErrors: { receivedVnd: "received_low" } };
 
-          await tx.insert(bookings).values({
+          const [created] = await tx.insert(bookings).values({
             code,
             // No guest link for staff-entered bookings: a random token nobody knows.
             tokenHash: createHash("sha256").update(randomBytes(24)).digest("hex"),
@@ -368,16 +419,18 @@ export function createBookingAdmin(deps: {
             children: input.children,
             infants: input.infants,
             seats,
-            // What was actually received, per seat (OTA net prices differ from the website price).
+            // The booking's value per seat (OTA net prices differ from the website price).
             unitPriceVnd: Math.round(input.amountVnd / seats),
             totalVnd: input.amountVnd,
-            depositVnd: Math.ceil((input.amountVnd * bookingRules.depositRate) / 1000) * 1000,
+            depositVnd,
             depositPaidAt: at,
             confirmedAt: input.status === "confirmed" ? at : null,
             source: input.source,
             externalRef: input.externalRef || null,
             guestEmails: input.guestEmails,
-          });
+          }).returning({ id: bookings.id });
+          // The money received so far; paid in full when it reaches the total (recordMoney stamps it).
+          if (received > 0) await recordMoney(tx, { bookingId: created!.id, kind: "in", amountVnd: received, channel: manualChannel(input.source), at, actorId: actor.id });
           return { status: "created", code };
         });
         return result.status === "created";

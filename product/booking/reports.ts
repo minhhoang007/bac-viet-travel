@@ -1,20 +1,18 @@
-import { and, asc, eq, gt, gte, inArray, isNull, lt, lte, not, or, sql } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, lt, lte, sql } from "drizzle-orm";
 import type { Db } from "@/db/client";
-import { bookingPayments, bookings, departures, type BookingSource } from "../schema/booking";
+import { bookingLedger, bookings, departures, type BookingSource } from "../schema/booking";
 import { addDays, vietnamDayStart } from "./rules";
 import { refundOwed, SOLD_STATUSES } from "./status";
 
-/** How money came in: online (VNPay), bank transfer recorded by staff, or other money staff recorded (cash, OTA). */
+/** How money came into the company: online (VNPay), bank transfer recorded by staff, or cash staff recorded. */
 export type CashChannel = "vnpay" | "transfer" | "staff";
 
 export interface CashReport {
-  byChannel: { channel: CashChannel; depositsVnd: number; balancesVnd: number }[];
-  /**
-   * Money received that is not a deposit or balance: a deposit that came after the seats were gone, a second
-   * transfer, a payment for a cancelled booking. Owed back, but it did come in (in `collectedVnd`), and its refund
-   * is in `refundedVnd`.
-   */
-  extraVnd: number;
+  byChannel: { channel: CashChannel; inVnd: number }[];
+  /** Collected by OTAs for their bookings: not in the company account yet, so not in `collectedVnd`. */
+  otaVnd: number;
+  /** Admin corrections (+ or −), included in `collectedVnd`. */
+  adjustVnd: number;
   collectedVnd: number;
   /** Refunds paid out in the period. */
   refundedVnd: number;
@@ -67,48 +65,28 @@ export interface Report {
  */
 export function createReports(deps: { db: Db }) {
   const { db } = deps;
-  // The channel of a booking's paid deposit or balance; none recorded means staff entered the money by hand.
-  // Columns are written with their table: Drizzle leaves them bare in a one-table query, and a bare "id" inside the
-  // subquery would mean booking_payments.id.
-  const channel = (purpose: "deposit" | "balance") =>
-    sql<CashChannel>`coalesce((select p.method from booking_payments p where p.booking_id = bookings.id and p.purpose = ${purpose} and p.status = 'paid' order by p.paid_at limit 1), 'staff')`;
   return {
     /**
-     * Money in by the day it arrived (Vietnam days, inclusive), the same rule as the dashboard's "collected":
-     * deposits by deposit date, balances (total − deposit) by balance date; plus the extra money that came in (to be
-     * given back), so that money in minus refunds matches the bank; refunds paid out by refund date.
+     * Money by the day it moved (Vietnam days, inclusive), from the ledger: money in per channel into the company
+     * (OTA collections apart: the OTA pays out later), admin corrections, and refunds paid out. Money in minus
+     * refunds matches the bank.
      */
     async cash(from: string, to: string): Promise<CashReport> {
-      const start = vietnamDayStart(from);
-      const end = vietnamDayStart(addDays(to, 1));
-      // A payment that settled a deposit or balance stamps the booking with its own paid time (deposits.ts settle).
-      const counted = or(
-        and(eq(bookingPayments.purpose, "deposit"), eq(bookings.depositPaidAt, bookingPayments.paidAt)),
-        and(eq(bookingPayments.purpose, "balance"), eq(bookings.balancePaidAt, bookingPayments.paidAt)),
-      );
-      const [deposits, balances, [extra], [refunded]] = await Promise.all([
-        db.select({ channel: channel("deposit"), vnd: bookings.depositVnd }).from(bookings).where(and(gte(bookings.depositPaidAt, start), lt(bookings.depositPaidAt, end))),
-        db.select({ channel: channel("balance"), vnd: sql<number>`${bookings.totalVnd} - ${bookings.depositVnd}` }).from(bookings).where(and(gte(bookings.balancePaidAt, start), lt(bookings.balancePaidAt, end))),
-        db
-          .select({ vnd: sql<number>`coalesce(sum(${bookingPayments.amountVnd}), 0)::bigint` })
-          .from(bookingPayments)
-          .innerJoin(bookings, eq(bookings.id, bookingPayments.bookingId))
-          .where(and(eq(bookingPayments.status, "paid"), gte(bookingPayments.paidAt, start), lt(bookingPayments.paidAt, end), not(counted!))),
-        db.select({ vnd: sql<number>`coalesce(sum(${bookings.refundedVnd}), 0)::bigint` }).from(bookings).where(and(gte(bookings.refundedAt, start), lt(bookings.refundedAt, end))),
-      ]);
-      const byChannel = (["vnpay", "transfer", "staff"] as const)
-        .map((ch) => ({
-          channel: ch,
-          depositsVnd: deposits.filter((r) => r.channel === ch).reduce((n, r) => n + Number(r.vnd), 0),
-          balancesVnd: balances.filter((r) => r.channel === ch).reduce((n, r) => n + Number(r.vnd), 0),
-        }))
-        .filter((r) => r.depositsVnd + r.balancesVnd > 0);
-      const extraVnd = Number(extra?.vnd ?? 0);
-      return { byChannel, extraVnd, collectedVnd: byChannel.reduce((n, r) => n + r.depositsVnd + r.balancesVnd, 0) + extraVnd, refundedVnd: Number(refunded?.vnd ?? 0) };
+      const rows = await db
+        .select({ kind: bookingLedger.kind, channel: bookingLedger.channel, vnd: sql<number>`coalesce(sum(${bookingLedger.amountVnd}), 0)::bigint` })
+        .from(bookingLedger)
+        .where(and(gte(bookingLedger.at, vietnamDayStart(from)), lt(bookingLedger.at, vietnamDayStart(addDays(to, 1)))))
+        .groupBy(bookingLedger.kind, bookingLedger.channel);
+      const total = (kind: string, channel?: string) => rows.filter((r) => r.kind === kind && (!channel || r.channel === channel)).reduce((n, r) => n + Number(r.vnd), 0);
+      const byChannel = (["vnpay", "transfer", "staff"] as const).map((channel) => ({ channel, inVnd: total("in", channel) })).filter((r) => r.inVnd > 0);
+      const adjustVnd = total("adjust");
+      return { byChannel, otaVnd: total("in", "ota"), adjustVnd, collectedVnd: byChannel.reduce((n, r) => n + r.inVnd, 0) + adjustVnd, refundedVnd: total("refund") };
     },
 
     /** Sold bookings for trips from `today` on whose balance is not paid yet: who to collect from, by trip date. */
     async receivables(today: string): Promise<ReceivableRow[]> {
+      // Total minus what is kept (ledger): owedVnd in lifecycle.ts.
+      const owed = sql`${bookings.totalVnd} - (${bookings.receivedVnd} - ${bookings.refundDueVnd})`;
       const rows = await db
         .select({
           code: bookings.code,
@@ -116,11 +94,11 @@ export function createReports(deps: { db: Db }) {
           phone: bookings.phone,
           tourSlug: departures.tourSlug,
           date: departures.date,
-          dueVnd: sql<number>`${bookings.totalVnd} - ${bookings.depositVnd}`,
+          dueVnd: sql<number>`${owed}`,
         })
         .from(bookings)
         .innerJoin(departures, eq(departures.id, bookings.departureId))
-        .where(and(inArray(bookings.status, SOLD_STATUSES), isNull(bookings.balancePaidAt), gt(bookings.totalVnd, bookings.depositVnd), gte(departures.date, today)))
+        .where(and(inArray(bookings.status, SOLD_STATUSES), isNull(bookings.balancePaidAt), sql`${owed} > 0`, gte(departures.date, today)))
         .orderBy(asc(departures.date), asc(bookings.code))
         .limit(500);
       return rows.map((r) => ({ ...r, dueVnd: Number(r.dueVnd) }));

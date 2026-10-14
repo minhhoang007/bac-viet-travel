@@ -21,11 +21,12 @@ export async function GET(request: Request) {
     case "cash": {
       const cash = await reports.cash(range.from, range.to);
       return csvResponse(`thu-tien-${range.fromMonth}_${range.toMonth}.csv`, t.cashCols, [
-        ...cash.byChannel.map((r) => [t.channels[r.channel], r.depositsVnd, r.balancesVnd, r.depositsVnd + r.balancesVnd]),
-        ...(cash.extraVnd > 0 ? [[t.extra, "", "", cash.extraVnd]] : []),
-        [t.cashTotal, "", "", cash.collectedVnd],
-        [t.refunded, "", "", -cash.refundedVnd],
-        [t.net, "", "", cash.collectedVnd - cash.refundedVnd],
+        ...cash.byChannel.map((r) => [t.channels[r.channel], r.inVnd]),
+        ...(cash.adjustVnd !== 0 ? [[t.adjust, cash.adjustVnd]] : []),
+        [t.cashTotal, cash.collectedVnd],
+        [t.refunded, -cash.refundedVnd],
+        [t.net, cash.collectedVnd - cash.refundedVnd],
+        ...(cash.otaVnd > 0 ? [[t.channels.ota, cash.otaVnd]] : []),
       ]);
     }
     case "receivables": {

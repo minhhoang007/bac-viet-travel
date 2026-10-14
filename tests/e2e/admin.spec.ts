@@ -21,8 +21,10 @@ async function paidBooking(code: string, seats: number) {
   const [d] = await sql<{ id: string; date: string }[]>`
     select id, date::text from departures where tour_slug = ${TOUR} and status = 'open' and date > current_date + 2 order by date limit 1`;
   await sql`
-    insert into bookings (code, token_hash, departure_id, status, hold_expires_at, deposit_paid_at, name, email, phone, locale, adults, seats, unit_price_vnd, total_vnd, deposit_vnd)
-    values (${code}, 'e2e', ${d!.id}, 'deposit_paid', now(), now(), 'Khách E2E', 'guest@example.com', '0900000001', 'vi', ${seats}, ${seats}, 1000000, ${seats * 1_000_000}, ${seats * 300_000})`;
+    insert into bookings (code, token_hash, departure_id, status, hold_expires_at, deposit_paid_at, name, email, phone, locale, adults, seats, unit_price_vnd, total_vnd, deposit_vnd, received_vnd)
+    values (${code}, 'e2e', ${d!.id}, 'deposit_paid', now(), now(), 'Khách E2E', 'guest@example.com', '0900000001', 'vi', ${seats}, ${seats}, 1000000, ${seats * 1_000_000}, ${seats * 300_000}, ${seats * 300_000})`;
+  // The deposit's ledger row, as the IPN records it (deposits.ts).
+  await sql`insert into booking_ledger (booking_id, kind, amount_vnd, channel, at) select id, 'in', deposit_vnd, 'vnpay', now() from bookings where code = ${code}`;
   return d!;
 }
 
@@ -134,8 +136,8 @@ test("a departure short of its minimum is flagged; the company cancels it and ev
   const [d] = await sql<{ id: string; date: string }[]>`
     insert into departures (tour_slug, date, capacity) select ${TOUR}, max(date) + 10, 12 from departures where tour_slug = ${TOUR} returning id, date::text`;
   await sql`
-    insert into bookings (code, token_hash, departure_id, status, hold_expires_at, deposit_paid_at, name, email, phone, locale, adults, seats, unit_price_vnd, total_vnd, deposit_vnd)
-    values ('BV-MINC22', 'e2e', ${d!.id}, 'deposit_paid', now(), now(), 'Khách E2E', 'guest@example.com', '0900000001', 'vi', 2, 2, 1000000, 2000000, 600000)`;
+    insert into bookings (code, token_hash, departure_id, status, hold_expires_at, deposit_paid_at, name, email, phone, locale, adults, seats, unit_price_vnd, total_vnd, deposit_vnd, received_vnd)
+    values ('BV-MINC22', 'e2e', ${d!.id}, 'deposit_paid', now(), now(), 'Khách E2E', 'guest@example.com', '0900000001', 'vi', 2, 2, 1000000, 2000000, 600000, 600000)`;
 
   await page.goto(`/admin/departures?tour=${TOUR}&month=${d!.date.slice(0, 7)}&view=list`);
   const row = page.locator(`[data-departure-row="${TOUR}:${d!.date}"]`);
@@ -176,12 +178,15 @@ test("staff enter an OTA booking: seats shared with the website, source shown, n
   await page.getByLabel("Mã đặt chỗ bên OTA").fill("KL-E2E-1");
   await page.getByLabel("Họ tên khách").fill("John Smith");
   await page.getByLabel("Người lớn").fill("2");
-  await page.getByLabel("Số tiền thực thu (VND)").fill("1500000");
+  await page.getByLabel("Tổng giá trị đơn (VND)").fill("1500000"); // "Đã thu" left empty: paid in full
   await page.getByRole("button", { name: "Tạo đơn" }).click();
 
   await expect(page).toHaveURL(/\/admin\/bookings\/BV-[A-Z2-9]{6}\?result=done$/);
   await expect(page.getByTestId("detail-source")).toHaveText("Klook · KL-E2E-1");
   await expect(page.getByText("Không gửi email cho khách")).toBeVisible();
+  // The money is in the ledger as collected by Klook; nothing left to collect.
+  await expect(page.getByTestId("admin-ledger").locator('[data-ledger-kind="in"]')).toContainText("OTA thu hộ");
+  await expect(page.getByTestId("admin-balance")).toHaveCount(0);
 
   await page.goto("/admin/bookings?filter=all&source=klook");
   await expect(page.getByTestId("booking-source").first()).toContainText("KL-E2E-1");
@@ -192,8 +197,8 @@ test("staff enter an OTA booking: seats shared with the website, source shown, n
 test("passenger list per departure: one row per named traveller, unnamed parties flagged; print and CSV for staff only", async ({ page, request }) => {
   const d = await paidBooking("BV-PAXA22", 2);
   await sql`update bookings set adults = 2, travellers = ${sql.json([{ name: "Phạm Lan", birthYear: 1990 }, { name: "=HYPERLINK(1)", birthYear: 1985 }])} where code = 'BV-PAXA22'`;
-  await sql`insert into bookings (code, token_hash, departure_id, status, hold_expires_at, deposit_paid_at, name, email, phone, locale, adults, seats, unit_price_vnd, total_vnd, deposit_vnd)
-    values ('BV-PAXB33', 'e2e', ${d.id}, 'confirmed', now(), now(), 'Khách Chưa Điền', 'b@example.com', '0900000002', 'vi', 3, 3, 1000000, 3000000, 900000)`;
+  await sql`insert into bookings (code, token_hash, departure_id, status, hold_expires_at, deposit_paid_at, name, email, phone, locale, adults, seats, unit_price_vnd, total_vnd, deposit_vnd, received_vnd)
+    values ('BV-PAXB33', 'e2e', ${d.id}, 'confirmed', now(), now(), 'Khách Chưa Điền', 'b@example.com', '0900000002', 'vi', 3, 3, 1000000, 3000000, 900000, 900000)`;
   expect((await request.get(`/api/admin/departures/${d.id}/passengers`)).status()).toBe(404);
 
   await signInAsAdmin(page, "pax-staff@bacviet.example");

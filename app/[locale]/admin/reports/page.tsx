@@ -80,7 +80,7 @@ export default async function ReportsPage({ params, searchParams }: Props) {
           {csvLink("cash")}
         </div>
         <p className="text-sm text-muted-foreground">{t.cashHint}</p>
-        {cash.collectedVnd === 0 && cash.refundedVnd === 0 ? (
+        {cash.collectedVnd === 0 && cash.refundedVnd === 0 && cash.otaVnd === 0 ? (
           <p className="text-sm text-muted-foreground">{t.cashEmpty}</p>
         ) : (
           <div className="overflow-x-auto">
@@ -92,31 +92,35 @@ export default async function ReportsPage({ params, searchParams }: Props) {
                 {cash.byChannel.map((r) => (
                   <tr key={r.channel} className="border-t border-border" data-cash-channel={r.channel}>
                     <td className={cell}>{t.channels[r.channel]}</td>
-                    <td className={num}>{money(r.depositsVnd)}</td>
-                    <td className={num}>{money(r.balancesVnd)}</td>
-                    <td className={`${num} font-medium`}>{money(r.depositsVnd + r.balancesVnd)}</td>
+                    <td className={`${num} font-medium`}>{money(r.inVnd)}</td>
                   </tr>
                 ))}
-                {cash.extraVnd > 0 && (
-                  <tr className="border-t border-border" data-testid="cash-extra">
-                    <td className={cell} colSpan={3}>{t.extra}</td>
-                    <td className={`${num} font-medium`}>{money(cash.extraVnd)}</td>
+                {cash.adjustVnd !== 0 && (
+                  <tr className="border-t border-border" data-testid="cash-adjust">
+                    <td className={cell}>{t.adjust}</td>
+                    <td className={`${num} font-medium`}>{cash.adjustVnd < 0 ? "−" : ""}{money(Math.abs(cash.adjustVnd))}</td>
                   </tr>
                 )}
               </tbody>
               <tfoot>
                 <tr className="border-t-2 border-border font-semibold">
-                  <td className={cell} colSpan={3}>{t.cashTotal}</td>
+                  <td className={cell}>{t.cashTotal}</td>
                   <td className={num} data-testid="cash-total">{money(cash.collectedVnd)}</td>
                 </tr>
                 <tr>
-                  <td className={cell} colSpan={3}>{t.refunded}</td>
+                  <td className={cell}>{t.refunded}</td>
                   <td className={num}>−{money(cash.refundedVnd)}</td>
                 </tr>
                 <tr className="font-semibold">
-                  <td className={cell} colSpan={3}>{t.net}</td>
+                  <td className={cell}>{t.net}</td>
                   <td className={num}>{money(cash.collectedVnd - cash.refundedVnd)}</td>
                 </tr>
+                {cash.otaVnd > 0 && (
+                  <tr className="text-muted-foreground" data-testid="cash-ota">
+                    <td className={cell}>{t.channels.ota}</td>
+                    <td className={num}>{money(cash.otaVnd)}</td>
+                  </tr>
+                )}
               </tfoot>
             </table>
           </div>

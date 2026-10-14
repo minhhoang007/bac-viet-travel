@@ -48,3 +48,13 @@ export function awaitsDeposit(status: BookingStatus): boolean {
 export function refundLeft(b: { refundDueVnd: number; refundedVnd: number }): number {
   return b.refundDueVnd - b.refundedVnd;
 }
+
+/** Money kept for the trip (ledger): received minus what is owed (or was given) back. */
+export function keptVnd(b: { receivedVnd: number; refundDueVnd: number }): number {
+  return b.receivedVnd - b.refundDueVnd;
+}
+
+/** Still to collect for the trip: the total minus what is kept (0 when paid in full). */
+export function owedVnd(b: { totalVnd: number; receivedVnd: number; refundDueVnd: number }): number {
+  return Math.max(0, b.totalVnd - keptVnd(b));
+}

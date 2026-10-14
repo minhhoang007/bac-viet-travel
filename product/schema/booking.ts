@@ -78,6 +78,11 @@ export const bookings = pgTable(
     depositPaidAt: timestamp("deposit_paid_at", { withTimezone: true }),
     /** When the rest of the total was paid (online, or recorded by staff) (D5); null = still owed. */
     balancePaidAt: timestamp("balance_paid_at", { withTimezone: true }),
+    /**
+     * Money received for this booking so far: the sum of its ledger's "in" and "adjust" rows (booking/ledger.ts keeps
+     * it in step). Kept for the trip: receivedVnd − refundDueVnd; still owed: totalVnd − that (owedVnd).
+     */
+    receivedVnd: integer("received_vnd").notNull().default(0),
     confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
     cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
     cancelReason: text("cancel_reason"),
@@ -138,6 +143,41 @@ export const bookingPayments = pgTable(
   (t) => [uniqueIndex("booking_payments_txn_ref_idx").on(t.txnRef), index("booking_payments_booking_idx").on(t.bookingId)],
 );
 
+export const LEDGER_KINDS = ["in", "refund", "adjust"] as const;
+/** vnpay, transfer: into the company account. staff: cash or a payment staff recorded. ota: collected by the OTA. */
+export const LEDGER_CHANNELS = ["vnpay", "transfer", "staff", "ota"] as const;
+export type LedgerChannel = (typeof LEDGER_CHANNELS)[number];
+
+/**
+ * Every amount of money in or out of a booking, when it actually moved (review wave 2). Append-only: a mistake is
+ * corrected by an "adjust" row (admins, with a reason), never by editing a row. Reports count money from here.
+ */
+export const bookingLedger = pgTable(
+  "booking_ledger",
+  {
+    id: id(),
+    bookingId: uuid("booking_id").notNull().references(() => bookings.id, { onDelete: "cascade" }),
+    kind: text("kind", { enum: LEDGER_KINDS }).notNull(),
+    /** VND; positive, except an adjust that takes money off. */
+    amountVnd: integer("amount_vnd").notNull(),
+    channel: text("channel", { enum: LEDGER_CHANNELS }).notNull(),
+    /** When the money moved (reports go by this day). */
+    at: timestamp("at", { withTimezone: true }).notNull(),
+    /** The online or transfer attempt it came from: one row per payment, recorded once. */
+    paymentId: uuid("payment_id").references(() => bookingPayments.id, { onDelete: "set null" }),
+    actorId: uuid("actor_id"),
+    note: text("note").notNull().default(""),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("booking_ledger_booking_idx").on(t.bookingId),
+    index("booking_ledger_at_idx").on(t.at),
+    uniqueIndex("booking_ledger_payment_idx").on(t.paymentId),
+    check("booking_ledger_amount_check", sql`${t.amountVnd} <> 0 and (${t.kind} = 'adjust' or ${t.amountVnd} > 0)`),
+  ],
+);
+
+export type LedgerEntry = typeof bookingLedger.$inferSelect;
 export type BookingPayment = typeof bookingPayments.$inferSelect;
 export type Departure = typeof departures.$inferSelect;
 export type Booking = typeof bookings.$inferSelect;

@@ -1,7 +1,7 @@
 import type { MailMessage } from "@/core/ports/mail";
 import type { Booking, Departure } from "../schema/booking";
 import { formatDay, formatVnd, getBookingContent } from "./content";
-import { refundLeft } from "./lifecycle";
+import { owedVnd, refundLeft } from "./lifecycle";
 
 /** Plain-text emails after a deposit IPN (the email module adds the HTML version). Guest language = booking locale. */
 export function depositEmails(input: {
@@ -24,7 +24,7 @@ export function depositEmails(input: {
   const voucher = input.token ? `${input.siteUrl}${prefix}/booking/${b.code}/voucher?t=${input.token}` : null;
   const day = formatDay(d.date, locale);
   const guests = b.adults + b.children + b.infants;
-  const rest = formatVnd(b.totalVnd - b.depositVnd, locale);
+  const rest = formatVnd(owedVnd(b), locale);
   const received = formatVnd(input.amountVnd ?? b.depositVnd, locale);
 
   const guest: MailMessage =
@@ -198,8 +198,8 @@ export function bookingStatusEmail(input: { booking: Booking; departure: Departu
       to: b.email,
       subject: vi ? `Đơn ${b.code} đã được xác nhận – ${title}` : `Booking ${b.code} confirmed – ${title}`,
       text: vi
-        ? [`Chào ${b.name},`, ``, `Bắc Việt Travel xác nhận đơn ${b.code}: ${title}, khởi hành ${day}.`, `Số tiền còn lại: ${formatVnd(b.totalVnd - b.depositVnd, "vi")}, thanh toán trước ngày đi.`, `Chúng tôi sẽ gửi giờ và điểm đón trước chuyến đi.`].join("\n")
-        : [`Hello ${b.name},`, ``, `Your booking ${b.code} is confirmed: ${title}, departing ${day}.`, `Balance due: ${formatVnd(b.totalVnd - b.depositVnd, "en")}, payable before departure.`, `We will send pick-up details before the trip.`].join("\n"),
+        ? [`Chào ${b.name},`, ``, `Bắc Việt Travel xác nhận đơn ${b.code}: ${title}, khởi hành ${day}.`, `Số tiền còn lại: ${formatVnd(owedVnd(b), "vi")}, thanh toán trước ngày đi.`, `Chúng tôi sẽ gửi giờ và điểm đón trước chuyến đi.`].join("\n")
+        : [`Hello ${b.name},`, ``, `Your booking ${b.code} is confirmed: ${title}, departing ${day}.`, `Balance due: ${formatVnd(owedVnd(b), "en")}, payable before departure.`, `We will send pick-up details before the trip.`].join("\n"),
     };
   }
   return {
@@ -217,7 +217,7 @@ export function reminderEmail(input: { booking: Booking; departure: Departure; t
   const { booking: b, departure: d, title } = input;
   const vi = b.locale !== "en";
   const day = formatDay(d.date, vi ? "vi" : "en");
-  const rest = formatVnd(b.totalVnd - b.depositVnd, vi ? "vi" : "en");
+  const rest = formatVnd(owedVnd(b), vi ? "vi" : "en");
   return {
     kind: "booking_reminder",
     to: b.email,

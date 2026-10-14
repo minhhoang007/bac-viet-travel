@@ -111,6 +111,7 @@ export function ManualBookingForm({
 
       <div className="grid gap-4 sm:grid-cols-2">
         {field("amountVnd", m.amount, { type: "number", min: 0, step: 1000, required: true })}
+        {field("receivedVnd", m.received, { type: "number", min: 0, step: 1000 })}
         <label className="grid text-sm">
           {m.status}
           <select name="status" defaultValue={canConfirm ? "confirmed" : "deposit_paid"} className={input}>

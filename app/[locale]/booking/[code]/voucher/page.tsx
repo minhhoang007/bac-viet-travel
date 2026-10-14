@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { isSold } from "@/product/booking/lifecycle";
+import { isSold, keptVnd, owedVnd } from "@/product/booking/lifecycle";
 import { connection } from "next/server";
 import { setRequestLocale } from "next-intl/server";
 import { renderSVG } from "uqr";
@@ -89,8 +89,8 @@ export default async function VoucherPage({ params, searchParams }: Props) {
           {booking.addons.length > 0 && row(t.addonsTitle, booking.addons.map((a) => t.addonLine(a.name[locale], a.qty)).join(", "))}
           {row(t.booking.contact, `${booking.name} · ${booking.phone}`)}
           {row(t.total, formatVnd(booking.totalVnd, locale))}
-          {row(v.paid, formatVnd(booking.depositVnd, locale))}
-          {row(v.balance, booking.balancePaidAt ? t.booking.balancePaid : formatVnd(booking.totalVnd - booking.depositVnd, locale))}
+          {row(v.paid, formatVnd(keptVnd(booking), locale))}
+          {row(v.balance, booking.balancePaidAt ? t.booking.balancePaid : formatVnd(owedVnd(booking), locale))}
         </dl>
 
         <section className="mt-5">

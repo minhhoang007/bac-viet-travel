@@ -12,8 +12,8 @@ const sign = (code: string) => createHmac("sha256", e2eServerEnv.BETTER_AUTH_SEC
 
 test("feedback: the guest rates the trip once from the signed link; a forged link is refused", async ({ page }) => {
   const [d] = await sql<{ id: string }[]>`select id from departures where tour_slug = 'ha-long-day-trip' order by date limit 1`;
-  await sql`insert into bookings (code, token_hash, departure_id, status, hold_expires_at, deposit_paid_at, name, email, phone, locale, adults, seats, unit_price_vnd, total_vnd, deposit_vnd)
-    values ('BV-FEED22', 'e2e', ${d!.id}, 'confirmed', now(), now(), 'Khách Đánh Giá', 'fb@example.com', '0900000003', 'vi', 1, 1, 1000000, 1000000, 300000)`;
+  await sql`insert into bookings (code, token_hash, departure_id, status, hold_expires_at, deposit_paid_at, name, email, phone, locale, adults, seats, unit_price_vnd, total_vnd, deposit_vnd, received_vnd)
+    values ('BV-FEED22', 'e2e', ${d!.id}, 'confirmed', now(), now(), 'Khách Đánh Giá', 'fb@example.com', '0900000003', 'vi', 1, 1, 1000000, 1000000, 300000, 300000)`;
 
   await page.goto(`/feedback/BV-FEED22?s=${"x".repeat(32)}`);
   await expect(page.locator("[data-feedback=not-found]")).toBeVisible();

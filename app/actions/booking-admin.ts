@@ -146,3 +146,10 @@ export async function markBalancePaid(formData: FormData): Promise<void> {
   const c = bookingCode(formData);
   await run(formData, `/admin/bookings/${c}`, "bookings.money", (ctx) => service(ctx).markBalancePaid(ctx.user, c, String(formData.get("note") ?? "")));
 }
+
+/** Corrects money recorded by mistake: admins only (owner 2026-10-14), a signed amount and a reason. */
+export async function adjustBookingMoney(formData: FormData): Promise<void> {
+  const c = bookingCode(formData);
+  const amountVnd = z.coerce.number().int().catch(0).parse(String(formData.get("amountVnd") ?? "").replace(/[^\d-]/g, ""));
+  await run(formData, `/admin/bookings/${c}`, "bookings.money", async (ctx) => ctx.user.role === "admin" && service(ctx).adjustMoney(ctx.user, c, { amountVnd, reason: String(formData.get("reason") ?? "") }));
+}

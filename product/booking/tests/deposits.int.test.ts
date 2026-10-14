@@ -6,8 +6,8 @@ import type { MailMessage } from "@/core/ports/mail";
 import { createMemoryRateLimiter } from "@/core/security/rate-limit";
 import { testApp } from "@/tests/integration/setup/app";
 import { testDb } from "@/tests/integration/setup/db";
-import { bookingPayments, bookings, departures } from "../../schema/booking";
-import { createDepositService } from "../deposits";
+import { bookingLedger, bookingPayments, bookings, departures } from "../../schema/booking";
+import { balanceDue, createDepositService } from "../deposits";
 import { createBookingService } from "../service";
 
 const { db, close } = testDb();
@@ -298,6 +298,31 @@ describe("booking deposits (bank transfer, VietQR)", () => {
     clock = new Date(clock.getTime() + 3 * 60 * 60_000);
     expect((await deposits.chooseTransfer({ code, token })).status).toBe("not_payable");
     expect(await deposits.reconcile(LINKS)).toBe(0); // no querydr for the pending transfer (vnpay.query would throw)
+  });
+});
+
+describe("booking deposits (ledger)", () => {
+  it("a transfer above the deposit counts toward the balance; beyond the total the rest is owed back", async () => {
+    const { code } = await holdOn(10, 2); // total 2M, deposit 600k
+    expect(await deposits.receiveTransfer(code, { amountVnd: 1_000_000, bankRef: "FT1" }, LINKS)).toBe("deposit_paid");
+    const paid = await status(code);
+    expect(paid).toMatchObject({ status: "deposit_paid", receivedVnd: 1_000_000, refundDueVnd: 0, balancePaidAt: null });
+    expect(balanceDue(paid)).toBe(1_000_000);
+    expect(sent[0]!.text).toContain("1.000.000"); // the guest is told what actually arrived
+
+    const more = await holdOn(10, 1, "2026-10-11"); // total 1M, deposit 300k
+    expect(await deposits.receiveTransfer(more.code, { amountVnd: 1_200_000, bankRef: "FT2" }, LINKS)).toBe("deposit_paid");
+    expect(await status(more.code)).toMatchObject({ receivedVnd: 1_200_000, refundDueVnd: 200_000, balancePaidAt: clock });
+    expect((await db.select().from(bookingLedger)).map((l) => [l.kind, l.channel, l.amountVnd])).toEqual([["in", "transfer", 1_000_000], ["in", "transfer", 1_200_000]]);
+  });
+
+  it("an IPN sent twice is one ledger row; the online balance is what is still owed", async () => {
+    const { code, token } = await holdOn(10, 2);
+    const req = await startPayment(code, token);
+    await deposits.handleIpn(ipn(req), LINKS);
+    await deposits.handleIpn(ipn(req), LINKS);
+    expect(await db.select().from(bookingLedger)).toHaveLength(1);
+    expect(await status(code)).toMatchObject({ receivedVnd: 600_000 });
   });
 });
 

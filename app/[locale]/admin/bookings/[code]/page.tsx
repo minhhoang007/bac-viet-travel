@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
 import { requirePermission } from "@/app/_lib/staff";
-import { cancelBooking, confirmBooking, markBalancePaid, markBookingRefunded, receiveTransfer, saveContact, saveStaffNote } from "@/app/actions/booking-admin";
+import { adjustBookingMoney, cancelBooking, confirmBooking, markBalancePaid, markBookingRefunded, receiveTransfer, saveContact, saveStaffNote } from "@/app/actions/booking-admin";
 import { Input } from "@/components/ui/input";
 import { balanceDue, transferNote } from "@/product/booking/deposits";
-import { awaitsDeposit, canMove, refundLeft } from "@/product/booking/lifecycle";
+import { awaitsDeposit, canMove, keptVnd, owedVnd, refundLeft } from "@/product/booking/lifecycle";
 import { nextStep } from "@/product/booking/next-step";
 import { vietnamToday } from "@/product/booking/rules";
 import { Button } from "@/components/ui/button";
@@ -35,11 +35,12 @@ function phoneLinks(phone: string): { tel: string; zalo: string } | null {
 export default async function AdminBookingPage({ params, searchParams }: Props) {
   const { locale, code } = await params;
   setRequestLocale(locale);
-  const { admin, container, allowed } = await requirePermission("bookings.view");
+  const { admin, container, allowed, user } = await requirePermission("bookings.view");
   const found = await container.app!.product.bookingAdmin.get(code);
   if (!found) notFound();
   const { booking: b, departure: d, payments } = found;
   const feedback = await container.app!.product.feedback.forBooking(b.id);
+  const ledger = await container.app!.product.bookingAdmin.ledger(b.code);
   const { rows: history } = await admin.listAudit({ targetId: b.code, pageSize: 50 });
   const c = getBookingAdminContent(locale);
   const g = getBookingContent(locale);
@@ -221,7 +222,8 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
             {row(c.detail.total, formatVnd(b.totalVnd, locale))}
             {row(c.detail.deposit, formatVnd(b.depositVnd, locale))}
             {row(c.detail.paidAt, time(b.depositPaidAt))}
-            {row(c.detail.rest, formatVnd(b.totalVnd - b.depositVnd, locale))}
+            {row(c.detail.received, formatVnd(keptVnd(b), locale))}
+            {row(c.detail.rest, formatVnd(owedVnd(b), locale))}
             {b.balancePaidAt && row(c.detail.balancePaidAt, time(b.balancePaidAt))}
             {b.refundDueVnd > 0 && row(c.detail.refundDue, <strong className={refundOwed ? "text-danger" : ""}>{formatVnd(refundOwed ? refundLeft(b) : b.refundDueVnd, locale)}</strong>)}
             {b.refundedAt && row(c.detail.refundedAt, b.refundNote ? `${time(b.refundedAt)} · ${b.refundNote}` : time(b.refundedAt))}
@@ -296,6 +298,53 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
               </tbody>
             </table>
           </div>
+        )}
+      </section>
+
+      <section>
+        <h2 className="font-semibold">{c.detail.ledger}</h2>
+        {ledger.length === 0 ? (
+          <p className="mt-1 text-sm text-muted-foreground">{c.detail.noLedger}</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="mt-2 w-full text-left text-sm" data-testid="admin-ledger">
+              <thead className="text-muted-foreground">
+                <tr>
+                  {Object.values(c.detail.ledgerCols).map((h) => (
+                    <th key={h} className="py-2 pr-4 font-medium">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {ledger.map((l) => (
+                  <tr key={l.id} className="border-t border-border" data-ledger-kind={l.kind}>
+                    <td className="py-2 pr-4 whitespace-nowrap">{time(l.at)}</td>
+                    <td className="py-2 pr-4">{c.detail.ledgerKinds[l.kind]}</td>
+                    <td className="py-2 pr-4">{c.reports.channels[l.channel]}</td>
+                    <td className="py-2 pr-4 whitespace-nowrap tabular-nums">{l.kind === "refund" || l.amountVnd < 0 ? "−" : ""}{formatVnd(Math.abs(l.amountVnd), locale)}</td>
+                    <td className="py-2 text-muted-foreground">{l.note}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {user.role === "admin" && (
+          <form action={adjustBookingMoney} className="mt-3 grid max-w-lg gap-2 rounded-md border border-border p-3" data-testid="admin-adjust">
+            <input type="hidden" name="locale" value={locale} />
+            <input type="hidden" name="code" value={b.code} />
+            <p className="text-sm font-medium">{c.detail.adjust.title}</p>
+            <p className="text-xs text-muted-foreground">{c.detail.adjust.hint}</p>
+            <label className="grid text-sm">
+              {c.detail.adjust.amount}
+              <input name="amountVnd" type="number" step={1000} required className="mt-1 h-10 rounded-md border border-border bg-background px-3" />
+            </label>
+            <label className="grid text-sm">
+              {c.detail.adjust.reason}
+              <input name="reason" required maxLength={500} className="mt-1 h-10 rounded-md border border-border bg-background px-3" />
+            </label>
+            <ConfirmButton question={c.detail.adjust.ask} variant="outline" className="w-fit" data-testid="admin-adjust-save">{c.detail.adjust.submit}</ConfirmButton>
+          </form>
         )}
       </section>
 
