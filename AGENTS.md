@@ -82,6 +82,7 @@ Dependencies flow one way: Product → Modules (public API only) → Core. Detai
 `receiving-code-review`.
 Third-party skills, pinned copies (source, commit and license in each `SOURCE.md`; project rules win on conflict):
 `supabase-postgres-best-practices` (schema, migrations, queries, locking), `web-design-guidelines` (UI review).
+Agents (`.claude/agents/`, model roles in CLAUDE.md): `haiku-search` (find locations), `sonnet-implementer` (R0–R2 changes).
 
 <!-- BEGIN:nextjs-agent-rules -->
 
