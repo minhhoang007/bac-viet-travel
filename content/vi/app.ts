@@ -89,6 +89,17 @@ export const app: AppContent = {
     decline: "Từ chối",
     privacyLink: "Chính sách bảo mật",
   },
+  demo: {
+    notice: "Đây là website trình diễn: không nhận đặt chỗ hay thanh toán thật, email không được gửi đi.",
+    contact: "Muốn có website như thế này?",
+    mailbox: {
+      nav: "Hộp thư demo",
+      title: "Hộp thư demo",
+      intro: "Email website lẽ ra đã gửi (xác nhận, nhắc lịch, liên hệ…). Ở bản trình diễn không email nào được gửi đi; dữ liệu được làm mới định kỳ.",
+      empty: "Chưa có email nào.",
+      to: "Người nhận",
+    },
+  },
   admin: {
     title: "Quản trị",
     backToApp: "Trang tài khoản",

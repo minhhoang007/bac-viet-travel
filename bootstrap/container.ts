@@ -17,7 +17,7 @@ import { createDb, type Db } from "@/db/client";
 import { createAdminModule, type AdminModule } from "@/modules/admin";
 import { createAnalyticsModule, type AnalyticsModule } from "@/modules/analytics";
 import { createBillingModule, PROCESS_WEBHOOK_JOB, type BillingModule, type OneTimePaymentProvider, type SubscriptionProvider } from "@/modules/billing";
-import { createEmailModule, SEND_EMAIL_JOB, type EmailProvider } from "@/modules/email";
+import { createDemoMailbox, createEmailModule, SEND_EMAIL_JOB, type DemoMailbox, type EmailProvider } from "@/modules/email";
 import { createEntitlementsModule, type EntitlementsModule } from "@/modules/entitlements";
 import { createJobsModule, type JobHandler, type JobsModule } from "@/modules/jobs";
 import { createContentModule, type ContentModule } from "@/modules/content";
@@ -85,6 +85,8 @@ export interface Container {
   media?: MediaModule;
   /** Editorial workflow for project content types (ADR-0009). */
   content?: ContentModule;
+  /** DEMO_MODE with a database: the emails the site would have sent. */
+  demoMailbox?: DemoMailbox;
 }
 
 export interface ContainerOverrides {
@@ -124,9 +126,12 @@ export function buildContainer(features: Features, env: Env, overrides: Containe
   const periodic: Record<string, () => Promise<void>> = {};
   const jobs = features.jobs && db ? createJobsModule({ db, logger, handlers, periodic }) : undefined;
 
+  // Demo site: emails go to the admin's demo mailbox (or nowhere without a database), never to real addresses.
+  const demoMailbox = features.email && env.DEMO_MODE && db ? createDemoMailbox(db) : undefined;
+  if (demoMailbox) periodic["email.demo_purge"] = () => demoMailbox.purgeOlderThan(7);
   const email = features.email
     ? createEmailModule({
-        provider: overrides.emailProvider ?? emailProvider(env, logger),
+        provider: overrides.emailProvider ?? demoMailbox?.provider ?? (env.DEMO_MODE ? discardEmails : emailProvider(env, logger)),
         from: env.extra.EMAIL_FROM!,
         logger,
         scheduleRetry: jobs ? (message) => jobs.enqueue(SEND_EMAIL_JOB, { message }, { maxAttempts: 6 }) : undefined,
@@ -255,7 +260,7 @@ export function buildContainer(features: Features, env: Env, overrides: Containe
   const vnpay = payments.vnpay;
   const handleVnpayIpn = vnpay ? createVnpayIpn({ verify: (p) => vnpay.verify(p), handlers: vnpayIpnHandlers, logger }) : undefined;
 
-  return { features, logger, mail, health, rateLimiter, payments, handleVnpayIpn, contact, app, jobs, entitlements, billing, admin, analytics, storage, media, content };
+  return { features, logger, mail, health, rateLimiter, payments, handleVnpayIpn, contact, app, jobs, entitlements, billing, admin, analytics, storage, media, content, demoMailbox };
 }
 
 /** Manifest `contentTypes` (optional export; `in` first because test mocks of the manifest throw on missing exports). */
@@ -390,6 +395,9 @@ function buildApp(
   );
   return { db, auth, account, product: product.services, vnpayIpn: product.vnpayIpn, adminOverview: product.adminOverview };
 }
+
+/** Demo site without a database: emails are dropped (logging them would print visitors' addresses). */
+const discardEmails: EmailProvider = { send: async () => ({ id: "demo-discarded" }) };
 
 function emailProvider(env: Env, logger: Logger): EmailProvider {
   return env.EMAIL_PROVIDER === "console" ? consoleEmailProvider(logger) : resendProvider({ apiKey: env.EMAIL_API_KEY! });

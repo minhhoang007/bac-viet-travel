@@ -68,6 +68,12 @@ export interface AppContent {
     errors: { type: string; size: string; quota: string; failed: string };
   };
   consent: { text: string; accept: string; decline: string; privacyLink: string };
+  /** DEMO_MODE: the notice on every page and the demo mailbox (admin). */
+  demo: {
+    notice: string;
+    contact: string;
+    mailbox: { nav: string; title: string; intro: string; empty: string; to: string };
+  };
   admin: {
     title: string;
     backToApp: string;
