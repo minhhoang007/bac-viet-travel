@@ -10,7 +10,7 @@ import { bookingStatusEmail, reminderEmail } from "./emails";
 import type { ReceiveTransferResult } from "./deposits";
 import { createDepartureAdmin, type DepartureAdmin } from "./admin-departures";
 import { addDays, bookingRules, vietnamDayStart, vietnamToday } from "./rules";
-import { canBecome, SOLD_STATUSES, takesSeats } from "./status";
+import { canBecome, refundOwed, SOLD_STATUSES, takesSeats } from "./status";
 import { contactUpdateSchema, manualBookingSchema } from "./validations";
 
 export interface Actor {
@@ -21,7 +21,7 @@ export interface Actor {
 /** "attention" = what staff must act on: refunds owed, paid deposits not yet confirmed, bank transfers to check. */
 export type BookingFilter = BookingStatus | "attention" | "all";
 
-export interface AdminBookingRow extends Pick<Booking, "id" | "code" | "status" | "holdExpiresAt" | "name" | "email" | "phone" | "seats" | "totalVnd" | "depositVnd" | "refundDueVnd" | "refundedAt" | "createdAt" | "source" | "externalRef"> {
+export interface AdminBookingRow extends Pick<Booking, "id" | "code" | "status" | "holdExpiresAt" | "name" | "email" | "phone" | "seats" | "totalVnd" | "depositVnd" | "refundDueVnd" | "refundedVnd" | "refundedAt" | "createdAt" | "source" | "externalRef"> {
   tourSlug: string;
   date: string;
   kind: Departure["kind"];
@@ -32,6 +32,11 @@ export interface BookingAdmin extends DepartureAdmin {
   get(code: string): Promise<{ booking: Booking; departure: Departure; payments: BookingPayment[] } | null>;
   confirm(actor: Actor, code: string): Promise<boolean>;
   cancel(actor: Actor, code: string, input: { reason: string; refund: boolean }): Promise<boolean>;
+  /**
+   * The company cancels a whole group departure (too few guests, weather): closes it, then cancels every live booking
+   * with a full refund of what was paid, each emailed and audited. Null when not found.
+   */
+  cancelDeparture(actor: Actor, departureId: string, reason: string): Promise<{ cancelled: number } | null>;
   markRefunded(actor: Actor, code: string, input: { note: string }): Promise<boolean>;
   setStaffNote(actor: Actor, code: string, note: string): Promise<boolean>;
   /** Fix the guest's name, email or phone (typos, a new number). Seats and money do not change. Audited (field names only). */
@@ -69,6 +74,7 @@ export type ManualBookingResult =
 
 const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 const CODE = /^BV-[A-Z2-9]{6}$/;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const REMINDER_DAYS = 3;
 
@@ -76,7 +82,7 @@ const REMINDER_DAYS = 3;
 export const needsAttention = () =>
   or(
     inArray(bookings.status, canBecome("confirmed")),
-    and(sql`${bookings.refundDueVnd} > 0`, isNull(bookings.refundedAt)),
+    refundOwed(),
     and(
       inArray(bookings.status, canBecome("deposit_paid")),
       sql`exists (select 1 from ${bookingPayments} p where p.booking_id = ${bookings.id} and p.method = 'transfer' and p.status = 'pending')`,
@@ -120,6 +126,33 @@ export function createBookingAdmin(deps: {
     if (booking.guestEmails && booking.email) await send(message, booking.code);
   };
 
+  /** `refundBalance`: also give back a balance already paid (the company cancels the trip). */
+  const cancelBooking = async (actor: Actor, code: string, { reason, refund, refundBalance = false }: { reason: string; refund: boolean; refundBalance?: boolean }) => {
+    const text = reason.trim().slice(0, 500);
+    if (!text) throw new AppError("VALIDATION_ERROR", "Reason required");
+    let updated: Booking | undefined;
+    const changed = await audited(actor, "booking.cancel", code, { reason: text, refund, ...(refundBalance ? { refundBalance } : {}) }, async () => {
+      const balance = refundBalance ? sql` + case when ${bookings.balancePaidAt} is not null then ${bookings.totalVnd} - ${bookings.depositVnd} else 0 end` : sql``;
+      [updated] = await db
+        .update(bookings)
+        .set({
+          status: "cancelled",
+          cancelledAt: now(),
+          cancelReason: text,
+          // Refund the deposit only when it was paid (held bookings paid nothing).
+          ...(refund ? { refundDueVnd: sql`${bookings.refundDueVnd} + case when ${inArray(bookings.status, SOLD_STATUSES)} then ${bookings.depositVnd}${balance} else 0 end` } : {}),
+        })
+        .where(and(eq(bookings.code, code), inArray(bookings.status, canBecome("cancelled"))))
+        .returning();
+      return Boolean(updated);
+    });
+    if (updated) {
+      const row = (await load(code))!;
+      await sendToGuest(updated, bookingStatusEmail({ booking: updated, departure: row.d, title: await deps.tourTitle(row.d.tourSlug, updated.locale), kind: "cancelled" }));
+    }
+    return changed;
+  };
+
   return {
     ...createDepartureAdmin({ db, audited, tourExists: deps.tourExists, now }),
 
@@ -160,6 +193,7 @@ export function createBookingAdmin(deps: {
           totalVnd: bookings.totalVnd,
           depositVnd: bookings.depositVnd,
           refundDueVnd: bookings.refundDueVnd,
+          refundedVnd: bookings.refundedVnd,
           refundedAt: bookings.refundedAt,
           createdAt: bookings.createdAt,
           source: bookings.source,
@@ -202,29 +236,29 @@ export function createBookingAdmin(deps: {
       return changed;
     },
 
-    async cancel(actor, code, { reason, refund }) {
+    cancel: (actor, code, input) => cancelBooking(actor, code, input),
+
+    async cancelDeparture(actor, departureId, reason) {
+      if (!UUID.test(departureId)) return null;
       const text = reason.trim().slice(0, 500);
       if (!text) throw new AppError("VALIDATION_ERROR", "Reason required");
-      let updated: Booking | undefined;
-      const changed = await audited(actor, "booking.cancel", code, { reason: text, refund }, async () => {
-        [updated] = await db
-          .update(bookings)
-          .set({
-            status: "cancelled",
-            cancelledAt: now(),
-            cancelReason: text,
-            // Refund the deposit only when it was paid (held bookings paid nothing).
-            ...(refund ? { refundDueVnd: sql`${bookings.refundDueVnd} + case when ${inArray(bookings.status, SOLD_STATUSES)} then ${bookings.depositVnd} else 0 end` } : {}),
-          })
-          .where(and(eq(bookings.code, code), inArray(bookings.status, canBecome("cancelled"))))
-          .returning();
-        return Boolean(updated);
+      // Close it first, so no guest holds a seat while its bookings are being cancelled. A departure already closed
+      // (sales stopped) can still be cancelled, and running it again finishes a cancellation that stopped half-way.
+      // Past trips cannot: they happened.
+      const closed = await audited(actor, "departure.cancel", departureId, { reason: text }, async () => {
+        const rows = await db
+          .update(departures)
+          .set({ status: "closed" })
+          .where(and(eq(departures.id, departureId), eq(departures.kind, "group"), gte(departures.date, vietnamToday(now()))))
+          .returning({ id: departures.id });
+        return rows.length > 0;
       });
-      if (updated) {
-        const row = (await load(code))!;
-        await sendToGuest(updated, bookingStatusEmail({ booking: updated, departure: row.d, title: await deps.tourTitle(row.d.tourSlug, updated.locale), kind: "cancelled" }));
-      }
-      return changed;
+      if (!closed) return null;
+      const live = await db.select({ code: bookings.code }).from(bookings).where(and(eq(bookings.departureId, departureId), inArray(bookings.status, canBecome("cancelled"))));
+      let cancelled = 0;
+      // Company cancellation: everything the guest paid goes back (policy), each booking audited and emailed.
+      for (const { code } of live) if (await cancelBooking(actor, code, { reason: text, refund: true, refundBalance: true })) cancelled += 1;
+      return { cancelled };
     },
 
     async receiveTransfer(actor, code, input) {
@@ -254,12 +288,14 @@ export function createBookingAdmin(deps: {
         const done = await db
           .update(bookings)
           .set({
+            // Everything owed so far is now given back; a later refund (another cancellation) owes only its own amount.
+            refundedVnd: bookings.refundDueVnd,
             refundedAt: now(),
             refundNote: note.trim().slice(0, 500),
             // A late deposit (refund_due) ends as cancelled once the money is back.
             status: sql`case when ${bookings.status} = 'refund_due' then 'cancelled' else ${bookings.status} end`,
           })
-          .where(and(eq(bookings.code, code), sql`${bookings.refundDueVnd} > 0`, isNull(bookings.refundedAt)))
+          .where(and(eq(bookings.code, code), refundOwed()))
           .returning({ id: bookings.id });
         return done.length > 0;
       });

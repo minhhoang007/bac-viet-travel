@@ -10,7 +10,7 @@ const base = {
   depositVnd: 714_000,
   balancePaidAt: null,
   refundDueVnd: 0,
-  refundedAt: null,
+  refundedVnd: 0,
   adults: 2,
   children: 0,
   infants: 0,
@@ -37,7 +37,9 @@ describe("nextStep", () => {
 
   it("money owed back comes first, whatever the status", () => {
     expect(nextStep({ ...base, status: "cancelled", refundDueVnd: 714_000 }, { transferChosen: false })).toEqual({ kind: "refund", amountVnd: 714_000 });
-    expect(nextStep({ ...base, status: "refund_due", refundDueVnd: 714_000, refundedAt: until }, { transferChosen: false })).toEqual({ kind: "cancelled" });
+    expect(nextStep({ ...base, status: "refund_due", refundDueVnd: 714_000, refundedVnd: 714_000 }, { transferChosen: false })).toEqual({ kind: "cancelled" });
+    // An extra transfer was refunded earlier; the cancellation then owes the deposit: only that is left to give back.
+    expect(nextStep({ ...base, status: "cancelled", refundDueVnd: 914_000, refundedVnd: 200_000 }, { transferChosen: false })).toEqual({ kind: "refund", amountVnd: 714_000 });
   });
 
   it("hold deadlines read as Vietnam time, day/month", () => {

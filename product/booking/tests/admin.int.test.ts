@@ -74,6 +74,22 @@ describe("booking admin", () => {
     expect((await row(code)).status).toBe("cancelled");
   });
 
+  it("a refund owed after an earlier refund: only the new amount is owed, and it is back in the queue", async () => {
+    const { code } = await paidBooking();
+    // A second transfer (200k) was given back earlier.
+    await db.update(bookings).set({ refundDueVnd: 200_000 }).where(eq(bookings.code, code));
+    expect(await bookingAdmin.markRefunded(staff, code, { note: "trả 200k chuyển dư" })).toBe(true);
+    expect(await row(code)).toMatchObject({ refundDueVnd: 200_000, refundedVnd: 200_000 });
+
+    expect(await bookingAdmin.cancel(staff, code, { reason: "Khách ốm", refund: true })).toBe(true);
+    const cancelled = await row(code);
+    expect(cancelled.refundDueVnd - cancelled.refundedVnd).toBe(cancelled.depositVnd);
+    expect((await bookingAdmin.list({ filter: "attention" })).rows.map((r) => r.code)).toEqual([code]);
+    expect(await bookingAdmin.markRefunded(staff, code, { note: "trả cọc" })).toBe(true);
+    expect(await row(code)).toMatchObject({ refundedVnd: 200_000 + cancelled.depositVnd });
+    expect((await bookingAdmin.list({ filter: "attention" })).total).toBe(0);
+  });
+
   it("list: filters by status, tour, dates and search", async () => {
     const a = await paidBooking(10, "2026-10-10");
     const b = await paidBooking(10, "2026-10-20");
@@ -215,6 +231,71 @@ describe("booking admin", () => {
   });
 });
 
+describe("departure minimum and company cancellation", () => {
+  it("a minimum of guests is 1…capacity or none, on new and existing dates", async () => {
+    expect(await bookingAdmin.addDepartures(staff, { tourSlug: "sapa-trekking-2d1n", dates: ["2026-10-20"], capacity: 12, priceVnd: null, minGuests: 6 })).toBe(1);
+    const [d] = await db.select().from(departures).where(eq(departures.date, "2026-10-20"));
+    expect(d!.minGuests).toBe(6);
+    await expect(bookingAdmin.addDepartures(staff, { tourSlug: "sapa-trekking-2d1n", dates: ["2026-10-21"], capacity: 12, priceVnd: null, minGuests: 13 })).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    await expect(bookingAdmin.updateDeparture(staff, d!.id, { minGuests: 0 })).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    // Fewer seats than the minimum already set is refused too.
+    await expect(bookingAdmin.updateDeparture(staff, d!.id, { capacity: 5 })).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    expect(await bookingAdmin.updateDeparture(staff, d!.id, { minGuests: null })).toBe(true);
+    expect((await db.select().from(departures).where(eq(departures.id, d!.id)))[0]!.minGuests).toBeNull();
+  });
+
+  it("the dashboard counts a departure short of its minimum, even when half full", async () => {
+    const { departure } = await paidBooking(4, "2026-10-04", 2); // 2 of 4 seats: not under 50%
+    const data = () => createDashboard({ db, now: () => clock }).data();
+    expect((await data()).queue.lowFill).toBe(0);
+    await db.update(departures).set({ minGuests: 3 }).where(eq(departures.id, departure.id));
+    expect((await data()).queue.lowFill).toBe(1);
+  });
+
+  it("an empty date counts as short only when it has a minimum", async () => {
+    const [d] = await db.insert(departures).values({ tourSlug: "ninh-binh-day-tour", date: "2026-10-05", capacity: 10 }).returning();
+    const data = () => createDashboard({ db, now: () => clock }).data();
+    expect((await data()).queue.lowFill).toBe(0);
+    await db.update(departures).set({ minGuests: 4 }).where(eq(departures.id, d!.id));
+    expect((await data()).queue.lowFill).toBe(1);
+  });
+
+  it("a closed date can still be cancelled (and a cancellation run again); a past one cannot", async () => {
+    const a = await paidBooking(10, "2026-10-10", 2);
+    await db.update(departures).set({ status: "closed" }).where(eq(departures.id, a.departure.id));
+    expect(await bookingAdmin.cancelDeparture(staff, a.departure.id, "Bão")).toEqual({ cancelled: 1 });
+    expect(await bookingAdmin.cancelDeparture(staff, a.departure.id, "Bão")).toEqual({ cancelled: 0 });
+
+    const past = await paidBooking(10, "2026-10-05", 1);
+    clock = new Date("2026-10-06T03:00:00Z");
+    expect(await bookingAdmin.cancelDeparture(staff, past.departure.id, "nhầm")).toBeNull();
+    expect((await row(past.code)).status).toBe("deposit_paid");
+  });
+
+  it("cancelling a departure closes it and cancels every live booking with a full refund of what was paid", async () => {
+    const a = await paidBooking(10, "2026-10-10", 2);
+    const b = await paidBooking(10, "2026-10-10", 1);
+    await bookingAdmin.confirm(staff, b.code);
+    await bookingAdmin.markBalancePaid(staff, b.code, "tiền mặt");
+    const held = await booking.hold({ departureId: a.departure.id, name: "Mai", email: "mai@example.com", phone: "0912345679", adults: "1", locale: "vi", agree: "on" }, "ip-held");
+    if (held.status !== "held") throw new Error(held.status);
+    clearMail();
+
+    await expect(bookingAdmin.cancelDeparture(staff, a.departure.id, " ")).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    expect(await bookingAdmin.cancelDeparture(staff, a.departure.id, "Không đủ khách tối thiểu")).toEqual({ cancelled: 3 });
+
+    expect((await db.select().from(departures).where(eq(departures.id, a.departure.id)))[0]!.status).toBe("closed");
+    const [ra, rb, rh] = [await row(a.code), await row(b.code), await row(held.code)];
+    expect(ra).toMatchObject({ status: "cancelled", refundDueVnd: ra.depositVnd, cancelReason: "Không đủ khách tối thiểu" });
+    expect(rb).toMatchObject({ status: "cancelled", refundDueVnd: rb.totalVnd }); // deposit and the paid balance
+    expect(rh).toMatchObject({ status: "cancelled", refundDueVnd: 0 }); // a hold paid nothing
+    expect(sent.filter((m) => m.kind === "booking_cancelled")).toHaveLength(3);
+    const { rows } = await container.admin!.listAudit({ targetId: a.departure.id });
+    expect(rows.map((r) => r.action)).toEqual(["departure.cancel"]);
+    expect(await bookingAdmin.cancelDeparture(staff, crypto.randomUUID(), "x")).toBeNull();
+  });
+});
+
 describe("reports (H3)", () => {
   it("per tour: departures, capacity, sold seats, revenue and deposits; per source; refunds owed; held and other months left out", async () => {
     await db.execute(sql`TRUNCATE booking_payments, bookings, departures, discount_codes RESTART IDENTITY CASCADE`);
@@ -255,13 +336,15 @@ describe("reports (H3)", () => {
       b("BV-CSHA22", soon!.id, "deposit_paid", 2, { depositPaidAt: oct(10) }), // VNPay deposit 600k
       b("BV-CSHB22", soon!.id, "confirmed", 1, { depositPaidAt: oct(11), balancePaidAt: oct(20) }), // transfer 300k + staff balance 700k
       b("BV-CSHC22", soon!.id, "confirmed", 3, { depositPaidAt: new Date("2026-09-30T03:00:00Z"), source: "klook" }), // September: not in October cash; still owes 2.1M
-      b("BV-CSHD22", past!.id, "cancelled", 1, { depositPaidAt: oct(2), refundDueVnd: 300_000, refundedAt: oct(5) }), // staff 300k in, 300k back
+      b("BV-CSHD22", past!.id, "cancelled", 1, { depositPaidAt: oct(2), refundDueVnd: 300_000, refundedVnd: 300_000, refundedAt: oct(5) }), // staff 300k in, 300k back
     ]).returning({ id: bookings.id, code: bookings.code });
     const id = (code: string) => inserted.find((r) => r.code === code)!.id;
     await db.insert(bookingPayments).values([
       { bookingId: id("BV-CSHA22"), method: "vnpay", purpose: "deposit", txnRef: "T1", amountVnd: 600_000, status: "paid", paidAt: oct(10) },
       { bookingId: id("BV-CSHB22"), method: "transfer", purpose: "deposit", txnRef: "T2", amountVnd: 300_000, status: "paid", paidAt: oct(11) },
       { bookingId: id("BV-CSHB22"), method: "vnpay", purpose: "balance", txnRef: "T3", amountVnd: 700_000, status: "failed" },
+      // A second transfer after the deposit was paid: money in, owed back.
+      { bookingId: id("BV-CSHA22"), method: "transfer", purpose: "deposit", txnRef: "T4", amountVnd: 500_000, status: "paid", paidAt: oct(12) },
     ]);
 
     const cash = await createReports({ db }).cash("2026-10-01", "2026-10-31");
@@ -270,7 +353,7 @@ describe("reports (H3)", () => {
       { channel: "transfer", depositsVnd: 300_000, balancesVnd: 0 },
       { channel: "staff", depositsVnd: 300_000, balancesVnd: 700_000 },
     ]);
-    expect(cash).toMatchObject({ collectedVnd: 1_900_000, refundedVnd: 300_000 });
+    expect(cash).toMatchObject({ extraVnd: 500_000, collectedVnd: 2_400_000, refundedVnd: 300_000 });
 
     // Owed from trips on or after the given day, balance unpaid: A (1.4M) and C (2.1M); B paid, D past and cancelled.
     expect((await createReports({ db }).receivables("2026-10-14")).map((r) => [r.code, r.dueVnd])).toEqual([

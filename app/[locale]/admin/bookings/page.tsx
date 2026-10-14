@@ -6,6 +6,7 @@ import type { Locale } from "@/config/app";
 import type { BookingFilter } from "@/product/booking/admin";
 import { getBookingAdminContent } from "@/product/booking/admin-content";
 import { formatShortDay, formatShortTime, formatVnd } from "@/product/booking/content";
+import { refundLeft } from "@/product/booking/lifecycle";
 import { BookingStatusBadge } from "@/product/components/booking-status-badge";
 import { BOOKING_SOURCES, type BookingSource } from "@/product/booking/sources";
 import { getTours } from "@/app/_lib/tours";
@@ -168,9 +169,9 @@ export default async function AdminBookingsPage({ params, searchParams }: Props)
                       {c.holdUntil(formatShortTime(b.holdExpiresAt))}
                     </span>
                   )}
-                  {b.refundDueVnd > 0 && !b.refundedAt && (
+                  {refundLeft(b) > 0 && (
                     <span className="block text-xs font-semibold text-danger">
-                      {c.refundOwed}: {formatVnd(b.refundDueVnd, locale)}
+                      {c.refundOwed}: {formatVnd(refundLeft(b), locale)}
                     </span>
                   )}
                 </td>

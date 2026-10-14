@@ -99,6 +99,20 @@
       "when": 1791378882920,
       "tag": "0013_thin_leper_queen",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1791912453704,
+      "tag": "0014_melted_misty_knight",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1791945545824,
+      "tag": "0015_demonic_rick_jones",
+      "breakpoints": true
     }
   ]
 }

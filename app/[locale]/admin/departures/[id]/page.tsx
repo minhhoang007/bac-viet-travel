@@ -8,18 +8,24 @@ import type { Locale } from "@/config/app";
 import { getBookingAdminContent } from "@/product/booking/admin-content";
 import { formatDay } from "@/product/booking/content";
 import { PrintButton } from "@/product/components/print-button";
+import { cancelDeparture } from "@/app/actions/booking-admin";
+import { Textarea } from "@/components/ui/textarea";
+import { vietnamToday } from "@/product/booking/rules";
+import { ConfirmButton } from "@/product/components/confirm-button";
 
-type Props = { params: Promise<{ locale: Locale; id: string }> };
+type Props = { params: Promise<{ locale: Locale; id: string }>; searchParams: Promise<{ result?: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return { title: getBookingAdminContent((await params).locale).passengers.title };
 }
 
 /** Passenger list of one departure (H1): for the guide, printable and as CSV. */
-export default async function PassengersPage({ params }: Props) {
+export default async function PassengersPage({ params, searchParams }: Props) {
   const { locale, id } = await params;
   setRequestLocale(locale);
-  const { container } = await requirePermission("bookings.view");
+  const { container, allowed } = await requirePermission("bookings.view");
+  const { result } = await searchParams;
+  const a = getBookingAdminContent(locale);
   const found = await container.app!.product.bookingAdmin.passengers(id);
   if (!found) notFound();
   const { departure: d, rows } = found;
@@ -46,6 +52,12 @@ export default async function PassengersPage({ params }: Props) {
       <p className="text-sm">
         <span className="capitalize">{formatDay(d.date, locale)}</span> · <span data-testid="passengers-summary">{c.summary(people, bookings)}</span>
       </p>
+      {result && (
+        <p role="status" data-print-hide className={`rounded-md border p-3 text-sm ${result === "done" ? "border-success/40 bg-success/10" : "border-danger/40 bg-danger/10"}`}>
+          {result === "done" ? a.result.done : a.result.failed}
+        </p>
+      )}
+      {d.status === "closed" && <p className="text-sm font-medium text-warning" data-print-hide>{c.closedNote}</p>}
       {rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">{c.empty}</p>
       ) : (
@@ -81,6 +93,20 @@ export default async function PassengersPage({ params }: Props) {
             ))}
           </tbody>
         </table>
+      )}
+
+      {allowed("bookings.cancel") && d.kind === "group" && (d.status === "open" || rows.length > 0) && d.date >= vietnamToday(new Date()) && (
+        <details className="mt-4 max-w-xl rounded-lg border border-border p-4 text-sm" data-print-hide data-testid="cancel-departure">
+          <summary className="cursor-pointer font-medium text-danger">{c.cancelTitle}…</summary>
+          <form action={cancelDeparture} className="mt-3 grid gap-2">
+            <input type="hidden" name="locale" value={locale} />
+            <input type="hidden" name="id" value={d.id} />
+            <p className="text-muted-foreground">{c.cancelHint}</p>
+            <label htmlFor="departure-cancel-reason" className="font-medium">{c.cancelReason}</label>
+            <Textarea id="departure-cancel-reason" name="reason" rows={2} required maxLength={500} />
+            <ConfirmButton question={c.cancelAsk} variant="destructive" className="w-fit" data-testid="cancel-departure-submit">{c.cancelButton}</ConfirmButton>
+          </form>
+        </details>
       )}
     </div>
   );

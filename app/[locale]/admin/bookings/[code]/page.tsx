@@ -5,7 +5,7 @@ import { requirePermission } from "@/app/_lib/staff";
 import { cancelBooking, confirmBooking, markBalancePaid, markBookingRefunded, receiveTransfer, saveContact, saveStaffNote } from "@/app/actions/booking-admin";
 import { Input } from "@/components/ui/input";
 import { balanceDue, transferNote } from "@/product/booking/deposits";
-import { awaitsDeposit, canMove } from "@/product/booking/lifecycle";
+import { awaitsDeposit, canMove, refundLeft } from "@/product/booking/lifecycle";
 import { nextStep } from "@/product/booking/next-step";
 import { vietnamToday } from "@/product/booking/rules";
 import { Button } from "@/components/ui/button";
@@ -46,7 +46,7 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
   const { result } = await searchParams;
   const title = (await getTours()).get(locale, d.tourSlug)?.title ?? d.tourSlug;
   const time = (t: Date | null) => (t ? t.toLocaleString(locale === "vi" ? "vi-VN" : "en-GB", { timeZone: "Asia/Ho_Chi_Minh" }) : "—");
-  const refundOwed = b.refundDueVnd > 0 && !b.refundedAt;
+  const refundOwed = refundLeft(b) > 0;
   const transferChosen = payments.some((p) => p.method === "transfer" && p.status === "pending");
   const waitingDeposit = awaitsDeposit(b.status);
   const step = nextStep(b, { transferChosen });
@@ -223,7 +223,7 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
             {row(c.detail.paidAt, time(b.depositPaidAt))}
             {row(c.detail.rest, formatVnd(b.totalVnd - b.depositVnd, locale))}
             {b.balancePaidAt && row(c.detail.balancePaidAt, time(b.balancePaidAt))}
-            {b.refundDueVnd > 0 && row(c.detail.refundDue, <strong className={refundOwed ? "text-danger" : ""}>{formatVnd(b.refundDueVnd, locale)}</strong>)}
+            {b.refundDueVnd > 0 && row(c.detail.refundDue, <strong className={refundOwed ? "text-danger" : ""}>{formatVnd(refundOwed ? refundLeft(b) : b.refundDueVnd, locale)}</strong>)}
             {b.refundedAt && row(c.detail.refundedAt, `${time(b.refundedAt)} · ${b.refundNote ?? ""}`)}
           </dl>
         </section>

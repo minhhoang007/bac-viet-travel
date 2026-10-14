@@ -1,6 +1,7 @@
 import type { MailMessage } from "@/core/ports/mail";
 import type { Booking, Departure } from "../schema/booking";
 import { formatDay, formatVnd, getBookingContent } from "./content";
+import { refundLeft } from "./lifecycle";
 
 /** Plain-text emails after a deposit IPN (the email module adds the HTML version). Guest language = booking locale. */
 export function depositEmails(input: {
@@ -190,7 +191,7 @@ export function bookingStatusEmail(input: { booking: Booking; departure: Departu
   const { booking: b, departure: d, title, kind } = input;
   const vi = b.locale !== "en";
   const day = formatDay(d.date, vi ? "vi" : "en");
-  const refund = b.refundDueVnd > 0 && !b.refundedAt ? formatVnd(b.refundDueVnd, vi ? "vi" : "en") : null;
+  const refund = refundLeft(b) > 0 ? formatVnd(refundLeft(b), vi ? "vi" : "en") : null;
   if (kind === "confirmed") {
     return {
       kind: "booking_confirmed",

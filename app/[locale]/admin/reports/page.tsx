@@ -76,7 +76,7 @@ export default async function ReportsPage({ params, searchParams }: Props) {
           {csvLink("cash")}
         </div>
         <p className="text-sm text-muted-foreground">{t.cashHint}</p>
-        {cash.byChannel.length === 0 ? (
+        {cash.collectedVnd === 0 && cash.refundedVnd === 0 ? (
           <p className="text-sm text-muted-foreground">{t.cashEmpty}</p>
         ) : (
           <div className="overflow-x-auto">
@@ -93,6 +93,12 @@ export default async function ReportsPage({ params, searchParams }: Props) {
                     <td className={`${cell} font-medium`}>{money(r.depositsVnd + r.balancesVnd)}</td>
                   </tr>
                 ))}
+                {cash.extraVnd > 0 && (
+                  <tr className="border-t border-border" data-testid="cash-extra">
+                    <td className={cell} colSpan={3}>{t.extra}</td>
+                    <td className={`${cell} font-medium`}>{money(cash.extraVnd)}</td>
+                  </tr>
+                )}
               </tbody>
               <tfoot>
                 <tr className="border-t-2 border-border font-semibold">

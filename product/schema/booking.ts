@@ -17,12 +17,15 @@ export const departures = pgTable(
     status: text("status", { enum: ["open", "closed"] }).notNull().default("open"),
     /** group: shared seats, listed for guests. private: created by one private booking (capacity = its seats), never listed. */
     kind: text("kind", { enum: ["group", "private"] }).notNull().default("group"),
+    /** Guests needed for the trip to run (policy: the company may cancel below it, full refund); null = no minimum. */
+    minGuests: integer("min_guests"),
     ...timestamps(),
   },
   (t) => [
     // One group departure per tour and day; private departures may share the day.
     uniqueIndex("departures_tour_date_idx").on(t.tourSlug, t.date).where(sql`${t.kind} = 'group'`),
     check("departures_capacity_check", sql`${t.capacity} > 0`),
+    check("departures_min_guests_check", sql`${t.minGuests} is null or ${t.minGuests} > 0`),
   ],
 );
 
@@ -78,8 +81,13 @@ export const bookings = pgTable(
     confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
     cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
     cancelReason: text("cancel_reason"),
-    /** Money owed back to the guest (late deposit, cancellation with refund). 0 = nothing owed. */
+    /**
+     * Money owed back to the guest over the booking's life (late deposit, extra transfer, cancellation with refund).
+     * Still to give back: refundDueVnd − refundedVnd (refundOwed in booking/status.ts).
+     */
     refundDueVnd: integer("refund_due_vnd").notNull().default(0),
+    /** Money given back so far; refundedAt is the latest refund. */
+    refundedVnd: integer("refunded_vnd").notNull().default(0),
     refundedAt: timestamp("refunded_at", { withTimezone: true }),
     refundNote: text("refund_note"),
     /** Staff-only note (never shown to the guest). */
