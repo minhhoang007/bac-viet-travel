@@ -4,6 +4,12 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.26.2] - 2026-10-14
+
+### Fixed
+- Demo sign-in (`/demo`) posts to a route handler, `POST /api/demo/sign-in`, which answers with a real 303 to Better Auth's verify URL. The server action's redirect to that same-origin URL became a client navigation that never reached the handler, so visitors stayed signed out. Same-origin check and the 20 / 10 min limit as before.
+- Removed `NEXT_DIST_DIR` (v1.26.1): Turbopack cannot resolve Google fonts outside `.next`. A demo E2E builds again with `DEMO_MODE` instead (Bắc Việt: `scripts/e2e-demo.mjs`).
+
 ## [1.26.1] - 2026-10-14
 
 ### Fixed

@@ -8,8 +8,6 @@ import { requireAppServices } from "@/app/_lib/session";
 import { isAppError } from "@/core/errors";
 import { localePath } from "@/core/i18n/routing";
 import { authConfig } from "@/config/auth";
-import { demoAccounts, getContainer } from "@/bootstrap/container";
-import { getPublicEnv } from "@/bootstrap/env";
 
 export type MagicLinkState =
   | { status: "sent" }
@@ -58,18 +56,4 @@ export async function signOut(formData: FormData): Promise<void> {
   const app = await requireAppServices();
   await app.auth.signOut(await headers());
   redirect(localePath(localeSchema.parse(formData.get("locale"))));
-}
-
-/** Demo site (DEMO_MODE): one-click sign-in as a demo staff account from product/manifest.ts `demoAccounts`. */
-export async function signInAsDemo(formData: FormData): Promise<void> {
-  const locale = localeSchema.parse(formData.get("locale"));
-  const back = localePath(locale, "/demo");
-  const account = demoAccounts().find((a) => a.email === String(formData.get("email") ?? ""));
-  if (!getPublicEnv().demoMode || !account) redirect(`${back}?result=failed`);
-  const app = await requireAppServices();
-  const h = await headers();
-  // Each click issues a sign-in link and a demo email: a visitor clicking in a loop is slowed down.
-  if (!(await getContainer().rateLimiter("demo-sign-in", { max: 20, windowMs: 10 * 60_000 }).limit(clientKeyFrom(h))).success) redirect(`${back}?result=rate_limited`);
-  const link = await app.auth.demoSignIn(account.email, localePath(locale, account.home), h);
-  redirect(link ?? `${back}?result=failed`);
 }

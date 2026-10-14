@@ -15,9 +15,6 @@ const turnstile = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ? ["https://challen
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
-  // E2E only: a second build next to the first (e.g. NEXT_DIST_DIR=.next-demo with DEMO_MODE=true). Flags such as
-  // DEMO_MODE are read when static pages are built, so a demo needs its own build. Unset everywhere else.
-  ...(process.env.NEXT_DIST_DIR ? { distDir: process.env.NEXT_DIST_DIR } : {}),
   // E2E builds only (CI sets it on `pnpm build`): under `next start` an image variant can stop answering (the
   // optimizer dedupes requests for the same variant and one never settles), so the page never fires "load" and
   // tests time out at random. Vercel optimizes images itself; never set this for a real deployment.
