@@ -43,7 +43,7 @@ export default async function NewTourPage({ params, searchParams }: Props) {
         </label>
         <label className="grid gap-1 text-sm">
           {c.create.slug}
-          <input name="slug" required maxLength={110} pattern="[a-z0-9]+(-[a-z0-9]+)*" aria-describedby="slug-hint" className={input} />
+          <input name="slug" required maxLength={110} autoComplete="off" autoCapitalize="none" spellCheck={false} pattern="[a-z0-9]+(-[a-z0-9]+)*" aria-describedby="slug-hint" className={input} />
           <span id="slug-hint" className="text-xs text-muted-foreground">
             {c.create.slugHint}
           </span>

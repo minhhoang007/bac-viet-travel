@@ -5,6 +5,7 @@ import { requirePermission } from "@/app/_lib/staff";
 import { localePath } from "@/core/i18n/routing";
 import type { Locale } from "@/config/app";
 import { getBookingAdminContent } from "@/product/booking/admin-content";
+import { formatShortDay } from "@/product/booking/content";
 import { addDays, vietnamToday } from "@/product/booking/rules";
 import { ManualBookingForm } from "@/product/components/manual-booking-form";
 import { getTours } from "@/app/_lib/tours";
@@ -30,7 +31,7 @@ export default async function NewManualBookingPage({ params }: Props) {
     .filter((d) => d.status === "open")
     .map((d) => {
       const seatsLeft = Math.max(0, d.capacity - d.sold - d.held);
-      return { id: d.id, seatsLeft, label: `${d.date} · ${title(d.tourSlug)} · ${seatsLeft}/${d.capacity}` };
+      return { id: d.id, seatsLeft, label: `${formatShortDay(d.date, locale)} · ${title(d.tourSlug)} · ${seatsLeft}/${d.capacity}` };
     });
 
   return (

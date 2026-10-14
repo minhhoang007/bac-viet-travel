@@ -105,7 +105,7 @@ export default async function AdminDeparturesPage({ params, searchParams }: Prop
             </label>
             <label className="grid gap-1 text-sm">
               {c.dep.price}
-              <input name="priceVnd" inputMode="numeric" className={`${input} w-40`} />
+              <input name="priceVnd" inputMode="numeric" autoComplete="off" className={`${input} w-40`} />
             </label>
             <label className="grid gap-1 text-sm">
               {c.dep.minGuests}
@@ -173,11 +173,11 @@ export default async function AdminDeparturesPage({ params, searchParams }: Prop
                       )}
                     </td>
                     <td className="py-2 pr-3">{title(d.tourSlug)}</td>
-                    <td className="py-2 pr-3">
+                    <td className="py-2 pr-3 tabular-nums">
                       {d.sold}
                       <span className="block">{minBadge(d)}</span>
                     </td>
-                    <td className="py-2 pr-3">{d.held}</td>
+                    <td className="py-2 pr-3 tabular-nums">{d.held}</td>
                     <td className="py-2 pr-3">
                       <input form={form} type="number" name="capacity" min={Math.max(1, d.sold + d.held)} max={100} defaultValue={d.capacity} aria-label={`${c.dep.cols.capacity} ${d.date}`} className={`${input} w-20`} />
                     </td>
@@ -185,7 +185,7 @@ export default async function AdminDeparturesPage({ params, searchParams }: Prop
                       <input form={form} type="number" name="minGuests" min={1} max={d.capacity} defaultValue={d.minGuests ?? ""} aria-label={`${c.dep.cols.min} ${d.date}`} className={`${input} w-20`} />
                     </td>
                     <td className="py-2 pr-3">
-                      <input form={form} name="priceVnd" inputMode="numeric" defaultValue={d.priceVnd ?? ""} placeholder={c.dep.listPrice} aria-label={`${c.dep.cols.price} ${d.date}`} className={`${input} w-32`} />
+                      <input form={form} name="priceVnd" inputMode="numeric" autoComplete="off" defaultValue={d.priceVnd ?? ""} placeholder={c.dep.listPrice} aria-label={`${c.dep.cols.price} ${d.date}`} className={`${input} w-32`} />
                     </td>
                     <td className="py-2 pr-3">
                       <select form={form} name="status" defaultValue={d.status} aria-label={`${c.dep.cols.status} ${d.date}`} className={input}>

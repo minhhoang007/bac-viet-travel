@@ -64,8 +64,8 @@ export function AdminDashboard({ locale, data, tourTitle }: { locale: Locale; da
     <div className="grid gap-6" data-testid="admin-dashboard">
       <form method="get" action={href("/admin/bookings")} role="search" className="flex gap-2" data-testid="dashboard-search">
         <input type="hidden" name="filter" value="all" />
-        <input name="q" required aria-label={c.search} placeholder={c.search} className="h-11 min-w-0 flex-1 rounded-md border border-border bg-background px-3 text-sm" />
-        <button type="submit" className="h-11 rounded-md bg-primary px-5 text-sm font-medium text-primary-foreground">{c.searchButton}</button>
+        <input type="search" name="q" required aria-label={c.search} placeholder={c.search} autoComplete="off" spellCheck={false} className="h-11 min-w-0 flex-1 rounded-md border border-border bg-background px-3 text-sm" />
+        <button type="submit" className="h-11 rounded-md bg-primary px-5 text-sm font-medium text-primary-foreground hover:bg-primary/90">{c.searchButton}</button>
       </form>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" data-testid="product-stats">
         <Stat

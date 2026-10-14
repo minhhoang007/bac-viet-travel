@@ -118,7 +118,7 @@ export function ImageList({ label, values, available, onChange, c }: { label: st
         {values.map((src, i) => (
           <li key={src} className="flex items-center gap-3 rounded-md border border-border p-2">
             {/* eslint-disable-next-line @next/next/no-img-element -- admin thumbnail of a local file */}
-            <img src={src} alt="" className="h-14 w-20 rounded object-cover" />
+            <img src={src} alt="" width={80} height={56} loading="lazy" className="h-14 w-20 rounded object-cover" />
             <span className="min-w-0 flex-1 truncate text-xs">{src}</span>
             <RowControls list={values} i={i} onChange={onChange} c={c} />
           </li>

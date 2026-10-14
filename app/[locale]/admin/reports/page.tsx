@@ -49,6 +49,10 @@ export default async function ReportsPage({ params, searchParams }: Props) {
   );
   const select = "h-10 rounded-md border border-border bg-background px-3 text-sm";
   const cell = "py-2 pr-3";
+  // Figures right-aligned with even-width digits, so amounts compare at a glance.
+  const num = "whitespace-nowrap py-2 pr-3 text-right tabular-nums";
+  const head = (labels: readonly string[], textColumns = 1) =>
+    labels.map((h, i) => <th key={h} className={`${i < textColumns ? cell : num} font-medium`}>{h}</th>);
   const months = monthOptions(today);
 
   return (
@@ -82,36 +86,36 @@ export default async function ReportsPage({ params, searchParams }: Props) {
           <div className="overflow-x-auto">
             <table className="w-full max-w-2xl text-sm">
               <thead className="text-left text-muted-foreground">
-                <tr>{t.cashCols.map((h) => <th key={h} className={`${cell} font-medium`}>{h}</th>)}</tr>
+                <tr>{head(t.cashCols)}</tr>
               </thead>
               <tbody>
                 {cash.byChannel.map((r) => (
                   <tr key={r.channel} className="border-t border-border" data-cash-channel={r.channel}>
                     <td className={cell}>{t.channels[r.channel]}</td>
-                    <td className={cell}>{money(r.depositsVnd)}</td>
-                    <td className={cell}>{money(r.balancesVnd)}</td>
-                    <td className={`${cell} font-medium`}>{money(r.depositsVnd + r.balancesVnd)}</td>
+                    <td className={num}>{money(r.depositsVnd)}</td>
+                    <td className={num}>{money(r.balancesVnd)}</td>
+                    <td className={`${num} font-medium`}>{money(r.depositsVnd + r.balancesVnd)}</td>
                   </tr>
                 ))}
                 {cash.extraVnd > 0 && (
                   <tr className="border-t border-border" data-testid="cash-extra">
                     <td className={cell} colSpan={3}>{t.extra}</td>
-                    <td className={`${cell} font-medium`}>{money(cash.extraVnd)}</td>
+                    <td className={`${num} font-medium`}>{money(cash.extraVnd)}</td>
                   </tr>
                 )}
               </tbody>
               <tfoot>
                 <tr className="border-t-2 border-border font-semibold">
                   <td className={cell} colSpan={3}>{t.cashTotal}</td>
-                  <td className={cell} data-testid="cash-total">{money(cash.collectedVnd)}</td>
+                  <td className={num} data-testid="cash-total">{money(cash.collectedVnd)}</td>
                 </tr>
                 <tr>
                   <td className={cell} colSpan={3}>{t.refunded}</td>
-                  <td className={cell}>−{money(cash.refundedVnd)}</td>
+                  <td className={num}>−{money(cash.refundedVnd)}</td>
                 </tr>
                 <tr className="font-semibold">
                   <td className={cell} colSpan={3}>{t.net}</td>
-                  <td className={cell}>{money(cash.collectedVnd - cash.refundedVnd)}</td>
+                  <td className={num}>{money(cash.collectedVnd - cash.refundedVnd)}</td>
                 </tr>
               </tfoot>
             </table>
@@ -131,7 +135,7 @@ export default async function ReportsPage({ params, searchParams }: Props) {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="text-left text-muted-foreground">
-                <tr>{t.receivablesCols.map((h) => <th key={h} className={`${cell} font-medium`}>{h}</th>)}</tr>
+                <tr>{head(t.receivablesCols, 5)}</tr>
               </thead>
               <tbody>
                 {owed.map((r) => (
@@ -145,14 +149,14 @@ export default async function ReportsPage({ params, searchParams }: Props) {
                       {r.phone ? <a href={`tel:${r.phone.replace(/[^\d+]/g, "")}`} className="underline-offset-2 hover:underline">{r.phone}</a> : "—"}
                     </td>
                     <td className={cell}>{title(r.tourSlug)}</td>
-                    <td className={`${cell} whitespace-nowrap font-medium`}>{money(r.dueVnd)}</td>
+                    <td className={`${num} font-medium`}>{money(r.dueVnd)}</td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
                 <tr className="border-t-2 border-border font-semibold">
                   <td className={cell} colSpan={5}>{t.total}</td>
-                  <td className={`${cell} whitespace-nowrap`} data-testid="receivables-total">{money(owed.reduce((n, r) => n + r.dueVnd, 0))}</td>
+                  <td className={num} data-testid="receivables-total">{money(owed.reduce((n, r) => n + r.dueVnd, 0))}</td>
                 </tr>
               </tfoot>
             </table>
@@ -175,30 +179,30 @@ export default async function ReportsPage({ params, searchParams }: Props) {
           <div className="overflow-x-auto">
             <table className="w-full text-sm" data-testid="report-tours">
               <thead className="text-left text-muted-foreground">
-                <tr>{t.cols.map((h) => <th key={h} className={`${cell} font-medium`}>{h}</th>)}</tr>
+                <tr>{head(t.cols)}</tr>
               </thead>
               <tbody>
                 {report.tours.map((r) => (
                   <tr key={r.tourSlug} className="border-t border-border" data-report-tour={r.tourSlug}>
                     <td className={cell}>{title(r.tourSlug)}</td>
-                    <td className={cell}>{r.departures}</td>
-                    <td className={cell}>{r.seats} / {r.capacity || "—"}</td>
-                    <td className={cell}>{fill(r.seats, r.capacity)}</td>
-                    <td className={cell}>{r.bookings}</td>
-                    <td className={`${cell} font-medium`}>{money(r.revenueVnd)}</td>
-                    <td className={cell}>{money(r.depositsVnd)}</td>
+                    <td className={num}>{r.departures}</td>
+                    <td className={num}>{r.seats} / {r.capacity || "—"}</td>
+                    <td className={num}>{fill(r.seats, r.capacity)}</td>
+                    <td className={num}>{r.bookings}</td>
+                    <td className={`${num} font-medium`}>{money(r.revenueVnd)}</td>
+                    <td className={num}>{money(r.depositsVnd)}</td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
                 <tr className="border-t-2 border-border font-semibold" data-testid="report-total">
                   <td className={cell}>{t.total}</td>
-                  <td className={cell}>{sum("departures")}</td>
-                  <td className={cell}>{sum("seats")} / {sum("capacity")}</td>
-                  <td className={cell}>{fill(sum("seats"), sum("capacity"))}</td>
-                  <td className={cell}>{sum("bookings")}</td>
-                  <td className={cell}>{money(sum("revenueVnd"))}</td>
-                  <td className={cell}>{money(sum("depositsVnd"))}</td>
+                  <td className={num}>{sum("departures")}</td>
+                  <td className={num}>{sum("seats")} / {sum("capacity")}</td>
+                  <td className={num}>{fill(sum("seats"), sum("capacity"))}</td>
+                  <td className={num}>{sum("bookings")}</td>
+                  <td className={num}>{money(sum("revenueVnd"))}</td>
+                  <td className={num}>{money(sum("depositsVnd"))}</td>
                 </tr>
               </tfoot>
             </table>
@@ -211,15 +215,15 @@ export default async function ReportsPage({ params, searchParams }: Props) {
             <div className="overflow-x-auto">
               <table className="w-full max-w-xl text-sm" data-testid="report-sources">
                 <thead className="text-left text-muted-foreground">
-                  <tr>{t.sourceCols.map((h) => <th key={h} className={`${cell} font-medium`}>{h}</th>)}</tr>
+                  <tr>{head(t.sourceCols)}</tr>
                 </thead>
                 <tbody>
                   {report.sources.map((s) => (
                     <tr key={s.source} className="border-t border-border">
                       <td className={cell}>{a.sources[s.source]}</td>
-                      <td className={cell}>{s.bookings}</td>
-                      <td className={cell}>{s.seats}</td>
-                      <td className={cell}>{money(s.revenueVnd)}</td>
+                      <td className={num}>{s.bookings}</td>
+                      <td className={num}>{s.seats}</td>
+                      <td className={num}>{money(s.revenueVnd)}</td>
                     </tr>
                   ))}
                 </tbody>

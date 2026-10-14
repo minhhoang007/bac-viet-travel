@@ -44,6 +44,7 @@ export default async function AdminBookingsPage({ params, searchParams }: Props)
   const query = (extra: Record<string, string>) =>
     localePath(locale, `/admin/bookings?${new URLSearchParams(Object.fromEntries(Object.entries({ filter, source, tour, from: sp.from, to: sp.to, q: sp.q, ...extra }).filter((e): e is [string, string] => Boolean(e[1]))))}`);
   const input = "h-10 rounded-md border border-border bg-background px-3 text-sm";
+  const pager = "rounded-md border border-border px-3 py-1.5 hover:bg-muted";
 
   return (
     <div className="grid gap-6">
@@ -93,7 +94,7 @@ export default async function AdminBookingsPage({ params, searchParams }: Props)
       </nav>
       <form method="get" className="flex flex-wrap items-end gap-2">
         <input type="hidden" name="filter" value={filter} />
-        <input name="q" defaultValue={sp.q} placeholder={c.search} aria-label={c.search} className={`${input} w-full sm:w-64`} />
+        <input type="search" name="q" defaultValue={sp.q} placeholder={c.search} aria-label={c.search} autoComplete="off" spellCheck={false} className={`${input} w-full sm:w-64`} />
         <select name="tour" defaultValue={tour ?? ""} aria-label={c.tour} className={input}>
           <option value="">{c.allTours}</option>
           {tours.map((t) => (
@@ -130,8 +131,8 @@ export default async function AdminBookingsPage({ params, searchParams }: Props)
               <th className="py-2 pr-4 font-medium">{c.columns.code}</th>
               <th className="py-2 pr-4 font-medium">{c.columns.date}</th>
               <th className="py-2 pr-4 font-medium">{c.columns.guest}</th>
-              <th className="py-2 pr-4 font-medium">{c.columns.seats}</th>
-              <th className="py-2 pr-4 font-medium">{c.columns.total}</th>
+              <th className="py-2 pr-4 text-right font-medium">{c.columns.seats}</th>
+              <th className="py-2 pr-4 text-right font-medium">{c.columns.total}</th>
               <th className="py-2 font-medium">{c.columns.status}</th>
             </tr>
           </thead>
@@ -160,8 +161,8 @@ export default async function AdminBookingsPage({ params, searchParams }: Props)
                     </span>
                   )}
                 </td>
-                <td className="py-2 pr-4">{b.seats}</td>
-                <td className="py-2 pr-4">{formatVnd(b.totalVnd, locale)}</td>
+                <td className="py-2 pr-4 text-right tabular-nums">{b.seats}</td>
+                <td className="whitespace-nowrap py-2 pr-4 text-right tabular-nums">{formatVnd(b.totalVnd, locale)}</td>
                 <td className="py-2">
                   <BookingStatusBadge status={b.status} label={c.filters[b.status]} />
                   {b.status === "held" && (
@@ -182,8 +183,8 @@ export default async function AdminBookingsPage({ params, searchParams }: Props)
         {rows.length === 0 && <p className="py-6 text-sm text-muted-foreground">{c.empty}</p>}
       </div>
       <nav className="flex gap-3 text-sm">
-        {page > 1 && <a href={query({ page: String(page - 1) })}>← {c.previous}</a>}
-        {page * PAGE_SIZE < total && <a href={query({ page: String(page + 1) })}>{c.next} →</a>}
+        {page > 1 && <a href={query({ page: String(page - 1) })} className={pager}>← {c.previous}</a>}
+        {page * PAGE_SIZE < total && <a href={query({ page: String(page + 1) })} className={pager}>{c.next} →</a>}
       </nav>
     </div>
   );

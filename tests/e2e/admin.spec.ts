@@ -70,7 +70,7 @@ test("staff confirm one booking and cancel another; seats return to sale; everyt
   await expect(page.getByTestId("dashboard-upcoming")).toContainText("chỗ");
   await expect(page.getByTestId("dashboard-recent")).toContainText("BV-ADMN33");
   // The search at the top finds a booking from the bank transfer note.
-  await page.getByTestId("dashboard-search").getByRole("textbox").fill("BVADMN22");
+  await page.getByTestId("dashboard-search").getByRole("searchbox").fill("BVADMN22");
   await page.getByTestId("dashboard-search").getByRole("button").click();
   await expect(page.getByTestId("bookings-table")).toContainText("BV-ADMN22");
   await page.goto("/admin");
