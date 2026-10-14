@@ -4,6 +4,12 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.26.1] - 2026-10-14
+
+### Fixed
+- `DEMO_MODE` is read when static pages are built: set it before the build (on Vercel, redeploy after changing it). Documented in `.env.example`.
+- `next.config.ts`: optional `NEXT_DIST_DIR` (E2E only) for a second build next to the first, e.g. a demo build tested beside the regular one; `.next-*/` ignored.
+
 ## [1.26.0] - 2026-10-14
 
 ### Added — demo mode (public demo site)
