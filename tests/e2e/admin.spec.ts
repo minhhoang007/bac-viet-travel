@@ -109,6 +109,7 @@ test("staff add a departure date and close another; guests see the change", asyn
   const [row0] = await sql<{ date: string }[]>`select (max(date) + 3)::text as date from departures where tour_slug = ${TOUR}`;
   const newDate = row0!.date;
   await page.goto(`/admin/departures?tour=${TOUR}`);
+  await page.getByTestId("add-departures-panel").getByText("Thêm ngày khởi hành").click();
   await page.getByLabel("Ngày bắt đầu").fill(newDate);
   await page.getByLabel("Số chỗ", { exact: true }).fill("8");
   await page.getByTestId("add-departures").click();
@@ -117,7 +118,7 @@ test("staff add a departure date and close another; guests see the change", asyn
   await page.goto(`/tours/${TOUR}/book`);
   await expect(page.locator(`[data-departure="${newDate}"]`)).toContainText("Còn 8 chỗ");
 
-  await page.goto(`/admin/departures?tour=${TOUR}&month=${newDate.slice(0, 7)}`);
+  await page.goto(`/admin/departures?tour=${TOUR}&month=${newDate.slice(0, 7)}&view=list`);
   const row = page.locator(`[data-departure-row="${TOUR}:${newDate}"]`);
   await row.getByLabel(`Trạng thái ${newDate}`).selectOption("closed");
   await row.getByRole("button", { name: "Lưu" }).click();
@@ -136,15 +137,24 @@ test("a departure short of its minimum is flagged; the company cancels it and ev
     insert into bookings (code, token_hash, departure_id, status, hold_expires_at, deposit_paid_at, name, email, phone, locale, adults, seats, unit_price_vnd, total_vnd, deposit_vnd)
     values ('BV-MINC22', 'e2e', ${d!.id}, 'deposit_paid', now(), now(), 'Khách E2E', 'guest@example.com', '0900000001', 'vi', 2, 2, 1000000, 2000000, 600000)`;
 
-  await page.goto(`/admin/departures?tour=${TOUR}&month=${d!.date.slice(0, 7)}`);
+  await page.goto(`/admin/departures?tour=${TOUR}&month=${d!.date.slice(0, 7)}&view=list`);
   const row = page.locator(`[data-departure-row="${TOUR}:${d!.date}"]`);
   await row.getByLabel(`Tối thiểu ${d!.date}`).fill("6");
   await row.getByRole("button", { name: "Lưu" }).click();
   await expect(page.getByRole("status")).toContainText("Đã lưu.");
   await expect(page.locator(`[data-departure-row="${TOUR}:${d!.date}"]`).getByTestId("min-status")).toHaveText("Thiếu 4");
 
+  // The month calendar (default view) shows the same at a glance; a click opens the departure.
+  await page.goto(`/admin/departures?tour=${TOUR}&month=${d!.date.slice(0, 7)}`);
+  await expect(page.getByTestId("departures-month")).toHaveText(`Tháng ${d!.date.slice(5, 7)}/${d!.date.slice(0, 4)}`);
+  const entry = page.getByTestId("departures-calendar").locator(`[data-calendar-departure="${TOUR}:${d!.date}"]`);
+  await expect(entry).toContainText("2/12 chỗ");
+  await expect(entry.getByTestId("min-status")).toHaveText("Thiếu 4");
+  const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
+  expect(axe.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id)).toEqual([]);
+
   page.on("dialog", (dialog) => dialog.accept());
-  await page.locator(`[data-departure-row="${TOUR}:${d!.date}"]`).getByTestId("passengers-link").click();
+  await entry.click();
   await page.getByTestId("cancel-departure").getByText("Huỷ cả chuyến…").click();
   await page.getByLabel("Lý do (gửi cho khách)").fill("Không đủ khách tối thiểu");
   await page.getByTestId("cancel-departure-submit").click();
@@ -187,7 +197,7 @@ test("passenger list per departure: one row per named traveller, unnamed parties
   expect((await request.get(`/api/admin/departures/${d.id}/passengers`)).status()).toBe(404);
 
   await signInAsAdmin(page, "pax-staff@bacviet.example");
-  await page.goto(`/admin/departures?tour=${TOUR}&month=${d.date.slice(0, 7)}`);
+  await page.goto(`/admin/departures?tour=${TOUR}&month=${d.date.slice(0, 7)}&view=list`);
   await page.locator(`[data-departure-row="${TOUR}:${d.date}"]`).getByTestId("passengers-link").click();
   const table = page.getByTestId("passengers");
   // The first test confirmed a booking on the same departure: count this test's bookings only.
