@@ -4,6 +4,12 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+### Added — demo mode (public demo site)
+- `DEMO_MODE=true`: a notice above every page (site, account, admin), `noindex` meta and a `robots.txt` that disallows everything, and emails kept in a **demo mailbox** instead of sent (`demo_emails` table, starter migration 0006; Admin → Hộp thư demo for staff; entries older than 7 days purged by the jobs tick). Without a database, emails are dropped. `EMAIL_API_KEY` is not required in demo mode.
+- `DEMO_CONTACT_URL` (optional): link in the notice ("Muốn có website như thế này?").
+- **Try the admin** (`/demo`): product/manifest.ts may export `demoAccounts: DemoAccount[]` (email, label, description, home). On a demo site each one signs in with one click (a magic link issued and followed server-side, no email needed) and skips the second factor. Only existing accounts with role `editor` (never admin, never disabled) and only with `DEMO_MODE`; the project's demo data creates them. Rate limited 20 per 10 minutes per client. The notice links to `/demo` when accounts exist.
+- Content: `demo.notice`, `demo.contact`, `demo.mailbox.*`, `demo.tryAdmin.*` (projects overriding `content/` must add them).
+
 ## [1.25.0] - 2026-10-14
 
 ### Added — model roles for agents

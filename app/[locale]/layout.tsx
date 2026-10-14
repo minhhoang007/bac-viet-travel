@@ -15,6 +15,9 @@ import { resolveTheme, toastTheme, type ProductTheme } from "@/components/ui/the
 import { AnalyticsTracker } from "@/components/analytics/tracker";
 import { ConsentBanner } from "@/components/analytics/consent-banner";
 import { features } from "@/config/features";
+import { getPublicEnv } from "@/bootstrap/env";
+import { demoAccounts } from "@/bootstrap/container";
+import { DemoNotice } from "@/components/layout/demo-notice";
 import { Toaster } from "@/components/ui/sonner";
 import * as productLayout from "@/product/layout";
 import { ProductLayoutExtras } from "@/product/layout";
@@ -47,7 +50,8 @@ export default async function LocaleLayout({
   setRequestLocale(locale);
 
   const c = getMarketingContent(locale as Locale);
-  const { legal, consent, blog } = getAppContent(locale as Locale);
+  const { legal, consent, blog, demo } = getAppContent(locale as Locale);
+  const { demoMode, demoContactUrl } = getPublicEnv();
   const other = appConfig.locales.find((l) => l !== locale) ?? appConfig.defaultLocale;
   const home = localePath(locale);
   const theme = await resolveTheme(productTheme, brand.colors);
@@ -57,8 +61,18 @@ export default async function LocaleLayout({
       <head>
         {/* Theme variables from productTheme or config/brand.ts (validated color values only). */}
         <style dangerouslySetInnerHTML={{ __html: theme.css }} />
+        {demoMode && <meta name="robots" content="noindex, nofollow" />}
       </head>
       <body className="flex min-h-screen flex-col">
+        {demoMode && (
+          <DemoNotice
+            text={demo.notice}
+            links={[
+              ...(demoAccounts().length > 0 ? [{ label: demo.tryAdmin.link, href: localePath(locale, "/demo") }] : []),
+              ...(demoContactUrl ? [{ label: demo.contact, href: demoContactUrl }] : []),
+            ]}
+          />
+        )}
         <NextIntlClientProvider>
           {/* Admin and dashboard render their own AppShell. */}
           <SiteChrome>

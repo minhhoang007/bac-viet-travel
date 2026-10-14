@@ -93,7 +93,8 @@ function check(source: EnvSource, features: Features, manifests: readonly Module
   }
 
   if (base.success) {
-    if (features.email && base.data.EMAIL_PROVIDER === "resend" && !base.data.EMAIL_API_KEY) {
+    // A demo site keeps its emails in the demo mailbox: no provider key needed.
+    if (features.email && base.data.EMAIL_PROVIDER === "resend" && !base.data.EMAIL_API_KEY && !base.data.DEMO_MODE) {
       problems.push('EMAIL_API_KEY: required when EMAIL_PROVIDER is "resend"');
     }
     if (options.auth) problems.push(...checkAuthConfig(features, options.auth, base.data));
@@ -140,6 +141,10 @@ export interface PublicEnv {
   NEXT_PUBLIC_SITE_URL: string;
   /** Cloudflare Turnstile on the sign-in form, when configured. */
   NEXT_PUBLIC_TURNSTILE_SITE_KEY?: string;
+  /** DEMO_MODE: public demo site (notice on every page, no indexing). */
+  demoMode: boolean;
+  /** DEMO_CONTACT_URL: link in the demo notice. */
+  demoContactUrl?: string;
 }
 
 /**
@@ -152,7 +157,12 @@ export function getPublicEnv(): PublicEnv {
   if (problem) throw new AppError("INTERNAL_ERROR", `Invalid configuration:\n  - ${problem}`);
   const url = baseEnvSchema.shape.NEXT_PUBLIC_SITE_URL.safeParse(siteUrl);
   if (!url.success) throw new AppError("INTERNAL_ERROR", "Invalid configuration:\n  - NEXT_PUBLIC_SITE_URL: invalid URL");
-  return { NEXT_PUBLIC_SITE_URL: url.data, NEXT_PUBLIC_TURNSTILE_SITE_KEY: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || undefined };
+  return {
+    NEXT_PUBLIC_SITE_URL: url.data,
+    NEXT_PUBLIC_TURNSTILE_SITE_KEY: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || undefined,
+    demoMode: baseEnvSchema.shape.DEMO_MODE.catch(false).parse(process.env.DEMO_MODE),
+    demoContactUrl: baseEnvSchema.shape.DEMO_CONTACT_URL.catch(undefined).parse(process.env.DEMO_CONTACT_URL),
+  };
 }
 
 /** Build identity for /api/health: the deployed commit on Vercel, "dev" locally. */
