@@ -49,7 +49,7 @@ export default async function AdminToursPage({ params, searchParams }: Props) {
       {result === "failed" && <Notice tone="danger">{getAppContent(locale).admin.failed}</Notice>}
       {rows.length > 0 && (
         <form method="get" className="flex flex-wrap items-center gap-2" role="search">
-          <input name="q" defaultValue={q} placeholder={c.search} aria-label={c.search} className="h-9 w-72 max-w-full rounded-md border border-border bg-background px-3 text-sm" />
+          <input type="search" name="q" defaultValue={q} placeholder={c.search} aria-label={c.search} autoComplete="off" spellCheck={false} className="h-9 w-72 max-w-full rounded-md border border-border bg-background px-3 text-sm" />
           <SubmitButton label={c.searchButton} variant="outline" size="sm" />
           {q && (
             <a href={localePath(locale, "/admin/tours")} className="text-sm text-muted-foreground hover:underline">
@@ -71,7 +71,9 @@ export default async function AdminToursPage({ params, searchParams }: Props) {
               <TableHead>{c.columns.live}</TableHead>
               <TableHead>{c.columns.missing}</TableHead>
               <TableHead>{c.columns.updated}</TableHead>
-              <TableHead />
+              <TableHead>
+                <span className="sr-only">{c.duplicate}</span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

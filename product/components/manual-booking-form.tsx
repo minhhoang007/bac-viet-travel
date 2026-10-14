@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import type { ManualBookingState } from "@/app/actions/booking-admin";
 import type { Locale } from "@/config/app";
 import { getBookingAdminContent } from "../booking/admin-content";
@@ -26,6 +26,11 @@ export function ManualBookingForm({
   action: (state: ManualBookingState, formData: FormData) => Promise<ManualBookingState>;
 }) {
   const [state, formAction, pending] = useActionState(action, null);
+  const form = useRef<HTMLFormElement>(null);
+  // After a rejected submit, put the cursor on the first field to fix.
+  useEffect(() => {
+    if (state?.status === "invalid") form.current?.querySelector<HTMLElement>("[aria-invalid=true]")?.focus();
+  }, [state]);
   const c = getBookingAdminContent(locale);
   const m = c.manual;
   const fieldError = (name: string) => (state?.status === "invalid" ? state.fieldErrors[name] : undefined);
@@ -38,6 +43,8 @@ export function ManualBookingForm({
         name={name}
         aria-invalid={fieldError(name) ? true : undefined}
         aria-describedby={fieldError(name) ? `manual-${name}-error` : undefined}
+        // Guest details, not the staff member's: keep the browser from filling in the staff's own email or phone.
+        autoComplete="off"
         className={input}
         {...props}
       />
@@ -52,7 +59,7 @@ export function ManualBookingForm({
   if (departures.length === 0) return <p className="text-sm text-muted-foreground">{m.noDepartures}</p>;
 
   return (
-    <form action={formAction} className="grid max-w-2xl gap-4" noValidate>
+    <form ref={form} action={formAction} className="grid max-w-2xl gap-4" noValidate>
       <input type="hidden" name="locale" value={locale} />
       {state?.status === "sold_out" && (
         <p role="alert" className="rounded-md border border-danger/40 bg-danger/10 p-3 text-sm text-danger">
@@ -93,7 +100,7 @@ export function ManualBookingForm({
       <div className="grid gap-4 sm:grid-cols-3">
         {field("name", m.name, { required: true, maxLength: 100 })}
         {field("phone", m.phone, { type: "tel", maxLength: 30 })}
-        {field("email", m.email, { type: "email", maxLength: 200 })}
+        {field("email", m.email, { type: "email", maxLength: 200, spellCheck: false })}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -124,8 +131,8 @@ export function ManualBookingForm({
         <span>{m.guestEmails}</span>
       </label>
 
-      <button type="submit" disabled={pending} className="h-10 w-fit rounded-md bg-primary px-5 text-sm font-medium text-primary-foreground disabled:opacity-60">
-        {m.submit}
+      <button type="submit" disabled={pending} className="h-10 w-fit rounded-md bg-primary px-5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60">
+        {pending ? m.saving : m.submit}
       </button>
     </form>
   );

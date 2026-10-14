@@ -54,7 +54,7 @@ export default async function DiscountsPage({ params, searchParams }: Props) {
             <p className="font-semibold sm:col-span-4">{c.add}</p>
             <label className="grid gap-1 text-sm">
               {c.fields.code}
-              <input name="code" required maxLength={30} className={`${input} uppercase`} placeholder="TET2027" />
+              <input name="code" required maxLength={30} autoComplete="off" autoCapitalize="characters" spellCheck={false} className={`${input} uppercase`} placeholder="TET2027…" />
             </label>
           </>
         )}
@@ -67,7 +67,7 @@ export default async function DiscountsPage({ params, searchParams }: Props) {
         </label>
         <label className="grid gap-1 text-sm">
           {c.fields.value}
-          <input name="value" required inputMode="numeric" defaultValue={editing?.value} className={input} />
+          <input name="value" required inputMode="numeric" autoComplete="off" defaultValue={editing?.value} className={input} />
         </label>
         <label className="grid gap-1 text-sm">
           {c.fields.tourSlug}
@@ -90,15 +90,15 @@ export default async function DiscountsPage({ params, searchParams }: Props) {
         </label>
         <label className="grid gap-1 text-sm">
           {c.fields.minTotalVnd}
-          <input name="minTotalVnd" inputMode="numeric" defaultValue={editing?.minTotalVnd || ""} className={input} placeholder="0" />
+          <input name="minTotalVnd" inputMode="numeric" autoComplete="off" defaultValue={editing?.minTotalVnd || ""} className={input} placeholder="0" />
         </label>
         <label className="grid gap-1 text-sm">
           {c.fields.maxUses}
-          <input name="maxUses" inputMode="numeric" defaultValue={editing?.maxUses ?? ""} className={input} placeholder={c.unlimited} />
+          <input name="maxUses" inputMode="numeric" autoComplete="off" defaultValue={editing?.maxUses ?? ""} className={input} placeholder={c.unlimited} />
         </label>
         <label className="grid gap-1 text-sm sm:col-span-3">
           {c.fields.note}
-          <input name="note" maxLength={200} defaultValue={editing?.note} className={input} />
+          <input name="note" maxLength={200} autoComplete="off" defaultValue={editing?.note} className={input} />
         </label>
         <div className="flex flex-wrap items-end gap-3">
           <Button type="submit" data-testid={editing ? "discount-save" : "discount-create"}>
@@ -115,6 +115,7 @@ export default async function DiscountsPage({ params, searchParams }: Props) {
       {rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">{c.empty}</p>
       ) : (
+        <div className="overflow-x-auto">
         <table className="w-full text-sm" data-testid="discounts">
           <thead className="text-left text-muted-foreground">
             <tr>
@@ -129,17 +130,18 @@ export default async function DiscountsPage({ params, searchParams }: Props) {
             {rows.map((d) => (
               <tr key={d.id} className="border-t border-border" data-discount={d.code}>
                 <td className="py-2 pr-3 font-mono font-semibold">{d.code}</td>
-                <td className="py-2 pr-3">{d.kind === "percent" ? `${d.value}%` : formatVnd(d.value, locale)}</td>
-                <td className="py-2 pr-3">
+                <td className="whitespace-nowrap py-2 pr-3 tabular-nums">{d.kind === "percent" ? `${d.value}%` : formatVnd(d.value, locale)}</td>
+                <td className="whitespace-nowrap py-2 pr-3 tabular-nums">
                   {formatShortDay(d.validFrom, locale)} → {formatShortDay(d.validTo, locale)}
                 </td>
                 <td className="py-2 pr-3">{d.tourSlug ? (tours.find((t) => t.slug === d.tourSlug)?.title ?? d.tourSlug) : c.allTours}</td>
-                <td className="py-2 pr-3" data-testid="discount-used">
+                <td className="py-2 pr-3 tabular-nums" data-testid="discount-used">
                   {d.used}
                   {d.maxUses !== null && ` / ${d.maxUses}`}
                 </td>
                 <td className="py-2 pr-3">{!d.active ? c.status.off : d.validTo < today ? c.status.ended : c.status.on}</td>
-                <td className="flex items-center gap-2 py-2 pr-3">
+                <td className="py-2 pr-3">
+                  <div className="flex items-center gap-2">
                   <a href={localePath(locale, `/admin/discounts?edit=${d.id}`)} className="text-sm text-primary underline-offset-2 hover:underline" aria-label={`${c.edit} ${d.code}`}>
                     {c.edit}
                   </a>
@@ -151,11 +153,13 @@ export default async function DiscountsPage({ params, searchParams }: Props) {
                       {d.active ? c.disable : c.enable}
                     </Button>
                   </form>
+                  </div>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </div>
   );

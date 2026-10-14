@@ -43,7 +43,8 @@ export default async function StaffPage({ params, searchParams }: Props) {
         {hidden}
         <label className="grid gap-1 text-sm">
           {c.email}
-          <input name="email" type="email" required className={input} />
+          {/* A colleague's address: keep the browser from filling in the admin's own. */}
+          <input name="email" type="email" required autoComplete="off" spellCheck={false} className={input} />
         </label>
         <label className="grid gap-1 text-sm">
           {c.role}
@@ -61,13 +62,16 @@ export default async function StaffPage({ params, searchParams }: Props) {
       {rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">{c.empty}</p>
       ) : (
-        <table className="w-full max-w-2xl text-sm" data-testid="staff-table">
+        <div className="max-w-2xl overflow-x-auto">
+        <table className="w-full text-sm" data-testid="staff-table">
           <thead className="text-left text-muted-foreground">
             <tr>
               <th className="py-2 pr-3 font-medium">{c.cols.email}</th>
               <th className="py-2 pr-3 font-medium">{c.cols.role}</th>
               <th className="py-2 pr-3 font-medium">{c.cols.since}</th>
-              <th />
+              <th>
+                <span className="sr-only">{c.remove}</span>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -89,6 +93,7 @@ export default async function StaffPage({ params, searchParams }: Props) {
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </div>
   );

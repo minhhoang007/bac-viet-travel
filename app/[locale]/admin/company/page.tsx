@@ -59,7 +59,10 @@ export default async function CompanyPage({ params, searchParams }: Props) {
                   name={key}
                   defaultValue={values[key]}
                   required={!key.endsWith("Url")}
-                  type={key === "email" ? "email" : key.endsWith("Url") ? "url" : "text"}
+                  type={key === "email" ? "email" : key.endsWith("Url") ? "url" : key === "hotline" || key === "zalo" ? "tel" : "text"}
+                  // The company's details, not the admin's own: no autofill from the browser.
+                  autoComplete="off"
+                  spellCheck={key === "email" || key.endsWith("Url") ? false : undefined}
                   aria-describedby={"hint" in f && f.hint ? `${id}-hint` : undefined}
                   className={demo.has(key) ? "border-warning ring-1 ring-warning" : undefined}
                 />
@@ -87,7 +90,7 @@ export default async function CompanyPage({ params, searchParams }: Props) {
           </div>
           <div className="grid content-start gap-1">
             <label htmlFor="bank-account" className="text-sm font-medium">{c.bankFields.accountNumber.label}</label>
-            <Input id="bank-account" name="accountNumber" inputMode="numeric" required defaultValue={bank.accountNumber} aria-describedby="bank-account-hint" />
+            <Input id="bank-account" name="accountNumber" inputMode="numeric" autoComplete="off" spellCheck={false} required defaultValue={bank.accountNumber} aria-describedby="bank-account-hint" />
             {hint("bank-account", c.bankFields.accountNumber.hint)}
           </div>
           <div className="grid content-start gap-1 sm:col-span-2">

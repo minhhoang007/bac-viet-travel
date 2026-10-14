@@ -122,9 +122,9 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
             <p className="text-xs text-muted-foreground">{c.detail.transferHint(transferNote(b.code))}</p>
             {!waitingDeposit && <p className="text-xs font-medium text-warning">{c.detail.transferExtraHint}</p>}
             <label htmlFor="transfer-amount" className="text-sm">{c.detail.transferAmount}</label>
-            <Input id="transfer-amount" name="amountVnd" inputMode="numeric" required defaultValue={waitingDeposit ? String(b.depositVnd) : ""} className="max-w-48" />
+            <Input id="transfer-amount" name="amountVnd" inputMode="numeric" autoComplete="off" required defaultValue={waitingDeposit ? String(b.depositVnd) : ""} className="max-w-48" />
             <label htmlFor="transfer-ref" className="text-sm">{c.detail.transferRef}</label>
-            <Input id="transfer-ref" name="bankRef" maxLength={100} className="max-w-xs" />
+            <Input id="transfer-ref" name="bankRef" maxLength={100} autoComplete="off" spellCheck={false} className="max-w-xs" />
             <ConfirmButton question={c.detail.transferAsk} className="w-fit" data-testid="admin-transfer-save">{c.detail.transferSave}</ConfirmButton>
           </form>
         )}
@@ -187,15 +187,15 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
               <p className="text-xs text-muted-foreground">{c.detail.contactHint}</p>
               <label className="grid gap-1">
                 {g.name}
-                <Input name="name" required minLength={2} maxLength={100} defaultValue={b.name} />
+                <Input name="name" required minLength={2} maxLength={100} defaultValue={b.name} autoComplete="off" />
               </label>
               <label className="grid gap-1">
                 {g.email}
-                <Input name="email" type="email" required={b.guestEmails} maxLength={200} defaultValue={b.email} />
+                <Input name="email" type="email" required={b.guestEmails} maxLength={200} defaultValue={b.email} autoComplete="off" spellCheck={false} />
               </label>
               <label className="grid gap-1">
                 {g.phone}
-                <Input name="phone" maxLength={30} defaultValue={b.phone} />
+                <Input name="phone" type="tel" maxLength={30} defaultValue={b.phone} autoComplete="off" />
               </label>
               <Button type="submit" variant="outline" className="w-fit" data-testid="admin-contact-save">{c.detail.saveContact}</Button>
             </form>
@@ -216,7 +216,7 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
         </section>
         <section className="min-w-0 rounded-lg border border-border p-4">
           <h2 className="font-semibold">{c.detail.money}</h2>
-          <dl className="mt-2 grid grid-cols-[110px_minmax(0,1fr)] gap-1 text-sm">
+          <dl className="mt-2 grid grid-cols-[110px_minmax(0,1fr)] gap-1 text-sm tabular-nums">
             {b.discountVnd > 0 && row(g.discount.line(b.discountCode ?? ""), `−${formatVnd(b.discountVnd, locale)}`)}
             {row(c.detail.total, formatVnd(b.totalVnd, locale))}
             {row(c.detail.deposit, formatVnd(b.depositVnd, locale))}
@@ -224,7 +224,7 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
             {row(c.detail.rest, formatVnd(b.totalVnd - b.depositVnd, locale))}
             {b.balancePaidAt && row(c.detail.balancePaidAt, time(b.balancePaidAt))}
             {b.refundDueVnd > 0 && row(c.detail.refundDue, <strong className={refundOwed ? "text-danger" : ""}>{formatVnd(refundOwed ? refundLeft(b) : b.refundDueVnd, locale)}</strong>)}
-            {b.refundedAt && row(c.detail.refundedAt, `${time(b.refundedAt)} · ${b.refundNote ?? ""}`)}
+            {b.refundedAt && row(c.detail.refundedAt, b.refundNote ? `${time(b.refundedAt)} · ${b.refundNote}` : time(b.refundedAt))}
           </dl>
         </section>
       </div>
@@ -256,7 +256,7 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
           <h2 className="font-semibold">{g.feedback.staffTitle}</h2>
           {feedback ? (
             <p className="mt-1 text-sm">
-              <span aria-label={`${feedback.rating}/5`}>{"★".repeat(feedback.rating)}{"☆".repeat(5 - feedback.rating)}</span> {g.feedback.stars[feedback.rating as 1 | 2 | 3 | 4 | 5]}
+              <span role="img" aria-label={`${feedback.rating}/5`}>{"★".repeat(feedback.rating)}{"☆".repeat(5 - feedback.rating)}</span> {g.feedback.stars[feedback.rating as 1 | 2 | 3 | 4 | 5]}
               {feedback.comment && <span className="mt-1 block whitespace-pre-line text-muted-foreground">{feedback.comment}</span>}
             </p>
           ) : (
@@ -288,7 +288,7 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
                       {p.txnRef}
                       {p.providerTxnNo && <span className="block">{p.method === "transfer" ? c.detail.bankRef : "VNPay"} {p.providerTxnNo}</span>}
                     </td>
-                    <td className="py-2 pr-4 whitespace-nowrap">{formatVnd(p.amountVnd, locale)}</td>
+                    <td className="py-2 pr-4 whitespace-nowrap tabular-nums">{formatVnd(p.amountVnd, locale)}</td>
                     <td className="py-2 pr-4">{c.detail.paymentStatuses[p.status]}{p.responseCode && ` (${p.responseCode})`}</td>
                     <td className="py-2 whitespace-nowrap">{time(p.paidAt ?? p.createdAt)}</td>
                   </tr>
