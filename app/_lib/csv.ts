@@ -1,6 +1,10 @@
-/** CSV cell: quoted, quotes doubled; a leading = + - @ is neutralised (spreadsheet formula injection). */
+/**
+ * CSV cell: quoted, quotes doubled; text with a leading = + - @ is neutralised (spreadsheet formula injection).
+ * Numbers are ours, not typed by a guest: a refund stays -300000, a number the spreadsheet can add up.
+ */
 const cell = (v: string | number | null) => {
-  const s = v === null ? "" : String(v);
+  if (typeof v === "number") return `"${v}"`;
+  const s = v === null ? "" : v;
   return `"${(/^[=+\-@\t\r]/.test(s) ? `'${s}` : s).replace(/"/g, '""')}"`;
 };
 

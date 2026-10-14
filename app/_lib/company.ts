@@ -13,8 +13,10 @@ const fallbackTag = unstable_cache(async () => true, ["site-company:fallback"], 
 
 /**
  * Company details and bank account (Admin → Thông tin công ty), from the data cache so static pages stay static;
- * saving revalidates COMPANY_CACHE_TAG. A build without a database, or a failing read, uses config/contact.ts and
- * config/bank-transfer.ts (still through a tagged entry, so the next save regenerates the page).
+ * saving revalidates COMPANY_CACHE_TAG. A build without a database, or a failing read during the build, uses
+ * config/contact.ts and config/bank-transfer.ts (still through a tagged entry, so the next save regenerates the page).
+ * A failing read on the live site throws instead: a page being regenerated keeps its previous version rather than
+ * caching the "(demo)" placeholders until the next save.
  */
 const settings = cache(async (): Promise<Settings> => {
   try {
@@ -25,7 +27,8 @@ const settings = cache(async (): Promise<Settings> => {
   }
   try {
     return await load();
-  } catch {
+  } catch (error) {
+    if (process.env.NEXT_PHASE !== "phase-production-build") throw error;
     await fallbackTag();
     return DEFAULTS;
   }

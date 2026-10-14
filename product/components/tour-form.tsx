@@ -106,7 +106,21 @@ export function TourForm({
   );
 
   return (
-    <form action={saveTour} className="grid gap-5" data-hydrated={hydrated || undefined}>
+    <form
+      action={saveTour}
+      className="grid gap-5"
+      data-hydrated={hydrated || undefined}
+      // A field the browser rejects may sit on a hidden tab (the address on SEO): open that tab and show the message.
+      onInvalidCapture={(e) => {
+        const field = e.target as HTMLInputElement;
+        const panel = field.closest<HTMLElement>("[role=tabpanel]")?.id;
+        const owner = TABS.find((t) => panel === `${ids}-panel-${t}`);
+        if (!owner || owner === tab) return;
+        e.preventDefault();
+        setTab(owner);
+        requestAnimationFrame(() => field.reportValidity());
+      }}
+    >
       <input type="hidden" name="locale" value={locale} />
       <input type="hidden" name="id" value={item.id} />
       <input type="hidden" name="revision" value={item.revision} />
