@@ -82,10 +82,11 @@ export function createReports(deps: { db: Db }) {
       const start = vietnamDayStart(from);
       const end = vietnamDayStart(addDays(to, 1));
       // A payment that settled a deposit or balance stamps the booking with its own paid time (deposits.ts settle).
-      const counted = or(
+      // coalesce: with no paid time on the booking (late deposit) the test is NULL, and NOT NULL would drop the payment.
+      const counted = sql`coalesce(${or(
         and(eq(bookingPayments.purpose, "deposit"), eq(bookings.depositPaidAt, bookingPayments.paidAt)),
         and(eq(bookingPayments.purpose, "balance"), eq(bookings.balancePaidAt, bookingPayments.paidAt)),
-      );
+      )}, false)`;
       const [deposits, balances, [extra], [refunded]] = await Promise.all([
         db.select({ channel: channel("deposit"), vnd: bookings.depositVnd }).from(bookings).where(and(gte(bookings.depositPaidAt, start), lt(bookings.depositPaidAt, end))),
         db.select({ channel: channel("balance"), vnd: sql<number>`${bookings.totalVnd} - ${bookings.depositVnd}` }).from(bookings).where(and(gte(bookings.balancePaidAt, start), lt(bookings.balancePaidAt, end))),
@@ -93,7 +94,7 @@ export function createReports(deps: { db: Db }) {
           .select({ vnd: sql<number>`coalesce(sum(${bookingPayments.amountVnd}), 0)::bigint` })
           .from(bookingPayments)
           .innerJoin(bookings, eq(bookings.id, bookingPayments.bookingId))
-          .where(and(eq(bookingPayments.status, "paid"), gte(bookingPayments.paidAt, start), lt(bookingPayments.paidAt, end), not(counted!))),
+          .where(and(eq(bookingPayments.status, "paid"), gte(bookingPayments.paidAt, start), lt(bookingPayments.paidAt, end), not(counted))),
         db.select({ vnd: sql<number>`coalesce(sum(${bookings.refundedVnd}), 0)::bigint` }).from(bookings).where(and(gte(bookings.refundedAt, start), lt(bookings.refundedAt, end))),
       ]);
       const byChannel = (["vnpay", "transfer", "staff"] as const)

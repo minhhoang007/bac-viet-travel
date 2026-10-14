@@ -12,6 +12,7 @@ import { createFeedbackService } from "./booking/feedback";
 import { createDiscountAdmin } from "./booking/discounts";
 import { createDashboard } from "./booking/dashboard";
 import { createReports } from "./booking/reports";
+import { followTourMoves } from "./booking/tour-moves";
 import { DEFAULT_TOUR_PRICING } from "./booking/rules";
 import { defaultBankTransfer } from "@/config/bank-transfer";
 import { createBookingService } from "./booking/service";
@@ -24,8 +25,22 @@ import { createThemeService } from "./theme/service";
 import { createCompanyService } from "./company/service";
 import { createTourSource, TOUR_CONTENT_TYPE, TOURS_CACHE_TAG } from "./tours/source";
 
+/**
+ * Set by createProduct: departures and discount codes follow a renamed tour (booking/tour-moves.ts). Module state
+ * because contentTypes below is static and its onChange gets no database; the container builds the product once.
+ */
+let followTourSlugs: (() => Promise<void>) | undefined;
+
 /** The only file bootstrap/ imports from product/. Declares product services, menu, exporters and jobs. */
 export function createProduct(db: Db, ctx: ProductContext) {
+  const content = ctx.content;
+  followTourSlugs = content
+    ? async () => {
+        const live = new Set((await content.listPublished(TOUR_CONTENT_TYPE)).map((t) => t.slug));
+        const moved = await followTourMoves(db, await content.listMoved(TOUR_CONTENT_TYPE), live);
+        if (moved) ctx.logger.info("tours.slug_followed", { moved });
+      }
+    : undefined;
   // Published tours (CMS) or the MDX files (config/tours.ts). Cached for an hour and on every publish (onChange).
   const tours = createTourSource({
     listPublished: tourSource === "content" ? ctx.content?.listPublished : undefined,
@@ -186,7 +201,14 @@ export const contentTypes: Record<string, ContentTypeDefinition> = {
     publicPath: (slug) => `/tours/${slug}`,
     // A tour can be submitted and published only when complete (both languages, prices, images).
     validate: tourProblems,
-    // Expire at once: static pages (home) regenerate from fresh tours on the next visit.
-    onChange: () => revalidateTag(TOURS_CACHE_TAG, { expire: 0 }),
+    // A new slug takes its departures and discount codes along; then expire at once: static pages (home) regenerate
+    // from fresh tours on the next visit.
+    onChange: async () => {
+      try {
+        await followTourSlugs?.();
+      } finally {
+        revalidateTag(TOURS_CACHE_TAG, { expire: 0 });
+      }
+    },
   },
 };

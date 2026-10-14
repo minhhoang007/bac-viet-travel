@@ -12,3 +12,10 @@ export async function requirePermission(permission: Permission) {
   if (!can(ctx.user, staffRole, permission)) notFound();
   return { ...ctx, staffRole, allowed: (p: Permission) => can(ctx.user, staffRole, p) };
 }
+
+/** Tour pages and actions: admins and editors, except sales (the same rule as the Tours menu entry in the manifest). */
+export async function requireTourEditor() {
+  const ctx = await requireStaff("editor");
+  if (ctx.user.role !== "admin" && (await ctx.container.app!.product.staff.roleOf(ctx.user.id)) === "sale") notFound();
+  return ctx;
+}
