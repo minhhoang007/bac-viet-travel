@@ -37,6 +37,9 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
+### v1.25.0 (2026-10-14) — model roles for agents
+- New starter-owned folder `.claude/agents/` and a "Models" rule in `CLAUDE.md`. Projects with their own `CLAUDE.md` changes: keep both. No code change, no migration.
+
 ### v1.24.0 (2026-10-14) — upstream agent skills
 - New starter-owned folders: `.claude/skills/supabase-postgres-best-practices/`, `.claude/skills/web-design-guidelines/` (merge brings them in). No code change, no migration.
 
