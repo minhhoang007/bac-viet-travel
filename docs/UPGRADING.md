@@ -37,6 +37,11 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
+### v1.26.0 (2026-10-14) — demo mode
+- **Starter migration 0006** (`demo_emails`, new table only). Run it on production before deploying (`node --env-file=.env.vercel scripts/db-migrate.ts`).
+- Nothing changes until `DEMO_MODE=true` is set. Projects overriding `content/` must add `demo` (notice, contact, mailbox, tryAdmin).
+- Demo site: set `DEMO_MODE=true` (optionally `DEMO_CONTACT_URL`), export `demoAccounts` from `product/manifest.ts` and create those users with role `editor` in the project's demo data.
+
 ### v1.25.0 (2026-10-14) — model roles for agents
 - New starter-owned folder `.claude/agents/` and a "Models" rule in `CLAUDE.md`. Projects with their own `CLAUDE.md` changes: keep both. No code change, no migration.
 

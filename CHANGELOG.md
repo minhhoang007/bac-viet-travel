@@ -4,6 +4,8 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.26.0] - 2026-10-14
+
 ### Added — demo mode (public demo site)
 - `DEMO_MODE=true`: a notice above every page (site, account, admin), `noindex` meta and a `robots.txt` that disallows everything, and emails kept in a **demo mailbox** instead of sent (`demo_emails` table, starter migration 0006; Admin → Hộp thư demo for staff; entries older than 7 days purged by the jobs tick). Without a database, emails are dropped. `EMAIL_API_KEY` is not required in demo mode.
 - `DEMO_CONTACT_URL` (optional): link in the notice ("Muốn có website như thế này?").
