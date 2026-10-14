@@ -58,6 +58,15 @@ export function createLoginCodes(deps: { db: Db; secret: string; now?: () => Dat
         return null;
       });
     },
+
+    /** Demo sign-in only: the link just issued for this email, without its code (once; the row is deleted). */
+    async take(email: string): Promise<string | null> {
+      const [row] = await deps.db
+        .delete(verifications)
+        .where(and(eq(verifications.identifier, identifier(email)), gt(verifications.expiresAt, now())))
+        .returning({ value: verifications.value });
+      return row ? (JSON.parse(row.value) as Stored).link : null;
+    },
   };
 }
 

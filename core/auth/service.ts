@@ -2,7 +2,7 @@ import { and, count, eq, ne } from "drizzle-orm";
 import { AppError } from "@/core/errors";
 import type { RateLimiter } from "@/core/security/rate-limit";
 import type { TurnstileCheck } from "@/core/security/turnstile";
-import { ROLES } from "@/core/users/schema";
+import { ROLES, users } from "@/core/users/schema";
 import type { Db } from "@/db/client";
 import type { BetterAuthInstance } from "./adapters/better-auth";
 import { createAuthEvents, type AuthEvent } from "./events";
@@ -73,6 +73,11 @@ export interface AuthService {
   signInMagicLink(input: MagicLinkRequest, headers: Headers): Promise<void>;
   /** The one-time sign-in link a 6-digit email code stands for, or null (rate limited per client and recipient). */
   redeemLoginCode(input: { email: string; code: string; clientKey: string }): Promise<string | null>;
+  /**
+   * DEMO_MODE only: the one-time sign-in link for a demo account (deps.demoAccounts), so visitors try the admin with
+   * one click. Null for any other email, or when the account is missing or is not an editor (never an admin).
+   */
+  demoSignIn(email: string, callbackURL: string, headers: Headers): Promise<string | null>;
   /** Returns the provider URL to redirect to. */
   signInGoogle(callbackURL: string, headers: Headers): Promise<string>;
   signOut(headers: Headers): Promise<void>;
@@ -122,6 +127,11 @@ export interface AuthServiceDeps {
   staff: StaffAuthPolicy;
   turnstile?: TurnstileCheck;
   now?: () => Date;
+  /**
+   * DEMO_MODE only: emails of the demo staff accounts. They sign in with one click and skip the second factor (the
+   * whole site is a demo). Never set on a real site.
+   */
+  demoAccounts?: readonly string[];
 }
 
 // Better Auth error codes that mean "wrong code" (not an outage).
@@ -158,6 +168,7 @@ export function createAuthService(
   };
 
   const getUser = async (headers: Headers) => (await getSession(headers))?.user ?? null;
+  const isDemoAccount = (email: string) => deps.demoAccounts?.includes(email.trim().toLowerCase()) ?? false;
 
   const requireUser = async (headers: Headers) => {
     const user = await getUser(headers);
@@ -248,9 +259,21 @@ export function createAuthService(
     },
     factors,
     async staffGate(current) {
+      if (isDemoAccount(current.user.email)) return "ok";
       return staffGate(current.user.role, current.session, await factors(current.user.id), deps.staff);
     },
-    isFresh: (current) => isFresh(current.session, deps.staff, now()),
+    isFresh: (current) => isDemoAccount(current.user.email) || isFresh(current.session, deps.staff, now()),
+    async demoSignIn(email, callbackURL, headers) {
+      if (!isDemoAccount(email)) return null;
+      const address = email.trim().toLowerCase();
+      // Only an existing editor (set up by the project's demo data): a visitor never gets an admin or a new account.
+      const [user] = await db.select({ role: users.role, status: users.status }).from(users).where(eq(users.email, address));
+      if (!user || user.role !== "editor" || user.status === "disabled") return null;
+      // The regular magic-link flow (its email lands in the demo mailbox); the link is taken from the login code
+      // issued with it, so the browser goes straight to Better Auth's verify URL, which creates the session.
+      await auth.api.signInMagicLink({ body: { email: address, callbackURL }, headers });
+      return loginCodes.take(address);
+    },
     async signInMagicLink({ email, callbackURL, errorCallbackURL, clientKey, captchaToken }, headers) {
       const [client, recipient] = await Promise.all([
         limits.perClient.limit(`magic-link:client:${clientKey}`),
