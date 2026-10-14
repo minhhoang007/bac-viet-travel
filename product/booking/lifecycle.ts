@@ -43,3 +43,8 @@ export function isSold(status: BookingStatus): boolean {
 export function awaitsDeposit(status: BookingStatus): boolean {
   return canMove(status, "deposit_paid");
 }
+
+/** Money still to give back (VND): owed over the booking's life minus what was refunded. */
+export function refundLeft(b: { refundDueVnd: number; refundedVnd: number }): number {
+  return b.refundDueVnd - b.refundedVnd;
+}

@@ -95,7 +95,7 @@ export default async function PassengersPage({ params, searchParams }: Props) {
         </table>
       )}
 
-      {allowed("bookings.cancel") && d.kind === "group" && d.status === "open" && d.date >= vietnamToday(new Date()) && (
+      {allowed("bookings.cancel") && d.kind === "group" && (d.status === "open" || rows.length > 0) && d.date >= vietnamToday(new Date()) && (
         <details className="mt-4 max-w-xl rounded-lg border border-border p-4 text-sm" data-print-hide data-testid="cancel-departure">
           <summary className="cursor-pointer font-medium text-danger">{c.cancelTitle}…</summary>
           <form action={cancelDeparture} className="mt-3 grid gap-2">

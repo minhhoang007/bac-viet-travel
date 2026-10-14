@@ -1,9 +1,9 @@
-import { and, asc, count, desc, eq, gt, gte, inArray, isNull, lt, lte, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, gte, inArray, lt, lte, sql } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { bookingPayments, bookings, departures } from "../schema/booking";
 import { needsAttention } from "./admin";
 import { addDays, vietnamDayStart, vietnamToday } from "./rules";
-import { canBecome, SOLD_STATUSES } from "./status";
+import { canBecome, refundOwed, SOLD_STATUSES } from "./status";
 
 const DAY = 86_400_000;
 const TZ = "Asia/Ho_Chi_Minh";
@@ -101,7 +101,7 @@ export function createDashboard(deps: { db: Db; now?: () => Date }) {
           attention: sql<number>`count(*) filter (where ${needsAttention()})::int`,
           transfers: sql<number>`count(*) filter (where ${inArray(bookings.status, canBecome("deposit_paid"))} and ${pendingTransfer})::int`,
           toConfirm: sql<number>`count(*) filter (where ${inArray(bookings.status, canBecome("confirmed"))})::int`,
-          refunds: sql<number>`count(*) filter (where ${bookings.refundDueVnd} > 0 and ${isNull(bookings.refundedAt)})::int`,
+          refunds: sql<number>`count(*) filter (where ${refundOwed()})::int`,
           expiringHolds: sql<number>`count(*) filter (where ${eq(bookings.status, "held")} and ${gt(bookings.holdExpiresAt, at)} and ${lt(bookings.holdExpiresAt, new Date(at.getTime() + 2 * 3_600_000))})::int`,
         })
         .from(bookings);
@@ -113,8 +113,10 @@ export function createDashboard(deps: { db: Db; now?: () => Date }) {
         .orderBy(asc(departures.date), asc(departures.tourSlug));
       const upcoming = upcomingRows.filter((d) => d.sold > 0);
       // Below the departure's minimum of guests when it has one, else under half full.
-      const short = (d: (typeof upcomingRows)[number]) => (d.minGuests !== null ? d.sold < d.minGuests : d.sold / d.capacity < 0.5);
-      const lowFill = upcomingRows.filter((d) => d.date <= addDays(today, 7) && d.sold > 0 && short(d)).length;
+      // A date with a minimum counts even with no guest yet (the owner decides whether it runs); without one, empty
+      // dates are the normal schedule and are left out.
+      const short = (d: (typeof upcomingRows)[number]) => (d.minGuests !== null ? d.sold < d.minGuests : d.sold > 0 && d.sold / d.capacity < 0.5);
+      const lowFill = upcomingRows.filter((d) => d.date <= addDays(today, 7) && short(d)).length;
 
       const recent = await db
         .select({ code: bookings.code, name: bookings.name, status: bookings.status, totalVnd: bookings.totalVnd, tourSlug: departures.tourSlug, createdAt: bookings.createdAt })

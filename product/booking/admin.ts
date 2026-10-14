@@ -10,7 +10,7 @@ import { bookingStatusEmail, reminderEmail } from "./emails";
 import type { ReceiveTransferResult } from "./deposits";
 import { createDepartureAdmin, type DepartureAdmin } from "./admin-departures";
 import { addDays, bookingRules, vietnamDayStart, vietnamToday } from "./rules";
-import { canBecome, SOLD_STATUSES, takesSeats } from "./status";
+import { canBecome, refundOwed, SOLD_STATUSES, takesSeats } from "./status";
 import { contactUpdateSchema, manualBookingSchema } from "./validations";
 
 export interface Actor {
@@ -21,7 +21,7 @@ export interface Actor {
 /** "attention" = what staff must act on: refunds owed, paid deposits not yet confirmed, bank transfers to check. */
 export type BookingFilter = BookingStatus | "attention" | "all";
 
-export interface AdminBookingRow extends Pick<Booking, "id" | "code" | "status" | "holdExpiresAt" | "name" | "email" | "phone" | "seats" | "totalVnd" | "depositVnd" | "refundDueVnd" | "refundedAt" | "createdAt" | "source" | "externalRef"> {
+export interface AdminBookingRow extends Pick<Booking, "id" | "code" | "status" | "holdExpiresAt" | "name" | "email" | "phone" | "seats" | "totalVnd" | "depositVnd" | "refundDueVnd" | "refundedVnd" | "refundedAt" | "createdAt" | "source" | "externalRef"> {
   tourSlug: string;
   date: string;
   kind: Departure["kind"];
@@ -82,7 +82,7 @@ const REMINDER_DAYS = 3;
 export const needsAttention = () =>
   or(
     inArray(bookings.status, canBecome("confirmed")),
-    and(sql`${bookings.refundDueVnd} > 0`, isNull(bookings.refundedAt)),
+    refundOwed(),
     and(
       inArray(bookings.status, canBecome("deposit_paid")),
       sql`exists (select 1 from ${bookingPayments} p where p.booking_id = ${bookings.id} and p.method = 'transfer' and p.status = 'pending')`,
@@ -193,6 +193,7 @@ export function createBookingAdmin(deps: {
           totalVnd: bookings.totalVnd,
           depositVnd: bookings.depositVnd,
           refundDueVnd: bookings.refundDueVnd,
+          refundedVnd: bookings.refundedVnd,
           refundedAt: bookings.refundedAt,
           createdAt: bookings.createdAt,
           source: bookings.source,
@@ -241,9 +242,15 @@ export function createBookingAdmin(deps: {
       if (!UUID.test(departureId)) return null;
       const text = reason.trim().slice(0, 500);
       if (!text) throw new AppError("VALIDATION_ERROR", "Reason required");
-      // Close it first, so no guest holds a seat while its bookings are being cancelled.
+      // Close it first, so no guest holds a seat while its bookings are being cancelled. A departure already closed
+      // (sales stopped) can still be cancelled, and running it again finishes a cancellation that stopped half-way.
+      // Past trips cannot: they happened.
       const closed = await audited(actor, "departure.cancel", departureId, { reason: text }, async () => {
-        const rows = await db.update(departures).set({ status: "closed" }).where(and(eq(departures.id, departureId), eq(departures.kind, "group"))).returning({ id: departures.id });
+        const rows = await db
+          .update(departures)
+          .set({ status: "closed" })
+          .where(and(eq(departures.id, departureId), eq(departures.kind, "group"), gte(departures.date, vietnamToday(now()))))
+          .returning({ id: departures.id });
         return rows.length > 0;
       });
       if (!closed) return null;
@@ -281,12 +288,14 @@ export function createBookingAdmin(deps: {
         const done = await db
           .update(bookings)
           .set({
+            // Everything owed so far is now given back; a later refund (another cancellation) owes only its own amount.
+            refundedVnd: bookings.refundDueVnd,
             refundedAt: now(),
             refundNote: note.trim().slice(0, 500),
             // A late deposit (refund_due) ends as cancelled once the money is back.
             status: sql`case when ${bookings.status} = 'refund_due' then 'cancelled' else ${bookings.status} end`,
           })
-          .where(and(eq(bookings.code, code), sql`${bookings.refundDueVnd} > 0`, isNull(bookings.refundedAt)))
+          .where(and(eq(bookings.code, code), refundOwed()))
           .returning({ id: bookings.id });
         return done.length > 0;
       });

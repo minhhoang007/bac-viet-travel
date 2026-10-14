@@ -123,7 +123,9 @@ export function createDepartureAdmin(deps: {
           // Same lock as holds: no seat can be sold between the check and the update.
           const [d] = await tx.select().from(departures).where(eq(departures.id, id)).for("update");
           if (!d) throw new AppError("NOT_FOUND");
-          if (input.minGuests !== undefined && !validMin(input.minGuests, input.capacity ?? d.capacity)) throw new AppError("VALIDATION_ERROR", "Invalid minimum");
+          // A lower capacity is checked against the minimum already set too.
+          const minGuests = input.minGuests !== undefined ? input.minGuests : d.minGuests;
+          if (!validMin(minGuests, input.capacity ?? d.capacity)) throw new AppError("VALIDATION_ERROR", "Invalid minimum");
           if (input.capacity !== undefined) {
             const [row] = await tx
               .select({ taken: sql<number>`coalesce(sum(${bookings.seats}), 0)::int` })

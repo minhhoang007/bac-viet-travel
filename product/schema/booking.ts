@@ -81,8 +81,13 @@ export const bookings = pgTable(
     confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
     cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
     cancelReason: text("cancel_reason"),
-    /** Money owed back to the guest (late deposit, cancellation with refund). 0 = nothing owed. */
+    /**
+     * Money owed back to the guest over the booking's life (late deposit, extra transfer, cancellation with refund).
+     * Still to give back: refundDueVnd − refundedVnd (refundOwed in booking/status.ts).
+     */
     refundDueVnd: integer("refund_due_vnd").notNull().default(0),
+    /** Money given back so far; refundedAt is the latest refund. */
+    refundedVnd: integer("refunded_vnd").notNull().default(0),
     refundedAt: timestamp("refunded_at", { withTimezone: true }),
     refundNote: text("refund_note"),
     /** Staff-only note (never shown to the guest). */

@@ -2,11 +2,16 @@ import { and, eq, gt, inArray, or, sql, type SQL } from "drizzle-orm";
 import { bookings } from "../schema/booking";
 import { SOLD_STATUSES } from "./lifecycle";
 
-export { awaitsDeposit, canBecome, isSold, SOLD_STATUSES } from "./lifecycle";
+export { awaitsDeposit, canBecome, isSold, refundLeft, SOLD_STATUSES } from "./lifecycle";
 
 /** A booking that takes seats at `at`: sold, or held and the hold has not expired. */
 export function takesSeats(at: Date): SQL {
   return or(inArray(bookings.status, SOLD_STATUSES), and(eq(bookings.status, "held"), gt(bookings.holdExpiresAt, at)))!;
+}
+
+/** A booking with money still to give back. */
+export function refundOwed(): SQL {
+  return gt(bookings.refundDueVnd, bookings.refundedVnd);
 }
 
 /**
