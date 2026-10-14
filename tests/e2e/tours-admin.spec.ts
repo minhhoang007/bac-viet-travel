@@ -133,8 +133,13 @@ test("marketing previews a draft on the tour page; a renamed tour redirects its 
   const editor = await signIn(browser, EDITOR, "editor");
   await editor.goto(`/admin/tours/${row!.id}`);
   await formReady(editor);
-  // The web address lives in the SEO tab.
+  // The web address lives in the SEO tab. An invalid one, saved from another tab, brings the SEO tab back.
   await editor.getByRole("tab", { name: "SEO" }).click();
+  await panel(editor).getByLabel("Đường dẫn (slug)").fill("ninh binh");
+  await editor.getByRole("tab", { name: "Tiếng Việt" }).click();
+  await editor.getByRole("button", { name: "Lưu bản nháp" }).click();
+  await expect(editor.getByRole("tab", { name: "SEO" })).toHaveAttribute("aria-selected", "true");
+  expect(await panel(editor).getByLabel("Đường dẫn (slug)").evaluate((el: HTMLInputElement) => el.validity.valid)).toBe(false);
   await panel(editor).getByLabel("Đường dẫn (slug)").fill("ninh-binh-e2e");
   await editor.getByRole("tab", { name: "Tiếng Việt" }).click();
   await panel(editor).getByLabel("Tên tour", { exact: true }).fill("Ninh Bình bản nháp");
