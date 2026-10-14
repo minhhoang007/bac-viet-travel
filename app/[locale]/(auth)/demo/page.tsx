@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
-import { signInAsDemo } from "@/app/actions/auth";
 import { demoAccounts } from "@/bootstrap/container";
 import { getPublicEnv } from "@/bootstrap/env";
 import type { Locale } from "@/config/app";
@@ -40,7 +39,8 @@ export default async function DemoSignInPage({ params, searchParams }: Props) {
               <h2 className="text-lg font-semibold">{a.label[locale]}</h2>
               <p className="text-sm text-muted-foreground">{a.description[locale]}</p>
             </div>
-            <form action={signInAsDemo}>
+            {/* A plain POST to a route handler: its redirect must load in full (see app/api/demo/sign-in). */}
+            <form method="post" action="/api/demo/sign-in">
               <input type="hidden" name="locale" value={locale} />
               <input type="hidden" name="email" value={a.email} />
               <SubmitButton label={c.signIn} size="default" />
