@@ -57,15 +57,19 @@ describe("auth (magic link, real DB)", () => {
   });
 
   it("the magic-link HTTP endpoint is closed: no email without the service's CAPTCHA and limits", async () => {
-    const res = await t.app.auth.handler(
-      new Request(`${BASE_URL}/api/auth/sign-in/magic-link`, {
-        method: "POST",
-        headers: { origin: BASE_URL, "content-type": "application/json" },
-        body: JSON.stringify({ email: "direct@example.com", callbackURL: "/dashboard" }),
-      }),
-    );
-    expect(res.status).toBe(404);
-    expect(t.sent.some((m) => m.to === "direct@example.com")).toBe(false);
+    // Spellings a router might still match: trailing slash, doubled slash, upper case, encoded dash.
+    const paths = ["/sign-in/magic-link", "/sign-in/magic-link/", "/sign-in//magic-link", "/sign-in/Magic-Link", "/sign-in/magic%2Dlink"];
+    for (const [i, path] of paths.entries()) {
+      const res = await t.app.auth.handler(
+        new Request(`${BASE_URL}/api/auth${path}`, {
+          method: "POST",
+          headers: { origin: BASE_URL, "content-type": "application/json" },
+          body: JSON.stringify({ email: `direct-${i}@example.com`, callbackURL: "/dashboard" }),
+        }),
+      );
+      expect([path, res.status]).toEqual([path, 404]);
+    }
+    expect(t.sent.some((m) => m.to.startsWith("direct-"))).toBe(false);
   });
 
   it("magic links are rate limited per client across recipients", async () => {

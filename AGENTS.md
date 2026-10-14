@@ -80,6 +80,8 @@ Dependencies flow one way: Product → Modules (public API only) → Core. Detai
 `.claude/skills/`: `karpathy-guidelines`, `phase-execution`, `product-feature`, `module-authoring`,
 `tdd-critical-flows`, `security-review-starter`, `starter-upgrade`, `ui-components`, `systematic-debugging`,
 `receiving-code-review`.
+Third-party skills, pinned copies (source, commit and license in each `SOURCE.md`; project rules win on conflict):
+`supabase-postgres-best-practices` (schema, migrations, queries, locking), `web-design-guidelines` (UI review).
 
 <!-- BEGIN:nextjs-agent-rules -->
 
