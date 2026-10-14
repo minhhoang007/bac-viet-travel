@@ -267,7 +267,7 @@ export function createBookingAdmin(deps: {
       let result: ReceiveTransferResult = "not_found"; // set inside the audited work
       await audited(actor, "booking.transfer_received", code, { amountVnd: input.amountVnd, bankRef: input.bankRef.trim().slice(0, 100) }, async () => {
         result = await receive(code, input);
-        return result === "deposit_paid" || result === "refund_due";
+        return result === "deposit_paid" || result === "refund_due" || result === "extra";
       });
       return result;
     },

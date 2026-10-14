@@ -5,6 +5,8 @@ import { testApp } from "@/tests/integration/setup/app";
 import { resetDb, testDb } from "@/tests/integration/setup/db";
 import { bookingPayments, bookings, departures } from "../../schema/booking";
 import { createDashboard } from "../dashboard";
+import { createBookingAdmin } from "../admin";
+import { createLogger } from "@/core/logger";
 import { createReports } from "../reports";
 
 // The real product services as bootstrap builds them (admin + jobs on), with a recording mail port.
@@ -65,6 +67,18 @@ describe("booking admin", () => {
     expect(await bookingAdmin.markRefunded(staff, code, { note: "again" })).toBe(false);
     expect((await bookingAdmin.list({ filter: "attention" })).total).toBe(0);
     expect(await bookingAdmin.confirm(staff, code)).toBe(false); // cancelled stays cancelled
+  });
+
+  it("a transfer recorded after the deposit was paid (extra money, owed back) is audited", async () => {
+    // The deposit service's own outcomes are covered in deposits.int.test.ts; here only the audit of its answer.
+    const admin = createBookingAdmin({
+      db, logger: createLogger({ write: () => {} }), mail: { send: async () => {} }, audit: container.admin, tourTitle: async () => "",
+      tourExists: async () => true, receiveTransfer: async () => "extra", now: () => clock,
+    });
+    const code = "BV-EXTRA2";
+    expect(await admin.receiveTransfer(staff, code, { amountVnd: 600_000, bankRef: "FT1" })).toBe("extra");
+    const { rows } = await container.admin!.listAudit({ targetId: code });
+    expect(rows.map((r) => r.action)).toEqual(["booking.transfer_received"]);
   });
 
   it("a late deposit (refund_due) ends as cancelled once refunded", async () => {
@@ -327,7 +341,7 @@ describe("reports (H3)", () => {
     await db.execute(sql`TRUNCATE booking_payments, bookings, departures, discount_codes RESTART IDENTITY CASCADE`);
     const [soon] = await db.insert(departures).values({ tourSlug: "sapa-trekking-2d1n", date: "2026-11-05", capacity: 10 }).returning();
     const [past] = await db.insert(departures).values({ tourSlug: "ninh-binh-day-tour", date: "2026-10-01", capacity: 10 }).returning();
-    const b = (code: string, departureId: string, status: "deposit_paid" | "confirmed" | "cancelled", seats: number, extra: Record<string, unknown> = {}) => ({
+    const b = (code: string, departureId: string, status: "deposit_paid" | "confirmed" | "cancelled" | "refund_due", seats: number, extra: Record<string, unknown> = {}) => ({
       code, tokenHash: "x", departureId, status, holdExpiresAt: new Date("2030-01-01"), name: "A", email: "a@example.com", phone: "0900000000", locale: "vi",
       adults: seats, seats, unitPriceVnd: 1_000_000, totalVnd: seats * 1_000_000, depositVnd: seats * 300_000, ...extra,
     });
@@ -337,6 +351,7 @@ describe("reports (H3)", () => {
       b("BV-CSHB22", soon!.id, "confirmed", 1, { depositPaidAt: oct(11), balancePaidAt: oct(20) }), // transfer 300k + staff balance 700k
       b("BV-CSHC22", soon!.id, "confirmed", 3, { depositPaidAt: new Date("2026-09-30T03:00:00Z"), source: "klook" }), // September: not in October cash; still owes 2.1M
       b("BV-CSHD22", past!.id, "cancelled", 1, { depositPaidAt: oct(2), refundDueVnd: 300_000, refundedVnd: 300_000, refundedAt: oct(5) }), // staff 300k in, 300k back
+      b("BV-CSHE22", soon!.id, "refund_due", 1, { refundDueVnd: 300_000 }), // late deposit (no depositPaidAt): 300k in, owed back
     ]).returning({ id: bookings.id, code: bookings.code });
     const id = (code: string) => inserted.find((r) => r.code === code)!.id;
     await db.insert(bookingPayments).values([
@@ -345,6 +360,7 @@ describe("reports (H3)", () => {
       { bookingId: id("BV-CSHB22"), method: "vnpay", purpose: "balance", txnRef: "T3", amountVnd: 700_000, status: "failed" },
       // A second transfer after the deposit was paid: money in, owed back.
       { bookingId: id("BV-CSHA22"), method: "transfer", purpose: "deposit", txnRef: "T4", amountVnd: 500_000, status: "paid", paidAt: oct(12) },
+      { bookingId: id("BV-CSHE22"), method: "vnpay", purpose: "deposit", txnRef: "T5", amountVnd: 300_000, status: "paid", paidAt: oct(13) },
     ]);
 
     const cash = await createReports({ db }).cash("2026-10-01", "2026-10-31");
@@ -353,7 +369,8 @@ describe("reports (H3)", () => {
       { channel: "transfer", depositsVnd: 300_000, balancesVnd: 0 },
       { channel: "staff", depositsVnd: 300_000, balancesVnd: 700_000 },
     ]);
-    expect(cash).toMatchObject({ extraVnd: 500_000, collectedVnd: 2_400_000, refundedVnd: 300_000 });
+    // Extra: A's second transfer (500k) and E's late deposit (300k).
+    expect(cash).toMatchObject({ extraVnd: 800_000, collectedVnd: 2_700_000, refundedVnd: 300_000 });
 
     // Owed from trips on or after the given day, balance unpaid: A (1.4M) and C (2.1M); B paid, D past and cancelled.
     expect((await createReports({ db }).receivables("2026-10-14")).map((r) => [r.code, r.dueVnd])).toEqual([

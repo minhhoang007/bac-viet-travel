@@ -3,7 +3,7 @@ import path from "node:path";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
-import { requireStaff } from "@/app/_lib/admin";
+import { requireTourEditor } from "@/app/_lib/staff";
 import { ContentResult, WorkflowPanel } from "@/app/_components/workflow-panel";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { Notice } from "@/components/feedback/notice";
@@ -39,7 +39,7 @@ function staticImages(): string[] {
 export default async function EditTourPage({ params, searchParams }: Props) {
   const { locale, id } = await params;
   setRequestLocale(locale);
-  const { user, container } = await requireStaff("editor");
+  const { user, container } = await requireTourEditor();
   const content = container.content;
   if (!content) notFound();
   const item = await content.get(id);
