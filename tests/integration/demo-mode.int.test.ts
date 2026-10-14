@@ -1,11 +1,12 @@
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { buildContainer } from "@/bootstrap/container";
 import { validateEnv } from "@/bootstrap/env";
 import { moduleManifests } from "@/bootstrap/modules";
 import { featureDefaults } from "@/config/features.defaults";
+import { users } from "@/core/users/schema";
 import type { EmailProvider } from "@/modules/email";
-import { BASE_URL } from "./setup/app";
+import { BASE_URL, signIn, testApp } from "./setup/app";
 import { resetDb, testDb, TEST_DATABASE_URL } from "./setup/db";
 
 const { db, close } = testDb();
@@ -36,6 +37,56 @@ describe("demo mode", () => {
     await db.execute(sql`update demo_emails set created_at = now() - interval '8 days'`);
     await container.jobs!.tick();
     expect(await container.demoMailbox!.list()).toEqual([]);
+  });
+
+  describe("demo sign-in", () => {
+    const DEMO = "demo-manager@example.com";
+    const demoApp = (env: Record<string, string> = { DEMO_MODE: "true" }) => testApp(db, { modules: { admin: true }, env, overrides: { demoAccounts: [DEMO] } });
+    const h = () => new Headers({ origin: BASE_URL });
+    async function user(t: ReturnType<typeof testApp>, email: string, role: "user" | "editor" | "admin") {
+      await signIn(t, email); // creates the account through the real magic-link flow
+      await db.update(users).set({ role }).where(eq(users.email, email));
+    }
+    const follow = async (t: ReturnType<typeof testApp>, link: string) => {
+      const res = await t.app.auth.handler(new Request(link, { headers: { origin: BASE_URL } }));
+      return new Headers({ cookie: res.headers.getSetCookie().map((c) => c.split(";")[0]).join("; "), origin: BASE_URL });
+    };
+
+    it("signs a demo editor in with one link; that account skips the second factor, other staff do not", async () => {
+      const t = demoApp();
+      await user(t, DEMO, "editor");
+      await user(t, "real-editor@example.com", "editor");
+      const link = await t.app.auth.demoSignIn(DEMO, "/vi/admin", h());
+      expect(link).toMatch(/^http:\/\/localhost:3000\/api\/auth\/magic-link\/verify\?/);
+      const current = await t.app.auth.getSession(await follow(t, link!));
+      expect(current?.user.email).toBe(DEMO);
+      expect(await t.app.auth.staffGate(current!)).toBe("ok");
+      expect(t.app.auth.isFresh(current!)).toBe(true);
+      // A real editor on the same demo site still needs a second factor.
+      const other = await t.app.auth.getSession(await signIn(t, "real-editor@example.com"));
+      expect(await t.app.auth.staffGate(other!)).toBe("enroll");
+      expect(t.app.auth.isFresh(other!)).toBe(false);
+      // The link is used once.
+      expect((await t.app.auth.handler(new Request(link!, { headers: { origin: BASE_URL } }))).headers.getSetCookie()).toEqual([]);
+    });
+
+    it("refuses any other email, a missing or disabled account, an admin, and everything when DEMO_MODE is off", async () => {
+      const t = demoApp();
+      expect(await t.app.auth.demoSignIn(DEMO, "/vi/admin", h())).toBeNull(); // no account yet
+      await user(t, "real-editor@example.com", "editor");
+      expect(await t.app.auth.demoSignIn("real-editor@example.com", "/vi/admin", h())).toBeNull(); // not a demo account
+      await user(t, DEMO, "admin");
+      expect(await t.app.auth.demoSignIn(DEMO, "/vi/admin", h())).toBeNull(); // never an admin
+      await db.update(users).set({ role: "editor", status: "disabled" }).where(eq(users.email, DEMO));
+      expect(await t.app.auth.demoSignIn(DEMO, "/vi/admin", h())).toBeNull();
+      await db.update(users).set({ status: "active" }).where(eq(users.email, DEMO));
+      expect(await t.app.auth.demoSignIn(DEMO, "/vi/admin", h())).not.toBeNull();
+
+      const off = demoApp({});
+      expect(await off.app.auth.demoSignIn(DEMO, "/vi/admin", h())).toBeNull();
+      const session = await off.app.auth.getSession(await signIn(off, DEMO));
+      expect(await off.app.auth.staffGate(session!)).toBe("enroll");
+    });
   });
 
   it("is off by default: no mailbox, emails go to the provider", async () => {

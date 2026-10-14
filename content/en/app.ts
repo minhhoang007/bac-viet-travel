@@ -99,6 +99,14 @@ export const app: AppContent = {
       empty: "No emails yet.",
       to: "To",
     },
+    tryAdmin: {
+      link: "Try the admin",
+      title: "Try the admin",
+      intro: "Pick a role to see the admin as real staff do: bookings, departures, reports… Every change is sample data and is reset regularly.",
+      signIn: "Sign in with this role",
+      failed: "The demo account could not sign in. Try again in a few minutes.",
+      rateLimited: "Too many tries. Wait a few minutes and try again.",
+    },
   },
   admin: {
     title: "Admin",

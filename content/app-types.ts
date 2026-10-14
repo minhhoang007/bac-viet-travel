@@ -73,6 +73,8 @@ export interface AppContent {
     notice: string;
     contact: string;
     mailbox: { nav: string; title: string; intro: string; empty: string; to: string };
+    /** /demo: one-click sign-in as a demo staff account. */
+    tryAdmin: { link: string; title: string; intro: string; signIn: string; failed: string; rateLimited: string };
   };
   admin: {
     title: string;

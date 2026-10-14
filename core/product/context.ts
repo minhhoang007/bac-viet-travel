@@ -6,6 +6,19 @@ import type { Db } from "@/db/client";
 
 export type ProductJobHandler = (payload: Record<string, unknown>) => Promise<void>;
 
+/**
+ * A staff account visitors can try on a demo site (DEMO_MODE), declared in product/manifest.ts `demoAccounts`. The
+ * project's demo data creates the user with role "editor" (never admin) and whatever product role it shows.
+ */
+export interface DemoAccount {
+  email: string;
+  label: Record<"vi" | "en", string>;
+  /** What this account can do, one line. */
+  description: Record<"vi" | "en", string>;
+  /** Page opened after sign-in (locale-less), e.g. "/admin". */
+  home: string;
+}
+
 /** What bootstrap gives `createProduct` (product/manifest.ts). Everything a product service usually needs. */
 export interface ProductContext {
   db: Db;

@@ -99,6 +99,14 @@ export const app: AppContent = {
       empty: "Chưa có email nào.",
       to: "Người nhận",
     },
+    tryAdmin: {
+      link: "Vào thử trang quản trị",
+      title: "Vào thử trang quản trị",
+      intro: "Chọn một vai trò để xem trang quản trị như nhân viên thật: đơn hàng, lịch khởi hành, báo cáo… Mọi thay đổi chỉ là dữ liệu mẫu và được làm mới định kỳ.",
+      signIn: "Vào với vai trò này",
+      failed: "Không vào được tài khoản demo. Thử lại sau ít phút.",
+      rateLimited: "Bạn đã thử quá nhiều lần. Đợi vài phút rồi thử lại.",
+    },
   },
   admin: {
     title: "Quản trị",

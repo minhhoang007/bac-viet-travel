@@ -16,6 +16,7 @@ import { AnalyticsTracker } from "@/components/analytics/tracker";
 import { ConsentBanner } from "@/components/analytics/consent-banner";
 import { features } from "@/config/features";
 import { getPublicEnv } from "@/bootstrap/env";
+import { demoAccounts } from "@/bootstrap/container";
 import { DemoNotice } from "@/components/layout/demo-notice";
 import { Toaster } from "@/components/ui/sonner";
 import * as productLayout from "@/product/layout";
@@ -63,7 +64,15 @@ export default async function LocaleLayout({
         {demoMode && <meta name="robots" content="noindex, nofollow" />}
       </head>
       <body className="flex min-h-screen flex-col">
-        {demoMode && <DemoNotice text={demo.notice} contact={demoContactUrl ? { label: demo.contact, href: demoContactUrl } : undefined} />}
+        {demoMode && (
+          <DemoNotice
+            text={demo.notice}
+            links={[
+              ...(demoAccounts().length > 0 ? [{ label: demo.tryAdmin.link, href: localePath(locale, "/demo") }] : []),
+              ...(demoContactUrl ? [{ label: demo.contact, href: demoContactUrl }] : []),
+            ]}
+          />
+        )}
         <NextIntlClientProvider>
           {/* Admin and dashboard render their own AppShell. */}
           <SiteChrome>

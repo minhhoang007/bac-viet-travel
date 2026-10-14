@@ -9,7 +9,7 @@ import type { Features } from "@/core/module";
 import { noopMail, type MailMessage, type MailPort } from "@/core/ports/mail";
 import { createVnpayIpn, type VnpayIpnHandler, type VnpayIpnResult } from "@/core/payments/vnpay-ipn";
 import type { Payments } from "@/core/ports/payments";
-import type { ContentTypeDefinition, ProductContext, ProductJobs, ProductStat } from "@/core/product/context";
+import type { ContentTypeDefinition, DemoAccount, ProductContext, ProductJobs, ProductStat } from "@/core/product/context";
 import type { Locale } from "@/config/app";
 import { createMemoryRateLimiter, withFallback, type RateLimiter, type RateLimitRule } from "@/core/security/rate-limit";
 import { createTurnstileCheck } from "@/core/security/turnstile";
@@ -99,6 +99,8 @@ export interface ContainerOverrides {
   now?: () => Date;
   objectStorage?: ObjectStorage;
   mediaProvider?: MediaProvider;
+  /** Tests: demo account emails instead of product/manifest.ts `demoAccounts` (still DEMO_MODE only). */
+  demoAccounts?: string[];
 }
 
 const CONTACT_LIMIT: RateLimitRule = { max: 5, windowMs: 10 * 60_000 };
@@ -268,6 +270,11 @@ export function productContentTypes(): Record<string, ContentTypeDefinition> {
   return "contentTypes" in productManifest ? ((productManifest as { contentTypes?: Record<string, ContentTypeDefinition> }).contentTypes ?? {}) : {};
 }
 
+/** Manifest `demoAccounts` (optional export): staff accounts visitors can try on a demo site. */
+export function demoAccounts(): DemoAccount[] {
+  return "demoAccounts" in productManifest ? ((productManifest as { demoAccounts?: DemoAccount[] }).demoAccounts ?? []) : [];
+}
+
 /** Starter content types (blog posts when blog source is "content") and the project's. */
 export function allContentTypes(): Record<string, ContentTypeDefinition> {
   return { ...starterContentTypes(), ...productContentTypes() };
@@ -368,6 +375,7 @@ function buildApp(
       secret: env.extra.BETTER_AUTH_SECRET!,
       staff: authConfig.staff,
       turnstile: env.TURNSTILE_SECRET_KEY ? createTurnstileCheck(env.TURNSTILE_SECRET_KEY) : undefined,
+      demoAccounts: env.DEMO_MODE ? (overrides.demoAccounts ?? demoAccounts().map((a) => a.email)).map((e) => e.toLowerCase()) : undefined,
     },
   );
   const product = createProductWith(db, ctx);
