@@ -4,6 +4,16 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.24.0] - 2026-10-14
+
+### Added — agent skills from upstream (pinned copies)
+- `.claude/skills/supabase-postgres-best-practices`: Supabase's Postgres rules (indexes, foreign keys, locking, `SKIP LOCKED` queues, pagination, connections), MIT, commit `c9be0e9`.
+- `.claude/skills/web-design-guidelines`: Vercel's Web Interface Guidelines review (accessibility, forms, focus, loading states), MIT; the rules are a pinned `guidelines.md` instead of a fetch on every run.
+- Each has a `SOURCE.md` (repository, commit, license); project rules win on conflict.
+
+### Tests
+- The magic-link HTTP endpoint stays closed for path variants (trailing or doubled slash, case, encoded dash).
+
 ## [1.23.0] - 2026-10-14
 
 ### Changed — admin for non-technical owners
