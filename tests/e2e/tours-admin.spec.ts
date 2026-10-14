@@ -234,6 +234,9 @@ test("an admin returns a tour with a note, schedules the fix, and restores an ol
 
   // Time passes (moved in the database); the cron tick publishes it.
   await sql`update content_items set publish_at = now() - interval '1 minute' where id = ${row!.id}`;
+  // Emails queued by the specs that ran before (bookings, contact) would be sent in this tick through Resend with
+  // the E2E's fake key: about 0.3 s each, 20 s for a full run, past the test timeout. This test is about publishing.
+  await sql`delete from jobs where name = 'email.send' and status = 'queued'`;
   const tick = await visitor.request.post("/api/jobs/run", { headers: { authorization: `Bearer ${e2eServerEnv.CRON_SECRET}` } });
   expect(tick.status()).toBe(200);
   await admin.goto(edit);
