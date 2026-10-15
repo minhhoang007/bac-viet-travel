@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { Locale } from "@/config/app";
-import { getBookingContent } from "../booking/content";
+import { formatVnd, getBookingContent } from "../booking/content";
 import { DEFAULT_TOUR_PRICING, privateQuote, quote, type Discount, type PrivatePricing, type TourPricing } from "../booking/rules";
 import type { Addon } from "../tours/model";
 import {
@@ -99,7 +99,7 @@ export function BookingForm({
   if (!privateTour && departures.length === 0) return <p className="rounded-md border border-border bg-muted p-4 text-sm">{t.noDepartures}</p>;
 
   return (
-    <form action={formAction} className="relative grid gap-8 lg:grid-cols-[1fr_340px]" noValidate data-hydrated={hydrated || undefined}>
+    <form action={formAction} className="relative grid gap-8 max-lg:pb-20 lg:grid-cols-[1fr_340px]" noValidate data-hydrated={hydrated || undefined}>
       <input type="hidden" name="locale" value={locale} />
       {privateTour ? <input type="hidden" name="tourSlug" value={privateTour.tourSlug} /> : <input type="hidden" name="departureId" value={departureId ?? ""} />}
       <div className="absolute -left-[9999px]" aria-hidden="true">
@@ -162,7 +162,22 @@ export function BookingForm({
         </fieldset>
       </div>
 
-      <aside className="h-fit border border-border p-5 shadow-sm lg:sticky lg:top-6" aria-live="polite">
+      {/* Phones: the summary sits below the whole form, so keep the deposit in view with a way down to it. */}
+      {discount.discounted && (
+        <div data-mobile-book-bar className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 px-4 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] pt-3 backdrop-blur lg:hidden">
+          <div className="mx-auto flex max-w-xl items-center justify-between gap-3">
+            <p className="text-sm leading-tight">
+              <span className="block text-xs text-muted-foreground">{t.deposit}</span>
+              <span className="font-heading text-xl text-foreground">{formatVnd(discount.discounted.depositVnd, locale)}</span>
+            </p>
+            <Button asChild>
+              <a href="#booking-summary">{t.toSummary}</a>
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <aside id="booking-summary" className="h-fit scroll-mt-20 border border-border p-5 shadow-sm lg:sticky lg:top-6" aria-live="polite">
         {tour && (
           <div className="mb-4 flex gap-3 border-b border-border pb-4">
             <div className="relative size-16 shrink-0 overflow-hidden rounded-lg">
