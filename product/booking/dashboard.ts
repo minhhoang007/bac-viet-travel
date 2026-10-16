@@ -138,7 +138,8 @@ export function createDashboard(deps: { db: Db; now?: () => Date }) {
         .select({
           // Holds still running are not decided yet: left out of the conversion.
           made: sql<number>`count(*) filter (where ${bookings.status} <> 'held')::int`,
-          paid: sql<number>`count(*) filter (where ${bookings.depositPaidAt} is not null)::int`,
+          // A deposit that came after the seats were gone (refund_due) is money to give back, not a booking won.
+          paid: sql<number>`count(*) filter (where ${bookings.depositPaidAt} is not null and ${bookings.status} <> 'refund_due')::int`,
           cancelled: sql<number>`count(*) filter (where ${bookings.depositPaidAt} is not null and ${eq(bookings.status, "cancelled")})::int`,
           averageVnd: sql<number | null>`avg(${bookings.totalVnd}) filter (where ${sold})`,
           leadDays: sql<number | null>`avg(${departures.date}::date - ${paidDayDate}) filter (where ${sold} and ${bookings.depositPaidAt} is not null)`,

@@ -84,6 +84,8 @@ export function createDemoReset(deps: DemoResetDeps) {
       await tx.update(departures).set({ minGuests: 8 }).where(eq(departures.id, short.id));
 
       const hoursAgo = (h: number) => new Date(at.getTime() - h * 3_600_000);
+      const seatsTaken = new Map<string, number>();
+      const fits = (d: { id: string; capacity: number }, seats: number) => (seatsTaken.get(d.id) ?? 0) + seats <= d.capacity;
       const book = async (
         departure: { id: string; tourSlug: string },
         b: { status: BookingStatus; name: string; phone: string; adults: number; children?: number; source?: "website" | "klook" | "phone"; externalRef?: string; paid?: Date; balance?: Date; confirmed?: Date; cancelled?: { reason: string; refund: boolean }; holdMinutes?: number; travellers?: boolean; payment?: "vnpay" | "transfer" | "pending_transfer" },
@@ -91,6 +93,8 @@ export function createDemoReset(deps: DemoResetDeps) {
         const unit = price(departure.tourSlug);
         const seats = b.adults + (b.children ?? 0);
         const totalVnd = unit * seats;
+        const created = b.paid ? new Date(b.paid.getTime() - 10 * 60_000) : undefined;
+        seatsTaken.set(departure.id, (seatsTaken.get(departure.id) ?? 0) + seats);
         const depositVnd = roundUp1000(totalVnd * bookingRules.depositRate);
         const [row] = await tx
           .insert(bookings)
@@ -120,6 +124,8 @@ export function createDemoReset(deps: DemoResetDeps) {
             source: b.source ?? "website",
             externalRef: b.externalRef ?? null,
             guestEmails: b.source === undefined || b.source === "website",
+            // A paid booking was made just before the guest paid (history included), never after.
+            ...(created ? { createdAt: created, updatedAt: created } : {}),
           })
           .returning();
         if (b.payment) {
@@ -166,9 +172,14 @@ export function createDemoReset(deps: DemoResetDeps) {
         }
       }
       const open = upcoming.filter((d) => d.id !== short.id);
-      for (let i = 0; i < 30; i++) {
+      // Spread over the coming dates; a date never gets more guests than it has seats.
+      for (let i = 0, placed = 0; placed < 30 && i < open.length * 2; i++) {
+        const d = open[between(0, open.length - 1)]!;
+        const adults = between(1, 3);
+        if (!fits(d, adults)) continue;
         const paid = hoursAgo(between(3, 21 * 24));
-        await book(open[(i * 7) % open.length]!, { status: "confirmed", ...guest(), adults: between(1, 3), paid, confirmed: paid, payment: rand() < 0.6 ? "vnpay" : "transfer" });
+        await book(d, { status: "confirmed", ...guest(), adults, paid, confirmed: paid, payment: rand() < 0.6 ? "vnpay" : "transfer" });
+        placed++;
       }
 
       await tx.insert(discountCodes).values([

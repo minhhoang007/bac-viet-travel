@@ -419,6 +419,19 @@ describe("admin dashboard", () => {
     expect(data.health).toEqual({ conversion: 100, cancellation: 20, averageVnd: 2_000_000, leadDays: 38 });
   });
 
+  it("business health: a deposit that came after the seats were gone is not a booking won", async () => {
+    await db.execute(sql`TRUNCATE booking_payments, bookings, departures, discount_codes RESTART IDENTITY CASCADE`);
+    const now = new Date("2026-10-20T05:00:00Z");
+    const [d] = await db.insert(departures).values({ tourSlug: "sapa-trekking-2d1n", date: "2026-11-24", capacity: 20 }).returning();
+    const b = (code: string, status: "confirmed" | "refund_due" | "expired") => ({
+      code, tokenHash: "x", departureId: d!.id, status, holdExpiresAt: new Date("2030-01-01"), name: "A", email: "a@example.com", phone: "0900000000", locale: "vi",
+      adults: 1, seats: 1, unitPriceVnd: 1_000_000, totalVnd: 1_000_000, depositVnd: 300_000, depositPaidAt: status === "expired" ? null : new Date("2026-10-18T03:00:00Z"),
+    });
+    await db.insert(bookings).values([b("BV-HLTA22", "confirmed"), b("BV-HLTB22", "refund_due"), b("BV-HLTC22", "expired"), b("BV-HLTD22", "confirmed")]);
+    // 4 decided, 2 won (the late deposit is refunded, not converted).
+    expect((await createDashboard({ db, now: () => now }).data()).health).toMatchObject({ conversion: 50, cancellation: 0 });
+  });
+
   it("'paid bookings, 7 days' is one number on every page: Vietnam days, cancelled bookings left out of the count", async () => {
     await db.execute(sql`TRUNCATE booking_payments, bookings, departures, discount_codes RESTART IDENTITY CASCADE`);
     const now = new Date("2026-10-20T05:00:00Z"); // Oct 20, 12:00 in Vietnam: the 7 days are Oct 14–20

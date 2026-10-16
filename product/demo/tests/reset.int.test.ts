@@ -58,6 +58,12 @@ describe("demo reset", () => {
     expect(dashboard.bookings7d.count).toBeGreaterThan(3);
     expect(dashboard.daily.filter((d) => d.vnd > 0).length).toBeGreaterThan(10);
     expect(dashboard.booked.thisMonth).toBeGreaterThan(0);
+    // The latest bookings are the sample (made just now), not history; no date has more guests than seats.
+    expect(new Set(dashboard.recent.map((r) => r.status))).toContain("held");
+    expect(rows.filter((r) => r.depositPaidAt && r.createdAt > r.depositPaidAt)).toEqual([]);
+    const taken = new Map<string, number>();
+    for (const r of rows) if (r.status !== "cancelled" && r.status !== "expired") taken.set(r.departureId, (taken.get(r.departureId) ?? 0) + r.seats);
+    for (const x of deps) expect(taken.get(x.id) ?? 0).toBeLessThanOrEqual(x.capacity);
     expect((await createReports({ db }).cash("2026-10-01", "2026-10-31")).collectedVnd).toBeGreaterThan(0);
 
     // Demo staff are editors with their staff role, and sign in from /demo.
