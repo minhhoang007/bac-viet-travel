@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createUnsplash, searchQuery } from "./unsplash";
+import { createUnsplash, isHotlinked, searchQuery } from "./unsplash";
 
 const photo = {
   id: "abc123XYZ",
@@ -46,5 +46,12 @@ describe("unsplash", () => {
     expect(calls).toEqual([]);
     const evil = createUnsplash("KEY", (async () => new Response(JSON.stringify({ ...photo, links: { download_location: "https://evil.example/x" } }))) as unknown as typeof fetch);
     await expect(evil.pick("abc123XYZ")).rejects.toThrow("download link");
+  });
+});
+
+describe("isHotlinked", () => {
+  it("is true only for Unsplash's CDN", () => {
+    expect(isHotlinked("https://images.unsplash.com/photo-1?w=1600")).toBe(true);
+    for (const src of ["/tours/sapa-1.jpg", "https://res.cloudinary.com/x/a.jpg", "https://images.unsplash.com.evil.example/a.jpg"]) expect(isHotlinked(src)).toBe(false);
   });
 });

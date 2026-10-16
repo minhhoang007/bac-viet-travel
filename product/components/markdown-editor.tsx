@@ -8,6 +8,8 @@ import { UNSPLASH_UTM } from "../media/unsplash";
 import { ImageDialog, type ImagePickerText, type LibraryItem, type PickerImage } from "./image-picker";
 
 export interface MarkdownEditorText {
+  /** Name of the toolbar for screen readers. */
+  toolbar: string;
   bold: string;
   heading: string;
   list: string;
@@ -63,7 +65,7 @@ export function MarkdownEditor(props: {
   const button = "inline-flex size-9 items-center justify-center rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-primary";
   return (
     <div className="overflow-hidden rounded-md border border-border focus-within:ring-2 focus-within:ring-primary">
-      <div role="toolbar" aria-label={t.heading} className="flex flex-wrap gap-1 border-b border-border bg-muted p-1" data-testid="markdown-toolbar">
+      <div role="toolbar" aria-label={t.toolbar} className="flex flex-wrap gap-1 border-b border-border bg-muted p-1" data-testid="markdown-toolbar">
         <button type="button" className={button} title={t.bold} aria-label={t.bold} onClick={() => wrap("**", "**", t.sample.bold)}>
           <Bold className="size-4" aria-hidden="true" />
         </button>

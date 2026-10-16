@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState, useSyncExternalStore } from "react";
+import { isHotlinked } from "../media/unsplash";
 import Image from "next/image";
 import Script from "next/script";
 import { Button } from "@/components/ui/button";
@@ -181,7 +182,7 @@ export function BookingForm({
         {tour && (
           <div className="mb-4 flex gap-3 border-b border-border pb-4">
             <div className="relative size-16 shrink-0 overflow-hidden rounded-lg">
-              <Image src={tour.image} alt="" fill sizes="64px" className="object-cover" />
+              <Image src={tour.image} alt="" fill unoptimized={isHotlinked(tour.image)} sizes="64px" className="object-cover" />
             </div>
             <div className="min-w-0 text-sm">
               <p className="font-semibold leading-snug">{tour.title}</p>

@@ -80,6 +80,14 @@ test("an Unsplash photo added to a tour shows on the tour page with its photogra
     await expect(credits).toBeVisible({ timeout: 2_000 });
   }).toPass({ timeout: 30_000 });
   await expect(credits.locator('a[href^="https://unsplash.com/@"]').first()).toHaveAttribute("href", /utm_source=bac_viet_travel/);
+  // Hotlinked: the browser loads the photo from Unsplash itself, never through this site's image optimizer.
+  // The new photo is the last one: open the viewer and step back to it (the grid shows the first few only).
+  const gallery = page.getByTestId("gallery");
+  await gallery.getByRole("button", { name: /^Xem \d+ ảnh$/ }).click();
+  await page.keyboard.press("ArrowLeft");
+  const viewed = gallery.locator("dialog img");
+  await expect(viewed).toHaveAttribute("src", /^https:\/\/images\.unsplash\.com\//);
+  await expect(gallery.locator("dialog")).toContainText("Unsplash");
 });
 
 test("an Unsplash photo inserted in a post's body shows with its caption crediting the photographer", async ({ page }) => {

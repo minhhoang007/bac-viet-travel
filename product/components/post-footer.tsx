@@ -12,7 +12,7 @@ import { DESTINATIONS, isDestination } from "../tours/model";
 import { BlogTourClicks } from "./blog-tour-clicks";
 import { TourCard } from "./tour-card";
 
-export async function PostFooter({ locale, tags, post }: { locale: Locale; tags: string[]; post?: string }) {
+export async function PostFooter({ locale, tags, post }: { locale: Locale; tags: string[]; post: string }) {
   const c = getProductContent(locale);
   const catalog = await getPublicTours();
   const destinations = tags.filter(isDestination);
@@ -23,7 +23,7 @@ export async function PostFooter({ locale, tags, post }: { locale: Locale; tags:
   const b = c.blogFooter;
 
   return (
-    <BlogTourClicks post={post ?? tags.join(",")}>
+    <BlogTourClicks post={post}>
       {tours.length > 0 && (
         <section className="mt-16 border-t border-border pt-10" aria-labelledby="post-tours" data-testid="post-tours">
           <h2 id="post-tours" className="font-heading type-h3">

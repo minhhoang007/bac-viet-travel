@@ -73,3 +73,9 @@ export function createUnsplash(accessKey: string, http: Fetch = fetch) {
     },
   };
 }
+
+/**
+ * Unsplash photos must load from Unsplash itself (its API terms), not through Next's image optimizer, which would
+ * fetch and re-serve them from this site. Their CDN already resizes them: pass this as next/image `unoptimized`.
+ */
+export const isHotlinked = (src: string) => src.startsWith("https://images.unsplash.com/");

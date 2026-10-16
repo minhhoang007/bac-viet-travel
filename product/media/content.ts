@@ -39,6 +39,7 @@ const en: ImagePickerText = {
 export const getImagePickerText = (locale: Locale): ImagePickerText => (locale === "en" ? en : vi);
 
 const editorVi: MarkdownEditorText = {
+  toolbar: "Định dạng nội dung",
   bold: "Chữ đậm",
   heading: "Tiêu đề mục",
   list: "Danh sách",
@@ -50,6 +51,7 @@ const editorVi: MarkdownEditorText = {
 };
 
 const editorEn: MarkdownEditorText = {
+  toolbar: "Formatting",
   bold: "Bold",
   heading: "Section heading",
   list: "List",

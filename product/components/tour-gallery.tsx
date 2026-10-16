@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { UNSPLASH_UTM } from "../media/unsplash";
+import { isHotlinked, UNSPLASH_UTM } from "../media/unsplash";
 import { ChevronLeft, ChevronRight, Images, X } from "lucide-react";
 import { useEffect, useRef, useState, ViewTransition } from "react";
 import { cn } from "@/components/ui/cn";
@@ -95,6 +95,7 @@ export function TourGallery({
             >
               <Image
                 src={src}
+                unoptimized={isHotlinked(src)}
                 alt={i === 0 ? title : ""}
                 fill
                 priority={i === 0}
@@ -171,6 +172,7 @@ export function TourGallery({
             <div className="relative flex-1">
               <Image
                 src={images[index]!}
+                unoptimized={isHotlinked(images[index]!)}
                 alt={`${title} (${index + 1}/${n})`}
                 fill
                 sizes="100vw"

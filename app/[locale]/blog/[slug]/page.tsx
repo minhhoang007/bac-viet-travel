@@ -26,7 +26,7 @@ import * as productLayout from "@/product/layout";
 import { breadcrumbLd } from "@/product/seo";
 
 // Project hook under a post (product/layout.tsx), optional like the other layout hooks.
-const ProductPostFooter = "ProductPostFooter" in productLayout ? (productLayout as { ProductPostFooter?: (p: { locale: Locale; tags: string[] }) => ReactNode }).ProductPostFooter : undefined;
+const ProductPostFooter = "ProductPostFooter" in productLayout ? (productLayout as { ProductPostFooter?: (p: { locale: Locale; tags: string[]; slug: string }) => ReactNode }).ProductPostFooter : undefined;
 
 type Props = { params: Promise<{ locale: Locale; slug: string }> };
 
@@ -175,7 +175,7 @@ export default async function BlogPostPage({ params }: Props) {
         )}
       </article>
       {/* Project hook: what to do next (tours for this destination, a question by chat). */}
-      {ProductPostFooter && <ProductPostFooter locale={locale} tags={post.tags} />}
+      {ProductPostFooter && <ProductPostFooter locale={locale} tags={post.tags} slug={post.slug} />}
       {related.length > 0 && (
         <section className="mt-16 border-t border-border pt-10" aria-labelledby="related-posts" data-testid="related-posts">
           <h2 id="related-posts" className="font-heading type-h3">

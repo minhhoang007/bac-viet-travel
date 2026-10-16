@@ -50,8 +50,8 @@ export function ProductFooter({ locale }: { locale: Locale }) {
 }
 
 /** Under a blog post (starter hook): tours for its destination tags, then a question by chat. */
-export function ProductPostFooter({ locale, tags }: { locale: Locale; tags: string[] }) {
-  return <PostFooter locale={locale} tags={tags} />;
+export function ProductPostFooter({ locale, tags, slug }: { locale: Locale; tags: string[]; slug: string }) {
+  return <PostFooter locale={locale} tags={tags} post={slug} />;
 }
 
 /** Page-change progress bar and the floating quick-contact buttons on every page. */

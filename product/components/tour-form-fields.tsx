@@ -138,7 +138,7 @@ export function ImageList({
   const left = available.filter((a) => !values.includes(a));
   const byId = new Map((library ?? []).map((l) => [l.id, l]));
   const thumb = (ref: string) => byId.get(ref)?.thumb ?? ref;
-  const name = (ref: string) => byId.get(ref)?.name ?? ref;
+  const name = (ref: string) => byId.get(ref)?.name ?? (ref.startsWith("https://images.unsplash.com/") ? "Unsplash" : ref);
   const libraryLeft = (library ?? []).filter((l) => !values.includes(l.id));
   return (
     <fieldset className="grid gap-3">
