@@ -101,6 +101,8 @@ const vi = {
     gallery: "Ảnh tour",
     galleryLabels: {
       viewAll: (n: number) => `Xem ${n} ảnh`,
+      photoBy: "Ảnh:",
+      photosBy: "Một số ảnh:",
       close: "Đóng",
       previous: "Ảnh trước",
       next: "Ảnh sau",
@@ -345,6 +347,8 @@ const en: ProductContent = {
     gallery: "Tour photos",
     galleryLabels: {
       viewAll: (n: number) => `See all ${n} photos`,
+      photoBy: "Photo:",
+      photosBy: "Some photos:",
       close: "Close",
       previous: "Previous photo",
       next: "Next photo",

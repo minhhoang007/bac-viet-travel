@@ -11,6 +11,7 @@ import { hasRole } from "@/core/auth";
 import { localePath } from "@/core/i18n/routing";
 import type { Locale } from "@/config/app";
 import { TourForm } from "@/product/components/tour-form";
+import { getImagePickerText } from "@/product/media/content";
 import { confirmMediaUpload, requestMediaUpload } from "@/app/actions/media";
 import { MediaUploader } from "@/components/media/media-uploader";
 import { getAppContent } from "@/content";
@@ -85,6 +86,7 @@ export default async function EditTourPage({ params, searchParams }: Props) {
           images={staticImages()}
           library={library}
           uploader={uploader}
+          unsplash={process.env.UNSPLASH_ACCESS_KEY ? getImagePickerText(locale) : undefined}
           initialTab={TABS.find((t) => t === tab) ?? "general"}
           canPublish={hasRole(user, "admin")}
         />

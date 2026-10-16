@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { UNSPLASH_UTM } from "../media/unsplash";
 import { ChevronLeft, ChevronRight, Images, X } from "lucide-react";
 import { useEffect, useRef, useState, ViewTransition } from "react";
 import { cn } from "@/components/ui/cn";
@@ -14,11 +15,14 @@ import { tourPhotoTransition } from "./tour-card";
  */
 export function TourGallery({
   images,
+  credits,
   title,
   locale,
   slug,
 }: {
   images: string[];
+  /** Same order as images: photographers of licensed photos (Unsplash), credited where the photo shows. */
+  credits?: ({ name: string; url: string } | null)[];
   title: string;
   locale: Locale;
   slug: string;
@@ -114,6 +118,23 @@ export function TourGallery({
           );
         })}
       </div>
+      {credits?.some(Boolean) && (
+        <p className="mt-2 text-xs text-muted-foreground" data-testid="gallery-credits">
+          {labels.photosBy}{" "}
+          {[...new Map(credits.filter((c): c is { name: string; url: string } => c !== null).map((c) => [c.url, c])).values()].map((c, i) => (
+            <span key={c.url}>
+              {i > 0 && ", "}
+              <a href={c.url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
+                {c.name}
+              </a>
+            </span>
+          ))}{" "}
+          /{" "}
+          <a href={`https://unsplash.com/?${UNSPLASH_UTM}`} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
+            Unsplash
+          </a>
+        </p>
+      )}
       {n > 1 && (
         <button
           type="button"
@@ -156,6 +177,15 @@ export function TourGallery({
                 className="object-contain"
               />
             </div>
+            {credits?.[index] && (
+              <p className="px-4 pt-2 text-center text-xs text-white/80">
+                {labels.photoBy}{" "}
+                <a href={credits[index]!.url} target="_blank" rel="noopener noreferrer" className="underline">
+                  {credits[index]!.name}
+                </a>{" "}
+                / Unsplash
+              </p>
+            )}
             {n > 1 && (
               <div className="flex justify-center gap-3 p-4">
                 <button

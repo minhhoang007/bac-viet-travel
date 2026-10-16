@@ -30,7 +30,8 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: process.env.E2E_UNOPTIMIZED_IMAGES === "1",
     // Library photos (media module): already resized by Cloudinary, served through next/image like the local ones.
-    remotePatterns: features.media ? [{ protocol: "https", hostname: "res.cloudinary.com" }] : [],
+    // Unsplash photos picked for tours (hotlinked, see unsplashImg below).
+    remotePatterns: [...(features.media ? [{ protocol: "https" as const, hostname: "res.cloudinary.com" }] : []), { protocol: "https", hostname: "images.unsplash.com" }],
   },
   // Content read from disk at request time (dynamic product pages, blog…) must ship with the serverless
   // functions; Vercel only bundles files the code imports. Found on a real deployment (reuse finding G10).

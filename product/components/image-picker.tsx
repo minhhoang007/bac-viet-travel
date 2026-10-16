@@ -122,7 +122,7 @@ function LibraryGrid({ items, empty, onPick }: { items: LibraryItem[]; empty: st
   );
 }
 
-function UnsplashPanel({ t, onPick }: { t: ImagePickerText; onPick: (image: PickerImage) => void }) {
+export function UnsplashPanel({ t, onPick }: { t: ImagePickerText; onPick: (image: PickerImage) => void }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<UnsplashResult[] | null>(null);
   const [failed, setFailed] = useState(false);
@@ -142,20 +142,25 @@ function UnsplashPanel({ t, onPick }: { t: ImagePickerText; onPick: (image: Pick
 
   return (
     <div className="grid gap-3" data-testid="unsplash-panel">
-      <form
-        className="flex gap-2"
-        onSubmit={(e) => {
-          // Inside the post form: never submit it.
-          e.preventDefault();
-          e.stopPropagation();
-          search();
-        }}
-      >
-        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t.search} aria-label={t.search} className="h-10 min-w-0 flex-1 rounded-md border border-border bg-background px-3 text-sm" />
-        <Button type="submit" disabled={pending || query.trim().length < 2}>
+      {/* No <form>: this panel sits inside the tour form (a nested form is dropped by the browser and its button
+          would submit the tour). Enter searches instead of submitting. */}
+      <div role="search" className="flex gap-2">
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key !== "Enter") return;
+            e.preventDefault();
+            if (query.trim().length >= 2) search();
+          }}
+          placeholder={t.search}
+          aria-label={t.search}
+          className="h-10 min-w-0 flex-1 rounded-md border border-border bg-background px-3 text-sm"
+        />
+        <Button type="button" onClick={search} disabled={pending || query.trim().length < 2}>
           {pending ? t.searching : t.searchButton}
         </Button>
-      </form>
+      </div>
       {failed && <p className="text-sm text-danger">{t.unavailable}</p>}
       {results && results.length === 0 && <p className="text-sm text-muted-foreground">{t.noResults}</p>}
       {results && results.length > 0 && (
