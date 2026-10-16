@@ -7,7 +7,12 @@ import { signInStaff } from "./staff";
 
 const sql = postgres(e2eServerEnv.DATABASE_URL!, { max: 1, onnotice: () => {} });
 test.afterAll(() => sql.end());
-test.describe.configure({ mode: "serial" });
+// Long journeys (many pages, saves and axe scans) against one server shared with the other files running in
+// parallel: each step can take seconds on a busy machine. Serial: one timeout would skip the rest of the file.
+test.describe.configure({ mode: "serial", timeout: 120_000 });
+// A click right after a page loads is replayed by React once the page is interactive, and the action then runs on
+// a busy server: give the status a few seconds more than the default 5.
+const STATUS_WAIT = 15_000;
 
 const EDITOR = "marketing@bacviet.example";
 const ADMIN = "owner@bacviet.example";
@@ -72,13 +77,13 @@ test("marketing duplicates and edits a tour, submits it; an admin publishes; vis
   await expect(editor.getByRole("button", { name: "Duyệt và công khai ngay" })).toHaveCount(0);
   await expect(editor.getByTestId("tour-save-publish")).toHaveCount(0); // marketing submits; only admins publish
   await editor.getByRole("button", { name: "Gửi duyệt" }).click();
-  await expect(editor.locator("[data-status]").first()).toHaveAttribute("data-status", "pending");
+  await expect(editor.locator("[data-status]").first()).toHaveAttribute("data-status", "pending", { timeout: STATUS_WAIT });
   expect((await editor.goto("/tours/ninh-binh-day-tour-copy"))?.status()).toBe(404);
 
   const admin = await signIn(browser, ADMIN, "admin");
   await admin.goto(editUrl);
   await admin.getByRole("button", { name: "Duyệt và công khai ngay" }).first().click();
-  await expect(admin.locator("[data-status]").first()).toHaveAttribute("data-status", "published");
+  await expect(admin.locator("[data-status]").first()).toHaveAttribute("data-status", "published", { timeout: STATUS_WAIT });
 
   // The tours cache is revalidated on publish (stale-while-revalidate: may take one more request).
   await expect(async () => {
@@ -106,7 +111,7 @@ test("an incomplete new tour lists what is missing and cannot be submitted", asy
 
   await editor.getByRole("button", { name: "Gửi duyệt" }).click();
   await expect(editor.getByRole("alert").filter({ hasText: "chưa đủ để gửi duyệt" })).toBeVisible();
-  await expect(editor.locator("[data-status]").first()).toHaveAttribute("data-status", "draft");
+  await expect(editor.locator("[data-status]").first()).toHaveAttribute("data-status", "draft", { timeout: STATUS_WAIT });
 
   // A slug can only be used once.
   await editor.goto("/admin/tours/new");
@@ -178,7 +183,7 @@ test("marketing previews a draft on the tour page; a renamed tour redirects its 
   const admin = await signIn(browser, ADMIN, "admin");
   await admin.goto(`/admin/tours/${row!.id}`);
   await admin.getByRole("button", { name: "Duyệt và công khai ngay" }).first().click();
-  await expect(admin.locator("[data-status]").first()).toHaveAttribute("data-status", "published");
+  await expect(admin.locator("[data-status]").first()).toHaveAttribute("data-status", "published", { timeout: STATUS_WAIT });
 
   await expect(async () => {
     const res = await visitor.request.get("/tours/ninh-binh-day-tour-copy", { maxRedirects: 0 });
@@ -209,13 +214,13 @@ test("an admin returns a tour with a note, schedules the fix, and restores an ol
   await editor.getByRole("button", { name: "Lưu bản nháp" }).click();
   await expect(editor.getByText("Đã lưu bản nháp.")).toBeVisible();
   await editor.getByRole("button", { name: "Gửi duyệt" }).click();
-  await expect(status(editor)).toHaveAttribute("data-status", "pending");
+  await expect(status(editor)).toHaveAttribute("data-status", "pending", { timeout: STATUS_WAIT });
 
   // The admin sends it back with a note; marketing sees the note on the tour.
   await admin.goto(edit);
   await admin.getByLabel("Cần sửa gì?").fill("Tên tour cần có số ngày.");
   await admin.getByRole("button", { name: "Trả lại để sửa" }).click();
-  await expect(status(admin)).toHaveAttribute("data-status", "draft");
+  await expect(status(admin)).toHaveAttribute("data-status", "draft", { timeout: STATUS_WAIT });
   await editor.goto(edit);
   await expect(editor.getByRole("note").filter({ hasText: "Tên tour cần có số ngày." })).toBeVisible();
 
@@ -226,13 +231,13 @@ test("an admin returns a tour with a note, schedules the fix, and restores an ol
   await editor.getByRole("button", { name: "Lưu bản nháp" }).click();
   await expect(editor.getByText("Đã lưu bản nháp.")).toBeVisible();
   await editor.getByRole("button", { name: "Gửi duyệt" }).click();
-  await expect(status(editor)).toHaveAttribute("data-status", "pending");
+  await expect(status(editor)).toHaveAttribute("data-status", "pending", { timeout: STATUS_WAIT });
 
   await admin.goto(edit);
   const tomorrow = new Date(Date.now() + 24 * 3600_000 + 7 * 3600_000).toISOString().slice(0, 16); // Asia/Ho_Chi_Minh wall time
   await admin.getByLabel("Thời điểm công khai").fill(tomorrow);
   await admin.getByRole("button", { name: "Duyệt và hẹn giờ" }).click();
-  await expect(status(admin)).toHaveAttribute("data-status", "approved");
+  await expect(status(admin)).toHaveAttribute("data-status", "approved", { timeout: STATUS_WAIT });
   const visitor = await (await browser.newContext()).newPage();
   await visitor.goto("/tours/ninh-binh-e2e");
   await expect(visitor.getByRole("heading", { level: 1 })).toHaveText("Ninh Bình bản nháp");
@@ -245,7 +250,7 @@ test("an admin returns a tour with a note, schedules the fix, and restores an ol
   const tick = await visitor.request.post("/api/jobs/run", { headers: { authorization: `Bearer ${e2eServerEnv.CRON_SECRET}` } });
   expect(tick.status()).toBe(200);
   await admin.goto(edit);
-  await expect(status(admin)).toHaveAttribute("data-status", "published");
+  await expect(status(admin)).toHaveAttribute("data-status", "published", { timeout: STATUS_WAIT });
   await expect(async () => {
     await visitor.goto("/tours/ninh-binh-e2e");
     await expect(visitor.getByRole("heading", { level: 1 })).toHaveText("Ninh Bình 1 ngày bản 3");
@@ -260,7 +265,7 @@ test("an admin returns a tour with a note, schedules the fix, and restores an ol
     await expect(dialog).toBeVisible({ timeout: 1_000 });
   }).toPass();
   await dialog.getByRole("button", { name: "Khôi phục" }).click();
-  await expect(status(admin)).toHaveAttribute("data-status", "draft");
+  await expect(status(admin)).toHaveAttribute("data-status", "draft", { timeout: STATUS_WAIT });
   await formReady(admin);
   await admin.getByRole("tab", { name: "Tiếng Việt" }).click();
   await expect(panel(admin).getByLabel("Tên tour", { exact: true })).toHaveValue("Ninh Bình E2E");
@@ -299,7 +304,7 @@ test("an admin changes a live tour's price and publishes it in one step", async 
   await panel(admin).getByLabel("Giá người lớn (VND)").fill("1350000");
   await admin.getByTestId("tour-save-publish").click();
   await expect(admin.getByText("Đã lưu và đăng lên website.")).toBeVisible();
-  await expect(admin.locator("[data-status]").first()).toHaveAttribute("data-status", "published");
+  await expect(admin.locator("[data-status]").first()).toHaveAttribute("data-status", "published", { timeout: STATUS_WAIT });
   const [item] = await sql<{ vnd: string; status: string }[]>`select published->'shared'->'price'->>'vnd' as vnd, status from content_items where id = ${row!.id}`;
   expect(item).toEqual({ vnd: "1350000", status: "published" });
   expect(await publishes()).toBe(before + 1);

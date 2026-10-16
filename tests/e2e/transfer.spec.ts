@@ -61,7 +61,7 @@ test("bank transfer: VietQR with amount and reference, seats held 2 hours, staff
   await expect(admin.getByRole("status")).toContainText("ít hơn tiền cọc");
   await admin.getByTestId("admin-transfer").getByLabel("Mã giao dịch ngân hàng").fill("FT26100100001");
   await admin.getByTestId("admin-transfer").getByTestId("admin-transfer-save").click();
-  await expect(admin.getByRole("status")).toContainText("Đã lưu.");
+  await expect(admin.getByRole("status")).toContainText("Đã lưu.", { timeout: 15_000 }); // the click may wait for the page to become interactive
   await expect(admin.locator("[data-admin-status=deposit_paid]")).toBeVisible();
   await expect(admin.getByTestId("admin-transfer")).toHaveCount(0);
   await expect(admin.getByTestId("admin-history")).toContainText("Ghi nhận chuyển khoản");

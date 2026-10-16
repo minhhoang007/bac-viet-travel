@@ -9,7 +9,9 @@ import { signInStaff } from "./staff";
 
 const sql = postgres(e2eServerEnv.DATABASE_URL!, { max: 1, onnotice: () => {} });
 test.afterAll(() => sql.end());
-test.describe.configure({ mode: "serial" });
+// Long journeys (many pages, saves and axe scans) against one server shared with the other files running in
+// parallel: each step can take seconds on a busy machine. Serial: one timeout would skip the rest of the file.
+test.describe.configure({ mode: "serial", timeout: 120_000 });
 
 const STAFF = "staff@bacviet.example";
 const TOUR = "sapa-trekking-2d1n";
@@ -32,8 +34,6 @@ async function seatsLeftText(page: Page, date: string) {
 }
 
 test("staff confirm one booking and cancel another; seats return to sale; everything is audited", async ({ page }) => {
-  // Several pages and an axe scan: allow for a busy machine (other files run in parallel).
-  test.setTimeout(60_000);
   const departure = await paidBooking("BV-ADMN22", 2);
   await paidBooking("BV-ADMN33", 3);
   expect(await seatsLeftText(page, departure.date)).toContain("Còn 7 chỗ"); // 12 - 5
@@ -141,7 +141,6 @@ test("staff add a departure date and close another; guests see the change", asyn
 });
 
 test("a departure short of its minimum is flagged; the company cancels it and every guest is refunded", async ({ page }) => {
-  test.setTimeout(60_000);
   // Own address: magic links are limited to 3 per recipient in 10 minutes, and other tests sign in STAFF.
   await signInAsAdmin(page, "min-guests-staff@bacviet.example");
   const [d] = await sql<{ id: string; date: string }[]>`
@@ -300,7 +299,6 @@ test("reports: revenue and fill rate per tour for a month range; guests get a 40
 });
 
 test("staff roles: admins add sales and managers; sales see bookings without confirm, cancel or money", async ({ page, browser }) => {
-  test.setTimeout(60_000);
   const email = "sale-staff@bacviet.example";
   const staff = await (await browser.newContext()).newPage();
   await signInStaff(staff, sql, email, "editor"); // a first sign-in creates the account

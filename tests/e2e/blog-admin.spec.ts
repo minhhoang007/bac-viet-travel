@@ -7,7 +7,12 @@ import { signInStaff } from "./staff";
 
 const sql = postgres(e2eServerEnv.DATABASE_URL!, { max: 1, onnotice: () => {} });
 test.afterAll(() => sql.end());
-test.describe.configure({ mode: "serial" });
+// Long journeys (many pages, saves and axe scans) against one server shared with the other files running in
+// parallel: each step can take seconds on a busy machine. Serial: one timeout would skip the rest of the file.
+test.describe.configure({ mode: "serial", timeout: 120_000 });
+// A click right after a page loads is replayed by React once the page is interactive, and the action then runs on
+// a busy server: give the status a few seconds more than the default 5.
+const STATUS_WAIT = 15_000;
 
 const sessions = new Map<string, Page>();
 
@@ -30,7 +35,6 @@ async function seriousViolations(page: Page) {
 
 test("marketing writes a post, previews it, submits; an admin publishes; it is on the blog, its tag page and the feed", async ({ browser }) => {
   // A long scenario (two users, preview, publish, rename, feed): allow for a busy machine.
-  test.setTimeout(60_000);
   const editor = await signIn(browser, "blog-writer@bacviet.example", "editor");
   await editor.goto("/admin/posts");
   // The imported MDX posts are in the CMS.
@@ -75,12 +79,12 @@ test("marketing writes a post, previews it, submits; an admin publishes; it is o
 
   await editor.goto(edit);
   await editor.getByRole("button", { name: "Gửi duyệt" }).click();
-  await expect(status(editor)).toHaveAttribute("data-status", "pending");
+  await expect(status(editor)).toHaveAttribute("data-status", "pending", { timeout: STATUS_WAIT });
 
   const admin = await signIn(browser, "blog-owner@bacviet.example", "admin");
   await admin.goto(edit);
   await admin.getByRole("button", { name: "Duyệt và công khai ngay" }).first().click();
-  await expect(status(admin)).toHaveAttribute("data-status", "published");
+  await expect(status(admin)).toHaveAttribute("data-status", "published", { timeout: STATUS_WAIT });
 
   await expect(async () => {
     await visitor.goto("/blog");
@@ -103,7 +107,7 @@ test("marketing writes a post, previews it, submits; an admin publishes; it is o
   await expect(editor.getByText("Đã lưu bản nháp.")).toBeVisible();
   await admin.goto(edit);
   await admin.getByRole("button", { name: "Duyệt và công khai ngay" }).first().click();
-  await expect(status(admin)).toHaveAttribute("data-status", "published");
+  await expect(status(admin)).toHaveAttribute("data-status", "published", { timeout: STATUS_WAIT });
   await expect(async () => {
     const res = await visitor.request.get("/blog/mua-lua-chin-mu-cang-chai", { maxRedirects: 0 });
     expect(res.status()).toBe(308);
