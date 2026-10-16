@@ -16,6 +16,8 @@ export interface MarkdownEditorText {
   link: string;
   note: string;
   image: string;
+  /** First option of the tour list (inserts `<Tour slug="…" />`). */
+  tour: string;
   /** Placeholders inserted when nothing is selected. */
   sample: { bold: string; heading: string; item: string; link: string; note: string };
   photoBy: string;
@@ -35,6 +37,8 @@ export function MarkdownEditor(props: {
   describedBy?: string;
   t: MarkdownEditorText;
   picker: { t: ImagePickerText; library?: LibraryItem[]; uploader?: ReactNode; unsplash: boolean };
+  /** Published tours, for a card inside the post (`<Tour slug="…" />`). */
+  tours?: { slug: string; title: string }[];
 }) {
   const area = useRef<HTMLTextAreaElement>(null);
   const { t } = props;
@@ -87,6 +91,25 @@ export function MarkdownEditor(props: {
             {t.image}
           </button>
         </ImageDialog>
+        {props.tours && props.tours.length > 0 && (
+          <select
+            aria-label={t.tour}
+            value=""
+            onChange={(e) => {
+              const slug = e.target.value;
+              if (slug) edit(() => ({ text: `\n\n<Tour slug="${slug}" />\n\n` }));
+            }}
+            className="h-9 max-w-48 rounded-md border border-border bg-background px-2 text-sm"
+            data-testid="insert-tour"
+          >
+            <option value="">{t.tour}</option>
+            {props.tours.map((tour) => (
+              <option key={tour.slug} value={tour.slug}>
+                {tour.title}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
       <textarea
         ref={area}

@@ -19,6 +19,10 @@ export interface ArticleLd {
   datePublished: string;
   dateModified?: string;
   author?: string;
+  /** The author is a team or company (schema.org Organization), not a person. */
+  authorIsOrganization?: boolean;
+  /** A page about the author. */
+  authorUrl?: string;
   publisher: string;
   locale: string;
 }
@@ -36,7 +40,7 @@ export function articleJsonLd(a: ArticleLd): Record<string, unknown> {
     datePublished: a.datePublished,
     dateModified: a.dateModified ?? a.datePublished,
     ...(a.image ? { image: [a.image] } : {}),
-    ...(a.author ? { author: { "@type": "Person", name: a.author } } : {}),
+    ...(a.author ? { author: { "@type": a.authorIsOrganization ? "Organization" : "Person", name: a.author, ...(a.authorUrl ? { url: a.authorUrl } : {}) } } : {}),
     publisher: { "@type": "Organization", name: a.publisher },
   };
 }

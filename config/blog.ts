@@ -6,6 +6,10 @@ export const blogConfig: BlogConfig = {
   ...blogDefaults,
   source: "content",
   defaultAuthor: "Bắc Việt Travel",
+  // Writers' profiles: add a person here (name as typed in the post's "Author" field) with a role and a short bio.
+  authors: {
+    "Bắc Việt Travel": { organization: true, url: "/about" },
+  },
   // Tags whose slug is a destination ("ha-long", "ninh-binh", "sapa") also pick the tours shown under a post.
   tagLabels: {
     "ha-long": { vi: "Hạ Long", en: "Ha Long" },

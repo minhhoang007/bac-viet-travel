@@ -3,7 +3,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
 import { ContentResult, WorkflowPanel } from "@/app/_components/workflow-panel";
-import { savePost } from "@/app/actions/posts";
+import { savePostInPlace } from "@/app/actions/posts";
+import { SaveInPlaceForm } from "@/components/content/save-in-place-form";
 import { POST_CONTENT_TYPE } from "@/bootstrap/content-types";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { Notice } from "@/components/feedback/notice";
@@ -18,8 +19,10 @@ import { confirmMediaUpload, requestMediaUpload } from "@/app/actions/media";
 import { getContainer } from "@/bootstrap/container";
 import { MediaUploader } from "@/components/media/media-uploader";
 import { ImagePicker } from "@/product/components/image-picker";
-import { getImagePickerText, getMarkdownEditorText } from "@/product/media/content";
+import { getImagePickerText, getMarkdownEditorText, getSeoCheckText } from "@/product/media/content";
 import { MarkdownEditor } from "@/product/components/markdown-editor";
+import { PostSeoCheck } from "@/product/components/post-seo-check";
+import { getPublicTours } from "@/app/_lib/tours";
 
 type Props = { params: Promise<{ locale: Locale; id: string }>; searchParams: Promise<{ result?: string }> };
 
@@ -75,6 +78,8 @@ export default async function EditPostPage({ params, searchParams }: Props) {
     />
   ) : undefined;
   const unsplash = Boolean(process.env.UNSPLASH_ACCESS_KEY);
+  const facts = getAppContent(locale).blog.facts;
+  const factsData = (typeof d.facts === "object" && d.facts ? d.facts : {}) as Partial<Record<"bestTime" | "duration" | "budget" | "gettingThere", string>>;
   const credit = d.coverCredit as { name?: unknown; url?: unknown } | undefined;
   const cover = str("cover") ? { src: str("cover"), credit: typeof credit?.name === "string" && typeof credit.url === "string" ? { name: credit.name, url: credit.url } : undefined } : undefined;
 
@@ -95,7 +100,8 @@ export default async function EditPostPage({ params, searchParams }: Props) {
             </ul>
           </Notice>
         )}
-        <form action={savePost} className="grid gap-4" key={item.revision}>
+        {/* Saves in place (no reload): text, cursor and scroll stay; on a conflict the text being written is kept. */}
+        <SaveInPlaceForm id="post-form" action={savePostInPlace} messages={c.result} className="grid gap-4">
           <input type="hidden" name="locale" value={locale} />
           <input type="hidden" name="id" value={item.id} />
           <input type="hidden" name="revision" value={item.revision} />
@@ -142,6 +148,17 @@ export default async function EditPostPage({ params, searchParams }: Props) {
               <input id="post-author" name="author" maxLength={100} defaultValue={str("author")} className={inputClass} />
             </Field>
           </div>
+          <fieldset className="grid gap-3 rounded-md border border-border p-4" data-testid="post-facts">
+            <legend className="px-1 text-sm font-medium">{facts.title}</legend>
+            <p className="text-xs text-muted-foreground">{facts.hint}</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {(["bestTime", "duration", "budget", "gettingThere"] as const).map((k) => (
+                <Field key={k} label={facts[k]} id={`post-facts-${k}`}>
+                  <input id={`post-facts-${k}`} name={`facts.${k}`} maxLength={120} defaultValue={factsData[k] ?? ""} className={inputClass} />
+                </Field>
+              ))}
+            </div>
+          </fieldset>
           <Field label={c.fields.translationKey} hint={c.fields.translationKeyHint} id="post-translation">
             <input id="post-translation" name="translationKey" aria-describedby="post-translation-hint" maxLength={100} defaultValue={str("translationKey")} className={inputClass} />
           </Field>
@@ -153,15 +170,17 @@ export default async function EditPostPage({ params, searchParams }: Props) {
               defaultValue={str("body")}
               t={getMarkdownEditorText(locale)}
               picker={{ t: getImagePickerText(locale), library, uploader, unsplash }}
+              tours={(await getPublicTours()).list(locale).map((tour) => ({ slug: tour.slug, title: tour.title }))}
             />
           </Field>
           <div className="sticky bottom-0 -mx-1 bg-background/95 px-1 py-3 backdrop-blur">
             <SubmitButton label={c.save} pendingLabel={c.saving} />
           </div>
-        </form>
+        </SaveInPlaceForm>
       </div>
       <aside className="lg:sticky lg:top-24 lg:self-start">
         <WorkflowPanel item={item} versions={await content.versions(item.id)} locale={locale} isAdmin={hasRole(user, "admin")} returnTo={`/admin/posts/${item.id}`} />
+        <PostSeoCheck formId="post-form" t={getSeoCheckText(locale)} />
       </aside>
     </div>
   );

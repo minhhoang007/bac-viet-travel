@@ -65,14 +65,19 @@ export function createUnsplash(accessKey: string, http: Fetch = fetch) {
       if (download.origin !== API) throw new Error("unsplash download link");
       await get(download.toString());
       return {
-        // Unsplash serves the size and format asked for (imgix parameters): wide enough for a full-width cover.
-        src: `${photo.urls.raw}&w=1600&q=80&auto=format&fit=crop`,
+        // Unsplash serves the size and format asked for (imgix parameters): wide enough for a full-width cover. `ar`
+        // is the photo's own shape (no crop): pages read it to keep the image's space before it loads.
+        src: `${photo.urls.raw}&w=1600&q=80&auto=format&fit=crop&ar=${ratio(photo.width, photo.height)}`,
         alt: photo.alt_description ?? "",
         credit: { name: photo.user.name, url: withUtm(photo.user.links.html) },
       };
     },
   };
 }
+
+const gcd = (a: number, b: number): number => (b ? gcd(b, a % b) : a);
+/** "3:2" from 6000 × 4000 (imgix `ar`). */
+const ratio = (w: number, h: number) => `${w / gcd(w, h)}:${h / gcd(w, h)}`;
 
 /**
  * Unsplash photos must load from Unsplash itself (its API terms), not through Next's image optimizer, which would

@@ -210,7 +210,7 @@ export interface AppContent {
       create: string;
       saving: string;
       problemsTitle: string;
-      result: { saved: string; created: string; slug_taken: string; invalid: string };
+      result: { saved: string; created: string; slug_taken: string; invalid: string; conflict: string; failed: string };
     };
     done: string;
     failed: string;
@@ -226,6 +226,12 @@ export interface AppContent {
     tagTitle: string;
     /** Heading of the posts sharing a tag, under a post. */
     related: string;
+    /** Table of contents of a post (its ## headings). */
+    toc: string;
+    /** Label of the writer's box under a post. */
+    aboutAuthor: string;
+    /** "Quick facts" box at the top of a guide, and its fields in the editor. */
+    facts: { title: string; hint: string; bestTime: string; duration: string; budget: string; gettingThere: string };
     tags: string;
     empty: string;
     previous: string;

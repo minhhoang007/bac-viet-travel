@@ -18,6 +18,7 @@ import { MarketingTags } from "./analytics/marketing-tags";
 import { ConsentBanner } from "@/components/analytics/consent-banner";
 import { getAppContent } from "@/content";
 import { PostFooter } from "./components/post-footer";
+import { PostTourEmbed } from "./components/post-tour-embed";
 import { staffCan } from "./manifest";
 import { SiteFooter } from "./components/site-footer";
 import { SiteHeader } from "./components/site-header";
@@ -59,8 +60,13 @@ export function ProductFooter({ locale }: { locale: Locale }) {
 }
 
 /** Under a blog post (starter hook): tours for its destination tags, then a question by chat. */
-export function ProductPostFooter({ locale, tags, slug }: { locale: Locale; tags: string[]; slug: string }) {
-  return <PostFooter locale={locale} tags={tags} post={slug} />;
+export function ProductPostFooter({ locale, tags, slug, title }: { locale: Locale; tags: string[]; slug: string; title: string }) {
+  return <PostFooter locale={locale} tags={tags} post={slug} title={title} />;
+}
+
+/** Blocks inside a post (starter hook): `<Tour slug="…" />` draws that tour's card. Other names: nothing. */
+export function ProductPostEmbed({ locale, name, slug, post }: { locale: Locale; name: string; slug: string; post: string }) {
+  return name === "Tour" ? <PostTourEmbed locale={locale} slug={slug} post={post} /> : null;
 }
 
 /** Page-change progress bar and the floating quick-contact buttons on every page. */

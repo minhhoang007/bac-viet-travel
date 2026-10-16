@@ -125,6 +125,25 @@ Trong khung quy trình duyệt, mở **Lịch sử phiên bản** để xem các
 - Bấm **Khôi phục** để chép một phiên bản cũ vào bản nháp.
 - Bản đang hiện trên web không đổi cho tới khi bản khôi phục được duyệt.
 
+## 10. Viết bài cẩm nang dài
+
+- **Mục lục tự tạo:** chia bài bằng tiêu đề `## Tên mục`. Bài có từ 3 mục trở lên sẽ có mục lục ở đầu bài, bấm vào
+  là nhảy tới mục đó. Dùng `### Mục con` cho ý nhỏ bên trong.
+- **Chèn tour giữa bài:** gõ `<Tour slug="ha-long-cruise-2d1n" />` trên một dòng riêng, ngay sau đoạn nói về nơi đó.
+  Lấy `slug` ở đường dẫn của tour (phần sau `/tours/`). Tour chưa đăng hoặc gõ sai slug thì không hiện gì.
+- **Chèn tour nhanh:** trên thanh công cụ có ô **Chèn tour…**, chọn tour là đoạn mã được chèn đúng chỗ con trỏ.
+- **Tóm tắt nhanh:** 4 ô (Thời điểm đẹp, Nên đi, Chi phí ước tính, Di chuyển) hiện thành khung ở đầu bài. Ô nào
+  để trống thì không hiện.
+- **Kiểm tra trước khi gửi** (cột bên phải): độ dài tiêu đề và mô tả, ảnh bìa, số mục, độ dài bài, ảnh thiếu mô
+  tả, có thẻ tour chưa. Chỉ là gợi ý, không chặn việc lưu hay gửi duyệt.
+- **Lưu bài:** bấm **Lưu bản nháp** hoặc **Ctrl+S**. Trang không tải lại, chữ đang viết giữ nguyên. Nếu người khác
+  vừa lưu cùng bài, phần bạn đang viết vẫn còn: sao chép lại trước khi tải lại trang.
+- **Ngày cập nhật:** sửa chữ của một bài đã đăng thì ngày "Cập nhật" tự đặt là hôm nay.
+- **Mục hỏi đáp:** thêm mục `## Câu hỏi thường gặp`, mỗi câu hỏi là một `### Câu hỏi?` và câu trả lời viết ngay
+  bên dưới. Trang ghi kèm dữ liệu hỏi đáp (FAQPage) để Google và các công cụ tìm kiếm AI hiểu đúng câu hỏi và câu trả
+  lời. Lưu ý: từ 2023 Google chỉ hiện khung hỏi đáp mở rộng cho trang chính phủ và y tế, nên đừng trông vào khung đó;
+  giá trị chính là trả lời đúng điều khách hay hỏi.
+
 ## Câu hỏi thường gặp
 
 **Tôi lưu rồi mà web không đổi?**

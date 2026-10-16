@@ -9,6 +9,7 @@ import { localePath } from "@/core/i18n/routing";
 import { appConfig } from "@/config/app";
 import { blogConfig } from "@/config/blog";
 import { features } from "@/config/features";
+import { withUpdated } from "@/modules/blog";
 
 const locale = z.enum(["vi", "en"]).catch("vi");
 const uuid = z.uuid();
@@ -29,6 +30,13 @@ const resultOf = (error: unknown) =>
 const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: appConfig.timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 
 const text = (formData: FormData, key: string, max: number) => String(formData.get(key) ?? "").trim().slice(0, max);
+
+const FACTS = ["bestTime", "duration", "budget", "gettingThere"] as const;
+/** The quick facts filled in (none: no `facts` at all, so the published post schema accepts it). */
+function facts(formData: FormData): { facts?: Record<string, string> } {
+  const filled = Object.fromEntries(FACTS.map((k) => [k, text(formData, `facts.${k}`, 120)]).filter(([, v]) => v));
+  return Object.keys(filled).length ? { facts: filled } : {};
+}
 
 /**
  * Post fields from the form as stored (incomplete drafts are fine; the content type's validate() lists what is
@@ -57,6 +65,7 @@ function postData(formData: FormData): Record<string, unknown> {
       ? { coverCredit: { name: text(formData, "coverCreditName", 120), url: text(formData, "coverCreditUrl", 500) } }
       : {}),
     ...optional("author", 100),
+    ...facts(formData),
     ...optional("translationKey", 100),
     body: String(formData.get("body") ?? "").slice(0, 100_000),
   };
@@ -81,21 +90,23 @@ export async function createPost(formData: FormData): Promise<void> {
   redirect(localePath(l, target));
 }
 
-/** Saves the working copy. A new slug of a live post applies on publish; the old URL then redirects. */
-export async function savePost(formData: FormData): Promise<void> {
+/**
+ * Saves the working copy and answers in place: the editor stays as it is (text, cursor, scroll, history), and on a
+ * conflict or an error what the writer typed is still there. A new slug of a live post applies on publish.
+ */
+export async function savePostInPlace(formData: FormData): Promise<{ result: string; revision?: number }> {
   const { content, user, container } = await context();
-  const l = locale.parse(formData.get("locale"));
   const id = uuid.parse(formData.get("id"));
   const item = await content.get(id);
   if (!item || item.type !== POST_CONTENT_TYPE) notFound();
-  let result = "saved";
   try {
     const slug = text(formData, "slug", 110).toLowerCase();
-    await content.saveDraft(user, id, { revision: revision.parse(formData.get("revision")), slug, data: postData(formData) });
+    const saved = await content.saveDraft(user, id, { revision: revision.parse(formData.get("revision")), slug, data: withUpdated(postData(formData), item.published, today()) });
+    return { result: "saved", revision: saved.revision };
   } catch (error) {
     unstable_rethrow(error);
-    result = error instanceof z.ZodError ? "invalid" : resultOf(error);
+    const result = error instanceof z.ZodError ? "invalid" : resultOf(error);
     if (result === "failed") container.logger.warn("posts.save_failed", { id, error });
+    return { result };
   }
-  redirect(localePath(l, `/admin/posts/${id}?result=${result}`));
 }

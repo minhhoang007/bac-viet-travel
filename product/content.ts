@@ -213,6 +213,8 @@ const vi = {
   blogFooter: {
     tours: "Tour cho chuyến đi này",
     popular: "Tour được đặt nhiều",
+    seeTour: "Xem tour",
+    share: { label: "Chia sẻ bài viết:", share: "Chia sẻ (Zalo, Messenger…)", facebook: "Facebook", copy: "Sao chép link", copied: "Đã sao chép" },
     askTitle: "Cần tư vấn lịch trình?",
     askText: "Nhắn cho chúng tôi ngày đi và số người, hướng dẫn viên địa phương sẽ gợi ý trong ngày.",
   },
@@ -483,6 +485,8 @@ const en: ProductContent = {
   blogFooter: {
     tours: "Tours for this trip",
     popular: "Popular tours",
+    seeTour: "See the tour",
+    share: { label: "Share this guide:", share: "Share", facebook: "Facebook", copy: "Copy link", copied: "Copied" },
     askTitle: "Planning your trip?",
     askText: "Send us your dates and group size; a local guide will suggest a plan the same day.",
   },
