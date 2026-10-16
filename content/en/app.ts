@@ -261,6 +261,8 @@ export const app: AppContent = {
         created: "Draft created. Write the content, then submit for review.",
         slug_taken: "Another post already uses this URL.",
         invalid: "Invalid data. Please check the fields.",
+        conflict: "Someone else just saved this post. Your text is still here: copy it before reloading to see their version.",
+        failed: "Not saved. Your text is still here; try again in a few minutes.",
       },
     },
     done: "Done.",
