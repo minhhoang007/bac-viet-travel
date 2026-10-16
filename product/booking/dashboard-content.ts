@@ -5,7 +5,7 @@ const vi = {
   kpi: {
     collected: "Đã thu tháng này",
     bookings: "Đơn đặt cọc 7 ngày",
-    value: "Giá trị đơn 7 ngày",
+    value: "Giá trị đơn đặt cọc 7 ngày",
     fill: "Lấp chỗ 30 ngày tới",
   },
   vsLastMonth: (pct: string) => `${pct} so với cùng kỳ tháng trước`,
@@ -39,7 +39,7 @@ const en: typeof vi = {
   kpi: {
     collected: "Collected this month",
     bookings: "Paid bookings, 7 days",
-    value: "Booking value, 7 days",
+    value: "Value of paid bookings, 7 days",
     fill: "Seats filled, next 30 days",
   },
   vsLastMonth: (pct) => `${pct} vs same days last month`,

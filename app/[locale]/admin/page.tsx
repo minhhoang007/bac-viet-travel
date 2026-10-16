@@ -18,6 +18,9 @@ const DAYS = 30;
 // `adminOverview` figures: e.g. a business overview with its own queries, charts and to-do lists.
 const ProductAdminOverview =
   "ProductAdminOverview" in productLayout ? (productLayout as { ProductAdminOverview?: (p: { locale: Locale }) => Promise<ReactNode> | ReactNode }).ProductAdminOverview : undefined;
+// Optional `productSiteFigures = false`: the project's overview replaces the starter's site figures (sign-ups, views,
+// storage) entirely instead of keeping them one click away, when they mean nothing to its staff.
+const showSiteFigures = !("productSiteFigures" in productLayout) || (productLayout as { productSiteFigures?: boolean }).productSiteFigures !== false;
 
 function List({ title, rows, empty }: { title: string; rows: { label: string; value: number }[]; empty: string }) {
   return (
@@ -107,7 +110,7 @@ export default async function AdminOverviewPage({ params }: { params: Promise<{ 
           ))}
         </div>
       )}
-      {ProductAdminOverview ? (
+      {ProductAdminOverview && !showSiteFigures ? null : ProductAdminOverview ? (
         // The project's own overview comes first; the starter's site figures stay one click away.
         <details className="rounded-lg border border-border p-4" data-testid="site-figures">
           <summary className="cursor-pointer font-semibold">{c.siteFigures}</summary>

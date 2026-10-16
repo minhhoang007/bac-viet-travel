@@ -9,7 +9,8 @@ import { bookingPayments, bookings, departures, type Booking, type BookingPaymen
 import { bookingStatusEmail, reminderEmail } from "./emails";
 import type { ReceiveTransferResult } from "./deposits";
 import { createDepartureAdmin, type DepartureAdmin } from "./admin-departures";
-import { addDays, bookingRules, vietnamDayStart, vietnamToday } from "./rules";
+import { addDays, bookingRules, vietnamToday } from "./rules";
+import { paidBookings } from "./metrics";
 import { canBecome, refundOwed, SOLD_STATUSES, takesSeats } from "./status";
 import { contactUpdateSchema, manualBookingSchema } from "./validations";
 
@@ -389,16 +390,8 @@ export function createBookingAdmin(deps: {
     async stats() {
       const at = now();
       const today = vietnamToday(at);
-      const dayStart = vietnamDayStart(today);
-      const weekStart = new Date(dayStart.getTime() - 6 * 86_400_000);
-      const [paid] = await db
-        .select({
-          today: sql<number>`count(*) filter (where ${bookings.depositPaidAt} >= ${dayStart.toISOString()})::int`,
-          week: sql<number>`count(*)::int`,
-          deposits: sql<number>`coalesce(sum(${bookings.depositVnd}), 0)::bigint`,
-        })
-        .from(bookings)
-        .where(gte(bookings.depositPaidAt, weekStart));
+      // Shared with the /admin overview (metrics.ts): the same label shows the same number on both pages.
+      const paid = await paidBookings(db, today, at);
       const [attention] = await db
         .select({ n: count() })
         .from(bookings)
@@ -410,7 +403,7 @@ export function createBookingAdmin(deps: {
         .where(and(inArray(bookings.status, SOLD_STATUSES), gte(departures.date, today), lte(departures.date, addDays(today, 7))))
         .groupBy(departures.date, departures.tourSlug)
         .orderBy(asc(departures.date));
-      return { paidToday: paid?.today ?? 0, paidWeek: paid?.week ?? 0, depositsWeekVnd: Number(paid?.deposits ?? 0), attention: attention?.n ?? 0, upcoming };
+      return { paidToday: paid.today, paidWeek: paid.week, depositsWeekVnd: paid.weekDepositsVnd, attention: attention?.n ?? 0, upcoming };
     },
 
     async sendReminders() {

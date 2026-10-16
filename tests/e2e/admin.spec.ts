@@ -69,6 +69,15 @@ test("staff confirm one booking and cancel another; seats return to sale; everyt
   await expect(page.locator('[data-queue="toConfirm"]')).toHaveAttribute("href", "/admin/bookings?filter=deposit_paid");
   await expect(page.getByTestId("dashboard-upcoming")).toContainText("chỗ");
   await expect(page.getByTestId("dashboard-recent")).toContainText("BV-ADMN33");
+  // The starter's site figures (sign-ups, page views) are not shown to a tour company's staff.
+  await expect(page.getByTestId("site-figures")).toHaveCount(0);
+  // Phones: the latest bookings are cards, status and amount in view.
+  await page.setViewportSize({ width: 390, height: 844 });
+  const card = page.getByTestId("dashboard-recent-cards").getByRole("link").filter({ hasText: "BV-ADMN33" });
+  await expect(card).toBeVisible();
+  await expect(card).toContainText("₫");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.setViewportSize({ width: 1280, height: 720 });
   // The search at the top finds a booking from the bank transfer note.
   await page.getByTestId("dashboard-search").getByRole("searchbox").fill("BVADMN22");
   await page.getByTestId("dashboard-search").getByRole("button").click();

@@ -32,6 +32,9 @@ export async function productTheme(): Promise<ProductTheme> {
 }
 
 /** Business dashboard at the top of /admin (starter v1.18 hook; the page is admin-only). */
+/** The starter's site figures (sign-ups, page views, storage) mean nothing to a tour company's staff: not shown. */
+export const productSiteFigures = false;
+
 export async function ProductAdminOverview({ locale }: { locale: Locale }) {
   // A failing figure must not take the whole admin overview down: say so and keep the rest of the page.
   const loaded = await loadDashboard(locale).catch(() => null);

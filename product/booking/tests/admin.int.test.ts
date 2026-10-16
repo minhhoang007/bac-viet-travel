@@ -414,4 +414,31 @@ describe("admin dashboard", () => {
     expect(data.upcoming.map((d) => [d.date, d.sold])).toEqual([["2026-10-24", 4]]);
     expect(data.recent).toHaveLength(6);
   });
+
+  it("'paid bookings, 7 days' is one number on every page: Vietnam days, cancelled bookings left out of the count", async () => {
+    await db.execute(sql`TRUNCATE booking_payments, bookings, departures, discount_codes RESTART IDENTITY CASCADE`);
+    const now = new Date("2026-10-20T05:00:00Z"); // Oct 20, 12:00 in Vietnam: the 7 days are Oct 14–20
+    const [d] = await db.insert(departures).values({ tourSlug: "sapa-trekking-2d1n", date: "2026-11-24", capacity: 20 }).returning();
+    const b = (code: string, status: "deposit_paid" | "confirmed" | "cancelled", depositPaidAt: Date) => ({
+      code, tokenHash: "x", departureId: d!.id, status, holdExpiresAt: new Date("2030-01-01"), name: "A", email: "a@example.com", phone: "0900000000", locale: "vi",
+      adults: 2, seats: 2, unitPriceVnd: 1_000_000, totalVnd: 2_000_000, depositVnd: 600_000, depositPaidAt,
+    });
+    await db.insert(bookings).values([
+      b("BV-WKA222", "deposit_paid", new Date("2026-10-20T01:00:00Z")), // today
+      b("BV-WKB222", "confirmed", new Date("2026-10-13T17:10:00Z")), // Oct 14, 00:10 in Vietnam: first day, in
+      b("BV-WKC222", "confirmed", new Date("2026-10-13T16:50:00Z")), // Oct 13, 23:50 in Vietnam: the week before
+      b("BV-WKD222", "cancelled", new Date("2026-10-18T03:00:00Z")), // paid then cancelled: money in, not a sale
+    ]);
+
+    const overview = (await createDashboard({ db, now: () => now }).data()).bookings7d;
+    const admin = createBookingAdmin({
+      db, logger: createLogger({ write: () => {} }), mail: { send: async () => {} }, tourTitle: async () => "", tourExists: async () => true, now: () => now,
+    });
+    const page = await admin.stats();
+    expect(overview).toEqual({ count: 2, value: 4_000_000, previousCount: 1 });
+    expect(page).toMatchObject({ paidToday: 1, paidWeek: 2 });
+    expect(page.paidWeek).toBe(overview.count);
+    // Cash that came in over the same days, the cancelled booking's deposit included.
+    expect(page.depositsWeekVnd).toBe(3 * 600_000);
+  });
 });
