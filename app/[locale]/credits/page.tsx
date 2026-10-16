@@ -5,6 +5,7 @@ import { Container } from "@/components/ui/container";
 import type { Locale } from "@/config/app";
 import { getProductContent } from "@/product/content";
 import { photoCredits, unsplashPhotoUrl, unsplashUserUrl, videoCredits } from "@/product/tours/credits";
+import { libraryCredits } from "@/product/tours/library-credits";
 
 type Props = { params: Promise<{ locale: Locale }> };
 
@@ -52,6 +53,25 @@ export default async function CreditsPage({ params }: Props) {
           </li>
         ))}
       </ul>
+      {libraryCredits.length > 0 && (
+        <>
+          <h2 className="mt-12 font-heading type-h3">{c.library}</h2>
+          <ul className="mt-4 grid gap-2 text-sm sm:grid-cols-2" data-testid="library-credits">
+            {libraryCredits.map((p) => (
+              <li key={p.id}>
+                {p.topic} ·{" "}
+                <a href={unsplashPhotoUrl(p.id)} className="underline" target="_blank" rel="noopener noreferrer">
+                  Unsplash
+                </a>{" "}
+                ·{" "}
+                <a href={unsplashUserUrl(p.username)} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                  {p.author}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
     </Container>
   );
 }
