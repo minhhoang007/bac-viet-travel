@@ -17,6 +17,7 @@ import { NavigationProgress } from "./components/navigation-progress";
 import { MarketingTags } from "./analytics/marketing-tags";
 import { ConsentBanner } from "@/components/analytics/consent-banner";
 import { getAppContent } from "@/content";
+import { PostFooter } from "./components/post-footer";
 import { SiteFooter } from "./components/site-footer";
 import { SiteHeader } from "./components/site-header";
 import { getProductContent } from "./content";
@@ -46,6 +47,11 @@ export function ProductHeader({ locale }: { locale: Locale }) {
 /** Replaces the starter footer: one footer with the company's legal block, tours, company pages and policies. */
 export function ProductFooter({ locale }: { locale: Locale }) {
   return <SiteFooter locale={locale} />;
+}
+
+/** Under a blog post (starter hook): tours for its destination tags, then a question by chat. */
+export function ProductPostFooter({ locale, tags }: { locale: Locale; tags: string[] }) {
+  return <PostFooter locale={locale} tags={tags} />;
 }
 
 /** Page-change progress bar and the floating quick-contact buttons on every page. */

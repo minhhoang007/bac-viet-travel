@@ -83,6 +83,22 @@ test("inquiry form validates on the server and keeps the visitor on the page", a
   await expect(form.locator("input[name=date]")).toHaveValue(/^\d{4}-\d{2}-\d{2}$/);
 });
 
+test("a blog post leads on: tours for its destination, a chat offer, related posts; tags read as words", async ({ page }) => {
+  await page.goto("/blog/kinh-nghiem-du-lich-ha-long");
+  // Tagged "ha-long": only Ha Long tours, each linking to its tour page.
+  const tours = page.getByTestId("post-tours");
+  await expect(tours.getByRole("heading", { name: "Tour cho chuyến đi này" })).toBeVisible();
+  const links = await tours.locator('a[href^="/tours/"]').evaluateAll((as) => [...new Set(as.map((a) => a.getAttribute("href")))]);
+  expect(links.length).toBeGreaterThan(0);
+  for (const href of links) expect(href).toMatch(/^\/tours\/ha-long/);
+  await expect(page.getByTestId("post-ask")).toContainText("Cần tư vấn lịch trình?");
+  // Shares "kinh-nghiem" with the Ninh Binh post.
+  await expect(page.getByTestId("related-posts").locator('a[href="/blog/kinh-nghiem-du-lich-ninh-binh"]')).toBeVisible();
+  await expect(page.locator(".blog-tags").getByRole("link", { name: "Hạ Long" })).toBeVisible();
+  const ld = await page.locator('script[type="application/ld+json"]').allTextContents();
+  expect(ld.join(" ")).toContain('"BreadcrumbList"');
+});
+
 test("blog posts link their translation; sitemap lists tours and posts; unknown tour is 404", async ({ page, request }) => {
   await page.goto("/blog/kinh-nghiem-trekking-sapa");
   await page.getByRole("link", { name: "Đọc bằng tiếng Anh" }).click();

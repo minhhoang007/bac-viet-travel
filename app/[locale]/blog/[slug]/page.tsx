@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { getSeoSite } from "@/bootstrap/seo";
 import type { Metadata } from "next";
 import Image from "next/image";
@@ -19,7 +20,13 @@ import { blogConfig } from "@/config/blog";
 import { getAppContent } from "@/content";
 import { postFromContent, type Blog, type Post } from "@/modules/blog";
 import { UNSPLASH_UTM } from "@/product/media/unsplash";
-import { formatDate, requireBlog } from "../_shared";
+import { formatDate, requireBlog, tagLabel, toListItem } from "../_shared";
+import { PostList } from "@/components/blog/post-list";
+import * as productLayout from "@/product/layout";
+import { breadcrumbLd } from "@/product/seo";
+
+// Project hook under a post (product/layout.tsx), optional like the other layout hooks.
+const ProductPostFooter = "ProductPostFooter" in productLayout ? (productLayout as { ProductPostFooter?: (p: { locale: Locale; tags: string[] }) => ReactNode }).ProductPostFooter : undefined;
 
 type Props = { params: Promise<{ locale: Locale; slug: string }> };
 
@@ -87,6 +94,11 @@ export default async function BlogPostPage({ params }: Props) {
   const w = getAppContent(locale).admin.content;
   const site = getSeoSite();
   const translations = Object.entries(blog.translations(post));
+  // Up to three other posts sharing a tag, newest first.
+  const related = blog
+    .list(locale)
+    .filter((p) => p.slug !== post.slug && p.tags.some((t) => post.tags.includes(t)))
+    .slice(0, 3);
   const author = post.author ?? (blogConfig.defaultAuthor || undefined);
   const jsonLd = articleJsonLd({
     title: post.title,
@@ -104,7 +116,10 @@ export default async function BlogPostPage({ params }: Props) {
     <>
     {preview && <PreviewBanner label={w.previewing} exit={w.exitPreview} href={`/api/content/preview?exit=1&locale=${locale}`} />}
     <Container className="max-w-3xl py-16">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd([jsonLd, breadcrumbLd(site, locale, [{ path: "/blog", name: c.title }, { path: `/blog/${slug}`, name: post.title }])]) }}
+      />
       <PageLink href={localePath(locale, "/blog")} className="text-sm text-muted-foreground hover:underline">
         ← {c.allPosts}
       </PageLink>
@@ -152,13 +167,25 @@ export default async function BlogPostPage({ params }: Props) {
             {post.tags.map((t) => (
               <li key={t}>
                 <PageLink href={localePath(locale, `/blog/tag/${t}`)} className="rounded-full border border-border px-3 py-1 hover:bg-muted">
-                  #{t}
+                  {tagLabel(t, locale)}
                 </PageLink>
               </li>
             ))}
           </ul>
         )}
       </article>
+      {/* Project hook: what to do next (tours for this destination, a question by chat). */}
+      {ProductPostFooter && <ProductPostFooter locale={locale} tags={post.tags} />}
+      {related.length > 0 && (
+        <section className="mt-16 border-t border-border pt-10" aria-labelledby="related-posts" data-testid="related-posts">
+          <h2 id="related-posts" className="font-heading type-h3">
+            {c.related}
+          </h2>
+          <div className="mt-6">
+            <PostList posts={related.map((p) => toListItem(p, locale))} empty="" />
+          </div>
+        </section>
+      )}
     </Container>
     </>
   );

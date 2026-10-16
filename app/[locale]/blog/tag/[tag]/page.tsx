@@ -10,7 +10,7 @@ import { localePath } from "@/core/i18n/routing";
 import { createMetadata } from "@/core/seo";
 import type { Locale } from "@/config/app";
 import { getAppContent } from "@/content";
-import { requireBlog, toListItem } from "../../_shared";
+import { requireBlog, tagLabel, toListItem } from "../../_shared";
 
 type Props = { params: Promise<{ locale: Locale; tag: string }> };
 
@@ -51,7 +51,7 @@ export default async function BlogTagPage({ params }: Props) {
         ← {c.allPosts}
       </PageLink>
       <h1 className="mt-4 text-3xl font-bold">
-        {c.tagTitle} #{tag}
+        {c.tagTitle} {tagLabel(tag, locale)}
       </h1>
       <div className="mt-10">
         <PostList posts={posts.map((p) => toListItem(p, locale))} empty={c.empty} />
