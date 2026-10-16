@@ -68,6 +68,8 @@ test("staff confirm one booking and cancel another; seats return to sale; everyt
   await expect(page.getByTestId("product-stats").getByRole("link", { name: /Đã thu tháng này/ })).toHaveAttribute("href", "/admin/reports");
   await expect(page.locator('[data-queue="toConfirm"]')).toHaveAttribute("href", "/admin/bookings?filter=deposit_paid");
   await expect(page.getByTestId("dashboard-upcoming")).toContainText("chỗ");
+  await expect(page.getByTestId("dashboard-upcoming").locator("[data-trip-status]").first()).toBeVisible();
+  await expect(page.getByTestId("money-chart")).toContainText("0"); // value axis
   await expect(page.getByTestId("dashboard-recent")).toContainText("BV-ADMN33");
   // The starter's site figures (sign-ups, page views) are not shown to a tour company's staff.
   await expect(page.getByTestId("site-figures")).toHaveCount(0);
@@ -283,6 +285,10 @@ test("reports: revenue and fill rate per tour for a month range; guests get a 40
   await expect(page.getByTestId("report-receivables")).toContainText("Khách còn nợ");
   // Months read as "Tháng 10/2026", and each table downloads as a CSV Excel opens (BOM, header row).
   await expect(page.getByLabel("Từ tháng").locator("option:checked")).toHaveText(/^Tháng \d{2}\/\d{4}$/);
+  // One-click ranges: "Tháng này" shows this month only and is marked as the current choice.
+  await page.getByTestId("report-presets").getByRole("link", { name: "Tháng này" }).click();
+  await expect(page.getByTestId("report-presets").getByRole("link", { name: "Tháng này" })).toHaveAttribute("aria-current", "true");
+  await expect(page.getByLabel("Đến tháng").locator("option:checked")).toHaveText(`Tháng ${row!.from.slice(5)}/${row!.from.slice(0, 4)}`);
   const csv = await page.request.get(await page.getByTestId("csv-tours").getAttribute("href") ?? "");
   expect(csv.headers()["content-type"]).toContain("text/csv");
   expect(await csv.text()).toMatch(/^﻿"Tour","Chuyến"/);
