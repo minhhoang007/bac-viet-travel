@@ -299,6 +299,15 @@ describe("booking deposits (bank transfer, VietQR)", () => {
     expect((await deposits.chooseTransfer({ code, token })).status).toBe("not_payable");
     expect(await deposits.reconcile(LINKS)).toBe(0); // no querydr for the pending transfer (vnpay.query would throw)
   });
+
+  it("choosing a transfer again does not push the hold further: the extra time counts from the first choice", async () => {
+    const { code, token } = await holdOn(10);
+    const first = clock;
+    await deposits.chooseTransfer({ code, token });
+    clock = new Date(clock.getTime() + 100 * 60_000);
+    expect(await deposits.chooseTransfer({ code, token })).toEqual({ status: "ok" });
+    expect((await status(code)).holdExpiresAt).toEqual(new Date(first.getTime() + 120 * 60_000));
+  });
 });
 
 describe("booking deposits (paid twice)", () => {

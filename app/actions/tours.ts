@@ -2,7 +2,7 @@
 
 import { notFound, redirect, unstable_rethrow } from "next/navigation";
 import { z } from "zod";
-import { requireStaff } from "@/app/_lib/admin";
+import { requireTourEditor } from "@/app/_lib/staff";
 import { hasRole } from "@/core/auth";
 import { AppError } from "@/core/errors";
 import { localePath } from "@/core/i18n/routing";
@@ -16,9 +16,9 @@ const revision = z.coerce.number().int().positive();
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const TABS = ["general", "vi", "en", "seo", "images", "private"] as const;
 
-/** Editors and admins; the content module must be on. */
+/** Editors (not sales) and admins; the content module must be on. */
 async function context() {
-  const ctx = await requireStaff("editor");
+  const ctx = await requireTourEditor();
   if (!ctx.container.content) notFound();
   return { ...ctx, content: ctx.container.content };
 }

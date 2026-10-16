@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
-import { requireStaff } from "@/app/_lib/admin";
+import { requireTourEditor } from "@/app/_lib/staff";
 import { createTour } from "@/app/actions/tours";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { Notice } from "@/components/feedback/notice";
@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function NewTourPage({ params, searchParams }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const { container } = await requireStaff("editor");
+  const { container } = await requireTourEditor();
   if (!container.content) notFound();
   const c = getTourAdminContent(locale);
   const { result } = await searchParams;

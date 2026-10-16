@@ -306,11 +306,12 @@ test("staff roles: admins add sales and managers; sales see bookings without con
   // Sales: bookings only, no confirm / cancel / money actions, other booking pages are 404.
   await staff.goto("/admin/bookings");
   await expect(staff.getByRole("link", { name: "Đơn đặt tour" })).toBeVisible();
-  for (const name of ["Mã giảm giá", "Lịch khởi hành", "Báo cáo", "Nhân viên"]) await expect(staff.getByRole("link", { name, exact: true })).toHaveCount(0);
+  for (const name of ["Mã giảm giá", "Lịch khởi hành", "Báo cáo", "Nhân viên", "Tour"]) await expect(staff.getByRole("link", { name, exact: true })).toHaveCount(0);
   await staff.goto("/admin/bookings/BV-SALE22");
   await expect(staff.getByTestId("admin-contact")).toBeVisible();
   for (const id of ["admin-confirm", "admin-cancel", "admin-transfer"]) await expect(staff.getByTestId(id)).toHaveCount(0);
-  for (const path of ["/admin/discounts", "/admin/reports", "/admin/staff"]) expect((await staff.goto(path))?.status()).toBe(404);
+  // Hidden from the menu and closed by URL too.
+  for (const path of ["/admin/discounts", "/admin/reports", "/admin/staff", "/admin/tours", "/admin/tours/new"]) expect((await staff.goto(path))?.status()).toBe(404);
   // The admin home (owners' numbers) sends them to their own first page instead.
   await staff.goto("/admin");
   await expect(staff).toHaveURL(/\/admin\/bookings$/);

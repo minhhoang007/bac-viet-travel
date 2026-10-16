@@ -307,13 +307,16 @@ export function createDepositService(deps: {
       if (!booking) return { status: "not_found" };
       if (booking.status !== "held" || booking.isExpired) return { status: "not_payable" };
       const at = now();
-      const until = new Date(at.getTime() + deps.transferHoldMinutes * 60_000);
+      const txnRef = `${transferNote(booking.code)}CK`;
       await db.transaction(async (tx) => {
         // One transfer attempt per booking; choosing again keeps it (and its token for the paid email).
         await tx
           .insert(bookingPayments)
-          .values({ bookingId: booking.id, method: "transfer", txnRef: `${transferNote(booking.code)}CK`, amountVnd: booking.depositVnd, linkToken: token })
+          .values({ bookingId: booking.id, method: "transfer", txnRef, amountVnd: booking.depositVnd, linkToken: token, createdAt: at })
           .onConflictDoNothing();
+        // The extra time counts from the first choice: choosing again cannot hold the seats forever.
+        const [first] = await tx.select({ createdAt: bookingPayments.createdAt }).from(bookingPayments).where(eq(bookingPayments.txnRef, txnRef));
+        const until = new Date((first?.createdAt ?? at).getTime() + deps.transferHoldMinutes * 60_000);
         // Extend only a live hold, never shorten it.
         await tx
           .update(bookings)
