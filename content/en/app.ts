@@ -90,8 +90,8 @@ export const app: AppContent = {
     privacyLink: "Privacy policy",
   },
   demo: {
-    notice: "This is a demo website: no real bookings or payments, and no email is sent.",
-    contact: "Want a website like this?",
+    notice: "Sample website for tour operators: bookings and payments are test only.",
+    contact: "Get a quote",
     mailbox: {
       nav: "Demo mailbox",
       title: "Demo mailbox",
@@ -106,6 +106,12 @@ export const app: AppContent = {
       signIn: "Sign in with this role",
       failed: "The demo account could not sign in. Try again in a few minutes.",
       rateLimited: "Too many tries. Wait a few minutes and try again.",
+      stepsTitle: "Try a full round in 2 minutes",
+      steps: [
+        "Open a tour, pick a date and hold seats, as your guests would.",
+        "Sign in as the Manager: the booking is in Bookings.",
+        "Open it, record \"Bank transfer received\", then check the Demo mailbox: the guest's email is there.",
+      ],
     },
   },
   admin: {

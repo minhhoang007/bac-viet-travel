@@ -74,7 +74,7 @@ export interface AppContent {
     contact: string;
     mailbox: { nav: string; title: string; intro: string; empty: string; to: string };
     /** /demo: one-click sign-in as a demo staff account. */
-    tryAdmin: { link: string; title: string; intro: string; signIn: string; failed: string; rateLimited: string };
+    tryAdmin: { link: string; title: string; intro: string; signIn: string; failed: string; rateLimited: string; stepsTitle?: string; steps?: string[] };
   };
   admin: {
     title: string;

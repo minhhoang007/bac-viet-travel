@@ -90,8 +90,8 @@ export const app: AppContent = {
     privacyLink: "Chính sách bảo mật",
   },
   demo: {
-    notice: "Đây là website trình diễn: không nhận đặt chỗ hay thanh toán thật, email không được gửi đi.",
-    contact: "Muốn có website như thế này?",
+    notice: "Website mẫu cho công ty lữ hành: đặt chỗ và thanh toán chỉ là thử nghiệm.",
+    contact: "Nhận báo giá",
     mailbox: {
       nav: "Hộp thư demo",
       title: "Hộp thư demo",
@@ -106,6 +106,12 @@ export const app: AppContent = {
       signIn: "Vào với vai trò này",
       failed: "Không vào được tài khoản demo. Thử lại sau ít phút.",
       rateLimited: "Bạn đã thử quá nhiều lần. Đợi vài phút rồi thử lại.",
+      stepsTitle: "Thử trọn một vòng trong 2 phút",
+      steps: [
+        "Mở một tour, chọn ngày và bấm Giữ chỗ, như khách của bạn.",
+        "Vào với vai trò Quản lý: đơn vừa đặt có trong Đơn đặt tour.",
+        "Mở đơn đó, ghi nhận \"Đã nhận chuyển khoản\", rồi xem Hộp thư demo: email gửi khách nằm ở đó.",
+      ],
     },
   },
   admin: {

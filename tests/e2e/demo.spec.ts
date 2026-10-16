@@ -21,9 +21,11 @@ test.beforeAll(async () => {
 test("every page says it is a demo and is kept out of search engines", async ({ page, request }) => {
   await page.goto("/");
   const notice = page.getByTestId("demo-notice");
-  await expect(notice).toContainText("website trình diễn");
+  await expect(notice).toContainText("Website mẫu cho công ty lữ hành");
   await expect(notice.getByRole("link", { name: "Vào thử trang quản trị" })).toHaveAttribute("href", "/demo");
-  await expect(notice.getByRole("link", { name: "Muốn có website như thế này?" })).toHaveAttribute("href", "https://example.com/website-tour");
+  await expect(notice.getByRole("link", { name: "Nhận báo giá" })).toHaveAttribute("href", "https://example.com/website-tour");
+  // The notice already says it is a sample: the footer drops the "(demo)" placeholder markers.
+  await expect(page.getByTestId("company-info")).not.toContainText("(demo)");
   await expect(page.locator('meta[name="robots"][content="noindex, nofollow"]')).toHaveCount(1);
   const robots = await (await request.get("/robots.txt")).text();
   expect(robots).toContain("Disallow: /");
@@ -35,6 +37,8 @@ test("a visitor tries the admin as the manager in one click, no second factor; t
   const accounts = page.getByTestId("demo-accounts");
   await expect(accounts.getByRole("heading", { name: "Quản lý" })).toBeVisible();
   await expect(accounts.getByRole("heading", { name: "Sale" })).toBeVisible();
+  await expect(page.getByTestId("demo-steps").locator("li")).toHaveCount(3);
+  await expect(page.locator("main").getByRole("link", { name: "Nhận báo giá" })).toBeVisible();
   const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
   expect(axe.violations).toEqual([]);
 
