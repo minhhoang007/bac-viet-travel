@@ -18,7 +18,8 @@ import { confirmMediaUpload, requestMediaUpload } from "@/app/actions/media";
 import { getContainer } from "@/bootstrap/container";
 import { MediaUploader } from "@/components/media/media-uploader";
 import { ImagePicker } from "@/product/components/image-picker";
-import { getImagePickerText } from "@/product/media/content";
+import { getImagePickerText, getMarkdownEditorText } from "@/product/media/content";
+import { MarkdownEditor } from "@/product/components/markdown-editor";
 
 type Props = { params: Promise<{ locale: Locale; id: string }>; searchParams: Promise<{ result?: string }> };
 
@@ -145,7 +146,14 @@ export default async function EditPostPage({ params, searchParams }: Props) {
             <input id="post-translation" name="translationKey" aria-describedby="post-translation-hint" maxLength={100} defaultValue={str("translationKey")} className={inputClass} />
           </Field>
           <Field label={c.fields.body} hint={c.fields.bodyHint} id="post-body">
-            <textarea id="post-body" name="body" rows={20} aria-describedby="post-body-hint" defaultValue={str("body")} className="w-full rounded-md border border-border bg-background p-3 font-mono text-sm" />
+            <MarkdownEditor
+              id="post-body"
+              name="body"
+              describedBy="post-body-hint"
+              defaultValue={str("body")}
+              t={getMarkdownEditorText(locale)}
+              picker={{ t: getImagePickerText(locale), library, uploader, unsplash }}
+            />
           </Field>
           <div className="sticky bottom-0 -mx-1 bg-background/95 px-1 py-3 backdrop-blur">
             <SubmitButton label={c.save} pendingLabel={c.saving} />
