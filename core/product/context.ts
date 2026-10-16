@@ -47,6 +47,13 @@ export interface ProductContext {
     /** Old published slugs of live items → current slug (permanent redirects); cache it like listPublished. */
     listMoved(type: string): Promise<{ from: string; to: string }[]>;
   };
+  /**
+   * Media library, when the media module is on (ADR-0008): CDN URLs of library images by id, e.g. for photos that
+   * staff picked in a content item. Unknown or pending ids are left out. Cache it with the content that uses it.
+   */
+  media?: {
+    imageSrc(ids: readonly string[], width?: number): Promise<Record<string, string>>;
+  };
   now: () => Date;
 }
 

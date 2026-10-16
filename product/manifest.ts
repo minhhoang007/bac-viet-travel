@@ -34,6 +34,7 @@ export function createProduct(db: Db, ctx: ProductContext) {
     listMoved: ctx.content?.listMoved,
     cache: (key, load) => unstable_cache(load, [key], { tags: [TOURS_CACHE_TAG], revalidate: 3600 }),
     fallback: getTourCatalog,
+    imageSrc: ctx.media?.imageSrc,
     logger: ctx.logger,
   });
   const tour = async (slug: string, locale = "vi") => {

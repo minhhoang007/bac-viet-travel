@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useMemo, useState, useSyncExternalStore } from "react";
+import { useId, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Trash2 } from "lucide-react";
 import { saveTour } from "@/app/actions/tours";
 import { Notice } from "@/components/feedback/notice";
@@ -13,7 +13,7 @@ import { getProductContent } from "../content";
 import { DESTINATIONS } from "../tours/model";
 import { getTourAdminContent, tourProblemLabel } from "../tours/admin-content";
 import { tourProblems, type TourDraft } from "../tours/document";
-import { AddButton, area, Field, IconButton, ImageList, input, ItineraryList, Panel, StringList } from "./tour-form-fields";
+import { AddButton, area, Field, IconButton, ImageList, input, ItineraryList, Panel, StringList, type LibraryImage } from "./tour-form-fields";
 import { useUnsavedGuard } from "./use-unsaved-guard";
 
 const TABS = ["general", "vi", "en", "seo", "images", "private", "addons"] as const;
@@ -30,6 +30,8 @@ export function TourForm({
   locale,
   item,
   images,
+  library,
+  uploader,
   initialTab,
   canPublish = false,
 }: {
@@ -37,6 +39,9 @@ export function TourForm({
   item: { id: string; revision: number; slug: string; draft: TourDraft; slugLocked: boolean };
   /** Static images available under public/ (until the media library is on). */
   images: string[];
+  /** Media library on: its images and the upload button for the Images tab. */
+  library?: LibraryImage[];
+  uploader?: ReactNode;
   initialTab: Tab;
   /** Admins: "save and publish now" next to "save draft". */
   canPublish?: boolean;
@@ -265,6 +270,8 @@ export function TourForm({
           label={c.fields.images}
           values={((section("shared").images as { src?: string; mediaId?: string }[]) ?? []).map((i) => i.src ?? i.mediaId ?? "")}
           available={images}
+          library={library}
+          uploader={uploader}
           onChange={(v) => set("shared", "images", v.map((ref) => (UUID.test(ref) ? { mediaId: ref } : { src: ref })))}
           c={c}
         />

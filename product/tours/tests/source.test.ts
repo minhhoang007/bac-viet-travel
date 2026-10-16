@@ -30,6 +30,24 @@ describe("tour source", () => {
     expect(lines).toEqual([expect.objectContaining({ msg: "tours.invalid_published", slug: broken.slug, fields: expect.arrayContaining(["vi.title"]) })]);
   });
 
+  it("library photos become their CDN URL, in order with the static ones; unknown ids are dropped", async () => {
+    const { logger } = capture();
+    const known = "01a14353-0000-7000-8000-000000000001";
+    const gone = "01a14353-0000-7000-8000-000000000002";
+    const first = published[0]!;
+    const shared = first.data.shared as { images: unknown[] };
+    const withLibrary = { ...first, data: { ...first.data, shared: { ...shared, images: [{ mediaId: known }, { src: "/tours/sapa-1.jpg" }, { mediaId: gone }] } } };
+    const asked: (readonly string[])[] = [];
+    const catalog = await createTourSource({
+      listPublished: async () => [withLibrary],
+      imageSrc: async (ids) => (asked.push(ids), { [known]: "https://res.cloudinary.com/demo/image/upload/x.jpg" }),
+      fallback: () => mdx,
+      logger,
+    }).catalog();
+    expect(asked).toEqual([[known, gone]]);
+    expect(catalog.get("vi", first.slug)?.images).toEqual(["https://res.cloudinary.com/demo/image/upload/x.jpg", "/tours/sapa-1.jpg"]);
+  });
+
   it("reads the MDX files without a content source, and goes through the cache with one", async () => {
     const { logger } = capture();
     expect((await createTourSource({ fallback: () => mdx, logger }).catalog()).slugs()).toEqual(mdx.slugs());

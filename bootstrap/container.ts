@@ -239,7 +239,20 @@ export function buildContainer(features: Features, env: Env, overrides: Containe
   if (content) periodic["content.publish_due"] = async () => void (await content.publishDue());
 
   const productContext: ProductContext | undefined = db
-    ? { db, logger, mail, rateLimiter, payments, jobs, audit: admin, content, now: overrides.now ?? (() => new Date()) }
+    ? {
+        db,
+        logger,
+        mail,
+        rateLimiter,
+        payments,
+        jobs,
+        audit: admin,
+        content,
+        media: media
+          ? { imageSrc: async (ids, width = 1600) => Object.fromEntries((await media.getMany(ids)).map((a) => [a.id, media.imageProps(a, { widths: [width] }).src])) }
+          : undefined,
+        now: overrides.now ?? (() => new Date()),
+      }
     : undefined;
   const app =
     features.profile === "app" && productContext
