@@ -1,6 +1,6 @@
 import { ArrowRight, CalendarClock, CircleDollarSign, Clock, Landmark, Undo2, Users } from "lucide-react";
 import type { ReactNode } from "react";
-import { BarChart } from "@/components/admin/bar-chart";
+import { MoneyChart } from "./money-chart";
 import { Stat, type StatDelta } from "@/components/admin/stat";
 import type { Locale } from "@/config/app";
 import { localePath } from "@/core/i18n/routing";
@@ -25,6 +25,9 @@ function Card({ title, action, children, testId }: { title: string; action?: Rea
   );
 }
 
+/** Axis labels: "2 tr", "500 N" in Vietnamese, "2M", "500K" in English. */
+const compactVnd = (v: number, locale: Locale) =>
+  new Intl.NumberFormat(locale === "vi" ? "vi-VN" : "en-US", { notation: "compact", maximumFractionDigits: 1 }).format(v);
 const pct = (now: number, before: number) => (before > 0 ? Math.round(((now - before) / before) * 100) : null);
 const trend = (diff: number): StatDelta["trend"] => (diff > 0 ? "up" : diff < 0 ? "down" : "flat");
 const signed = (n: number) => (n > 0 ? `+${n}` : `${n}`);
@@ -103,8 +106,8 @@ export function AdminDashboard({ locale, data, tourTitle }: { locale: Locale; da
         </Card>
 
         <Card title={c.revenueTitle} action={<span className="text-sm text-muted-foreground tabular-nums">{c.revenueTotal(money(total30))}</span>} testId="dashboard-revenue">
-          <BarChart label={c.revenueTitle} data={data.daily.map((d) => ({ label: `${formatShortDay(d.day, locale)} · ${money(d.vnd)}`, value: d.vnd }))} />
-          <div className="mt-2 flex justify-between text-xs text-muted-foreground">
+          <MoneyChart label={c.revenueTitle} format={money} axis={(v) => compactVnd(v, locale)} data={data.daily.map((d) => ({ label: formatShortDay(d.day, locale), value: d.vnd }))} />
+          <div className="mt-2 ml-14 flex justify-between text-xs text-muted-foreground">
             <span>{formatShortDay(data.daily[0]!.day, locale)}</span>
             <span>{formatShortDay(data.daily.at(-1)!.day, locale)}</span>
           </div>

@@ -54,10 +54,33 @@ export default async function ReportsPage({ params, searchParams }: Props) {
   const head = (labels: readonly string[], textColumns = 1) =>
     labels.map((h, i) => <th key={h} className={`${i < textColumns ? cell : num} font-medium`}>{h}</th>);
   const months = monthOptions(today);
+  // One-click ranges; months[12] is this month (the list starts a year ahead).
+  const thisMonth = months[12]!;
+  const presets = [
+    { key: "thisMonth", from: thisMonth, to: thisMonth },
+    { key: "lastMonth", from: months[13]!, to: months[13]! },
+    { key: "quarter", from: months[14]!, to: thisMonth },
+    { key: "year", from: `${thisMonth.slice(0, 4)}-01`, to: thisMonth },
+  ] as const;
 
   return (
     <div className="grid min-w-0 gap-8">
       <h1 className="text-2xl font-bold">{t.title}</h1>
+      <nav aria-label={t.title} className="-mb-4 flex flex-wrap gap-2" data-testid="report-presets">
+        {presets.map((p) => {
+          const active = range.fromMonth === p.from && range.toMonth === p.to;
+          return (
+            <a
+              key={p.key}
+              href={`${localePath(locale, "/admin/reports")}?${new URLSearchParams({ from: p.from, to: p.to })}`}
+              aria-current={active ? "true" : undefined}
+              className={`rounded-full border px-3 py-1.5 text-sm ${active ? "border-primary bg-primary text-primary-foreground" : "border-border hover:border-primary/60"}`}
+            >
+              {t.presets[p.key]}
+            </a>
+          );
+        })}
+      </nav>
       <form method="get" className="flex flex-wrap items-end gap-3">
         <label className="grid gap-1 text-sm">
           {t.from}
