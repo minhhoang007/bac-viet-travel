@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { setRequestLocale } from "next-intl/server";
 import { notFound, redirect } from "next/navigation";
 import { productAdminNavFor, requireAdmin, requireStaff } from "@/app/_lib/admin";
-import { hasRole } from "@/core/auth";
+import { hasRole, type Role } from "@/core/auth";
 import { BarChart } from "@/components/admin/bar-chart";
 import { Stat } from "@/components/admin/stat";
 import { formatBytes } from "@/components/ui/format-bytes";
@@ -20,6 +20,10 @@ const ProductAdminOverview =
   "ProductAdminOverview" in productLayout ? (productLayout as { ProductAdminOverview?: (p: { locale: Locale }) => Promise<ReactNode> | ReactNode }).ProductAdminOverview : undefined;
 // Optional `productSiteFigures = false`: the project's overview replaces the starter's site figures (sign-ups, views,
 // storage) entirely instead of keeping them one click away, when they mean nothing to its staff.
+// Optional `productOverviewFor(user)`: staff besides admins (e.g. managers) who see the project's overview here
+// instead of being sent to their first page. They get the overview only, never the starter's site figures.
+const productOverviewFor =
+  "productOverviewFor" in productLayout ? (productLayout as { productOverviewFor?: (user: { id: string; role: Role }) => Promise<boolean> | boolean }).productOverviewFor : undefined;
 const showSiteFigures = !("productSiteFigures" in productLayout) || (productLayout as { productSiteFigures?: boolean }).productSiteFigures !== false;
 
 function List({ title, rows, empty }: { title: string; rows: { label: string; value: number }[]; empty: string }) {
@@ -48,6 +52,14 @@ export default async function AdminOverviewPage({ params }: { params: Promise<{ 
   // Staff who are not admins (marketing, sale…) land on their first page instead of a 404.
   const staff = await requireStaff("editor", { secondFactor: false });
   if (!hasRole(staff.user, "admin")) {
+    if (ProductAdminOverview && (await productOverviewFor?.(staff.user))) {
+      return (
+        <div className="grid gap-6">
+          <PageHeader title={getAppContent(locale).admin.nav.overview} />
+          <ProductAdminOverview locale={locale} />
+        </div>
+      );
+    }
     const first = (await productAdminNavFor(staff.user))[0];
     if (!first) notFound();
     redirect(localePath(locale, first.href));
