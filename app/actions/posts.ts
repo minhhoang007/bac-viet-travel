@@ -52,6 +52,10 @@ function postData(formData: FormData): Record<string, unknown> {
       .filter(Boolean)
       .slice(0, 20),
     ...optional("cover", 500),
+    // Set by the image picker for licensed photos (Unsplash): both or neither.
+    ...(text(formData, "coverCreditName", 120) && text(formData, "coverCreditUrl", 500)
+      ? { coverCredit: { name: text(formData, "coverCreditName", 120), url: text(formData, "coverCreditUrl", 500) } }
+      : {}),
     ...optional("author", 100),
     ...optional("translationKey", 100),
     body: String(formData.get("body") ?? "").slice(0, 100_000),

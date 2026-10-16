@@ -281,6 +281,7 @@ export const app: AppContent = {
     allPosts: "All posts",
     updated: "Updated",
     otherLanguage: "Đọc bằng tiếng Việt",
+    photoBy: "Photo:",
     rss: "RSS",
   },
 };

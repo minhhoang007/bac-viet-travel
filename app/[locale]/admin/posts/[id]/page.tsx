@@ -14,6 +14,11 @@ import { appConfig, type Locale } from "@/config/app";
 import { getAppContent } from "@/content";
 import { contentPostProblems } from "@/modules/blog";
 import { inputClass, requirePostsAdmin } from "../_shared";
+import { confirmMediaUpload, requestMediaUpload } from "@/app/actions/media";
+import { getContainer } from "@/bootstrap/container";
+import { MediaUploader } from "@/components/media/media-uploader";
+import { ImagePicker } from "@/product/components/image-picker";
+import { getImagePickerText } from "@/product/media/content";
 
 type Props = { params: Promise<{ locale: Locale; id: string }>; searchParams: Promise<{ result?: string }> };
 
@@ -52,6 +57,25 @@ export default async function EditPostPage({ params, searchParams }: Props) {
   const problems = contentPostProblems(d);
   const labels: Record<string, string> = { ...c.fields };
   const postMessage = result && result in c.result ? c.result[result as keyof typeof c.result] : null;
+  // Cover: the image picker when the media library or Unsplash is on; a plain path field otherwise.
+  const media = getContainer().media;
+  const library = media
+    ? (await media.list({ pageSize: 200 })).rows.map((a) => ({ id: a.id, name: a.name || a.id, thumb: media.imageProps(a, { aspect: 4 / 3, widths: [320] }).src, src: media.imageProps(a, { widths: [1600] }).src }))
+    : undefined;
+  const uploader = media ? (
+    <MediaUploader
+      label={admin.media.upload}
+      uploadingLabel={admin.media.uploading}
+      formats={media.config.allowedFormats}
+      maxBytes={media.config.maxBytes}
+      errors={admin.media.errors}
+      requestUpload={requestMediaUpload}
+      confirmUpload={confirmMediaUpload}
+    />
+  ) : undefined;
+  const unsplash = Boolean(process.env.UNSPLASH_ACCESS_KEY);
+  const credit = d.coverCredit as { name?: unknown; url?: unknown } | undefined;
+  const cover = str("cover") ? { src: str("cover"), credit: typeof credit?.name === "string" && typeof credit.url === "string" ? { name: credit.name, url: credit.url } : undefined } : undefined;
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
@@ -106,9 +130,13 @@ export default async function EditPostPage({ params, searchParams }: Props) {
             <input id="post-tags" name="tags" aria-describedby="post-tags-hint" defaultValue={tags} className={inputClass} />
           </Field>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label={c.fields.cover} hint={c.fields.coverHint} id="post-cover">
-              <input id="post-cover" name="cover" aria-describedby="post-cover-hint" maxLength={500} defaultValue={str("cover")} className={inputClass} />
-            </Field>
+            {library || unsplash ? (
+              <ImagePicker name="cover" label={c.fields.cover} initial={cover} library={library} uploader={uploader} unsplash={unsplash} t={getImagePickerText(locale)} />
+            ) : (
+              <Field label={c.fields.cover} hint={c.fields.coverHint} id="post-cover">
+                <input id="post-cover" name="cover" aria-describedby="post-cover-hint" maxLength={500} defaultValue={str("cover")} className={inputClass} />
+              </Field>
+            )}
             <Field label={c.fields.author} id="post-author">
               <input id="post-author" name="author" maxLength={100} defaultValue={str("author")} className={inputClass} />
             </Field>
