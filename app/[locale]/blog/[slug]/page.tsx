@@ -11,6 +11,7 @@ import { POST_CONTENT_TYPE } from "@/bootstrap/content-types";
 import { PreviewBanner } from "@/components/content/preview-banner";
 import { MarkdownContent } from "@/components/blog/markdown";
 import { MdxContent } from "@/components/blog/mdx";
+import { faq, outline } from "@/components/blog/outline";
 import { Container } from "@/components/ui/container";
 import { localePath } from "@/core/i18n/routing";
 import { articleJsonLd, createMetadata, localizedUrl, serializeJsonLd } from "@/core/seo";
@@ -26,6 +27,9 @@ import { breadcrumbLd } from "@/product/seo";
 
 // Project hook under a post (product/layout.tsx), optional like the other layout hooks.
 const ProductPostFooter = "ProductPostFooter" in productLayout ? (productLayout as { ProductPostFooter?: (p: { locale: Locale; tags: string[]; slug: string }) => ReactNode }).ProductPostFooter : undefined;
+
+// Project blocks inside a post's Markdown (`<Tour slug="…" />`), optional like the other hooks.
+const ProductPostEmbed = "ProductPostEmbed" in productLayout ? (productLayout as { ProductPostEmbed?: (p: { locale: Locale; name: string; slug: string; post: string }) => ReactNode }).ProductPostEmbed : undefined;
 
 type Props = { params: Promise<{ locale: Locale; slug: string }> };
 
@@ -97,6 +101,13 @@ export default async function BlogPostPage({ params }: Props) {
     .filter((p) => p.slug !== post.slug && p.tags.some((t) => post.tags.includes(t)))
     .slice(0, 3);
   const author = post.author ?? (blogConfig.defaultAuthor || undefined);
+  // Markdown posts (written in the admin): their ## sections as a table of contents (long guides), and the questions
+  // of a "Câu hỏi thường gặp" section as FAQPage data. The rendered headings carry the same ids (markdown.tsx).
+  const sections = post.format === "markdown" ? outline(post.body).filter((h) => h.level === 2) : [];
+  const questions = post.format === "markdown" ? faq(post.body) : [];
+  const faqLd = questions.length
+    ? { "@context": "https://schema.org", "@type": "FAQPage", mainEntity: questions.map((q) => ({ "@type": "Question", name: q.question, acceptedAnswer: { "@type": "Answer", text: q.answer } })) }
+    : null;
   const jsonLd = articleJsonLd({
     title: post.title,
     description: post.description,
@@ -115,7 +126,7 @@ export default async function BlogPostPage({ params }: Props) {
     <Container className="max-w-3xl py-16">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: serializeJsonLd([jsonLd, breadcrumbLd(site, locale, [{ path: "/blog", name: c.title }, { path: `/blog/${slug}`, name: post.title }])]) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd([jsonLd, breadcrumbLd(site, locale, [{ path: "/blog", name: c.title }, { path: `/blog/${slug}`, name: post.title }]), ...(faqLd ? [faqLd] : [])]) }}
       />
       <PageLink href={localePath(locale, "/blog")} className="text-sm text-muted-foreground hover:underline">
         ← {c.allPosts}
@@ -156,8 +167,28 @@ export default async function BlogPostPage({ params }: Props) {
             )}
           </figure>
         )}
+        {sections.length >= 3 && (
+          <details open className="blog-toc mt-8 rounded-lg border border-border p-4" data-testid="post-toc">
+            <summary className="cursor-pointer font-semibold">{c.toc}</summary>
+            <nav aria-label={c.toc}>
+              <ol className="mt-3 grid list-decimal gap-1.5 pl-5 text-sm">
+                {sections.map((h) => (
+                  <li key={h.id}>
+                    <a href={`#${h.id}`} className="text-primary underline-offset-4 hover:underline">
+                      {h.text}
+                    </a>
+                  </li>
+                ))}
+              </ol>
+            </nav>
+          </details>
+        )}
         <div className="prose-blog mt-8">
-          {post.format === "mdx" ? <MdxContent source={post.body} /> : <MarkdownContent source={post.body} />}
+          {post.format === "mdx" ? (
+            <MdxContent source={post.body} />
+          ) : (
+            <MarkdownContent source={post.body} embed={ProductPostEmbed ? (name, s) => <ProductPostEmbed locale={locale} name={name} slug={s} post={post.slug} /> : undefined} />
+          )}
         </div>
         {post.tags.length > 0 && (
           <ul className="blog-tags mt-10 flex flex-wrap gap-2 text-sm">

@@ -125,6 +125,15 @@ Trong khung quy trình duyệt, mở **Lịch sử phiên bản** để xem các
 - Bấm **Khôi phục** để chép một phiên bản cũ vào bản nháp.
 - Bản đang hiện trên web không đổi cho tới khi bản khôi phục được duyệt.
 
+## 10. Viết bài cẩm nang dài
+
+- **Mục lục tự tạo:** chia bài bằng tiêu đề `## Tên mục`. Bài có từ 3 mục trở lên sẽ có mục lục ở đầu bài, bấm vào
+  là nhảy tới mục đó. Dùng `### Mục con` cho ý nhỏ bên trong.
+- **Chèn tour giữa bài:** gõ `<Tour slug="ha-long-cruise-2d1n" />` trên một dòng riêng, ngay sau đoạn nói về nơi đó.
+  Lấy `slug` ở đường dẫn của tour (phần sau `/tours/`). Tour chưa đăng hoặc gõ sai slug thì không hiện gì.
+- **Hỏi đáp hiện trên Google:** thêm mục `## Câu hỏi thường gặp`, mỗi câu hỏi là một `### Câu hỏi?` và câu trả lời
+  viết ngay bên dưới. Google có thể hiện các câu này trong kết quả tìm kiếm.
+
 ## Câu hỏi thường gặp
 
 **Tôi lưu rồi mà web không đổi?**

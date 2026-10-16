@@ -226,6 +226,8 @@ export interface AppContent {
     tagTitle: string;
     /** Heading of the posts sharing a tag, under a post. */
     related: string;
+    /** Table of contents of a post (its ## headings). */
+    toc: string;
     tags: string;
     empty: string;
     previous: string;

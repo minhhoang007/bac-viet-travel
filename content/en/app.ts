@@ -275,6 +275,7 @@ export const app: AppContent = {
     readingTime: "{n} min read",
     tagTitle: "Posts about",
     related: "Related posts",
+    toc: "Contents",
     tags: "Topics",
     empty: "No posts yet.",
     previous: "Previous page",

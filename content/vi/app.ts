@@ -275,6 +275,7 @@ export const app: AppContent = {
     readingTime: "{n} phút đọc",
     tagTitle: "Bài viết về",
     related: "Bài viết liên quan",
+    toc: "Mục lục",
     tags: "Chủ đề",
     empty: "Chưa có bài viết nào.",
     previous: "Trang trước",

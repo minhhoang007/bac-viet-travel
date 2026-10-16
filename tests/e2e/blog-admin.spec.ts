@@ -56,7 +56,11 @@ test("marketing writes a post, previews it, submits; an admin publishes; it is o
   await editor.waitForLoadState("networkidle");
   await editor.getByTestId("markdown-toolbar").getByRole("button", { name: "Chữ đậm" }).click();
   await expect(body).toHaveValue("**chữ đậm**");
-  await body.fill('## Khi nào đi\n\nĐẹp nhất **cuối tháng 9**.\n\n<Callout tone="warning">Đường đèo nhiều sương, đi chậm.</Callout>\n\n{process.env.BETTER_AUTH_SECRET}');
+  await body.fill(
+    '## Khi nào đi\n\nĐẹp nhất **cuối tháng 9**.\n\n<Callout tone="warning">Đường đèo nhiều sương, đi chậm.</Callout>\n\n{process.env.BETTER_AUTH_SECRET}' +
+      '\n\n## Đi thế nào\n\nXe giường nằm từ Hà Nội.\n\n<Tour slug="sapa-trekking-2d1n" />\n\n<Tour slug="khong-co-tour-nay" />' +
+      "\n\n## Câu hỏi thường gặp\n\n### Đi mấy ngày là đủ?\n\nHai ngày một đêm.",
+  );
   await editor.getByRole("button", { name: "Lưu bản nháp" }).click();
   await expect(editor.getByText("Đã lưu bản nháp.")).toBeVisible();
   await expect(editor.getByTestId("post-problems")).toHaveCount(0);
@@ -96,6 +100,15 @@ test("marketing writes a post, previews it, submits; an admin publishes; it is o
     await expect(visitor.getByRole("heading", { level: 1 })).toHaveText("Mùa lúa chín Mù Cang Chải", { timeout: 1_000 });
   }).toPass({ timeout: 15_000 });
   await expect(visitor.getByRole("status").filter({ hasText: "Đang xem trước" })).toHaveCount(0);
+  // Long guides: contents linking to each section, a tour card where the post names it (an unknown tour: nothing),
+  // and the FAQ section as FAQPage data for search engines.
+  await expect(visitor.getByTestId("post-toc").getByRole("link", { name: "Đi thế nào" })).toHaveAttribute("href", "#di-the-nao");
+  await expect(visitor.locator("h2#di-the-nao")).toBeVisible();
+  await expect(visitor.getByTestId("post-tour-embed")).toHaveCount(1);
+  await expect(visitor.getByTestId("post-tour-embed")).toHaveAttribute("href", "/tours/sapa-trekking-2d1n");
+  const ld = await visitor.locator('script[type="application/ld+json"]').first().textContent();
+  expect(ld).toContain('"@type":"FAQPage"');
+  expect(ld).toContain("Đi mấy ngày là đủ?");
   await expect(async () => {
     await visitor.goto("/blog/tag/mu-cang-chai");
     await expect(visitor.getByRole("link", { name: "Mùa lúa chín Mù Cang Chải" })).toBeVisible({ timeout: 1_000 });
