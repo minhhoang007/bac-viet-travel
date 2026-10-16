@@ -92,9 +92,14 @@ test("marketing duplicates and edits a tour, submits it; an admin publishes; vis
 
 test("an incomplete new tour lists what is missing and cannot be submitted", async ({ browser }) => {
   const editor = await signIn(browser, EDITOR, "editor");
+  // Marketing opening /admin lands on the tours, not on a 404.
+  await editor.goto("/admin");
+  await expect(editor).toHaveURL(/\/admin\/tours$/);
   await editor.goto("/admin/tours/new");
+  await editor.waitForLoadState("networkidle"); // the title/slug pair is live only once React runs
   await editor.getByLabel("Tên tour (tiếng Việt)").fill("Hà Giang 3 ngày");
-  await editor.getByLabel("Đường dẫn (slug)").fill("ha-giang-3-ngay");
+  // The web address follows the title (marks dropped) until edited by hand.
+  await expect(editor.getByLabel("Đường dẫn (slug)")).toHaveValue("ha-giang-3-ngay");
   await editor.getByRole("button", { name: "Tạo bản nháp" }).click();
   await expect(editor.getByText("Đã tạo bản nháp.", { exact: false })).toBeVisible();
   await expect(editor.getByTestId("tour-problems")).toContainText("Chung › Điểm đến");

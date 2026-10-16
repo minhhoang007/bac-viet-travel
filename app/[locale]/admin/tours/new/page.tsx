@@ -10,6 +10,7 @@ import { localePath } from "@/core/i18n/routing";
 import type { Locale } from "@/config/app";
 import { getAppContent } from "@/content";
 import { getTourAdminContent } from "@/product/tours/admin-content";
+import { SlugFromTitle } from "@/product/components/slug-from-title";
 
 type Props = { params: Promise<{ locale: Locale }>; searchParams: Promise<{ result?: string }> };
 
@@ -37,17 +38,7 @@ export default async function NewTourPage({ params, searchParams }: Props) {
       {message && <Notice tone="danger">{message}</Notice>}
       <form action={createTour} className="grid gap-4">
         <input type="hidden" name="locale" value={locale} />
-        <label className="grid gap-1 text-sm">
-          {c.create.titleVi}
-          <input name="titleVi" required maxLength={120} className={input} />
-        </label>
-        <label className="grid gap-1 text-sm">
-          {c.create.slug}
-          <input name="slug" required maxLength={110} autoComplete="off" autoCapitalize="none" spellCheck={false} pattern="[a-z0-9]+(-[a-z0-9]+)*" aria-describedby="slug-hint" className={input} />
-          <span id="slug-hint" className="text-xs text-muted-foreground">
-            {c.create.slugHint}
-          </span>
-        </label>
+        <SlugFromTitle titleLabel={c.create.titleVi} titleName="titleVi" titleMaxLength={120} slugLabel={c.create.slug} slugHint={c.create.slugHint} className={input} />
         <SubmitButton label={c.create.submit} pendingLabel={c.saving} />
       </form>
     </div>

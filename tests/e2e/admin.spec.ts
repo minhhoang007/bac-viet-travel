@@ -310,7 +310,10 @@ test("staff roles: admins add sales and managers; sales see bookings without con
   await staff.goto("/admin/bookings/BV-SALE22");
   await expect(staff.getByTestId("admin-contact")).toBeVisible();
   for (const id of ["admin-confirm", "admin-cancel", "admin-transfer"]) await expect(staff.getByTestId(id)).toHaveCount(0);
-  for (const path of ["/admin/discounts", "/admin/reports", "/admin/staff", "/admin"]) expect((await staff.goto(path))?.status()).toBe(404);
+  for (const path of ["/admin/discounts", "/admin/reports", "/admin/staff"]) expect((await staff.goto(path))?.status()).toBe(404);
+  // The admin home (owners' numbers) sends them to their own first page instead.
+  await staff.goto("/admin");
+  await expect(staff).toHaveURL(/\/admin\/bookings$/);
 
   // Managers: everything about bookings.
   await form.getByLabel("Email nhân viên").fill(email);

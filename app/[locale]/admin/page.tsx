@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { setRequestLocale } from "next-intl/server";
-import { requireAdmin } from "@/app/_lib/admin";
+import { notFound, redirect } from "next/navigation";
+import { productAdminNavFor, requireAdmin, requireStaff } from "@/app/_lib/admin";
+import { hasRole } from "@/core/auth";
 import { BarChart } from "@/components/admin/bar-chart";
 import { Stat } from "@/components/admin/stat";
 import { formatBytes } from "@/components/ui/format-bytes";
@@ -40,6 +42,13 @@ function List({ title, rows, empty }: { title: string; rows: { label: string; va
 export default async function AdminOverviewPage({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  // Staff who are not admins (marketing, sale…) land on their first page instead of a 404.
+  const staff = await requireStaff("editor", { secondFactor: false });
+  if (!hasRole(staff.user, "admin")) {
+    const first = (await productAdminNavFor(staff.user))[0];
+    if (!first) notFound();
+    redirect(localePath(locale, first.href));
+  }
   const { admin, container } = await requireAdmin();
   const c = getAppContent(locale).admin.overview;
 
