@@ -231,6 +231,8 @@ export interface AppContent {
     allPosts: string;
     updated: string;
     otherLanguage: string;
+    /** Before the photographer's name under a credited cover, e.g. "Ảnh:". */
+    photoBy: string;
     rss: string;
   };
 }

@@ -111,9 +111,12 @@ test("marketing writes a post, previews it, submits; an admin publishes; it is o
     expect(await feed.text()).toContain("<title>Mùa lúa chín Mù Cang Chải</title>");
   }).toPass({ timeout: 15_000 });
 
-  // Covers: only a path on the site (external images are blocked by the CSP).
+  // Covers: only a path on the site or an allowed CDN (other hosts are blocked by the CSP). With the media library
+  // or Unsplash on, the image picker replaces the free field (tests/e2e/image-picker.spec.ts).
   await editor.goto(edit);
-  await editor.getByLabel("Ảnh bìa", { exact: false }).fill("https://example.com/cover.jpg");
-  await editor.getByRole("button", { name: "Lưu bản nháp" }).click();
-  await expect(editor.getByTestId("post-problems")).toContainText("Ảnh bìa");
+  if ((await editor.getByTestId("picker-cover").count()) === 0) {
+    await editor.getByLabel("Ảnh bìa", { exact: false }).fill("https://example.com/cover.jpg");
+    await editor.getByRole("button", { name: "Lưu bản nháp" }).click();
+    await expect(editor.getByTestId("post-problems")).toContainText("Ảnh bìa");
+  }
 });

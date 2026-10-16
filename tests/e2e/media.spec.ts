@@ -34,9 +34,12 @@ test("a photo uploaded in the tour's Images tab is added, published and served f
   await page.getByRole("button", { name: "Lưu và đăng ngay" }).click();
   await page.waitForLoadState("networkidle");
 
-  await page.goto("/tours/sapa-trekking-2d1n");
+  // The tour pages are cached and revalidated on publish; other files publishing tours at the same time can delay it.
   const cdn = page.locator('img[src*="res.cloudinary.com"], img[srcset*="res.cloudinary.com"]');
-  await expect(cdn.first()).toBeAttached();
+  await expect(async () => {
+    await page.goto("/tours/sapa-trekking-2d1n");
+    await expect(cdn.first()).toBeAttached({ timeout: 2_000 });
+  }).toPass({ timeout: 30_000 });
   // Lazy-loaded further down the gallery: ask the CDN directly that the image is there.
   const src = await cdn.first().evaluate((img: HTMLImageElement) => img.src);
   const image = await page.request.get(src);

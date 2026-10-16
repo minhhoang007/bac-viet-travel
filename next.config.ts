@@ -18,6 +18,10 @@ const ga4 = process.env.NEXT_PUBLIC_GA4_ID
   : { script: [], connect: [], img: [] };
 const pixel = process.env.NEXT_PUBLIC_META_PIXEL_ID ? { script: ["https://connect.facebook.net"], connect: ["https://www.facebook.com"], img: ["https://www.facebook.com"] } : { script: [], connect: [], img: [] };
 
+// Unsplash photos are hotlinked (its API terms): blog covers picked in the admin load from its CDN. Always allowed,
+// so a published cover keeps showing even if the API key is removed later.
+const unsplashImg = ["https://images.unsplash.com"];
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   // E2E builds only (CI sets it on `pnpm build`): under `next start` an image variant can stop answering (the
@@ -32,7 +36,7 @@ const nextConfig: NextConfig = {
   // functions; Vercel only bundles files the code imports. Found on a real deployment (reuse finding G10).
   outputFileTracingIncludes: { "/**/*": ["./content/**/*"] },
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders({ isDev: process.env.NODE_ENV !== "production", connectSrc: [...(storageOrigin ? [storageOrigin] : []), ...media.connect, ...ga4.connect, ...pixel.connect], imgSrc: [...media.img, ...ga4.img, ...pixel.img], scriptSrc: [...turnstile, ...ga4.script, ...pixel.script], frameSrc: turnstile }) }];
+    return [{ source: "/:path*", headers: securityHeaders({ isDev: process.env.NODE_ENV !== "production", connectSrc: [...(storageOrigin ? [storageOrigin] : []), ...media.connect, ...ga4.connect, ...pixel.connect], imgSrc: [...media.img, ...ga4.img, ...pixel.img, ...unsplashImg], scriptSrc: [...turnstile, ...ga4.script, ...pixel.script], frameSrc: turnstile }) }];
   },
 };
 

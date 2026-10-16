@@ -18,6 +18,7 @@ import { appConfig, type Locale } from "@/config/app";
 import { blogConfig } from "@/config/blog";
 import { getAppContent } from "@/content";
 import { postFromContent, type Blog, type Post } from "@/modules/blog";
+import { UNSPLASH_UTM } from "@/product/media/unsplash";
 import { formatDate, requireBlog } from "../_shared";
 
 type Props = { params: Promise<{ locale: Locale; slug: string }> };
@@ -124,8 +125,23 @@ export default async function BlogPostPage({ params }: Props) {
           ))}
         </header>
         {post.cover && (
-          <figure className="blog-cover relative mt-8 aspect-[16/9] overflow-hidden rounded-lg">
-            <Image src={post.cover} alt="" fill priority sizes="(min-width: 768px) 768px, 100vw" unoptimized={!post.cover.startsWith("/")} className="object-cover" />
+          <figure className="mt-8">
+            <div className="blog-cover relative aspect-[16/9] overflow-hidden rounded-lg">
+              <Image src={post.cover} alt="" fill priority sizes="(min-width: 768px) 768px, 100vw" unoptimized={!post.cover.startsWith("/")} className="object-cover" />
+            </div>
+            {/* Licensed photos (Unsplash) credit the photographer with a link back. */}
+            {post.coverCredit && (
+              <figcaption className="mt-2 text-xs text-muted-foreground" data-testid="cover-credit">
+                {c.photoBy}{" "}
+                <a href={post.coverCredit.url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
+                  {post.coverCredit.name}
+                </a>{" "}
+                /{" "}
+                <a href={`https://unsplash.com/?${UNSPLASH_UTM}`} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
+                  Unsplash
+                </a>
+              </figcaption>
+            )}
           </figure>
         )}
         <div className="prose-blog mt-8">
