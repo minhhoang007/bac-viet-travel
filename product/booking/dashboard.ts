@@ -2,10 +2,10 @@ import { and, asc, count, desc, eq, gt, gte, inArray, lt, lte, sql } from "drizz
 import type { Db } from "@/db/client";
 import { bookingPayments, bookings, departures } from "../schema/booking";
 import { needsAttention } from "./admin";
+import { paidBookings } from "./metrics";
 import { addDays, vietnamDayStart, vietnamToday } from "./rules";
 import { canBecome, refundOwed, SOLD_STATUSES } from "./status";
 
-const DAY = 86_400_000;
 const TZ = "Asia/Ho_Chi_Minh";
 
 export interface DashboardData {
@@ -53,14 +53,8 @@ export function createDashboard(deps: { db: Db; now?: () => Date }) {
 
       const [month, previous] = await Promise.all([collectedBetween(monthStart, at), collectedBetween(prevMonthStart, prevSameMoment)]);
 
-      const [week] = await db
-        .select({
-          count: sql<number>`count(*) filter (where ${bookings.depositPaidAt} >= ${new Date(at.getTime() - 7 * DAY).toISOString()})::int`,
-          value: sql<number>`coalesce(sum(${bookings.totalVnd}) filter (where ${bookings.depositPaidAt} >= ${new Date(at.getTime() - 7 * DAY).toISOString()}), 0)::bigint`,
-          previousCount: sql<number>`count(*) filter (where ${bookings.depositPaidAt} < ${new Date(at.getTime() - 7 * DAY).toISOString()})::int`,
-        })
-        .from(bookings)
-        .where(and(inArray(bookings.status, SOLD_STATUSES), gte(bookings.depositPaidAt, new Date(at.getTime() - 14 * DAY))));
+      // Shared with /admin/bookings (metrics.ts): Vietnam days, bookings that still stand.
+      const week = await paidBookings(db, today, at);
 
       // Qualified on purpose: in a select list Drizzle may print a bare "id", which inside this subquery means b.id.
       const soldSeats = sql<number>`coalesce((select sum(b.seats) from ${bookings} b where b.departure_id = ${sql.raw(`"departures"."id"`)} and b.status in (${sql.join(SOLD_STATUSES.map((s) => sql`${s}`), sql`, `)})), 0)::int`;
@@ -127,7 +121,7 @@ export function createDashboard(deps: { db: Db; now?: () => Date }) {
 
       return {
         collected: { month, previous },
-        bookings7d: { count: week?.count ?? 0, value: Number(week?.value ?? 0), previousCount: week?.previousCount ?? 0 },
+        bookings7d: { count: week.week, value: week.weekValueVnd, previousCount: week.previousWeek },
         fill30d: { sold: fill?.sold ?? 0, capacity: fill?.capacity ?? 0 },
         daily,
         byTour: byTour.map((r) => ({ tourSlug: r.tourSlug, count: r.count, vnd: Number(r.vnd) })),

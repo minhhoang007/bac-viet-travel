@@ -165,7 +165,26 @@ export function AdminDashboard({ locale, data, tourTitle }: { locale: Locale; da
         {data.recent.length === 0 ? (
           <p className="text-sm text-muted-foreground">{c.noData}</p>
         ) : (
-          <div className="-mx-1 overflow-x-auto">
+          <>
+          {/* Phones: one card per booking, so status and amount are never cut off. */}
+          <ul className="grid gap-2 sm:hidden" data-testid="dashboard-recent-cards">
+            {data.recent.map((b) => (
+              <li key={b.code}>
+                <a href={href(`/admin/bookings/${b.code}`)} className="grid gap-1 rounded-md border border-border p-3 hover:bg-muted">
+                  <span className="flex items-center justify-between gap-2">
+                    <span className="font-mono text-sm font-medium text-primary">{b.code}</span>
+                    <BookingStatusBadge status={b.status as never} label={statuses[b.status] ?? b.status} />
+                  </span>
+                  <span className="flex items-baseline justify-between gap-2 text-sm">
+                    <span className="truncate">{b.name}</span>
+                    <span className="shrink-0 tabular-nums font-medium">{money(b.totalVnd)}</span>
+                  </span>
+                  <span className="truncate text-xs text-muted-foreground">{tourTitle(b.tourSlug)}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+          <div className="-mx-1 hidden overflow-x-auto sm:block">
             <table className="w-full text-sm [&_td]:whitespace-nowrap">
               <tbody>
                 {data.recent.map((b) => (
@@ -186,6 +205,7 @@ export function AdminDashboard({ locale, data, tourTitle }: { locale: Locale; da
               </tbody>
             </table>
           </div>
+          </>
         )}
       </Card>
     </div>
