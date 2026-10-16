@@ -81,21 +81,23 @@ export async function createPost(formData: FormData): Promise<void> {
   redirect(localePath(l, target));
 }
 
-/** Saves the working copy. A new slug of a live post applies on publish; the old URL then redirects. */
-export async function savePost(formData: FormData): Promise<void> {
+/**
+ * Saves the working copy and answers in place: the editor stays as it is (text, cursor, scroll, history), and on a
+ * conflict or an error what the writer typed is still there. A new slug of a live post applies on publish.
+ */
+export async function savePostInPlace(formData: FormData): Promise<{ result: string; revision?: number }> {
   const { content, user, container } = await context();
-  const l = locale.parse(formData.get("locale"));
   const id = uuid.parse(formData.get("id"));
   const item = await content.get(id);
   if (!item || item.type !== POST_CONTENT_TYPE) notFound();
-  let result = "saved";
   try {
     const slug = text(formData, "slug", 110).toLowerCase();
-    await content.saveDraft(user, id, { revision: revision.parse(formData.get("revision")), slug, data: postData(formData) });
+    const saved = await content.saveDraft(user, id, { revision: revision.parse(formData.get("revision")), slug, data: postData(formData) });
+    return { result: "saved", revision: saved.revision };
   } catch (error) {
     unstable_rethrow(error);
-    result = error instanceof z.ZodError ? "invalid" : resultOf(error);
+    const result = error instanceof z.ZodError ? "invalid" : resultOf(error);
     if (result === "failed") container.logger.warn("posts.save_failed", { id, error });
+    return { result };
   }
-  redirect(localePath(l, `/admin/posts/${id}?result=${result}`));
 }

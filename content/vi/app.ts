@@ -261,6 +261,8 @@ export const app: AppContent = {
         created: "Đã tạo bản nháp. Viết nội dung rồi gửi duyệt.",
         slug_taken: "Đường dẫn này đã có bài khác dùng.",
         invalid: "Dữ liệu không hợp lệ. Kiểm tra lại các ô.",
+        conflict: "Bài vừa được người khác lưu. Phần bạn đang viết vẫn còn nguyên ở đây: sao chép lại trước khi tải lại trang để xem bản mới.",
+        failed: "Chưa lưu được. Phần bạn đang viết vẫn còn đây; thử lưu lại sau ít phút.",
       },
     },
     done: "Đã thực hiện.",

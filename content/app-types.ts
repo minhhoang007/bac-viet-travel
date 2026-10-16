@@ -210,7 +210,7 @@ export interface AppContent {
       create: string;
       saving: string;
       problemsTitle: string;
-      result: { saved: string; created: string; slug_taken: string; invalid: string };
+      result: { saved: string; created: string; slug_taken: string; invalid: string; conflict: string; failed: string };
     };
     done: string;
     failed: string;

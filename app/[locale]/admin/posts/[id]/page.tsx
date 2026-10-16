@@ -3,7 +3,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
 import { ContentResult, WorkflowPanel } from "@/app/_components/workflow-panel";
-import { savePost } from "@/app/actions/posts";
+import { savePostInPlace } from "@/app/actions/posts";
+import { SaveInPlaceForm } from "@/components/content/save-in-place-form";
 import { POST_CONTENT_TYPE } from "@/bootstrap/content-types";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { Notice } from "@/components/feedback/notice";
@@ -96,7 +97,8 @@ export default async function EditPostPage({ params, searchParams }: Props) {
             </ul>
           </Notice>
         )}
-        <form action={savePost} className="grid gap-4" key={item.revision}>
+        {/* Saves in place (no reload): text, cursor and scroll stay; on a conflict the text being written is kept. */}
+        <SaveInPlaceForm action={savePostInPlace} messages={c.result} className="grid gap-4">
           <input type="hidden" name="locale" value={locale} />
           <input type="hidden" name="id" value={item.id} />
           <input type="hidden" name="revision" value={item.revision} />
@@ -160,7 +162,7 @@ export default async function EditPostPage({ params, searchParams }: Props) {
           <div className="sticky bottom-0 -mx-1 bg-background/95 px-1 py-3 backdrop-blur">
             <SubmitButton label={c.save} pendingLabel={c.saving} />
           </div>
-        </form>
+        </SaveInPlaceForm>
       </div>
       <aside className="lg:sticky lg:top-24 lg:self-start">
         <WorkflowPanel item={item} versions={await content.versions(item.id)} locale={locale} isAdmin={hasRole(user, "admin")} returnTo={`/admin/posts/${item.id}`} />
