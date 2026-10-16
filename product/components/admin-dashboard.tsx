@@ -47,7 +47,10 @@ export function AdminDashboard({ locale, data, tourTitle }: { locale: Locale; da
 
   const monthPct = pct(data.collected.month, data.collected.previous);
   const weekDiff = data.bookings7d.count - data.bookings7d.previousCount;
-  const fillPct = data.fill30d.capacity > 0 ? Math.round((data.fill30d.sold / data.fill30d.capacity) * 100) : 0;
+  // Same rule as the "short of guests" queue item: below the minimum when there is one, else under half full.
+  const tripStatus = (d: DashboardData["upcoming"][number]) =>
+    d.sold >= d.capacity ? "full" : (d.minGuests !== null ? d.sold < d.minGuests : d.sold / d.capacity < 0.5) ? "short" : "open";
+  const statusTone = { full: "bg-primary/10 text-primary", short: "bg-warning/15 text-foreground", open: "bg-muted text-muted-foreground" } as const;
 
   const queue = [
     { key: "transfers", n: data.queue.transfers, icon: Landmark, to: "/admin/bookings?filter=attention" },
@@ -76,7 +79,7 @@ export function AdminDashboard({ locale, data, tourTitle }: { locale: Locale; da
         />
         <Stat label={c.kpi.bookings} value={data.bookings7d.count} href={href("/admin/bookings?filter=all")} delta={{ label: c.vsLastWeek(signed(weekDiff)), trend: trend(weekDiff) }} />
         <Stat label={c.kpi.value} value={money(data.bookings7d.value)} href={href("/admin/bookings?filter=all")} />
-        <Stat label={c.kpi.fill} value={`${fillPct}%`} hint={c.seats(data.fill30d.sold, data.fill30d.capacity)} href={href("/admin/departures")} />
+        <Stat label={c.kpi.booked} value={money(data.booked.thisMonth)} hint={c.bookedNext(money(data.booked.nextMonth))} href={href("/admin/departures")} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_1.4fr]">
@@ -116,6 +119,7 @@ export function AdminDashboard({ locale, data, tourTitle }: { locale: Locale; da
             <ul className="grid gap-3">
               {data.upcoming.map((d) => {
                 const share = Math.min(100, Math.round((d.sold / d.capacity) * 100));
+                const status = tripStatus(d);
                 return (
                   <li key={d.id}>
                     <a href={href(`/admin/departures/${d.id}`)} className="grid grid-cols-[minmax(0,1fr)] gap-1.5 rounded-md px-1 py-1 hover:bg-muted">
@@ -125,10 +129,13 @@ export function AdminDashboard({ locale, data, tourTitle }: { locale: Locale; da
                           <span className="font-medium tabular-nums">{formatShortDay(d.date, locale)}</span>
                           <span className="truncate text-muted-foreground">{tourTitle(d.tourSlug)}</span>
                         </span>
-                        <span className="shrink-0 tabular-nums">{c.seats(d.sold, d.capacity)}</span>
+                        <span className="flex shrink-0 items-baseline gap-2">
+                          <span className={`rounded px-1.5 py-0.5 text-xs ${statusTone[status]}`} data-trip-status={status}>{c.tripStatus[status]}</span>
+                          <span className="tabular-nums">{c.seats(d.sold, d.capacity)}</span>
+                        </span>
                       </span>
                       <span className="h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden="true">
-                        <span className={`block h-full rounded-full ${share < 50 ? "bg-warning" : "bg-primary"}`} style={{ width: `${share}%` }} />
+                        <span className={`block h-full rounded-full ${status === "short" ? "bg-warning" : "bg-primary"}`} style={{ width: `${share}%` }} />
                       </span>
                     </a>
                   </li>

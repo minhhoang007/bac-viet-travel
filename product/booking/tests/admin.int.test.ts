@@ -405,7 +405,8 @@ describe("admin dashboard", () => {
     const data = await createDashboard({ db, now: () => now }).data();
     expect(data.collected).toEqual({ month: 600_000 + 1_400_000 + 300_000, previous: 900_000 + 600_000 });
     expect(data.bookings7d).toEqual({ count: 1, value: 2_000_000, previousCount: 0 });
-    expect(data.fill30d).toEqual({ sold: 2 + 2 + 3 + 1, capacity: 20 });
+    // By trip month, bookings that still stand: Oct 24 (2M + 2M), Nov 10 (3M + 1M; the cancelled one left out).
+    expect(data.booked).toEqual({ thisMonth: 4_000_000, nextMonth: 4_000_000 });
     expect(data.daily).toHaveLength(30);
     expect(data.daily.at(-1)!.day).toBe("2026-10-20");
     expect(data.daily.find((d) => d.day === "2026-10-19")!.vnd).toBe(1_400_000);
