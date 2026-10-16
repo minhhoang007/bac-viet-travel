@@ -25,6 +25,20 @@ const newCode = () => `BV-${Array.from({ length: 6 }, () => ALPHABET[randomInt(A
 const newTokenHash = () => createHash("sha256").update(randomBytes(32)).digest("hex");
 const roundUp1000 = (n: number) => Math.ceil(n / 1000) * 1000;
 
+const GUESTS = ["Ngô Thanh Tùng", "Đặng Thu Trang", "Lý Hoàng Nam", "Phan Ngọc Ánh", "Trịnh Văn Hải", "Mai Khánh Linh", "Đinh Quốc Bảo", "Tạ Minh Thư", "Hồ Gia Huy", "Dương Bích Ngọc", "Cao Đức Mạnh", "Lương Thảo Vy", "Emma Brown", "Lucas Martin", "Kim Ji-woo", "Tanaka Yui"];
+
+/** Small seeded generator (mulberry32): the sample history keeps its shape from one reset to the next. */
+function seeded(seed: string) {
+  let a = [...seed].reduce((h, ch) => Math.imul(h ^ ch.charCodeAt(0), 16777619), 2166136261) >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 export interface DemoResetDeps {
   db: Db;
   logger: Logger;
@@ -131,6 +145,31 @@ export function createDemoReset(deps: DemoResetDeps) {
       await book(pick(5), { status: "cancelled", name: "Đỗ Văn Nam", phone: "0966 123 456", adults: 2, paid: hoursAgo(72), cancelled: { reason: "Khách bận việc gia đình, xin huỷ", refund: true }, payment: "vnpay" });
       await book(pick(6), { status: "expired", name: "Vũ Thị Mai", phone: "0945 678 901", adults: 2, holdMinutes: -180 });
       await book(past!, { status: "confirmed", name: "Bùi Quang Huy", phone: "0911 222 333", adults: 2, paid: hoursAgo(24 * 20), confirmed: hoursAgo(24 * 19), balance: hoursAgo(24 * 11), travellers: true, payment: "vnpay" });
+
+      // History, so the dashboard and reports look like a business that has been running: trips of the last 90 days
+      // (done and paid in full, a few cancelled without refund) and bookings of the last 3 weeks for coming trips.
+      // Settled statuses only: the to-do queue stays exactly the sample above. Seeded: the same shape every day.
+      const rand = seeded(today);
+      const between = (lo: number, hi: number) => lo + Math.floor(rand() * (hi - lo + 1));
+      const guest = () => ({ name: GUESTS[between(0, GUESTS.length - 1)]!, phone: `09${between(10_000_000, 99_999_999)}` });
+      const pastRows = Array.from({ length: 45 }, (_, i) => ({ tourSlug: tours[i % tours.length]!.slug, date: addDays(today, -(90 - i * 2)), capacity: 16, status: "closed" as const }));
+      for (const d of await tx.insert(departures).values(pastRows).returning()) {
+        const tripStart = new Date(`${d.date}T01:00:00Z`).getTime();
+        for (let n = between(1, 3); n > 0; n--) {
+          const paid = new Date(tripStart - between(3, 30) * 86_400_000);
+          const cancelled = rand() < 0.1;
+          await book(d, {
+            status: cancelled ? "cancelled" : "confirmed", ...guest(), adults: between(1, 4), source: rand() < 0.2 ? "phone" : "website",
+            paid, confirmed: paid, balance: cancelled ? undefined : new Date(tripStart - 86_400_000),
+            cancelled: cancelled ? { reason: "Khách huỷ sát ngày, không hoàn cọc", refund: false } : undefined, payment: rand() < 0.6 ? "vnpay" : "transfer",
+          });
+        }
+      }
+      const open = upcoming.filter((d) => d.id !== short.id);
+      for (let i = 0; i < 30; i++) {
+        const paid = hoursAgo(between(3, 21 * 24));
+        await book(open[(i * 7) % open.length]!, { status: "confirmed", ...guest(), adults: between(1, 3), paid, confirmed: paid, payment: rand() < 0.6 ? "vnpay" : "transfer" });
+      }
 
       await tx.insert(discountCodes).values([
         { code: "CHAODEMO", kind: "percent", value: 10, validFrom: addDays(today, -7), validTo: addDays(today, 60), note: "Mã mẫu: giảm 10%" },

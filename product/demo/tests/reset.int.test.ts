@@ -53,6 +53,11 @@ describe("demo reset", () => {
     const dashboard = await createDashboard({ db, now: () => clock }).data();
     expect(dashboard.queue).toMatchObject({ transfers: 1, toConfirm: 2, refunds: 1 });
     expect(dashboard.queue.lowFill).toBeGreaterThanOrEqual(1);
+    // History: a running business, not a handful of rows.
+    expect(rows.length).toBeGreaterThan(60);
+    expect(dashboard.bookings7d.count).toBeGreaterThan(3);
+    expect(dashboard.daily.filter((d) => d.vnd > 0).length).toBeGreaterThan(10);
+    expect(dashboard.booked.thisMonth).toBeGreaterThan(0);
     expect((await createReports({ db }).cash("2026-10-01", "2026-10-31")).collectedVnd).toBeGreaterThan(0);
 
     // Demo staff are editors with their staff role, and sign in from /demo.
