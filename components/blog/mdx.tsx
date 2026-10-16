@@ -31,9 +31,43 @@ function Link({ href = "", ...props }: ComponentProps<"a">) {
   return <a href={href} {...props} {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})} />;
 }
 
+const WIDTHS = [640, 960, 1600];
+
+/**
+ * Sizes an image CDN can serve for a Markdown image, and its shape when the URL says it (imgix `ar=3:2`, as picked
+ * Unsplash photos carry): phones load a small file, and the page keeps the image's space before it loads.
+ */
+export function responsiveImage(src: string): { srcSet?: string; aspectRatio?: string } {
+  if (src.startsWith("https://images.unsplash.com/")) {
+    const url = new URL(src);
+    const ar = url.searchParams.get("ar")?.match(/^(\d+(?:\.\d+)?):(\d+(?:\.\d+)?)$/);
+    const srcSet = WIDTHS.map((w) => {
+      url.searchParams.set("w", String(w));
+      return `${url} ${w}w`;
+    }).join(", ");
+    return { srcSet, aspectRatio: ar ? `${ar[1]} / ${ar[2]}` : undefined };
+  }
+  // Cloudinary: a width transformation in front of the stored image (format and quality picked per browser).
+  const cloudinary = src.match(/^(https:\/\/res\.cloudinary\.com\/[^/]+\/image\/upload\/)(.+)$/);
+  if (cloudinary) return { srcSet: WIDTHS.map((w) => `${cloudinary[1]}f_auto,q_auto,c_limit,w_${w}/${cloudinary[2]} ${w}w`).join(", ") };
+  return {};
+}
+
 function Img(props: ComponentProps<"img">) {
-  // eslint-disable-next-line @next/next/no-img-element -- markdown images have no size; use the Figure component for optimized images
-  return <img {...props} alt={props.alt ?? ""} loading="lazy" decoding="async" className="my-6 rounded-md" />;
+  const { srcSet, aspectRatio } = typeof props.src === "string" ? responsiveImage(props.src) : {};
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- Markdown images: CDN sizes through srcSet (next/image needs a size)
+    <img
+      {...props}
+      alt={props.alt ?? ""}
+      srcSet={srcSet}
+      sizes={srcSet ? "(min-width: 768px) 768px, 100vw" : undefined}
+      style={aspectRatio ? { aspectRatio, width: "100%", height: "auto", objectFit: "cover" } : undefined}
+      loading="lazy"
+      decoding="async"
+      className="my-6 rounded-md"
+    />
+  );
 }
 
 export const mdxComponents = { a: Link, img: Img, Callout, Figure };

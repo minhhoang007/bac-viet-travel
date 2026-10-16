@@ -4,7 +4,6 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { PageLink } from "@/components/layout/page-transition";
 import { notFound, permanentRedirect } from "next/navigation";
-import { connection } from "next/server";
 import { setRequestLocale } from "next-intl/server";
 import { fileBlog, loadBlog, movedPost } from "@/app/_lib/blog";
 import { readContent } from "@/app/_lib/content";
@@ -30,19 +29,17 @@ const ProductPostFooter = "ProductPostFooter" in productLayout ? (productLayout 
 
 type Props = { params: Promise<{ locale: Locale; slug: string }> };
 
-// File posts are prerendered; database posts (blog source "content") render on demand from a cached copy.
+// File posts are prerendered. Database posts (blog source "content") are static too, made on their first visit and
+// kept at the edge, like tour pages: they read the posts through the "blog"-tagged cache, so a publish, rename or
+// unpublish regenerates them (an unknown URL's 404 included). Draft Mode (staff preview) renders per request.
 // Unknown params render on demand and end in notFound() below (dynamicParams = false logs a NoFallbackError per 404).
-
-// File posts are prerendered. Database posts (blog source "content") render per request from the cached posts: a
-// static copy of an unknown URL would keep its 404 after the post is published. No static params then (a route with
-// generateStaticParams is static, and request-time APIs would fail there).
+export const revalidate = 3600;
 export const generateStaticParams = fileBlog()
   ? ({ params }: { params: { locale: string } }) => (fileBlog()?.list(params.locale) ?? []).map((p) => ({ slug: p.slug }))
-  : undefined;
+  : () => [];
 
 /** The published post, or in Draft Mode (staff preview of a database post) the working copy. */
 async function findPost(locale: string, slug: string): Promise<{ blog: Blog; post: Post; preview: boolean } | null> {
-  if (blogConfig.source === "content") await connection();
   const blog = await loadBlog();
   if (!blog) return null;
   if (blogConfig.source === "content") {
