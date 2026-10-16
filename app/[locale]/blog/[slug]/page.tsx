@@ -101,10 +101,15 @@ export default async function BlogPostPage({ params }: Props) {
     .filter((p) => p.slug !== post.slug && p.tags.some((t) => post.tags.includes(t)))
     .slice(0, 3);
   const author = post.author ?? (blogConfig.defaultAuthor || undefined);
+  // The writer's profile (config/blog.ts `authors`); the site's own name is the company even without one.
+  const profile = author ? blogConfig.authors[author] : undefined;
+  const authorBio = profile?.bio?.[locale];
+  const authorUrl = profile?.url && (profile.url.startsWith("/") ? localizedUrl(site, locale, profile.url) : profile.url);
   // Markdown posts (written in the admin): their ## sections as a table of contents (long guides), and the questions
   // of a "Câu hỏi thường gặp" section as FAQPage data. The rendered headings carry the same ids (markdown.tsx).
   const sections = post.format === "markdown" ? outline(post.body).filter((h) => h.level === 2) : [];
   const questions = post.format === "markdown" ? faq(post.body) : [];
+  const facts = (["bestTime", "duration", "budget", "gettingThere"] as const).flatMap((k) => (post.facts?.[k] ? [[k, post.facts[k]] as const] : []));
   const faqLd = questions.length
     ? { "@context": "https://schema.org", "@type": "FAQPage", mainEntity: questions.map((q) => ({ "@type": "Question", name: q.question, acceptedAnswer: { "@type": "Answer", text: q.answer } })) }
     : null;
@@ -116,6 +121,8 @@ export default async function BlogPostPage({ params }: Props) {
     datePublished: post.date,
     dateModified: post.updated,
     author,
+    authorIsOrganization: profile?.organization ?? author === appConfig.name,
+    authorUrl,
     publisher: appConfig.name,
     locale,
   });
@@ -167,6 +174,21 @@ export default async function BlogPostPage({ params }: Props) {
             )}
           </figure>
         )}
+        {facts.length > 0 && (
+          <section aria-labelledby="post-facts" className="blog-facts mt-8 rounded-lg border border-primary/30 bg-primary/5 p-4 sm:p-5" data-testid="post-facts">
+            <h2 id="post-facts" className="font-semibold">
+              {c.facts.title}
+            </h2>
+            <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+              {facts.map(([k, v]) => (
+                <div key={k}>
+                  <dt className="text-muted-foreground">{c.facts[k]}</dt>
+                  <dd className="font-medium">{v}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+        )}
         {sections.length >= 3 && (
           <details open className="blog-toc mt-8 rounded-lg border border-border p-4" data-testid="post-toc">
             <summary className="cursor-pointer font-semibold">{c.toc}</summary>
@@ -202,6 +224,22 @@ export default async function BlogPostPage({ params }: Props) {
           </ul>
         )}
       </article>
+      {author && authorBio && (
+        <aside className="blog-author mt-12 rounded-lg border border-border p-5" aria-label={c.aboutAuthor} data-testid="post-author">
+          <p className="text-sm text-muted-foreground">{c.aboutAuthor}</p>
+          <p className="mt-1 font-semibold">
+            {authorUrl ? (
+              <a href={authorUrl} className="underline-offset-4 hover:underline">
+                {author}
+              </a>
+            ) : (
+              author
+            )}
+            {profile?.role?.[locale] && <span className="font-normal text-muted-foreground"> · {profile.role[locale]}</span>}
+          </p>
+          <p className="mt-2 text-sm">{authorBio}</p>
+        </aside>
+      )}
       {/* Project hook: what to do next (tours for this destination, a question by chat). */}
       {ProductPostFooter && <ProductPostFooter locale={locale} tags={post.tags} slug={post.slug} title={post.title} />}
       {related.length > 0 && (

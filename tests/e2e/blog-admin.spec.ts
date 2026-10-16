@@ -61,6 +61,11 @@ test("marketing writes a post, previews it, submits; an admin publishes; it is o
       '\n\n## Đi thế nào\n\nXe giường nằm từ Hà Nội.\n\n<Tour slug="sapa-trekking-2d1n" />\n\n<Tour slug="khong-co-tour-nay" />' +
       "\n\n## Câu hỏi thường gặp\n\n### Đi mấy ngày là đủ?\n\nHai ngày một đêm.",
   );
+  // Quick facts (only the filled ones show), and the sidebar checks follow what is typed.
+  await editor.getByLabel("Thời điểm đẹp").fill("Cuối tháng 9 đến giữa tháng 10");
+  await editor.getByLabel("Nên đi").fill("2 ngày 1 đêm");
+  await expect(editor.locator('[data-seo="sections"]')).toHaveAttribute("data-ok", "true");
+  await expect(editor.locator('[data-seo="length"]')).toHaveAttribute("data-ok", "false");
   // A tour picked from the toolbar list is written as its embed at the cursor (here: the end).
   await body.evaluate((el: HTMLTextAreaElement) => el.setSelectionRange(el.value.length, el.value.length));
   await editor.getByTestId("insert-tour").selectOption("ha-long-cruise-2d1n");
@@ -116,6 +121,10 @@ test("marketing writes a post, previews it, submits; an admin publishes; it is o
   const ld = await visitor.locator('script[type="application/ld+json"]').first().textContent();
   expect(ld).toContain('"@type":"FAQPage"');
   expect(ld).toContain("Đi mấy ngày là đủ?");
+  // The company as author is an Organization; the quick facts sit at the top.
+  expect(ld).toContain('"author":{"@type":"Organization","name":"Bắc Việt Travel"');
+  await expect(visitor.getByTestId("post-facts")).toContainText("Cuối tháng 9 đến giữa tháng 10");
+  await expect(visitor.getByTestId("post-facts").locator("dt")).toHaveText(["Thời điểm đẹp", "Nên đi"]);
   await expect(async () => {
     await visitor.goto("/blog/tag/mu-cang-chai");
     await expect(visitor.getByRole("link", { name: "Mùa lúa chín Mù Cang Chải" })).toBeVisible({ timeout: 1_000 });

@@ -20,6 +20,11 @@ const frontmatterSchema = z.object({
   coverCredit: z.object({ name: z.string().min(1).max(120), url: z.url({ protocol: /^https$/ }).max(500) }).optional(),
   /** Same key on posts in different locales = translations of each other (hreflang, language switch). */
   translationKey: z.string().regex(/^[a-z0-9-]+$/).optional(),
+  /** "Tóm tắt nhanh" at the top of a guide: short answers planners look for first. All optional. */
+  facts: z
+    .object({ bestTime: z.string().max(120), duration: z.string().max(120), budget: z.string().max(120), gettingThere: z.string().max(120) })
+    .partial()
+    .optional(),
   draft: z.boolean().default(false),
 });
 
@@ -172,4 +177,13 @@ export function blogFromPosts(all: Post[], options: { locales: readonly string[]
       return result;
     },
   };
+}
+
+/**
+ * A live post whose words changed (title, description or text) is dated "updated" on `day` (YYYY-MM-DD) when the
+ * change goes live: readers and search engines see the guide is current, and writers need not remember the field.
+ */
+export function withUpdated(data: Record<string, unknown>, live: Record<string, unknown> | null, day: string): Record<string, unknown> {
+  if (!live || (["title", "description", "body"] as const).every((k) => data[k] === live[k])) return data;
+  return String(data.updated ?? data.date ?? "") < day ? { ...data, updated: day } : data;
 }
