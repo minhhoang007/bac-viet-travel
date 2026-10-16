@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+import { getSeoSite } from "@/bootstrap/seo";
+import { createMetadata } from "@/core/seo";
+import { getProductContent } from "@/product/content";
 import { setRequestLocale } from "next-intl/server";
 import { LegalPage } from "@/components/layout/legal-page";
 import type { Locale } from "@/config/app";
@@ -10,7 +13,7 @@ type Props = { params: Promise<{ locale: Locale }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  return { title: getAppContent(locale).legal.terms };
+  return createMetadata(getSeoSite(), { title: getAppContent(locale).legal.terms, description: getProductContent(locale).footer.policyDescriptions.terms, path: "/terms", locale });
 }
 
 export default async function TermsPage({ params }: Props) {

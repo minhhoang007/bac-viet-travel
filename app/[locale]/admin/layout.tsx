@@ -42,7 +42,9 @@ export default async function AdminLayout({ children, params }: { children: Reac
   };
   const productItems = (await productAdminNavFor(user)).map((item) => ({ label: item.label[locale as Locale], href: href(item.href), group: groups[groupOf(item)] }));
   const inGroup = (group: string | undefined) => productItems.filter((item) => item.group === group);
-  const product = [...inGroup(groups.main), ...inGroup(groups.content), ...contentNav, ...inGroup(groups.settings)];
+  // Demo site: the mailbox of emails that were not sent, for every staff member trying the admin.
+  const demoNav = container.demoMailbox ? [{ label: content.demo.mailbox.nav, href: href("/admin/demo-mail") }] : [];
+  const product = [...inGroup(groups.main), ...demoNav, ...inGroup(groups.content), ...contentNav, ...inGroup(groups.settings)];
   const nav = isAdmin
     ? [
         { label: c.nav.overview, href: href("/admin") },

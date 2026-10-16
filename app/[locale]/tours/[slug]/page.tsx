@@ -29,6 +29,7 @@ import { formatAmount, formatPrice } from "@/product/tours/format";
 import { isDestination } from "@/product/tours/model";
 import { DestinationPage, destinationMetadata } from "../_destination";
 import { getTourAdminContent, tourProblemLabel } from "@/product/tours/admin-content";
+import { TrackEvent } from "@/product/analytics/marketing-tags";
 
 type Props = { params: Promise<{ locale: Locale; slug: string }> };
 
@@ -130,6 +131,7 @@ export default async function TourPage({ params }: Props) {
   return (
     <TourBookingProvider locale={locale} slug={slug} live={!page.preview}>
       {banner}
+      <TrackEvent name="view_item" item={slug} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd([jsonLd, breadcrumbLd(site, locale, [{ path: "/tours", name: c.tours.title }, { path: `/tours/${tour.destination}`, name: c.destinations[tour.destination].name }, { path: `/tours/${slug}`, name: tour.title }])]) }} />
       <Container className="pt-6 lg:pt-10">
         <nav aria-label="breadcrumb" className="type-label text-muted-foreground">

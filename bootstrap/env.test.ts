@@ -44,6 +44,15 @@ describe("validateEnv", () => {
     expect(() => validateEnv(secrets, app, [], { auth })).toThrow(/"magicLink" requires the "email" module/);
   });
 
+  it("a demo site needs no email provider key (emails stay in the demo mailbox)", () => {
+    const withEmail = { ...site, email: true };
+    expect(() => validateEnv({}, withEmail, [])).toThrow(/EMAIL_API_KEY: required when EMAIL_PROVIDER is "resend"/);
+    expect(() => validateEnv({ DEMO_MODE: "true" }, withEmail, [])).not.toThrow();
+    expect(validateEnv({ DEMO_MODE: "1" }, site, []).DEMO_MODE).toBe(true);
+    expect(validateEnv({}, site, []).DEMO_MODE).toBe(false);
+    expect(() => validateEnv({ DEMO_MODE: "maybe" }, site, [])).toThrow(/DEMO_MODE/);
+  });
+
   it("console email provider is refused in production", () => {
     expect(() => validateEnv({ NODE_ENV: "production", EMAIL_PROVIDER: "console" }, site, [])).toThrow(
       /not allowed in production/,

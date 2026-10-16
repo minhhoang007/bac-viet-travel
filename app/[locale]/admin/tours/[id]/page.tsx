@@ -11,6 +11,9 @@ import { hasRole } from "@/core/auth";
 import { localePath } from "@/core/i18n/routing";
 import type { Locale } from "@/config/app";
 import { TourForm } from "@/product/components/tour-form";
+import { confirmMediaUpload, requestMediaUpload } from "@/app/actions/media";
+import { MediaUploader } from "@/components/media/media-uploader";
+import { getAppContent } from "@/content";
 import { getTourAdminContent } from "@/product/tours/admin-content";
 import { tourDraftSchema } from "@/product/tours/document";
 import { TOUR_CONTENT_TYPE } from "@/product/tours/source";
@@ -49,6 +52,23 @@ export default async function EditTourPage({ params, searchParams }: Props) {
   const draft = tourDraftSchema.parse(item.draft);
   const title = (draft.vi as { title?: string }).title || item.slug;
   const tourMessage = result && result in c.result ? c.result[result as keyof typeof c.result] : null;
+  // Media library on (Cloudinary keys set): pick from it and upload right here, in the Images tab.
+  const media = container.media;
+  const mediaText = getAppContent(locale).admin.media;
+  const library = media
+    ? (await media.list({ pageSize: 200 })).rows.map((a) => ({ id: a.id, thumb: media.imageProps(a, { aspect: 4 / 3, widths: [240] }).src, name: a.name || a.id }))
+    : undefined;
+  const uploader = media ? (
+    <MediaUploader
+      label={mediaText.upload}
+      uploadingLabel={mediaText.uploading}
+      formats={media.config.allowedFormats}
+      maxBytes={media.config.maxBytes}
+      errors={mediaText.errors}
+      requestUpload={requestMediaUpload}
+      confirmUpload={confirmMediaUpload}
+    />
+  ) : undefined;
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
@@ -63,6 +83,8 @@ export default async function EditTourPage({ params, searchParams }: Props) {
           locale={locale}
           item={{ id: item.id, revision: item.revision, slug: item.slug, draft, slugLocked: item.publishedSlug !== null }}
           images={staticImages()}
+          library={library}
+          uploader={uploader}
           initialTab={TABS.find((t) => t === tab) ?? "general"}
           canPublish={hasRole(user, "admin")}
         />

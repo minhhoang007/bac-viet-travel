@@ -126,11 +126,14 @@ export function DepartureStep(props: { t: Content; locale: Locale; fields: Field
     if (box && picked) box.scrollTop = picked.offsetTop - box.offsetTop - 8;
   }, []);
   const badge = (d: DepartureOption) => (d.status === "closed" ? t.closed : d.seatsLeft === 0 ? t.soldOut : d.bookable ? t.seatsLeft(d.seatsLeft) : t.tooSoon);
+  // An open date with seats that is no longer bookable (past the cut-off) never will be: leave it out.
+  const shown = departures.filter((d) => d.bookable || d.status === "closed" || d.seatsLeft === 0);
   return (
     <fieldset>
       <StepLegend n={1}>{t.departuresTitle}</StepLegend>
-      <ul className="mt-3 grid max-h-[28rem] gap-2 overflow-y-auto rounded-lg p-0.5 sm:grid-cols-2" data-testid="departures" ref={list}>
-        {departures.map((d) => {
+      {/* Phones: a shorter box, so the guest count and details stay within reach. */}
+      <ul className="mt-3 grid max-h-72 gap-2 overflow-y-auto rounded-lg p-0.5 sm:max-h-[28rem] sm:grid-cols-2" data-testid="departures" ref={list}>
+        {shown.map((d) => {
           const selected = d.id === props.departureId;
           return (
             <li key={d.id}>

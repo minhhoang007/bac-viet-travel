@@ -1,7 +1,7 @@
 import type { Logger } from "@/core/logger";
 import type { PublishedContent } from "@/core/product/context";
 import { catalogFromTours, type Tour, type TourCatalog } from "./catalog";
-import { TOUR_LOCALES, toTour, tourDocumentSchema } from "./document";
+import { TOUR_LOCALES, toTour, tourDocumentSchema, type TourImage } from "./document";
 
 /** Cache tag of everything built from published tours: revalidated on publish / hide / show (manifest contentTypes). */
 export const TOURS_CACHE_TAG = "tours";
@@ -24,6 +24,8 @@ export interface TourSourceDeps {
   /** Wraps a database read in a cache under `key` (Next.js data cache in the app; none in scripts and tests). */
   cache?: <T>(key: string, load: () => Promise<T>) => () => Promise<T>;
   fallback: () => TourCatalog;
+  /** Media library on: CDN URLs of library photos by id. */
+  imageSrc?: (ids: readonly string[]) => Promise<Record<string, string>>;
   logger: Logger;
 }
 
@@ -50,8 +52,11 @@ export function createTourSource(deps: TourSourceDeps): TourSource {
           deps.logger.error("tours.invalid_published", { slug: row.slug, fields: parsed.error.issues.map((i) => i.path.join(".")) });
           continue;
         }
-        // Library images resolve once the media module is on (P3); static paths pass through.
-        for (const locale of TOUR_LOCALES) byLocale.get(locale)!.push(toTour(parsed.data, row.slug, locale));
+        // Library images (media module) become their CDN URL; static paths pass through; unknown ids are dropped.
+        const ids = parsed.data.shared.images.flatMap((i) => ("mediaId" in i ? [i.mediaId] : []));
+        const urls = ids.length && deps.imageSrc ? await deps.imageSrc(ids) : {};
+        const imageSrc = (i: TourImage) => ("src" in i ? i.src : (urls[i.mediaId] ?? null));
+        for (const locale of TOUR_LOCALES) byLocale.get(locale)!.push(toTour(parsed.data, row.slug, locale, imageSrc));
       }
       return catalogFromTours(byLocale, TOUR_LOCALES);
     },

@@ -108,9 +108,34 @@ export function ItineraryList({ values, onChange, c }: { values: { title: string
   );
 }
 
-export function ImageList({ label, values, available, onChange, c }: { label: string; values: string[]; available: string[]; onChange: (v: string[]) => void; c: ReturnType<typeof getTourAdminContent> }) {
+/** One image of the media library, for the picker (thumbnail URL from the media CDN). */
+export type LibraryImage = { id: string; thumb: string; name: string };
+
+export function ImageList({
+  label,
+  values,
+  available,
+  onChange,
+  c,
+  library,
+  uploader,
+}: {
+  label: string;
+  values: string[];
+  available: string[];
+  onChange: (v: string[]) => void;
+  c: ReturnType<typeof getTourAdminContent>;
+  /** Media library on: its images, picked by clicking a thumbnail. */
+  library?: LibraryImage[];
+  /** Upload button (the page refreshes the library after an upload; the form keeps its state). */
+  uploader?: ReactNode;
+}) {
   const [pick, setPick] = useState("");
   const left = available.filter((a) => !values.includes(a));
+  const byId = new Map((library ?? []).map((l) => [l.id, l]));
+  const thumb = (ref: string) => byId.get(ref)?.thumb ?? ref;
+  const name = (ref: string) => byId.get(ref)?.name ?? ref;
+  const libraryLeft = (library ?? []).filter((l) => !values.includes(l.id));
   return (
     <fieldset className="grid gap-3">
       <legend className="text-sm font-medium">{label}</legend>
@@ -118,12 +143,31 @@ export function ImageList({ label, values, available, onChange, c }: { label: st
         {values.map((src, i) => (
           <li key={src} className="flex items-center gap-3 rounded-md border border-border p-2">
             {/* eslint-disable-next-line @next/next/no-img-element -- admin thumbnail of a local file */}
-            <img src={src} alt="" width={80} height={56} loading="lazy" className="h-14 w-20 rounded object-cover" />
-            <span className="min-w-0 flex-1 truncate text-xs">{src}</span>
+            <img src={thumb(src)} alt="" width={80} height={56} loading="lazy" className="h-14 w-20 rounded object-cover" />
+            <span className="min-w-0 flex-1 truncate text-xs">{name(src)}</span>
             <RowControls list={values} i={i} onChange={onChange} c={c} />
           </li>
         ))}
       </ul>
+      {library && (
+        <div className="grid gap-3 rounded-md border border-dashed border-border p-3" data-testid="image-library">
+          {uploader}
+          <p className="text-sm text-muted-foreground">{library.length ? c.fields.library : c.fields.libraryEmpty}</p>
+          {libraryLeft.length > 0 && (
+            <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+              {libraryLeft.map((l) => (
+                <li key={l.id}>
+                  <button type="button" onClick={() => onChange([...values, l.id])} className="group block w-full overflow-hidden rounded-md border border-border hover:border-primary focus-visible:ring-2 focus-visible:ring-primary" aria-label={`${c.fields.addImage}: ${l.name}`}>
+                    {/* eslint-disable-next-line @next/next/no-img-element -- thumbnail resized by the media CDN */}
+                    <img src={l.thumb} alt="" loading="lazy" className="aspect-[4/3] w-full object-cover transition group-hover:opacity-80" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+      {left.length > 0 && library && <p className="text-sm text-muted-foreground">{c.fields.siteImages}</p>}
       {left.length > 0 && (
         <div className="flex gap-2">
           <select aria-label={c.fields.addImage} className={cn(input, "max-w-xs")} value={pick} onChange={(e) => setPick(e.target.value)}>

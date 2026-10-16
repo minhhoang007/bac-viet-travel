@@ -197,9 +197,18 @@ const vi = {
     payment: "Chính sách thanh toán",
     privacy: "Chính sách bảo mật",
     terms: "Điều khoản dịch vụ",
+    /** Cookie notice, shown only when ad tags (GA4 / Meta Pixel) are configured. */
+    cookieText: "Chúng tôi dùng cookie của Google Analytics và Meta để đo hiệu quả quảng cáo. Từ chối thì bạn vẫn đặt tour bình thường.",
+    /** Meta description of each policy page (search results, shared links). */
+    policyDescriptions: {
+      cancellation: "Mốc huỷ tour và mức hoàn tiền cọc, đổi ngày, huỷ do thời tiết hoặc từ phía công ty. Đọc trước khi đặt cọc.",
+      payment: "Đặt cọc 30% qua VNPay hoặc chuyển khoản, thanh toán phần còn lại trước ngày đi, an toàn thẻ và hoá đơn điện tử.",
+      privacy: "Thông tin cá nhân chúng tôi thu thập khi bạn đặt tour, cách sử dụng, lưu trữ và quyền của bạn theo Nghị định 13/2023.",
+      terms: "Điều khoản khi đặt tour: giữ chỗ, giá, trách nhiệm của khách và công ty, thay đổi lịch trình và giải quyết khiếu nại.",
+    },
     moit: "Đã thông báo Bộ Công Thương",
   },
-  credits: { title: "Nguồn ảnh", text: "Ảnh minh hoạ từ Unsplash (Unsplash License), video từ Pexels (Pexels License)." },
+  credits: { title: "Nguồn ảnh", text: "Ảnh minh hoạ từ Unsplash (Unsplash License), video từ Pexels (Pexels License).", library: "Ảnh trong thư viện ảnh" },
   faqPage: {
     nav: "Câu hỏi thường gặp",
     title: "Câu hỏi thường gặp",
@@ -451,10 +460,17 @@ const en: ProductContent = {
     cancellation: "Cancellation & refund policy",
     payment: "Payment policy",
     privacy: "Privacy policy",
+    cookieText: "We use Google Analytics and Meta cookies to measure our ads. If you decline, you can still book as usual.",
+    policyDescriptions: {
+      cancellation: "Cancellation deadlines and deposit refunds, date changes, and cancellations for weather or by us. Read before paying a deposit.",
+      payment: "30% deposit by VNPay or bank transfer, balance before departure, card security and e-invoices.",
+      privacy: "The personal data we collect when you book, how we use and keep it, and your rights under Decree 13/2023.",
+      terms: "Booking terms: deposits, prices, what travellers and the company are responsible for, itinerary changes and disputes.",
+    },
     terms: "Terms of service",
     moit: "Registered with the Ministry of Industry and Trade",
   },
-  credits: { title: "Photo credits", text: "Illustrative photos from Unsplash (Unsplash License), video from Pexels (Pexels License)." },
+  credits: { title: "Photo credits", text: "Illustrative photos from Unsplash (Unsplash License), video from Pexels (Pexels License).", library: "Photos in the image library" },
 };
 
 const content: Record<Locale, ProductContent> = { vi, en };

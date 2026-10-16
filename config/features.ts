@@ -11,4 +11,6 @@ export const features: Features = {
   admin: true,
   // Editorial workflow for tours (CMS): drafts, review, versions, scheduled publishing.
   content: true,
+  // Media library (Cloudinary): on wherever its keys are set (local .env.local, Vercel once added), off in CI.
+  media: Boolean(process.env.CLOUDINARY_CLOUD_NAME),
 };

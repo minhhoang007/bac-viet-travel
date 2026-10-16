@@ -6,6 +6,19 @@ import type { Db } from "@/db/client";
 
 export type ProductJobHandler = (payload: Record<string, unknown>) => Promise<void>;
 
+/**
+ * A staff account visitors can try on a demo site (DEMO_MODE), declared in product/manifest.ts `demoAccounts`. The
+ * project's demo data creates the user with role "editor" (never admin) and whatever product role it shows.
+ */
+export interface DemoAccount {
+  email: string;
+  label: Record<"vi" | "en", string>;
+  /** What this account can do, one line. */
+  description: Record<"vi" | "en", string>;
+  /** Page opened after sign-in (locale-less), e.g. "/admin". */
+  home: string;
+}
+
 /** What bootstrap gives `createProduct` (product/manifest.ts). Everything a product service usually needs. */
 export interface ProductContext {
   db: Db;
@@ -33,6 +46,13 @@ export interface ProductContext {
     listPublished(type: string): Promise<PublishedContent[]>;
     /** Old published slugs of live items → current slug (permanent redirects); cache it like listPublished. */
     listMoved(type: string): Promise<{ from: string; to: string }[]>;
+  };
+  /**
+   * Media library, when the media module is on (ADR-0008): CDN URLs of library images by id, e.g. for photos that
+   * staff picked in a content item. Unknown or pending ids are left out. Cache it with the content that uses it.
+   */
+  media?: {
+    imageSrc(ids: readonly string[], width?: number): Promise<Record<string, string>>;
   };
   now: () => Date;
 }

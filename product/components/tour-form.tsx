@@ -1,18 +1,19 @@
 "use client";
 
-import { useId, useMemo, useState, useSyncExternalStore } from "react";
+import { useId, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Trash2 } from "lucide-react";
 import { saveTour } from "@/app/actions/tours";
 import { Notice } from "@/components/feedback/notice";
 import { SubmitButton } from "@/components/forms/submit-button";
 import { Button } from "@/components/ui/button";
+import { MoneyInput } from "./money-input";
 import { cn } from "@/components/ui/cn";
 import type { Locale } from "@/config/app";
 import { getProductContent } from "../content";
 import { DESTINATIONS } from "../tours/model";
 import { getTourAdminContent, tourProblemLabel } from "../tours/admin-content";
 import { tourProblems, type TourDraft } from "../tours/document";
-import { AddButton, area, Field, IconButton, ImageList, input, ItineraryList, Panel, StringList } from "./tour-form-fields";
+import { AddButton, area, Field, IconButton, ImageList, input, ItineraryList, Panel, StringList, type LibraryImage } from "./tour-form-fields";
 import { useUnsavedGuard } from "./use-unsaved-guard";
 
 const TABS = ["general", "vi", "en", "seo", "images", "private", "addons"] as const;
@@ -29,6 +30,8 @@ export function TourForm({
   locale,
   item,
   images,
+  library,
+  uploader,
   initialTab,
   canPublish = false,
 }: {
@@ -36,6 +39,9 @@ export function TourForm({
   item: { id: string; revision: number; slug: string; draft: TourDraft; slugLocked: boolean };
   /** Static images available under public/ (until the media library is on). */
   images: string[];
+  /** Media library on: its images and the upload button for the Images tab. */
+  library?: LibraryImage[];
+  uploader?: ReactNode;
   initialTab: Tab;
   /** Admins: "save and publish now" next to "save draft". */
   canPublish?: boolean;
@@ -189,7 +195,7 @@ export function TourForm({
             {(id) => <input id={id} type="number" min={0} max={30} className={input} value={num("shared", "nights")} onChange={(e) => set("shared", "nights", toNum(e.target.value))} />}
           </Field>
           <Field label={c.fields.priceVnd}>
-            {(id) => <input id={id} type="number" min={0} step={1000} className={input} value={price.vnd ?? ""} onChange={(e) => set("shared", "price", { ...price, vnd: toNum(e.target.value) })} />}
+            {(id) => <MoneyInput id={id} className={input} value={price.vnd} onValue={(vnd) => set("shared", "price", { ...price, vnd })} />}
           </Field>
           <Field label={c.fields.priceUsd}>
             {(id) => <input id={id} type="number" min={0} step={1} className={input} value={price.usd ?? ""} onChange={(e) => set("shared", "price", { ...price, usd: toNum(e.target.value) })} />}
@@ -198,10 +204,10 @@ export function TourForm({
             {(id) => <input id={id} type="number" min={0} max={100} className={input} value={pricing.childPercent ?? ""} onChange={(e) => setPricing({ childPercent: toNum(e.target.value) })} />}
           </Field>
           <Field label={c.fields.infantVnd}>
-            {(id) => <input id={id} type="number" min={0} step={1000} className={input} value={pricing.infantVnd ?? ""} onChange={(e) => setPricing({ infantVnd: toNum(e.target.value) })} />}
+            {(id) => <MoneyInput id={id} className={input} value={pricing.infantVnd} onValue={(infantVnd) => setPricing({ infantVnd })} />}
           </Field>
           <Field label={c.fields.singleSupplementVnd}>
-            {(id) => <input id={id} type="number" min={0} step={1000} className={input} value={pricing.singleSupplementVnd ?? ""} onChange={(e) => setPricing({ singleSupplementVnd: toNum(e.target.value) })} />}
+            {(id) => <MoneyInput id={id} className={input} value={pricing.singleSupplementVnd} onValue={(singleSupplementVnd) => setPricing({ singleSupplementVnd })} />}
           </Field>
         </div>
         <Field label={c.fields.activity}>
@@ -264,6 +270,8 @@ export function TourForm({
           label={c.fields.images}
           values={((section("shared").images as { src?: string; mediaId?: string }[]) ?? []).map((i) => i.src ?? i.mediaId ?? "")}
           available={images}
+          library={library}
+          uploader={uploader}
           onChange={(v) => set("shared", "images", v.map((ref) => (UUID.test(ref) ? { mediaId: ref } : { src: ref })))}
           c={c}
         />
@@ -291,7 +299,7 @@ export function TourForm({
                     </label>
                     <label className="grid gap-1 text-xs">
                       VND
-                      <input type="number" min={0} step={1000} className={cn(input, "w-40")} value={tier.vnd ?? ""} onChange={(e) => update({ vnd: toNum(e.target.value) })} />
+                      <MoneyInput className={cn(input, "w-40")} value={tier.vnd} onValue={(vnd) => update({ vnd })} />
                     </label>
                     <label className="grid gap-1 text-xs">
                       USD
@@ -319,7 +327,7 @@ export function TourForm({
               </legend>
               <Field label={c.fields.addonNameVi}>{(id) => <input id={id} className={input} value={a.name?.vi ?? ""} onChange={(e) => setAddon(i, { name: { ...a.name, vi: e.target.value } })} />}</Field>
               <Field label={c.fields.addonNameEn}>{(id) => <input id={id} className={input} value={a.name?.en ?? ""} onChange={(e) => setAddon(i, { name: { ...a.name, en: e.target.value } })} />}</Field>
-              <Field label={c.fields.addonVnd}>{(id) => <input id={id} type="number" min={0} step={1000} className={input} value={a.vnd ?? ""} onChange={(e) => setAddon(i, { vnd: toNum(e.target.value) })} />}</Field>
+              <Field label={c.fields.addonVnd}>{(id) => <MoneyInput id={id} className={input} value={a.vnd} onValue={(vnd) => setAddon(i, { vnd })} />}</Field>
               <Field label={c.fields.addonPer}>
                 {(id) => (
                   <select id={id} className={input} value={a.per ?? "person"} onChange={(e) => setAddon(i, { per: e.target.value as "person" | "booking" })}>

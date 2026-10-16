@@ -1,8 +1,8 @@
 import { revalidateTag, unstable_cache } from "next/cache";
-import { getEnv } from "@/bootstrap/env";
+import { getEnv, getPublicEnv } from "@/bootstrap/env";
 import type { AccountDataExporter } from "@/core/account";
 import type { Locale } from "@/config/app";
-import type { ContentTypeDefinition, ProductContext, ProductJobs, SitemapContext } from "@/core/product/context";
+import type { ContentTypeDefinition, DemoAccount, ProductContext, ProductJobs, SitemapContext } from "@/core/product/context";
 import { tourSource } from "@/config/tours";
 import type { Db } from "@/db/client";
 import { createBookingAdmin } from "./booking/admin";
@@ -23,6 +23,8 @@ import { can, type Permission, type StaffRole } from "./staff/permissions";
 import { createStaffService } from "./staff/service";
 import { createThemeService } from "./theme/service";
 import { createCompanyService } from "./company/service";
+import { createDemoReset } from "./demo/reset";
+import { DEMO_STAFF } from "./demo/staff";
 import { createTourSource, TOUR_CONTENT_TYPE, TOURS_CACHE_TAG } from "./tours/source";
 
 /**
@@ -47,6 +49,7 @@ export function createProduct(db: Db, ctx: ProductContext) {
     listMoved: ctx.content?.listMoved,
     cache: (key, load) => unstable_cache(load, [key], { tags: [TOURS_CACHE_TAG], revalidate: 3600 }),
     fallback: getTourCatalog,
+    imageSrc: ctx.media?.imageSrc,
     logger: ctx.logger,
   });
   const tour = async (slug: string, locale = "vi") => {
@@ -68,12 +71,16 @@ export function createProduct(db: Db, ctx: ProductContext) {
     departureLimiter: ctx.rateLimiter("booking-hold:departure", { max: 3, windowMs: 60 * 60_000 }),
     now: ctx.now,
   });
+  // Demo site: online payment only through the VNPay sandbox; a production merchant is never used there.
+  const demo = getPublicEnv().demoMode;
+  const vnpay = demo && ctx.payments.vnpay && !ctx.payments.vnpay.sandbox ? undefined : ctx.payments.vnpay;
+  if (vnpay !== ctx.payments.vnpay) ctx.logger.error("demo.vnpay_production_refused", {});
   const deposits = createDepositService({
     db,
     logger: ctx.logger,
     mail: ctx.mail,
     bookings: booking,
-    vnpay: ctx.payments.vnpay,
+    vnpay,
     transferHoldMinutes: defaultBankTransfer.holdMinutes,
     tourTitle,
     now: ctx.now,
@@ -123,6 +130,13 @@ export function createProduct(db: Db, ctx: ProductContext) {
         await deposits.purgeLinkTokens();
         await booking.purgeAbandoned();
       },
+      // Demo site: back to the sample bookings and departures once a day.
+      ...(demo
+        ? {
+            "demo.reset": async () =>
+              void (await createDemoReset({ db, logger: ctx.logger, now: ctx.now, tours: async () => (await tours.catalog()).list("vi").map((t) => ({ slug: t.slug, priceVnd: t.price.vnd })) }).resetIfDue()),
+          }
+        : {}),
     },
   };
 
@@ -192,6 +206,19 @@ export const productAdminNav: ProductNavItem[] = [
 ];
 
 export type Product = ReturnType<typeof createProduct>;
+
+/** Demo site (DEMO_MODE): the staff roles visitors can try from /demo. Created by product/demo/reset.ts. */
+const demoText: Record<string, Pick<DemoAccount, "label" | "description">> = {
+  manager: {
+    label: { vi: "Quản lý", en: "Manager" },
+    description: { vi: "Xác nhận đơn, ghi nhận chuyển khoản, hoàn tiền, huỷ chuyến, lịch khởi hành, báo cáo.", en: "Confirm bookings, record transfers, refunds, cancel departures, schedules, reports." },
+  },
+  sale: {
+    label: { vi: "Sale", en: "Sales" },
+    description: { vi: "Xem đơn, nhập đơn qua điện thoại/Zalo/OTA, sửa liên hệ khách, in danh sách đoàn.", en: "View bookings, enter phone/Zalo/OTA bookings, edit guest contact, print passenger lists." },
+  },
+};
+export const demoAccounts: DemoAccount[] = DEMO_STAFF.map((s) => ({ email: s.email, ...demoText[s.role]!, home: "/admin/bookings" }));
 
 /** Staff-edited content types (content module, starter ADR-0009). */
 export const contentTypes: Record<string, ContentTypeDefinition> = {

@@ -89,6 +89,31 @@ export const app: AppContent = {
     decline: "Từ chối",
     privacyLink: "Chính sách bảo mật",
   },
+  demo: {
+    notice: "Website mẫu cho công ty lữ hành: đặt chỗ và thanh toán chỉ là thử nghiệm.",
+    contact: "Nhận báo giá",
+    mailbox: {
+      nav: "Hộp thư demo",
+      title: "Hộp thư demo",
+      intro: "Email website lẽ ra đã gửi (xác nhận, nhắc lịch, liên hệ…). Ở bản trình diễn không email nào được gửi đi; dữ liệu được làm mới định kỳ.",
+      empty: "Chưa có email nào.",
+      to: "Người nhận",
+    },
+    tryAdmin: {
+      link: "Vào thử trang quản trị",
+      title: "Vào thử trang quản trị",
+      intro: "Chọn một vai trò để xem trang quản trị như nhân viên thật: đơn hàng, lịch khởi hành, báo cáo… Mọi thay đổi chỉ là dữ liệu mẫu và được làm mới định kỳ.",
+      signIn: "Vào với vai trò này",
+      failed: "Không vào được tài khoản demo. Thử lại sau ít phút.",
+      rateLimited: "Bạn đã thử quá nhiều lần. Đợi vài phút rồi thử lại.",
+      stepsTitle: "Thử trọn một vòng trong 2 phút",
+      steps: [
+        "Mở một tour, chọn ngày và bấm Giữ chỗ, như khách của bạn.",
+        "Vào với vai trò Quản lý: đơn vừa đặt có trong Đơn đặt tour.",
+        "Mở đơn đó, ghi nhận \"Đã nhận chuyển khoản\", rồi xem Hộp thư demo: email gửi khách nằm ở đó.",
+      ],
+    },
+  },
   admin: {
     title: "Quản trị",
     backToApp: "Trang tài khoản",

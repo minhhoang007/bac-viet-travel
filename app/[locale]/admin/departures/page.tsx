@@ -42,6 +42,8 @@ export default async function AdminDeparturesPage({ params, searchParams }: Prop
   const back = `/admin/departures?${query({})}`;
   const details = (d: AdminDepartureRow) => localePath(locale, `/admin/departures/${d.id}`);
   const input = "h-9 rounded-md border border-border bg-background px-2 text-sm";
+  // Selects fill the width on phones: a long tour name would otherwise widen the whole page.
+  const select = `${input} w-full min-w-0 sm:w-auto`;
   const minBadge = (d: AdminDepartureRow) =>
     d.minGuests !== null && d.status === "open" ? (
       <span className={`whitespace-nowrap text-xs font-medium ${d.sold >= d.minGuests ? "text-success" : "text-warning"}`} data-testid="min-status">
@@ -70,7 +72,7 @@ export default async function AdminDeparturesPage({ params, searchParams }: Prop
   );
 
   return (
-    <div className="grid min-w-0 gap-6">
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6">
       <h1 className="text-2xl font-bold">{c.departures}</h1>
       {sp.result && (
         <p role="status" className={`rounded-md border p-3 text-sm ${sp.result === "done" ? "border-success/40 bg-success/10 text-foreground" : "border-danger/40 bg-danger/10 text-foreground"}`}>
@@ -83,9 +85,9 @@ export default async function AdminDeparturesPage({ params, searchParams }: Prop
         <form action={addDepartures} className="mt-3 grid gap-3">
           <input type="hidden" name="locale" value={locale} />
           <div className="flex flex-wrap items-end gap-3">
-            <label className="grid gap-1 text-sm">
+            <label className="grid w-full min-w-0 gap-1 text-sm sm:w-auto">
               {c.tour}
-              <select name="tourSlug" defaultValue={tour ?? tours[0]?.slug} className={input} required>
+              <select name="tourSlug" defaultValue={tour ?? tours[0]?.slug} className={select} required>
                 {tours.map((t) => (
                   <option key={t.slug} value={t.slug}>{t.title}</option>
                 ))}
@@ -131,7 +133,7 @@ export default async function AdminDeparturesPage({ params, searchParams }: Prop
         <form method="get" className="flex gap-2">
           <input type="hidden" name="month" value={month} />
           {view && <input type="hidden" name="view" value={view} />}
-          <select name="tour" defaultValue={tour ?? ""} aria-label={c.tour} className={input}>
+          <select name="tour" defaultValue={tour ?? ""} aria-label={c.tour} className={select}>
             <option value="">{c.allTours}</option>
             {tours.map((t) => (
               <option key={t.slug} value={t.slug}>{t.title}</option>

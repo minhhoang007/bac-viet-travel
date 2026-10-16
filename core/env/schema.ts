@@ -32,6 +32,10 @@ export const baseEnvSchema = z
     VNPAY_PAYMENT_URL: z.url().optional(),
     // Storage module (S3-compatible; Cloudflare R2 uses region "auto").
     STORAGE_REGION: z.string().min(1).default("auto"),
+    // Public demo site: a notice on every page, no search indexing, emails kept in a demo mailbox instead of sent.
+    DEMO_MODE: z.stringbool().default(false),
+    // Optional link in the demo notice ("want a website like this?"), e.g. the seller's page.
+    DEMO_CONTACT_URL: z.url({ protocol: /^https?$/ }).optional(),
   })
   .refine((e) => bothOrNeither(e.UPSTASH_REDIS_REST_URL, e.UPSTASH_REDIS_REST_TOKEN), {
     message: "set both UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN, or neither",

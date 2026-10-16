@@ -44,10 +44,12 @@ export default async function AdminBookingsPage({ params, searchParams }: Props)
   const query = (extra: Record<string, string>) =>
     localePath(locale, `/admin/bookings?${new URLSearchParams(Object.fromEntries(Object.entries({ filter, source, tour, from: sp.from, to: sp.to, q: sp.q, ...extra }).filter((e): e is [string, string] => Boolean(e[1]))))}`);
   const input = "h-10 rounded-md border border-border bg-background px-3 text-sm";
+  // Selects fill the width on phones: a long tour name would otherwise widen the whole page.
+  const select = `${input} w-full min-w-0 sm:w-auto`;
   const pager = "rounded-md border border-border px-3 py-1.5 hover:bg-muted";
 
   return (
-    <div className="grid gap-6">
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">{c.bookings}</h1>
         {allowed("bookings.edit") && (
@@ -95,7 +97,7 @@ export default async function AdminBookingsPage({ params, searchParams }: Props)
       <form method="get" className="flex flex-wrap items-end gap-2">
         <input type="hidden" name="filter" value={filter} />
         <input type="search" name="q" defaultValue={sp.q} placeholder={c.search} aria-label={c.search} autoComplete="off" spellCheck={false} className={`${input} w-full sm:w-64`} />
-        <select name="tour" defaultValue={tour ?? ""} aria-label={c.tour} className={input}>
+        <select name="tour" defaultValue={tour ?? ""} aria-label={c.tour} className={select}>
           <option value="">{c.allTours}</option>
           {tours.map((t) => (
             <option key={t.slug} value={t.slug}>
@@ -103,7 +105,7 @@ export default async function AdminBookingsPage({ params, searchParams }: Props)
             </option>
           ))}
         </select>
-        <select name="source" defaultValue={source ?? ""} aria-label={c.source} className={input}>
+        <select name="source" defaultValue={source ?? ""} aria-label={c.source} className={select}>
           <option value="">{c.allSources}</option>
           {BOOKING_SOURCES.map((s) => (
             <option key={s} value={s}>

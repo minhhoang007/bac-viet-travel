@@ -14,6 +14,9 @@ import { fontVariables } from "./brand/fonts";
 import { themeColors } from "./theme/themes";
 import { ContactButtons } from "./components/contact-buttons";
 import { NavigationProgress } from "./components/navigation-progress";
+import { MarketingTags } from "./analytics/marketing-tags";
+import { ConsentBanner } from "@/components/analytics/consent-banner";
+import { getAppContent } from "@/content";
 import { SiteFooter } from "./components/site-footer";
 import { SiteHeader } from "./components/site-header";
 import { getProductContent } from "./content";
@@ -54,6 +57,9 @@ export async function ProductLayoutExtras({ locale }: { locale: Locale }) {
   const call = { key: "call" as const, label: c.call, href: telUrl(co.hotline) };
   // Vietnamese visitors: Zalo first. International visitors: WhatsApp first.
   const items = locale === "vi" ? [zalo, whatsapp, call] : [whatsapp, zalo, call];
+  const tags = { ga4: process.env.NEXT_PUBLIC_GA4_ID || undefined, metaPixel: process.env.NEXT_PUBLIC_META_PIXEL_ID || undefined };
+  const f = getProductContent(locale).footer;
+  const { consent } = getAppContent(locale);
   return (
     <>
       {/* useSearchParams: inside Suspense so the pages stay static. */}
@@ -61,6 +67,19 @@ export async function ProductLayoutExtras({ locale }: { locale: Locale }) {
         <NavigationProgress />
       </Suspense>
       <ContactButtons label={c.title} items={items} />
+      {tags.ga4 || tags.metaPixel ? (
+        <>
+          <MarketingTags ids={tags} />
+          {/* The starter's banner and cookie; the analytics module (off here) would show it otherwise. */}
+          <ConsentBanner
+            text={f.cookieText}
+            accept={consent.accept}
+            decline={consent.decline}
+            privacyLabel={consent.privacyLink}
+            privacyHref={localePath(locale, "/privacy")}
+          />
+        </>
+      ) : null}
     </>
   );
 }

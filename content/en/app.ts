@@ -89,6 +89,31 @@ export const app: AppContent = {
     decline: "Decline",
     privacyLink: "Privacy policy",
   },
+  demo: {
+    notice: "Sample website for tour operators: bookings and payments are test only.",
+    contact: "Get a quote",
+    mailbox: {
+      nav: "Demo mailbox",
+      title: "Demo mailbox",
+      intro: "Emails the website would have sent (confirmations, reminders, contact…). On the demo nothing is sent; the data is reset regularly.",
+      empty: "No emails yet.",
+      to: "To",
+    },
+    tryAdmin: {
+      link: "Try the admin",
+      title: "Try the admin",
+      intro: "Pick a role to see the admin as real staff do: bookings, departures, reports… Every change is sample data and is reset regularly.",
+      signIn: "Sign in with this role",
+      failed: "The demo account could not sign in. Try again in a few minutes.",
+      rateLimited: "Too many tries. Wait a few minutes and try again.",
+      stepsTitle: "Try a full round in 2 minutes",
+      steps: [
+        "Open a tour, pick a date and hold seats, as your guests would.",
+        "Sign in as the Manager: the booking is in Bookings.",
+        "Open it, record \"Bank transfer received\", then check the Demo mailbox: the guest's email is there.",
+      ],
+    },
+  },
   admin: {
     title: "Admin",
     backToApp: "My account",
