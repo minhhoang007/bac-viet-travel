@@ -30,6 +30,8 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: process.env.E2E_UNOPTIMIZED_IMAGES === "1",
     // Library photos (media module): already resized by Cloudinary, served through next/image like the local ones.
+    // Not images.unsplash.com: Unsplash photos are hotlinked with `unoptimized` (product/media/unsplash.ts isHotlinked);
+    // leaving it out makes a forgotten `unoptimized` fail loudly instead of proxying the photo through this site.
     remotePatterns: features.media ? [{ protocol: "https", hostname: "res.cloudinary.com" }] : [],
   },
   // Content read from disk at request time (dynamic product pages, blog…) must ship with the serverless

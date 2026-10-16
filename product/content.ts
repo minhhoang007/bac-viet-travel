@@ -101,6 +101,8 @@ const vi = {
     gallery: "Ảnh tour",
     galleryLabels: {
       viewAll: (n: number) => `Xem ${n} ảnh`,
+      photoBy: "Ảnh:",
+      photosBy: "Một số ảnh:",
       close: "Đóng",
       previous: "Ảnh trước",
       next: "Ảnh sau",
@@ -207,6 +209,12 @@ const vi = {
       terms: "Điều khoản khi đặt tour: giữ chỗ, giá, trách nhiệm của khách và công ty, thay đổi lịch trình và giải quyết khiếu nại.",
     },
     moit: "Đã thông báo Bộ Công Thương",
+  },
+  blogFooter: {
+    tours: "Tour cho chuyến đi này",
+    popular: "Tour được đặt nhiều",
+    askTitle: "Cần tư vấn lịch trình?",
+    askText: "Nhắn cho chúng tôi ngày đi và số người, hướng dẫn viên địa phương sẽ gợi ý trong ngày.",
   },
   credits: { title: "Nguồn ảnh", text: "Ảnh minh hoạ từ Unsplash (Unsplash License), video từ Pexels (Pexels License)." },
   faqPage: {
@@ -339,6 +347,8 @@ const en: ProductContent = {
     gallery: "Tour photos",
     galleryLabels: {
       viewAll: (n: number) => `See all ${n} photos`,
+      photoBy: "Photo:",
+      photosBy: "Some photos:",
       close: "Close",
       previous: "Previous photo",
       next: "Next photo",
@@ -469,6 +479,12 @@ const en: ProductContent = {
     },
     terms: "Terms of service",
     moit: "Registered with the Ministry of Industry and Trade",
+  },
+  blogFooter: {
+    tours: "Tours for this trip",
+    popular: "Popular tours",
+    askTitle: "Planning your trip?",
+    askText: "Send us your dates and group size; a local guide will suggest a plan the same day.",
   },
   credits: { title: "Photo credits", text: "Illustrative photos from Unsplash (Unsplash License), video from Pexels (Pexels License)." },
 };

@@ -1,5 +1,6 @@
 import { IntentLink } from "./intent-link";
 import Image from "next/image";
+import { isHotlinked } from "../media/unsplash";
 import { ViewTransition } from "react";
 
 export interface TourCardProps {
@@ -29,7 +30,7 @@ export function TourCard(p: TourCardProps) {
     <article className="group flex flex-col border-t border-border pt-5">
       <ViewTransition name={tourPhotoTransition(p.slug)} share="tour-photo" default="none">
         <IntentLink href={p.href} className="relative block aspect-[3/2] overflow-hidden">
-          <Image src={p.image} alt={p.title} fill priority={p.priority} sizes={p.sizes ?? "(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"} className="object-cover transition duration-700 group-hover:scale-[1.03]" />
+          <Image src={p.image} alt={p.title} fill unoptimized={isHotlinked(p.image)} priority={p.priority} sizes={p.sizes ?? "(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"} className="object-cover transition duration-700 group-hover:scale-[1.03]" />
         </IntentLink>
       </ViewTransition>
       <div className="flex flex-1 flex-col pt-5">

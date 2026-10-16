@@ -274,6 +274,7 @@ export const app: AppContent = {
     subtitle: "Kinh nghiệm đi Hạ Long, Ninh Bình và Sapa từ người địa phương.",
     readingTime: "{n} phút đọc",
     tagTitle: "Bài viết về",
+    related: "Bài viết liên quan",
     tags: "Chủ đề",
     empty: "Chưa có bài viết nào.",
     previous: "Trang trước",

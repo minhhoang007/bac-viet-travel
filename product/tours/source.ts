@@ -1,7 +1,7 @@
 import type { Logger } from "@/core/logger";
 import type { PublishedContent } from "@/core/product/context";
 import { catalogFromTours, type Tour, type TourCatalog } from "./catalog";
-import { TOUR_LOCALES, toTour, tourDocumentSchema, type TourImage } from "./document";
+import { staticImageSrc, TOUR_LOCALES, toTour, tourDocumentSchema, type TourImage } from "./document";
 
 /** Cache tag of everything built from published tours: revalidated on publish / hide / show (manifest contentTypes). */
 export const TOURS_CACHE_TAG = "tours";
@@ -55,7 +55,7 @@ export function createTourSource(deps: TourSourceDeps): TourSource {
         // Library images (media module) become their CDN URL; static paths pass through; unknown ids are dropped.
         const ids = parsed.data.shared.images.flatMap((i) => ("mediaId" in i ? [i.mediaId] : []));
         const urls = ids.length && deps.imageSrc ? await deps.imageSrc(ids) : {};
-        const imageSrc = (i: TourImage) => ("src" in i ? i.src : (urls[i.mediaId] ?? null));
+        const imageSrc = (i: TourImage) => ("mediaId" in i ? (urls[i.mediaId] ?? null) : staticImageSrc(i));
         for (const locale of TOUR_LOCALES) byLocale.get(locale)!.push(toTour(parsed.data, row.slug, locale, imageSrc));
       }
       return catalogFromTours(byLocale, TOUR_LOCALES);

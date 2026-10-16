@@ -51,6 +51,8 @@ export const tourSchema = z.object({
   price: z.object({ vnd: z.number().int().positive(), usd: z.number().positive() }),
   /** Paths under public/ — the first one is the cover. */
   images: z.array(z.string().startsWith("/")).min(1),
+  /** Same order as `images`: the photographer of each licensed photo (Unsplash), null for the company's own. */
+  imageCredits: z.array(z.object({ name: z.string(), url: z.string() }).nullable()).optional(),
   departure: z.string().min(1),
   groupSize: z.string().min(1),
   highlights: z.array(z.string().min(1)).min(1),

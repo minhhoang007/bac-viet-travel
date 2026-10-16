@@ -46,7 +46,13 @@ test("marketing writes a post, previews it, submits; an admin publishes; it is o
 
   await editor.getByLabel("Mô tả ngắn", { exact: false }).fill("Tháng 9 đến giữa tháng 10, ruộng bậc thang vàng rực.");
   await editor.getByLabel("Thẻ").fill("mu-cang-chai, kinh-nghiem");
-  await editor.getByLabel("Nội dung (Markdown)").fill('## Khi nào đi\n\nĐẹp nhất **cuối tháng 9**.\n\n<Callout tone="warning">Đường đèo nhiều sương, đi chậm.</Callout>\n\n{process.env.BETTER_AUTH_SECRET}');
+  const body = editor.getByLabel("Nội dung (Markdown)");
+  // The toolbar writes the Markdown for the editor: "Chữ đậm" with nothing selected inserts a sample to type over.
+  await expect(editor.locator("form[data-hydrated], [data-testid=markdown-toolbar]").first()).toBeVisible();
+  await editor.waitForLoadState("networkidle");
+  await editor.getByTestId("markdown-toolbar").getByRole("button", { name: "Chữ đậm" }).click();
+  await expect(body).toHaveValue("**chữ đậm**");
+  await body.fill('## Khi nào đi\n\nĐẹp nhất **cuối tháng 9**.\n\n<Callout tone="warning">Đường đèo nhiều sương, đi chậm.</Callout>\n\n{process.env.BETTER_AUTH_SECRET}');
   await editor.getByRole("button", { name: "Lưu bản nháp" }).click();
   await expect(editor.getByText("Đã lưu bản nháp.")).toBeVisible();
   await expect(editor.getByTestId("post-problems")).toHaveCount(0);

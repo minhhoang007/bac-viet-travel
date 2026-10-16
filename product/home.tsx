@@ -1,5 +1,6 @@
 import Form from "next/form";
 import { IntentLink } from "./components/intent-link";
+import { isHotlinked } from "./media/unsplash";
 import Image from "next/image";
 import { BadgeCheck, CalendarDays, Car, CreditCard, MapPin, MessageCircle, Star, Users } from "lucide-react";
 import { submitContact } from "@/app/actions/contact";
@@ -327,7 +328,7 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
                 <IntentLink key={p.slug} href={localePath(locale, `/blog/${p.slug}`)} className="group flex flex-col border-t border-border pt-5" data-testid="home-post">
                   {p.cover && (
                     <div className="relative aspect-[3/2] overflow-hidden">
-                      <Image src={p.cover} alt="" fill sizes="(min-width: 768px) 33vw, 100vw" className="object-cover transition duration-700 group-hover:scale-[1.03]" />
+                      <Image src={p.cover} alt="" fill unoptimized={isHotlinked(p.cover)} sizes="(min-width: 768px) 33vw, 100vw" className="object-cover transition duration-700 group-hover:scale-[1.03]" />
                     </div>
                   )}
                   <h3 className="mt-5 font-heading type-h3 group-hover:text-primary">{p.title}</h3>

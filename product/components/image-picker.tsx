@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { cn } from "@/components/ui/cn";
 import type { UnsplashResult } from "@/product/media/unsplash";
 
-export type PickerImage = { src: string; credit?: { name: string; url: string } };
+export type PickerImage = { src: string; alt?: string; credit?: { name: string; url: string } };
 export type LibraryItem = { id: string; thumb: string; src: string; name: string };
 
 export interface ImagePickerText {
@@ -44,10 +44,6 @@ export function ImagePicker(props: {
 }) {
   const { t } = props;
   const [value, setValue] = useState<PickerImage | undefined>(props.initial);
-  const [open, setOpen] = useState(false);
-  const tabs: Tab[] = [...(props.library ? (["library", "upload"] as const) : []), ...(props.unsplash ? (["unsplash"] as const) : [])];
-  const [tab, setTab] = useState<Tab>(tabs[0] ?? "library");
-  const choose = (image: PickerImage) => (setValue(image), setOpen(false));
 
   return (
     <div className="grid gap-2" data-testid={`picker-${props.name}`}>
@@ -63,39 +59,12 @@ export function ImagePicker(props: {
         </figure>
       ) : null}
       <div className="flex flex-wrap gap-2">
-        {tabs.length > 0 && (
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button type="button" variant="outline">
-                <ImageIcon className="size-4" aria-hidden="true" />
-                {value?.src ? t.change : t.choose}
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-3xl">
-              <DialogHeader>
-                <DialogTitle>{t.title}</DialogTitle>
-                <DialogDescription>{t.description}</DialogDescription>
-              </DialogHeader>
-              <div role="tablist" className="flex flex-wrap gap-2">
-                {tabs.map((k) => (
-                  <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={cn("rounded-full border px-3 py-1 text-sm", tab === k ? "border-primary bg-primary text-primary-foreground" : "border-border hover:bg-muted")}>
-                    {t.tabs[k]}
-                  </button>
-                ))}
-              </div>
-              <div role="tabpanel">
-                {tab === "library" && <LibraryGrid items={props.library ?? []} empty={t.libraryEmpty} onPick={(i) => choose({ src: i.src })} />}
-                {tab === "upload" && (
-                  <div className="grid gap-3">
-                    {props.uploader}
-                    <LibraryGrid items={props.library ?? []} empty={t.libraryEmpty} onPick={(i) => choose({ src: i.src })} />
-                  </div>
-                )}
-                {tab === "unsplash" && <UnsplashPanel t={t} onPick={choose} />}
-              </div>
-            </DialogContent>
-          </Dialog>
-        )}
+        <ImageDialog library={props.library} uploader={props.uploader} unsplash={props.unsplash} t={t} onPick={setValue}>
+          <Button type="button" variant="outline">
+            <ImageIcon className="size-4" aria-hidden="true" />
+            {value?.src ? t.change : t.choose}
+          </Button>
+        </ImageDialog>
         {value?.src && (
           <Button type="button" variant="ghost" onClick={() => setValue(undefined)}>
             {t.remove}
@@ -103,6 +72,44 @@ export function ImagePicker(props: {
         )}
       </div>
     </div>
+  );
+}
+
+/** The picker dialog alone (Library, Upload, Free photos), opened by `children`; reused by the post body toolbar. */
+export function ImageDialog(props: { library?: LibraryItem[]; uploader?: ReactNode; unsplash: boolean; t: ImagePickerText; onPick: (image: PickerImage) => void; children: ReactNode }) {
+  const { t } = props;
+  const [open, setOpen] = useState(false);
+  const tabs: Tab[] = [...(props.library ? (["library", "upload"] as const) : []), ...(props.unsplash ? (["unsplash"] as const) : [])];
+  const [tab, setTab] = useState<Tab>(tabs[0] ?? "library");
+  if (tabs.length === 0) return null;
+  const choose = (image: PickerImage) => (props.onPick(image), setOpen(false));
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>{props.children}</DialogTrigger>
+      <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>{t.title}</DialogTitle>
+          <DialogDescription>{t.description}</DialogDescription>
+        </DialogHeader>
+        <div role="tablist" className="flex flex-wrap gap-2">
+          {tabs.map((k) => (
+            <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={cn("rounded-full border px-3 py-1 text-sm", tab === k ? "border-primary bg-primary text-primary-foreground" : "border-border hover:bg-muted")}>
+              {t.tabs[k]}
+            </button>
+          ))}
+        </div>
+        <div role="tabpanel">
+          {tab === "library" && <LibraryGrid items={props.library ?? []} empty={t.libraryEmpty} onPick={(i) => choose({ src: i.src, alt: i.name })} />}
+          {tab === "upload" && (
+            <div className="grid gap-3">
+              {props.uploader}
+              <LibraryGrid items={props.library ?? []} empty={t.libraryEmpty} onPick={(i) => choose({ src: i.src, alt: i.name })} />
+            </div>
+          )}
+          {tab === "unsplash" && <UnsplashPanel t={t} onPick={choose} />}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -122,7 +129,7 @@ function LibraryGrid({ items, empty, onPick }: { items: LibraryItem[]; empty: st
   );
 }
 
-function UnsplashPanel({ t, onPick }: { t: ImagePickerText; onPick: (image: PickerImage) => void }) {
+export function UnsplashPanel({ t, onPick }: { t: ImagePickerText; onPick: (image: PickerImage) => void }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<UnsplashResult[] | null>(null);
   const [failed, setFailed] = useState(false);
@@ -136,26 +143,31 @@ function UnsplashPanel({ t, onPick }: { t: ImagePickerText; onPick: (image: Pick
   const use = (id: string) =>
     start(async () => {
       const r = await pickUnsplash(id);
-      if (r.ok) onPick({ src: r.src, credit: r.credit });
+      if (r.ok) onPick({ src: r.src, alt: r.alt, credit: r.credit });
       else setFailed(true);
     });
 
   return (
     <div className="grid gap-3" data-testid="unsplash-panel">
-      <form
-        className="flex gap-2"
-        onSubmit={(e) => {
-          // Inside the post form: never submit it.
-          e.preventDefault();
-          e.stopPropagation();
-          search();
-        }}
-      >
-        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t.search} aria-label={t.search} className="h-10 min-w-0 flex-1 rounded-md border border-border bg-background px-3 text-sm" />
-        <Button type="submit" disabled={pending || query.trim().length < 2}>
+      {/* No <form>: this panel sits inside the tour form (a nested form is dropped by the browser and its button
+          would submit the tour). Enter searches instead of submitting. */}
+      <div role="search" className="flex gap-2">
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key !== "Enter") return;
+            e.preventDefault();
+            if (query.trim().length >= 2) search();
+          }}
+          placeholder={t.search}
+          aria-label={t.search}
+          className="h-10 min-w-0 flex-1 rounded-md border border-border bg-background px-3 text-sm"
+        />
+        <Button type="button" onClick={search} disabled={pending || query.trim().length < 2}>
           {pending ? t.searching : t.searchButton}
         </Button>
-      </form>
+      </div>
       {failed && <p className="text-sm text-danger">{t.unavailable}</p>}
       {results && results.length === 0 && <p className="text-sm text-muted-foreground">{t.noResults}</p>}
       {results && results.length > 0 && (

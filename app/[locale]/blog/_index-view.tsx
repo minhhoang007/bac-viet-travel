@@ -5,7 +5,7 @@ import { Container } from "@/components/ui/container";
 import { localePath } from "@/core/i18n/routing";
 import type { Locale } from "@/config/app";
 import { getAppContent } from "@/content";
-import { requireBlog, toListItem } from "./_shared";
+import { requireBlog, tagLabel, toListItem } from "./_shared";
 
 const pageHref = (locale: Locale, n: number) => localePath(locale, n === 1 ? "/blog" : `/blog/page/${n}`);
 
@@ -30,7 +30,7 @@ export async function BlogIndex({ locale, page }: { locale: Locale; page: number
         <nav aria-label={c.tags} className="blog-tags mt-6 flex flex-wrap gap-2 text-sm">
           {tags.map((t) => (
             <PageLink key={t.tag} href={localePath(locale, `/blog/tag/${t.tag}`)} className="rounded-full border border-border px-3 py-1 hover:bg-muted">
-              #{t.tag} <span className="text-muted-foreground">{t.count}</span>
+              {tagLabel(t.tag, locale)} <span className="text-muted-foreground">{t.count}</span>
             </PageLink>
           ))}
         </nav>

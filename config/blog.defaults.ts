@@ -13,6 +13,8 @@ export const blogDefaults = {
   defaultAuthor: "",
   /** Words per minute for the reading-time estimate. */
   wordsPerMinute: 200,
+  /** Display names of tags per locale (tags themselves stay lowercase-with-dashes in URLs); missing = the tag. */
+  tagLabels: {} as Record<string, Partial<Record<string, string>>>,
 };
 
 export type BlogConfig = typeof blogDefaults;

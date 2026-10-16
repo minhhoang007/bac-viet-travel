@@ -2,6 +2,7 @@
 
 // Generic fields of the tour admin form (tour-form.tsx): labelled field, tab panel, reorderable lists.
 import { useId, useState, type ReactNode } from "react";
+import { UnsplashPanel, type ImagePickerText, type PickerImage } from "./image-picker";
 import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/components/ui/cn";
 import type { getTourAdminContent } from "../tours/admin-content";
@@ -119,6 +120,7 @@ export function ImageList({
   c,
   library,
   uploader,
+  unsplash,
 }: {
   label: string;
   values: string[];
@@ -129,12 +131,14 @@ export function ImageList({
   library?: LibraryImage[];
   /** Upload button (the page refreshes the library after an upload; the form keeps its state). */
   uploader?: ReactNode;
+  /** Unsplash key set: search free photos here; a pick is added with its photographer (the caller stores both). */
+  unsplash?: { t: ImagePickerText; onPick: (image: PickerImage) => void };
 }) {
   const [pick, setPick] = useState("");
   const left = available.filter((a) => !values.includes(a));
   const byId = new Map((library ?? []).map((l) => [l.id, l]));
   const thumb = (ref: string) => byId.get(ref)?.thumb ?? ref;
-  const name = (ref: string) => byId.get(ref)?.name ?? ref;
+  const name = (ref: string) => byId.get(ref)?.name ?? (ref.startsWith("https://images.unsplash.com/") ? "Unsplash" : ref);
   const libraryLeft = (library ?? []).filter((l) => !values.includes(l.id));
   return (
     <fieldset className="grid gap-3">
@@ -166,6 +170,14 @@ export function ImageList({
             </ul>
           )}
         </div>
+      )}
+      {unsplash && (
+        <details className="rounded-md border border-dashed border-border p-3" data-testid="tour-unsplash">
+          <summary className="cursor-pointer text-sm font-medium">{unsplash.t.tabs.unsplash}</summary>
+          <div className="mt-3">
+            <UnsplashPanel t={unsplash.t} onPick={unsplash.onPick} />
+          </div>
+        </details>
       )}
       {left.length > 0 && library && <p className="text-sm text-muted-foreground">{c.fields.siteImages}</p>}
       {left.length > 0 && (

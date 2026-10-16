@@ -1,5 +1,6 @@
 import type { Locale } from "@/config/app";
 import type { ImagePickerText } from "../components/image-picker";
+import type { MarkdownEditorText } from "../components/markdown-editor";
 
 const vi: ImagePickerText = {
   choose: "Chọn ảnh",
@@ -36,3 +37,29 @@ const en: ImagePickerText = {
 };
 
 export const getImagePickerText = (locale: Locale): ImagePickerText => (locale === "en" ? en : vi);
+
+const editorVi: MarkdownEditorText = {
+  toolbar: "Định dạng nội dung",
+  bold: "Chữ đậm",
+  heading: "Tiêu đề mục",
+  list: "Danh sách",
+  link: "Chèn link",
+  note: "Khung ghi chú",
+  image: "Chèn ảnh",
+  sample: { bold: "chữ đậm", heading: "Tiêu đề mục", item: "Ý thứ nhất", link: "chữ có link", note: "Lưu ý cho khách" },
+  photoBy: "Ảnh:",
+};
+
+const editorEn: MarkdownEditorText = {
+  toolbar: "Formatting",
+  bold: "Bold",
+  heading: "Section heading",
+  list: "List",
+  link: "Insert link",
+  note: "Note box",
+  image: "Insert image",
+  sample: { bold: "bold text", heading: "Section heading", item: "First point", link: "linked text", note: "A tip for travellers" },
+  photoBy: "Photo:",
+};
+
+export const getMarkdownEditorText = (locale: Locale): MarkdownEditorText => (locale === "en" ? editorEn : editorVi);

@@ -12,7 +12,8 @@ import type { Locale } from "@/config/app";
 import { getProductContent } from "../content";
 import { DESTINATIONS } from "../tours/model";
 import { getTourAdminContent, tourProblemLabel } from "../tours/admin-content";
-import { tourProblems, type TourDraft } from "../tours/document";
+import { tourProblems, type ImageCredit, type TourDraft } from "../tours/document";
+import type { ImagePickerText } from "./image-picker";
 import { AddButton, area, Field, IconButton, ImageList, input, ItineraryList, Panel, StringList, type LibraryImage } from "./tour-form-fields";
 import { useUnsavedGuard } from "./use-unsaved-guard";
 
@@ -20,6 +21,7 @@ const TABS = ["general", "vi", "en", "seo", "images", "private", "addons"] as co
 type Tab = (typeof TABS)[number];
 type Section = "shared" | "vi" | "en";
 type Obj = Record<string, unknown>;
+type StoredImage = { src?: string; mediaId?: string; unsplash?: { src: string; credit: ImageCredit } };
 
 // Library images are stored by id, static files by path.
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -32,6 +34,7 @@ export function TourForm({
   images,
   library,
   uploader,
+  unsplash,
   initialTab,
   canPublish = false,
 }: {
@@ -42,6 +45,8 @@ export function TourForm({
   /** Media library on: its images and the upload button for the Images tab. */
   library?: LibraryImage[];
   uploader?: ReactNode;
+  /** Unsplash key set: the "free photos" search in the Images tab. */
+  unsplash?: ImagePickerText;
   initialTab: Tab;
   /** Admins: "save and publish now" next to "save draft". */
   canPublish?: boolean;
@@ -51,6 +56,10 @@ export function TourForm({
   const [data, setData] = useState<TourDraft>(item.draft);
   const [slug, setSlug] = useState(item.slug);
   const [tab, setTab] = useState<Tab>(initialTab);
+  // Photographers of the Unsplash photos in the list, by URL: reordering or removing keeps each credit with its photo.
+  const [credits, setCredits] = useState<Record<string, ImageCredit>>(() =>
+    Object.fromEntries((((item.draft.shared as Obj | undefined)?.images as StoredImage[] | undefined) ?? []).flatMap((i) => (i.unsplash ? [[i.unsplash.src, i.unsplash.credit]] : []))),
+  );
   const problems = useMemo(() => tourProblems(data), [data]);
   const ids = useId();
   // Tabs and lists only work once React runs; tests and the save button wait for it.
@@ -60,6 +69,7 @@ export function TourForm({
   useUnsavedGuard(dirty, c.unsaved);
 
   const section = (s: Section) => (data[s] ?? {}) as Obj;
+  const storedImages = (section("shared").images as StoredImage[] | undefined) ?? [];
   const set = (s: Section, key: string, value: unknown) => setData((d) => ({ ...d, [s]: { ...(d[s] as Obj), [key]: value } }));
   const text = (s: Section, key: string) => (typeof section(s)[key] === "string" ? (section(s)[key] as string) : "");
   const num = (s: Section, key: string) => (typeof section(s)[key] === "number" ? String(section(s)[key]) : "");
@@ -268,11 +278,29 @@ export function TourForm({
       <Panel id={`${ids}-panel-images`} labelledBy={`${ids}-tab-images`} hidden={tab !== "images"}>
         <ImageList
           label={c.fields.images}
-          values={((section("shared").images as { src?: string; mediaId?: string }[]) ?? []).map((i) => i.src ?? i.mediaId ?? "")}
+          values={storedImages.map((i) => i.src ?? i.mediaId ?? i.unsplash?.src ?? "")}
           available={images}
           library={library}
           uploader={uploader}
-          onChange={(v) => set("shared", "images", v.map((ref) => (UUID.test(ref) ? { mediaId: ref } : { src: ref })))}
+          unsplash={
+            unsplash && {
+              t: unsplash,
+              // Added straight away with its credit (the credits map updates on the next render).
+              onPick: (p) => {
+                if (!p.credit || storedImages.some((i) => i.unsplash?.src === p.src)) return;
+                setCredits((m) => ({ ...m, [p.src]: p.credit! }));
+                set("shared", "images", [...storedImages, { unsplash: { src: p.src, credit: p.credit } }]);
+              },
+            }
+          }
+          onChange={(v) =>
+            set(
+              "shared",
+              "images",
+              // A ref is a library id, an Unsplash URL (kept with its photographer) or a site path.
+              v.map((ref) => (UUID.test(ref) ? { mediaId: ref } : credits[ref] ? { unsplash: { src: ref, credit: credits[ref] } } : { src: ref })),
+            )
+          }
           c={c}
         />
       </Panel>

@@ -10,10 +10,18 @@ import { ACTIVITY_LEVELS, addonSchema, DESTINATIONS, privateTourSchema, tourPric
 export const TOUR_LOCALES = ["vi", "en"] as const;
 export type TourLocale = (typeof TOUR_LOCALES)[number];
 
-/** A static file under public/ (current photos) or an image of the media library (Cloudinary). */
+/** Photographer of a licensed photo (Unsplash), shown with it on the tour page. */
+export const imageCreditSchema = z.object({ name: z.string().min(1).max(120), url: z.url({ protocol: /^https$/ }).max(500) });
+export type ImageCredit = z.infer<typeof imageCreditSchema>;
+
+/**
+ * A static file under public/ (current photos), an image of the media library (Cloudinary), or an Unsplash photo:
+ * hotlinked from its CDN with the photographer's credit, as Unsplash's API terms require (product/media/unsplash.ts).
+ */
 export const tourImageSchema = z.union([
   z.object({ src: z.string().regex(/^\/[\w./-]+$/, "path under public/") }),
   z.object({ mediaId: z.uuid() }),
+  z.object({ unsplash: z.object({ src: z.url({ protocol: /^https$/ }).max(500).regex(/^https:\/\/images\.unsplash\.com\//, "Unsplash CDN"), credit: imageCreditSchema }) }),
 ]);
 export type TourImage = z.infer<typeof tourImageSchema>;
 
@@ -81,14 +89,20 @@ export function tourProblems(data: unknown): string[] {
   return parsed.success ? [] : [...new Set(parsed.error.issues.map((i) => i.path.join(".")))];
 }
 
+/** Images that need no lookup: static paths and Unsplash photos (hotlinked); library images need `imageSrc`. */
+export const staticImageSrc = (i: TourImage): string | null => ("src" in i ? i.src : "unsplash" in i ? i.unsplash.src : null);
+
 /**
  * Public view of a published tour in one locale, in the shape the pages already use. `imageSrc` resolves library
- * images (Cloudinary URL); static paths pass through.
+ * images (Cloudinary URL); static paths and Unsplash photos pass through, the latter with their credits.
  */
-export function toTour(doc: TourDocument, slug: string, locale: TourLocale, imageSrc: (image: TourImage) => string | null = (i) => ("src" in i ? i.src : null)): Tour {
+export function toTour(doc: TourDocument, slug: string, locale: TourLocale, imageSrc: (image: TourImage) => string | null = staticImageSrc): Tour {
   const { shared } = doc;
   const t = doc[locale];
-  const images = shared.images.map(imageSrc).filter((src): src is string => src !== null);
+  // Kept in step: a dropped image (unknown library id) drops its credit too.
+  const kept = shared.images.map((i) => ({ src: imageSrc(i), credit: "unsplash" in i ? i.unsplash.credit : null })).filter((i): i is { src: string; credit: ImageCredit | null } => i.src !== null);
+  const images = kept.map((i) => i.src);
+  const imageCredits = kept.some((i) => i.credit) ? kept.map((i) => i.credit) : undefined;
   return {
     slug,
     locale,
@@ -111,6 +125,7 @@ export function toTour(doc: TourDocument, slug: string, locale: TourLocale, imag
     nights: shared.nights,
     price: shared.price,
     images,
+    imageCredits,
     featured: shared.featured,
     order: shared.order,
     private: shared.private,

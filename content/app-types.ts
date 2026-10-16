@@ -224,6 +224,8 @@ export interface AppContent {
     /** "{n}" is replaced with the number of minutes. */
     readingTime: string;
     tagTitle: string;
+    /** Heading of the posts sharing a tag, under a post. */
+    related: string;
     tags: string;
     empty: string;
     previous: string;

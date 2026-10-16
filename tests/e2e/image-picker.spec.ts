@@ -51,3 +51,65 @@ test("an Unsplash photo picked as a post cover is hotlinked, its download counte
     await expect(tab.locator('img[src^="https://images.unsplash.com/"]').first()).toBeAttached();
   }
 });
+
+test("an Unsplash photo added to a tour shows on the tour page with its photographer credited", async ({ page }) => {
+  test.setTimeout(120_000);
+  await signInStaff(page, sql, "owner-picker-tour@bacviet.example", "admin");
+  await page.context().setExtraHTTPHeaders({});
+
+  await page.goto("/admin/tours");
+  await page.locator('[data-slug="ninh-binh-2d1n"] a').first().click();
+  await expect(page.locator("form[data-hydrated]")).toBeVisible();
+  await page.getByRole("tab", { name: "Ảnh" }).click();
+  const chosen = page.getByRole("tabpanel").locator("fieldset > ul").first().locator("li");
+  const before = await chosen.count();
+  const search = page.getByTestId("tour-unsplash");
+  await search.locator("summary").click();
+  await search.getByRole("textbox").fill("Trang An Ninh Binh");
+  await search.getByRole("button", { name: "Tìm" }).click();
+  const first = search.getByRole("button", { name: /^Dùng ảnh này:/ }).first();
+  await expect(first).toBeVisible({ timeout: 30_000 });
+  await first.click();
+  await expect(chosen).toHaveCount(before + 1, { timeout: 30_000 });
+
+  await page.getByRole("button", { name: "Lưu và đăng ngay" }).click();
+  await page.waitForLoadState("networkidle");
+  const credits = page.getByTestId("gallery-credits");
+  await expect(async () => {
+    await page.goto("/tours/ninh-binh-2d1n");
+    await expect(credits).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 30_000 });
+  await expect(credits.locator('a[href^="https://unsplash.com/@"]').first()).toHaveAttribute("href", /utm_source=bac_viet_travel/);
+  // Hotlinked: the browser loads the photo from Unsplash itself, never through this site's image optimizer.
+  // The new photo is the last one: open the viewer and step back to it (the grid shows the first few only).
+  const gallery = page.getByTestId("gallery");
+  await gallery.getByRole("button", { name: /^Xem \d+ ảnh$/ }).click();
+  await page.keyboard.press("ArrowLeft");
+  const viewed = gallery.locator("dialog img");
+  await expect(viewed).toHaveAttribute("src", /^https:\/\/images\.unsplash\.com\//);
+  await expect(gallery.locator("dialog")).toContainText("Unsplash");
+});
+
+test("an Unsplash photo inserted in a post's body shows with its caption crediting the photographer", async ({ page }) => {
+  test.setTimeout(120_000);
+  await signInStaff(page, sql, "owner-picker-body@bacviet.example", "admin");
+  await page.context().setExtraHTTPHeaders({});
+  await page.goto("/admin/posts");
+  await page.locator("main a[href*='/admin/posts/']").filter({ hasNotText: /mới|new/i }).first().click();
+  await page.waitForLoadState("networkidle");
+
+  await page.getByTestId("markdown-toolbar").getByRole("button", { name: "Chèn ảnh" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("tab", { name: "Ảnh miễn phí (Unsplash)" }).click();
+  await dialog.getByRole("textbox").fill("Hanoi old quarter");
+  await dialog.getByRole("textbox").press("Enter");
+  const first = dialog.getByRole("button", { name: /^Dùng ảnh này:/ }).first();
+  await expect(first).toBeVisible({ timeout: 30_000 });
+  await first.click();
+  await expect(dialog).toBeHidden({ timeout: 30_000 });
+
+  const body = await page.getByLabel("Nội dung (Markdown)").inputValue();
+  expect(body).toMatch(/!\[[^\]]*\]\(https:\/\/images\.unsplash\.com\/[^)]+\)\n\*Ảnh: \[[^\]]+\]\(https:\/\/unsplash\.com\/@[^)]+utm_source=bac_viet_travel[^)]*\) \/ \[Unsplash\]/);
+  await page.getByRole("button", { name: "Lưu bản nháp" }).click();
+  await expect(page.getByText("Đã lưu", { exact: false }).first()).toBeVisible();
+});
