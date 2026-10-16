@@ -7,7 +7,7 @@ const html = async (source: string) => renderToStaticMarkup(await MarkdownConten
 describe("MarkdownContent (staff text from the database)", () => {
   it("renders Markdown and GFM", async () => {
     const out = await html("## Ngày 1\n\n**Đón khách** lúc 7:30\n\n- kayak\n- hang Luồn\n\n| a | b |\n|---|---|\n| 1 | 2 |");
-    expect(out).toContain("<h2>Ngày 1</h2>");
+    expect(out).toContain("<h2 id="ngay-1">Ngày 1</h2>");
     expect(out).toContain("<strong>Đón khách</strong>");
     expect(out).toContain("<li>kayak</li>");
     expect(out).toContain("<table>");
