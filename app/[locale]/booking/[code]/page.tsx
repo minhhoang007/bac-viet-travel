@@ -27,6 +27,7 @@ import { BookingSteps } from "@/product/components/booking-steps";
 import { telUrl, whatsappUrl, zaloUrl } from "@/config/contact";
 import { currentCompany } from "@/app/_lib/company";
 import { getTours } from "@/app/_lib/tours";
+import { TrackEvent } from "@/product/analytics/marketing-tags";
 
 type Props = { params: Promise<{ locale: Locale; code: string }>; searchParams: Promise<{ t?: string; pay?: string }> };
 
@@ -75,6 +76,9 @@ export default async function BookingPage({ params, searchParams }: Props) {
 
   return (
     <Container className="max-w-2xl py-12">
+      {/* Funnel: seats held, then deposit paid (each counted once per booking). */}
+      {status === "held" && <TrackEvent name="generate_lead" valueVnd={booking.depositVnd} item={booking.departure.tourSlug} once={booking.code} />}
+      {isSold(status) && <TrackEvent name="purchase" valueVnd={booking.depositVnd} item={booking.departure.tourSlug} once={booking.code} />}
       <div className="mb-6">
         <BookingSteps locale={locale} current={step} />
       </div>

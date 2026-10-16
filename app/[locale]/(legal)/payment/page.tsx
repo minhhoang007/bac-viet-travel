@@ -14,7 +14,7 @@ type Props = { params: Promise<{ locale: Locale }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
   const title = getProductContent(locale).footer.payment;
-  return createMetadata(getSeoSite(), { title, description: title, path: "/payment", locale });
+  return createMetadata(getSeoSite(), { title, description: getProductContent(locale).footer.policyDescriptions.payment, path: "/payment", locale });
 }
 
 export default async function PaymentPolicyPage({ params }: Props) {

@@ -12,6 +12,11 @@ const storageOrigin = process.env.STORAGE_ENDPOINT ? new URL(process.env.STORAGE
 const media = features.media ? { connect: ["https://api.cloudinary.com"], img: ["https://res.cloudinary.com"] } : { connect: [], img: [] };
 // Cloudflare Turnstile on the sign-in form (optional): its script and challenge iframe.
 const turnstile = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ? ["https://challenges.cloudflare.com"] : [];
+// Ad conversion tags (product/analytics/marketing-tags.tsx), only when their ID is set at build time.
+const ga4 = process.env.NEXT_PUBLIC_GA4_ID
+  ? { script: ["https://www.googletagmanager.com"], connect: ["https://*.google-analytics.com", "https://*.analytics.google.com", "https://www.googletagmanager.com"], img: ["https://*.google-analytics.com", "https://www.googletagmanager.com"] }
+  : { script: [], connect: [], img: [] };
+const pixel = process.env.NEXT_PUBLIC_META_PIXEL_ID ? { script: ["https://connect.facebook.net"], connect: ["https://www.facebook.com"], img: ["https://www.facebook.com"] } : { script: [], connect: [], img: [] };
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
@@ -23,7 +28,7 @@ const nextConfig: NextConfig = {
   // functions; Vercel only bundles files the code imports. Found on a real deployment (reuse finding G10).
   outputFileTracingIncludes: { "/**/*": ["./content/**/*"] },
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders({ isDev: process.env.NODE_ENV !== "production", connectSrc: [...(storageOrigin ? [storageOrigin] : []), ...media.connect], imgSrc: media.img, scriptSrc: turnstile, frameSrc: turnstile }) }];
+    return [{ source: "/:path*", headers: securityHeaders({ isDev: process.env.NODE_ENV !== "production", connectSrc: [...(storageOrigin ? [storageOrigin] : []), ...media.connect, ...ga4.connect, ...pixel.connect], imgSrc: [...media.img, ...ga4.img, ...pixel.img], scriptSrc: [...turnstile, ...ga4.script, ...pixel.script], frameSrc: turnstile }) }];
   },
 };
 

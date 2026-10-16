@@ -16,6 +16,7 @@ import { BookingSteps } from "@/product/components/booking-steps";
 import { getProductContent } from "@/product/content";
 import { getTours } from "@/app/_lib/tours";
 import { getPublicEnv } from "@/bootstrap/env";
+import { TrackEvent } from "@/product/analytics/marketing-tags";
 
 type Props = { params: Promise<{ locale: Locale; slug: string }>; searchParams: Promise<{ d?: string; type?: string; guests?: string }> };
 
@@ -42,6 +43,7 @@ export default async function BookTourPage({ params, searchParams }: Props) {
 
   return (
     <Container className="py-10">
+      <TrackEvent name="begin_checkout" item={slug} />
       <IntentLink href={localePath(locale, `/tours/${slug}`)} className="text-sm text-muted-foreground hover:underline">
         ← {tour.title}
       </IntentLink>

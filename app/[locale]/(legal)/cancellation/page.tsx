@@ -14,7 +14,7 @@ type Props = { params: Promise<{ locale: Locale }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
   const title = getProductContent(locale).footer.cancellation;
-  return createMetadata(getSeoSite(), { title, description: title, path: "/cancellation", locale });
+  return createMetadata(getSeoSite(), { title, description: getProductContent(locale).footer.policyDescriptions.cancellation, path: "/cancellation", locale });
 }
 
 export default async function CancellationPolicyPage({ params }: Props) {
