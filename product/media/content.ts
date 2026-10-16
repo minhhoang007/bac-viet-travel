@@ -46,6 +46,7 @@ const editorVi: MarkdownEditorText = {
   link: "Chèn link",
   note: "Khung ghi chú",
   image: "Chèn ảnh",
+  tour: "Chèn tour…",
   sample: { bold: "chữ đậm", heading: "Tiêu đề mục", item: "Ý thứ nhất", link: "chữ có link", note: "Lưu ý cho khách" },
   photoBy: "Ảnh:",
 };
@@ -58,6 +59,7 @@ const editorEn: MarkdownEditorText = {
   link: "Insert link",
   note: "Note box",
   image: "Insert image",
+  tour: "Insert a tour…",
   sample: { bold: "bold text", heading: "Section heading", item: "First point", link: "linked text", note: "A tip for travellers" },
   photoBy: "Photo:",
 };

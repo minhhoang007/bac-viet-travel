@@ -60,8 +60,8 @@ export function ProductFooter({ locale }: { locale: Locale }) {
 }
 
 /** Under a blog post (starter hook): tours for its destination tags, then a question by chat. */
-export function ProductPostFooter({ locale, tags, slug }: { locale: Locale; tags: string[]; slug: string }) {
-  return <PostFooter locale={locale} tags={tags} post={slug} />;
+export function ProductPostFooter({ locale, tags, slug, title }: { locale: Locale; tags: string[]; slug: string; title: string }) {
+  return <PostFooter locale={locale} tags={tags} post={slug} title={title} />;
 }
 
 /** Blocks inside a post (starter hook): `<Tour slug="…" />` draws that tour's card. Other names: nothing. */

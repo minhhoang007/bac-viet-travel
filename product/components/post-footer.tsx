@@ -11,8 +11,11 @@ import { formatPrice } from "../tours/format";
 import { DESTINATIONS, isDestination } from "../tours/model";
 import { BlogTourClicks } from "./blog-tour-clicks";
 import { TourCard } from "./tour-card";
+import { PostShare } from "./post-share";
+import { getSeoSite } from "@/bootstrap/seo";
+import { localizedUrl } from "@/core/seo";
 
-export async function PostFooter({ locale, tags, post }: { locale: Locale; tags: string[]; post: string }) {
+export async function PostFooter({ locale, tags, post, title }: { locale: Locale; tags: string[]; post: string; title: string }) {
   const c = getProductContent(locale);
   const catalog = await getPublicTours();
   const destinations = tags.filter(isDestination);
@@ -24,6 +27,7 @@ export async function PostFooter({ locale, tags, post }: { locale: Locale; tags:
 
   return (
     <BlogTourClicks post={post}>
+      <PostShare url={localizedUrl(getSeoSite(), locale, `/blog/${post}`)} title={title} t={b.share} />
       {tours.length > 0 && (
         <section className="mt-16 border-t border-border pt-10" aria-labelledby="post-tours" data-testid="post-tours">
           <h2 id="post-tours" className="font-heading type-h3">

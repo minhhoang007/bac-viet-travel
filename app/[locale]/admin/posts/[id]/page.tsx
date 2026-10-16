@@ -20,6 +20,7 @@ import { MediaUploader } from "@/components/media/media-uploader";
 import { ImagePicker } from "@/product/components/image-picker";
 import { getImagePickerText, getMarkdownEditorText } from "@/product/media/content";
 import { MarkdownEditor } from "@/product/components/markdown-editor";
+import { getPublicTours } from "@/app/_lib/tours";
 
 type Props = { params: Promise<{ locale: Locale; id: string }>; searchParams: Promise<{ result?: string }> };
 
@@ -153,6 +154,7 @@ export default async function EditPostPage({ params, searchParams }: Props) {
               defaultValue={str("body")}
               t={getMarkdownEditorText(locale)}
               picker={{ t: getImagePickerText(locale), library, uploader, unsplash }}
+              tours={(await getPublicTours()).list(locale).map((tour) => ({ slug: tour.slug, title: tour.title }))}
             />
           </Field>
           <div className="sticky bottom-0 -mx-1 bg-background/95 px-1 py-3 backdrop-blur">
