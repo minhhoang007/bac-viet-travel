@@ -13,15 +13,15 @@ export interface DashboardData {
   collected: { month: number; previous: number };
   /** Bookings paid (deposit) in the last 7 days vs the 7 before: count and value. */
   bookings7d: { count: number; value: number; previousCount: number };
-  /** Seats sold / capacity of open departures in the next 30 days. */
-  fill30d: { sold: number; capacity: number };
+  /** Value of bookings that still stand, by the month the trip leaves (Vietnam calendar): this month and next. */
+  booked: { thisMonth: number; nextMonth: number };
   /** Money received per Vietnam day, last 30 days (oldest first, zero days included). */
   daily: { day: string; vnd: number }[];
   /** Paid bookings in the last 30 days per tour. */
   byTour: { tourSlug: string; count: number; vnd: number }[];
   queue: { attention: number; transfers: number; toConfirm: number; refunds: number; expiringHolds: number; lowFill: number };
   /** Departures in the next 14 days with seats sold. */
-  upcoming: { id: string; date: string; tourSlug: string; capacity: number; sold: number }[];
+  upcoming: { id: string; date: string; tourSlug: string; capacity: number; sold: number; minGuests: number | null }[];
   /** Latest bookings (any status). */
   recent: { code: string; name: string; status: string; totalVnd: number; tourSlug: string; createdAt: Date }[];
 }
@@ -58,10 +58,16 @@ export function createDashboard(deps: { db: Db; now?: () => Date }) {
 
       // Qualified on purpose: in a select list Drizzle may print a bare "id", which inside this subquery means b.id.
       const soldSeats = sql<number>`coalesce((select sum(b.seats) from ${bookings} b where b.departure_id = ${sql.raw(`"departures"."id"`)} and b.status in (${sql.join(SOLD_STATUSES.map((s) => sql`${s}`), sql`, `)})), 0)::int`;
-      const [fill] = await db
-        .select({ capacity: sql<number>`coalesce(sum(${departures.capacity}), 0)::int`, sold: sql<number>`coalesce(sum(${soldSeats}), 0)::int` })
-        .from(departures)
-        .where(and(eq(departures.status, "open"), gte(departures.date, today), lte(departures.date, addDays(today, 30))));
+      const nextMonth = `${addDays(`${today.slice(0, 8)}28`, 7).slice(0, 8)}01`;
+      const monthAfter = `${addDays(`${nextMonth.slice(0, 8)}28`, 7).slice(0, 8)}01`;
+      const [booked] = await db
+        .select({
+          thisMonth: sql<number>`coalesce(sum(${bookings.totalVnd}) filter (where ${departures.date} < ${nextMonth}), 0)::bigint`,
+          nextMonth: sql<number>`coalesce(sum(${bookings.totalVnd}) filter (where ${departures.date} >= ${nextMonth}), 0)::bigint`,
+        })
+        .from(bookings)
+        .innerJoin(departures, eq(departures.id, bookings.departureId))
+        .where(and(inArray(bookings.status, SOLD_STATUSES), gte(departures.date, `${today.slice(0, 8)}01`), lt(departures.date, monthAfter)));
 
       // A literal time zone (not a bind parameter): GROUP BY must see the same expression as SELECT.
       const paidDay = (col: typeof bookings.depositPaidAt | typeof bookings.balancePaidAt) => sql<string>`to_char(${col} at time zone ${sql.raw(`'${TZ}'`)}, 'YYYY-MM-DD')`;
@@ -122,7 +128,7 @@ export function createDashboard(deps: { db: Db; now?: () => Date }) {
       return {
         collected: { month, previous },
         bookings7d: { count: week.week, value: week.weekValueVnd, previousCount: week.previousWeek },
-        fill30d: { sold: fill?.sold ?? 0, capacity: fill?.capacity ?? 0 },
+        booked: { thisMonth: Number(booked?.thisMonth ?? 0), nextMonth: Number(booked?.nextMonth ?? 0) },
         daily,
         byTour: byTour.map((r) => ({ tourSlug: r.tourSlug, count: r.count, vnd: Number(r.vnd) })),
         queue: { attention: queue?.attention ?? 0, transfers: queue?.transfers ?? 0, toConfirm: queue?.toConfirm ?? 0, refunds: queue?.refunds ?? 0, expiringHolds: queue?.expiringHolds ?? 0, lowFill },
