@@ -12,9 +12,10 @@ test.describe.configure({ timeout: 120_000 });
 test("the post editor saves in place and never loses the text being written", async ({ browser }) => {
   const page = await (await browser.newContext()).newPage();
   await signInStaff(page, sql, "inplace-writer@bacviet.example", "editor");
-  await page.goto("/admin/posts");
-  await page.locator('[data-testid="admin-posts"] tbody tr a').first().click();
-  await page.waitForURL(/\/admin\/posts\/[0-9a-f-]+$/);
+  // A post no other test edits (files run in parallel: the newest post is blog-admin's, saved meanwhile).
+  const [post] = await sql<{ id: string }[]>`select id from content_items where type = 'post' and slug = 'sapa-trekking-guide'`;
+  await page.goto("/admin/posts"); // where Back should return to
+  await page.goto(`/admin/posts/${post!.id}`);
   const editorUrl = page.url();
   const body = page.getByLabel("Nội dung (Markdown)");
   await expect(page.getByTestId("markdown-toolbar")).toBeVisible();

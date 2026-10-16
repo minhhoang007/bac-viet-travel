@@ -12,11 +12,13 @@ type Saved = { result: string; revision?: number };
  * is missing) refreshes around the form. Leaving with unsaved changes asks first; Ctrl/⌘+S saves.
  */
 export function SaveInPlaceForm({
+  id,
   action,
   messages,
   className,
   children,
 }: {
+  id?: string;
   action: (formData: FormData) => Promise<Saved>;
   /** Text per result ("saved", "conflict"…); `failed` for anything else. */
   messages: Record<string, string> & { saved: string; failed: string };
@@ -25,7 +27,7 @@ export function SaveInPlaceForm({
 }) {
   const form = useRef<HTMLFormElement>(null);
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
   const [status, setStatus] = useState<{ result: string; at: number } | null>(null);
   const dirty = useRef(false);
 
@@ -47,41 +49,49 @@ export function SaveInPlaceForm({
     };
   }, []);
 
-  const save = () => {
+  // Only the call to the server blocks another save; refreshing the page around the form afterwards does not (a save
+  // pressed meanwhile must not be dropped).
+  const saving = useRef(false);
+  const [busy, setBusy] = useState(false);
+  const save = async () => {
     const el = form.current;
-    if (!el || pending) return;
+    if (!el || saving.current) return;
     const data = new FormData(el);
+    saving.current = true;
+    setBusy(true);
     setStatus(null); // the last save's message is not this one's
-    startTransition(async () => {
-      let saved: Saved;
-      try {
-        saved = await action(data);
-      } catch {
-        saved = { result: "failed" };
-      }
-      if (saved.result === "saved" && saved.revision !== undefined) {
-        const field = el.elements.namedItem("revision");
-        if (field instanceof HTMLInputElement) field.value = String(saved.revision);
-        dirty.current = false;
-        router.refresh();
-      }
-      setStatus({ result: saved.result, at: Date.now() });
-    });
+    let saved: Saved;
+    try {
+      saved = await action(data);
+    } catch {
+      saved = { result: "failed" };
+    } finally {
+      saving.current = false;
+      setBusy(false);
+    }
+    if (saved.result === "saved" && saved.revision !== undefined) {
+      const field = el.elements.namedItem("revision");
+      if (field instanceof HTMLInputElement) field.value = String(saved.revision);
+      dirty.current = false;
+      startTransition(() => router.refresh());
+    }
+    setStatus({ result: saved.result, at: Date.now() });
   };
 
   const ok = status?.result === "saved";
   return (
     <form
       ref={form}
+      id={id}
       className={className}
-      aria-busy={pending || undefined}
-      data-saving={pending || undefined}
+      aria-busy={busy || undefined}
+      data-saving={busy || undefined}
       onInput={() => {
         dirty.current = true;
       }}
       onSubmit={(e) => {
         e.preventDefault();
-        save();
+        void save();
       }}
     >
       {children}
