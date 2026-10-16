@@ -414,6 +414,9 @@ describe("admin dashboard", () => {
     expect(data.queue).toMatchObject({ toConfirm: 1, refunds: 1, expiringHolds: 1, lowFill: 1 });
     expect(data.upcoming.map((d) => [d.date, d.sold])).toEqual([["2026-10-24", 4]]);
     expect(data.recent).toHaveLength(6);
+    // 5 decided (the running hold left out), all 5 paid, 1 of them cancelled; sales A 2M, B 2M, C 3M, D 1M;
+    // booked ahead (Vietnam days): A 6, B 44, C 56, D 46 → 38.
+    expect(data.health).toEqual({ conversion: 100, cancellation: 20, averageVnd: 2_000_000, leadDays: 38 });
   });
 
   it("'paid bookings, 7 days' is one number on every page: Vietnam days, cancelled bookings left out of the count", async () => {

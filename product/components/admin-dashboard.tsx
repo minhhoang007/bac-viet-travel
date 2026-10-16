@@ -85,6 +85,23 @@ export function AdminDashboard({ locale, data, tourTitle }: { locale: Locale; da
         <Stat label={c.kpi.booked} value={money(data.booked.thisMonth)} hint={c.bookedNext(money(data.booked.nextMonth))} href={href("/admin/departures")} />
       </div>
 
+      <section aria-labelledby="dashboard-health-title" data-testid="dashboard-health">
+        <h2 id="dashboard-health-title" className="mb-2 text-sm font-medium text-muted-foreground">{c.healthTitle}</h2>
+        <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border xl:grid-cols-4">
+          {(["conversion", "cancellation", "averageVnd", "leadDays"] as const).map((k) => {
+            const v = data.health[k];
+            const shown = v === null ? "—" : k === "averageVnd" ? money(v) : k === "leadDays" ? c.days(v) : `${v}%`;
+            return (
+              <div key={k} className="min-w-0 bg-background p-3 sm:p-4" data-health={k}>
+                <dt className="text-sm">{c.health[k][0]}</dt>
+                <dd className="mt-1 text-xl font-semibold tabular-nums">{shown}</dd>
+                <dd className="mt-0.5 text-xs text-muted-foreground">{c.health[k][1]}</dd>
+              </div>
+            );
+          })}
+        </dl>
+      </section>
+
       <div className="grid gap-6 lg:grid-cols-[1fr_1.4fr]">
         <Card title={c.queueTitle} testId="dashboard-queue">
           {pending.length === 0 ? (

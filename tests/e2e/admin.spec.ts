@@ -70,6 +70,8 @@ test("staff confirm one booking and cancel another; seats return to sale; everyt
   await expect(page.getByTestId("dashboard-upcoming")).toContainText("chỗ");
   await expect(page.getByTestId("dashboard-upcoming").locator("[data-trip-status]").first()).toBeVisible();
   await expect(page.getByTestId("money-chart")).toContainText("0"); // value axis
+  await expect(page.locator('[data-health="conversion"]')).toContainText("%");
+  await expect(page.locator('[data-health="averageVnd"]')).toContainText("₫");
   await expect(page.getByTestId("dashboard-recent")).toContainText("BV-ADMN33");
   // The starter's site figures (sign-ups, page views) are not shown to a tour company's staff.
   await expect(page.getByTestId("site-figures")).toHaveCount(0);

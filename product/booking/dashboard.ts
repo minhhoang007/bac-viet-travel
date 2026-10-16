@@ -7,6 +7,7 @@ import { addDays, vietnamDayStart, vietnamToday } from "./rules";
 import { canBecome, refundOwed, SOLD_STATUSES } from "./status";
 
 const TZ = "Asia/Ho_Chi_Minh";
+const ratio = (part = 0, whole = 0) => (whole > 0 ? Math.round((part / whole) * 100) : null);
 
 export interface DashboardData {
   /** Money received (deposits + balances, by the day it came in), this month to date vs the same days last month. */
@@ -24,6 +25,11 @@ export interface DashboardData {
   upcoming: { id: string; date: string; tourSlug: string; capacity: number; sold: number; minGuests: number | null }[];
   /** Latest bookings (any status). */
   recent: { code: string; name: string; status: string; totalVnd: number; tourSlug: string; createdAt: Date }[];
+  /**
+   * Last 90 days of bookings (by the day they were made): share of bookings whose deposit came in, share of paid ones
+   * cancelled since, average value of a sale, and how many days ahead of the trip guests pay. Null without data.
+   */
+  health: { conversion: number | null; cancellation: number | null; averageVnd: number | null; leadDays: number | null };
 }
 
 /** Business overview for /admin (owner's dashboard, 2026-10-07). Read-only queries; money in VND integers. */
@@ -125,6 +131,22 @@ export function createDashboard(deps: { db: Db; now?: () => Date }) {
         .orderBy(desc(bookings.createdAt))
         .limit(6);
 
+      // Paid = a deposit came in; a sale = paid and still standing. Lead time: departure day − Vietnam day of payment.
+      const sold = inArray(bookings.status, SOLD_STATUSES);
+      const paidDayDate = sql`(${bookings.depositPaidAt} at time zone ${sql.raw(`'${TZ}'`)})::date`;
+      const [health] = await db
+        .select({
+          // Holds still running are not decided yet: left out of the conversion.
+          made: sql<number>`count(*) filter (where ${bookings.status} <> 'held')::int`,
+          paid: sql<number>`count(*) filter (where ${bookings.depositPaidAt} is not null)::int`,
+          cancelled: sql<number>`count(*) filter (where ${bookings.depositPaidAt} is not null and ${eq(bookings.status, "cancelled")})::int`,
+          averageVnd: sql<number | null>`avg(${bookings.totalVnd}) filter (where ${sold})`,
+          leadDays: sql<number | null>`avg(${departures.date}::date - ${paidDayDate}) filter (where ${sold} and ${bookings.depositPaidAt} is not null)`,
+        })
+        .from(bookings)
+        .innerJoin(departures, eq(departures.id, bookings.departureId))
+        .where(gte(bookings.createdAt, vietnamDayStart(addDays(today, -89))));
+
       return {
         collected: { month, previous },
         bookings7d: { count: week.week, value: week.weekValueVnd, previousCount: week.previousWeek },
@@ -134,6 +156,12 @@ export function createDashboard(deps: { db: Db; now?: () => Date }) {
         queue: { attention: queue?.attention ?? 0, transfers: queue?.transfers ?? 0, toConfirm: queue?.toConfirm ?? 0, refunds: queue?.refunds ?? 0, expiringHolds: queue?.expiringHolds ?? 0, lowFill },
         upcoming,
         recent,
+        health: {
+          conversion: ratio(health?.paid, health?.made),
+          cancellation: ratio(health?.cancelled, health?.paid),
+          averageVnd: health?.averageVnd == null ? null : Math.round(Number(health.averageVnd)),
+          leadDays: health?.leadDays == null ? null : Math.round(Number(health.leadDays)),
+        },
       };
     },
   };
