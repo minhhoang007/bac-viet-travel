@@ -29,8 +29,8 @@ export async function PostFooter({ locale, tags, post, title }: { locale: Locale
     <BlogTourClicks post={post}>
       <PostShare url={localizedUrl(getSeoSite(), locale, `/blog/${post}`)} title={title} t={b.share} />
       {tours.length > 0 && (
-        <section className="mt-16 border-t border-border pt-10" aria-labelledby="post-tours" data-testid="post-tours">
-          <h2 id="post-tours" className="font-heading type-h3">
+        <section className="mt-16 border-t border-border pt-10" aria-labelledby="post_tours" data-testid="post-tours">
+          <h2 id="post_tours" className="font-heading type-h3">
             {destinations.length ? b.tours : b.popular}
           </h2>
           <div className="mt-6 grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">

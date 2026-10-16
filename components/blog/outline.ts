@@ -17,7 +17,10 @@ export function plainText(markdown: string): string {
     .trim();
 }
 
-/** "Chi phí & thời gian đi" → "chi-phi-thoi-gian-di" (Vietnamese marks and đ folded). */
+/**
+ * "Chi phí & thời gian đi" → "chi-phi-thoi-gian-di" (Vietnamese marks and đ folded). Only a–z, 0–9 and "-": ids the
+ * post page sets itself use "_" (post_related…), so a heading never takes one of them.
+ */
 export function headingSlug(text: string): string {
   return (
     text

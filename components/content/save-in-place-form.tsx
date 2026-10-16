@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
+import { FormPendingContext } from "@/components/forms/form-pending";
 
 type Saved = { result: string; revision?: number };
 
@@ -70,8 +71,9 @@ export function SaveInPlaceForm({
       setBusy(false);
     }
     if (saved.result === "saved" && saved.revision !== undefined) {
-      const field = el.elements.namedItem("revision");
-      if (field instanceof HTMLInputElement) field.value = String(saved.revision);
+      // This form's revision, and the other forms on the page for the same item (submit, publish…): a click there
+      // before the refresh lands must not look like someone else's change.
+      for (const field of document.querySelectorAll<HTMLInputElement>('input[name="revision"]')) field.value = String(saved.revision);
       dirty.current = false;
       startTransition(() => router.refresh());
     }
@@ -94,7 +96,7 @@ export function SaveInPlaceForm({
         void save();
       }}
     >
-      {children}
+      <FormPendingContext value={busy}>{children}</FormPendingContext>
       <p
         role={ok ? "status" : "alert"}
         key={status?.at}

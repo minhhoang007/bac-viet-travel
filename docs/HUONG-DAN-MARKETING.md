@@ -139,8 +139,10 @@ Trong khung quy trình duyệt, mở **Lịch sử phiên bản** để xem các
 - **Lưu bài:** bấm **Lưu bản nháp** hoặc **Ctrl+S**. Trang không tải lại, chữ đang viết giữ nguyên. Nếu người khác
   vừa lưu cùng bài, phần bạn đang viết vẫn còn: sao chép lại trước khi tải lại trang.
 - **Ngày cập nhật:** sửa chữ của một bài đã đăng thì ngày "Cập nhật" tự đặt là hôm nay.
-- **Hỏi đáp hiện trên Google:** thêm mục `## Câu hỏi thường gặp`, mỗi câu hỏi là một `### Câu hỏi?` và câu trả lời
-  viết ngay bên dưới. Google có thể hiện các câu này trong kết quả tìm kiếm.
+- **Mục hỏi đáp:** thêm mục `## Câu hỏi thường gặp`, mỗi câu hỏi là một `### Câu hỏi?` và câu trả lời viết ngay
+  bên dưới. Trang ghi kèm dữ liệu hỏi đáp (FAQPage) để Google và các công cụ tìm kiếm AI hiểu đúng câu hỏi và câu trả
+  lời. Lưu ý: từ 2023 Google chỉ hiện khung hỏi đáp mở rộng cho trang chính phủ và y tế, nên đừng trông vào khung đó;
+  giá trị chính là trả lời đúng điều khách hay hỏi.
 
 ## Câu hỏi thường gặp
 

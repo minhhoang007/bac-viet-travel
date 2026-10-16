@@ -80,10 +80,27 @@ export async function MarkdownContent({ source, embed }: { source: string; embed
   );
 }
 
+/** Start and end of each ``` / ~~~ code block: an embed written there is an example, shown as text. */
+function codeBlocks(text: string): [number, number][] {
+  const blocks: [number, number][] = [];
+  let open: number | null = null;
+  for (const m of text.matchAll(/^[ \t]*(```|~~~).*$/gm)) {
+    if (open === null) open = m.index;
+    else {
+      blocks.push([open, m.index + m[0].length]);
+      open = null;
+    }
+  }
+  if (open !== null) blocks.push([open, text.length]);
+  return blocks;
+}
+
 function splitEmbeds(text: string): Part[] {
   const parts: Part[] = [];
+  const code = codeBlocks(text);
   let last = 0;
   for (const m of text.matchAll(EMBED)) {
+    if (code.some(([a, b]) => m.index >= a && m.index < b)) continue;
     parts.push({ text: text.slice(last, m.index) });
     parts.push({ embed: { name: m[1]!, slug: m[2]! } });
     last = m.index + m[0].length;

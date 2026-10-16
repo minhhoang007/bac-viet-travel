@@ -175,8 +175,8 @@ export default async function BlogPostPage({ params }: Props) {
           </figure>
         )}
         {facts.length > 0 && (
-          <section aria-labelledby="post-facts" className="blog-facts mt-8 rounded-lg border border-primary/30 bg-primary/5 p-4 sm:p-5" data-testid="post-facts">
-            <h2 id="post-facts" className="font-semibold">
+          <section aria-labelledby="post_facts" className="blog-facts mt-8 rounded-lg border border-primary/30 bg-primary/5 p-4 sm:p-5" data-testid="post-facts">
+            <h2 id="post_facts" className="font-semibold">
               {c.facts.title}
             </h2>
             <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
@@ -243,8 +243,8 @@ export default async function BlogPostPage({ params }: Props) {
       {/* Project hook: what to do next (tours for this destination, a question by chat). */}
       {ProductPostFooter && <ProductPostFooter locale={locale} tags={post.tags} slug={post.slug} title={post.title} />}
       {related.length > 0 && (
-        <section className="mt-16 border-t border-border pt-10" aria-labelledby="related-posts" data-testid="related-posts">
-          <h2 id="related-posts" className="font-heading type-h3">
+        <section className="mt-16 border-t border-border pt-10" aria-labelledby="post_related" data-testid="related-posts">
+          <h2 id="post_related" className="font-heading type-h3">
             {c.related}
           </h2>
           <div className="mt-6">
