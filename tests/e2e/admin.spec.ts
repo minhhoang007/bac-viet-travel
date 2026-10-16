@@ -339,6 +339,12 @@ test("staff roles: admins add sales and managers; sales see bookings without con
   await staff.goto("/admin/bookings/BV-SALE22");
   await expect(staff.getByTestId("admin-confirm")).toBeVisible();
   expect((await staff.goto("/admin/discounts"))?.status()).toBe(200);
+  // ...and the business overview at /admin, in their menu, without the admins' technical pages.
+  await staff.goto("/admin");
+  await expect(staff).toHaveURL(/\/admin$/);
+  await expect(staff.getByTestId("admin-dashboard")).toBeVisible();
+  await expect(staff.getByRole("link", { name: "Tổng quan", exact: true })).toBeVisible();
+  await expect(staff.getByRole("link", { name: "Tài khoản người dùng", exact: true })).toHaveCount(0);
 
   // Removed: no admin area any more.
   await page.locator(`[data-staff="${email}"]`).getByRole("button", { name: /Gỡ/ }).click();

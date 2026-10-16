@@ -177,6 +177,8 @@ export interface ProductNavItem {
 let roleLookup: ((userId: string) => Promise<StaffRole | null>) | null = null;
 const staffRoleOf = async (userId: string): Promise<StaffRole | null> => (roleLookup ? roleLookup(userId) : null);
 const staffMay = (permission: Permission) => async (user: { id: string; role: string }) => can(user, await staffRoleOf(user.id), permission);
+/** Whether a signed-in user holds a staff permission (admins: always), for checks outside the menu. */
+export const staffCan = (user: { id: string; role: string }, permission: Permission) => staffMay(permission)(user);
 
 /** Dashboard menu entries for product pages (href without locale prefix). */
 export const productNav: ProductNavItem[] = [];

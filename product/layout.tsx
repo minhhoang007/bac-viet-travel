@@ -18,6 +18,7 @@ import { MarketingTags } from "./analytics/marketing-tags";
 import { ConsentBanner } from "@/components/analytics/consent-banner";
 import { getAppContent } from "@/content";
 import { PostFooter } from "./components/post-footer";
+import { staffCan } from "./manifest";
 import { SiteFooter } from "./components/site-footer";
 import { SiteHeader } from "./components/site-header";
 import { getProductContent } from "./content";
@@ -34,6 +35,11 @@ export async function productTheme(): Promise<ProductTheme> {
 /** Business dashboard at the top of /admin (starter v1.18 hook; the page is admin-only). */
 /** The starter's site figures (sign-ups, page views, storage) mean nothing to a tour company's staff: not shown. */
 export const productSiteFigures = false;
+
+/** Staff besides admins who see the business overview at /admin: managers (they have the reports already). */
+export function productOverviewFor(user: { id: string; role: "user" | "editor" | "admin" }): Promise<boolean> {
+  return staffCan(user, "reports");
+}
 
 export async function ProductAdminOverview({ locale }: { locale: Locale }) {
   // A failing figure must not take the whole admin overview down: say so and keep the rest of the page.
