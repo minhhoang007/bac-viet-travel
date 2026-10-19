@@ -346,10 +346,17 @@ test("staff roles: admins add sales and managers; sales see bookings without con
   await expect(staff.getByRole("link", { name: "Tổng quan", exact: true })).toBeVisible();
   await expect(staff.getByRole("link", { name: "Tài khoản người dùng", exact: true })).toHaveCount(0);
 
-  // Removed: no admin area any more.
+  // The overview (revenue, guest names) waits for the second factor like every admin page.
+  await sql`update sessions set second_factor_at = null where user_id = (select id from users where email = ${email})`;
+  await staff.goto("/admin");
+  await expect(staff).toHaveURL(/\/verify$/);
+  await sql`update sessions set second_factor_at = now() where user_id = (select id from users where email = ${email})`;
+
+  // Removed: the account is disabled (signed out everywhere), no admin area any more.
   await page.locator(`[data-staff="${email}"]`).getByRole("button", { name: /Gỡ/ }).click();
   // Other specs may add staff in parallel (staff-password.spec): check this row only.
   await expect(page.locator(`[data-staff="${email}"]`)).toHaveCount(0);
+  expect(await sql`select role, status from users where email = ${email}`).toEqual([{ role: "user", status: "disabled" }]);
   expect((await staff.goto("/admin/bookings"))?.status()).toBe(404);
 });
 

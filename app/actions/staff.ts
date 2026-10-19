@@ -41,8 +41,11 @@ export async function setStaffRole(formData: FormData): Promise<void> {
     if (invite) found = (await admin.getUser(await auth.ensureAccount(email.data))) ?? undefined;
     if (!found) return "not_found";
     if (found.role === "admin") return "is_admin";
-    if (found.role === "user") await admin.setUserRole(actor, found.id, "editor");
+    // Staff role first, then the editor level that opens the admin area: a failure in between leaves no access.
     await container.app!.product.staff.set(actor, found.id, role);
+    if (found.role === "user") await admin.setUserRole(actor, found.id, "editor");
+    // A former employee taken back (removeStaff disabled the account).
+    if (found.status === "disabled") await admin.setUserStatus(actor, found.id, "active");
     if (!invite) return "done";
     return (await sendSetup(auth, found.email, container.logger)) ? "invited" : "mail_failed";
   });
@@ -72,14 +75,19 @@ async function sendSetup(auth: NonNullable<Ctx["app"]>["auth"], email: string, l
   }
 }
 
-/** Remove the staff role and the editor level that came with it. */
+/**
+ * Offboarding: the account is disabled first (every session ends; password, passkeys and codes stop working), then
+ * the editor level and the staff role are removed. A failure in between leaves no access. Adding the person again
+ * re-enables the account.
+ */
 export async function removeStaff(formData: FormData): Promise<void> {
   await staffAction(formData, async ({ admin, container, user: actor }) => {
     const userId = z.uuid().safeParse(formData.get("userId"));
     if (!userId.success) return "invalid";
-    await container.app!.product.staff.set(actor, userId.data, null);
     const target = await admin.getUser(userId.data);
+    if (target && target.role !== "admin") await admin.setUserStatus(actor, userId.data, "disabled");
     if (target?.role === "editor") await admin.setUserRole(actor, userId.data, "user");
+    await container.app!.product.staff.set(actor, userId.data, null);
     return "done";
   });
 }
