@@ -2,8 +2,10 @@
 
 // Ad and conversion tags (GA4, Meta Pixel) for the tour company's campaigns. Loaded only after the visitor accepts
 // cookies in the starter's consent banner (analytics module), and only when an ID is configured.
+import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { CONSENT_COOKIE } from "@/components/analytics/consent";
+import { isPrivatePath } from "./private-paths";
 
 export interface MarketingIds {
   ga4?: string;
@@ -49,10 +51,14 @@ function start(ids: MarketingIds) {
   }
 }
 
-/** On every page: starts the tags once consent is granted (now, or later from the banner). */
+/**
+ * On every page: starts the tags once consent is granted (now, or later from the banner). Never on the private pages:
+ * their links come from emails, so they open in a fresh page load, before any tag has started.
+ */
 export function MarketingTags({ ids }: { ids: MarketingIds }) {
+  const isPrivate = isPrivatePath(usePathname());
   useEffect(() => {
-    if (!ids.ga4 && !ids.metaPixel) return;
+    if ((!ids.ga4 && !ids.metaPixel) || isPrivate) return;
     if (granted()) return start(ids);
     // The banner sets the cookie without an event: check again on the next clicks until the choice is made.
     const check = () => {
@@ -63,7 +69,7 @@ export function MarketingTags({ ids }: { ids: MarketingIds }) {
     };
     document.addEventListener("click", check);
     return () => document.removeEventListener("click", check);
-  }, [ids]);
+  }, [ids, isPrivate]);
   return null;
 }
 
