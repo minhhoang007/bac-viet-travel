@@ -1,11 +1,13 @@
 import { randomBytes } from "node:crypto";
 import { and, eq, gt, isNotNull, lt, lte, ne, or, sql } from "drizzle-orm";
 import type { Logger } from "@/core/logger";
+import type { RateLimiter } from "@/core/security/rate-limit";
 import type { MailPort } from "@/core/ports/mail";
 import type { OneTimePaymentProvider } from "@/core/ports/payments";
 import type { Db } from "@/db/client";
 import { bookingPayments, bookings, departures, type Booking, type BookingPayment, type Departure } from "../schema/booking";
 import { depositEmails, reconcileAlertEmail } from "./emails";
+import { balanceDue } from "./lifecycle";
 import { vietnamToday } from "./rules";
 import type { BookingService } from "./service";
 import { awaitsDeposit, isSold, takesSeats } from "./status";
@@ -14,11 +16,6 @@ import { awaitsDeposit, isSold, takesSeats } from "./status";
 export type IpnResult = { RspCode: "00" | "01" | "02" | "04" | "97" | "99"; Message: string };
 
 export type StartDepositResult = { status: "redirect"; url: string } | { status: "not_found" } | { status: "not_payable" };
-/** Rest of the total still owed online (D5): paid bookings before departure, not yet settled. */
-export function balanceDue(booking: Pick<Booking, "status" | "totalVnd" | "depositVnd" | "balancePaidAt">): number {
-  if (!isSold(booking.status) || booking.balancePaidAt) return 0;
-  return Math.max(0, booking.totalVnd - booking.depositVnd);
-}
 
 export type ChooseTransferResult = { status: "ok" } | { status: "not_found" } | { status: "not_payable" };
 /** deposit_paid / refund_due: recorded (and the guest emailed). too_little: less than the deposit, nothing recorded. */
@@ -72,6 +69,8 @@ export function createDepositService(deps: {
   /** Seats stay held this long once the guest chooses a bank transfer. */
   transferHoldMinutes: number;
   tourTitle: (slug: string, locale: string) => Promise<string>;
+  /** Online payment attempts per booking (a valid link could otherwise create pending attempts without end). */
+  payLimiter?: RateLimiter;
   now?: () => Date;
 }): DepositService {
   const { db, logger } = deps;
@@ -192,6 +191,17 @@ export function createDepositService(deps: {
   }
 
   /** Whether the booking has a bank transfer the guest chose that staff have not recorded yet. */
+  /** A failing limiter store never blocks a guest who wants to pay. */
+  const payAllowed = async (code: string) => {
+    if (!deps.payLimiter) return true;
+    try {
+      return (await deps.payLimiter.limit(`pay:${code}`)).success;
+    } catch (error) {
+      logger.error("booking.pay_limiter_failed", { code, error });
+      return true;
+    }
+  };
+
   async function transferPending(bookingId: string): Promise<boolean> {
     const [row] = await db
       .select({ id: bookingPayments.id })
@@ -206,6 +216,7 @@ export function createDepositService(deps: {
       const booking = await deps.bookings.getForGuest(code, token);
       if (!booking) return { status: "not_found" };
       if (booking.status !== "held" || booking.isExpired) return { status: "not_payable" };
+      if (!(await payAllowed(booking.code))) return { status: "not_payable" };
       const txnRef = `${booking.code.slice(3)}${randomBytes(6).toString("hex").toUpperCase()}`;
       // The stored createdAt is the vnp_CreateDate, so reconcile can query VNPay with the same transaction date.
       const [attempt] = await db
@@ -235,6 +246,7 @@ export function createDepositService(deps: {
       const amount = balanceDue(booking);
       const at = now();
       if (amount <= 0 || booking.departure.date < vietnamToday(at)) return { status: "not_payable" };
+      if (!(await payAllowed(booking.code))) return { status: "not_payable" };
       const txnRef = `${booking.code.slice(3)}B${randomBytes(5).toString("hex").toUpperCase()}`;
       const [attempt] = await db
         .insert(bookingPayments)

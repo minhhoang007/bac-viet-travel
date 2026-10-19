@@ -1,9 +1,9 @@
 "use server";
 
-import { cookies, headers } from "next/headers";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { clientKeyFrom } from "@/app/_lib/client-ip";
-import { BOOKING_COOKIE, getBooking, getDeposits, isTransferAvailable, passesBotCheck } from "@/app/_lib/booking";
+import { getBooking, getDeposits, guestBookingPath, isTransferAvailable, passesBotCheck, rememberGuestToken } from "@/app/_lib/booking";
 import { getPublicEnv } from "@/bootstrap/env";
 import { localePath } from "@/core/i18n/routing";
 import type { HoldResult } from "@/product/booking/service";
@@ -27,7 +27,8 @@ export async function holdSeats(_prev: HoldFormState, formData: FormData): Promi
     return { status: "error" };
   }
   if (result.status !== "held") return result;
-  redirect(localePath(localeOf(formData), `/booking/${result.code}?t=${result.token}`));
+  await rememberGuestToken(result.code, result.token);
+  redirect(guestBookingPath(localeOf(formData), result.code));
 }
 
 /** Private tour: same as holdSeats, with a guest-chosen date and group size. */
@@ -42,7 +43,8 @@ export async function holdPrivateSeats(_prev: HoldFormState, formData: FormData)
     return { status: "error" };
   }
   if (result.status !== "held") return result;
-  redirect(localePath(localeOf(formData), `/booking/${result.code}?t=${result.token}`));
+  await rememberGuestToken(result.code, result.token);
+  redirect(guestBookingPath(localeOf(formData), result.code));
 }
 
 /** VNPay payment for the guest's booking (deposit or balance): creates the attempt and sends the guest to VNPay. */
@@ -64,7 +66,7 @@ async function payOnline(kind: "start" | "startBalance", formData: FormData): Pr
     return { status: "error" };
   }
   // VNPay's return URL cannot carry the token: the cookie brings the guest back to their private page.
-  (await cookies()).set(BOOKING_COOKIE(code), token, { httpOnly: true, secure: true, sameSite: "lax", path: "/", maxAge: 60 * 60 });
+  await rememberGuestToken(code, token);
   redirect(url);
 }
 
@@ -89,8 +91,8 @@ export async function chooseTransfer(formData: FormData): Promise<void> {
   } catch {
     ok = false;
   }
-  const back = `/booking/${encodeURIComponent(code)}?t=${encodeURIComponent(token)}`;
-  redirect(localePath(locale, ok ? back : `${back}&pay=transfer_failed`));
+  if (ok) await rememberGuestToken(code, token);
+  redirect(guestBookingPath(locale, code, ok ? {} : { pay: "transfer_failed" }));
 }
 
 /** The guest's traveller list (D7), checked against the secret token; errors per row stay on the page. */

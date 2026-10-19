@@ -99,6 +99,8 @@ export function createBookingAdmin(deps: {
   audit?: ProductContext["audit"];
   tourTitle: (slug: string, locale: string) => Promise<string>;
   tourExists: (slug: string) => Promise<boolean>;
+  /** The tour's pick-up time and place, for the reminder email (null or empty: the guide tells the guest on the call). */
+  tourPickup?: (slug: string, locale: string) => Promise<string | null>;
   /** Adult website price of a tour (VND): the floor of manual amounts for staff without bookings.money. */
   tourPrice?: (slug: string) => Promise<number | null>;
   /** Deposit service's receiveTransfer with the site links bound (emails). */
@@ -375,6 +377,8 @@ export function createBookingAdmin(deps: {
             depositVnd: Math.ceil((input.amountVnd * bookingRules.depositRate) / 1000) * 1000,
             depositPaidAt: at,
             confirmedAt: input.status === "confirmed" ? at : null,
+            // "Confirmed (paid in full)": the amount received is the whole total, nothing left to collect.
+            balancePaidAt: input.status === "confirmed" ? at : null,
             source: input.source,
             externalRef: input.externalRef || null,
             guestEmails: input.guestEmails,
@@ -427,7 +431,8 @@ export function createBookingAdmin(deps: {
       );
       for (const b of claimed) {
         const d = byId.get(b.departureId)!;
-        await send(reminderEmail({ booking: b, departure: d, title: await deps.tourTitle(d.tourSlug, b.locale) }), b.code);
+        const pickup = (await deps.tourPickup?.(d.tourSlug, b.locale)) ?? null;
+        await send(reminderEmail({ booking: b, departure: d, title: await deps.tourTitle(d.tourSlug, b.locale), pickup }), b.code);
       }
       if (claimed.length) logger.info("booking.reminders_sent", { count: claimed.length });
       return claimed.length;

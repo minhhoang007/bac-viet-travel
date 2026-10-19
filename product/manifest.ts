@@ -83,6 +83,8 @@ export function createProduct(db: Db, ctx: ProductContext) {
     vnpay,
     transferHoldMinutes: defaultBankTransfer.holdMinutes,
     tourTitle,
+    // A guest retrying a failed card payment needs a few tries; 10 in 30 minutes is far beyond that.
+    payLimiter: ctx.rateLimiter("booking-pay", { max: 10, windowMs: 30 * 60_000 }),
     now: ctx.now,
   });
 
@@ -93,6 +95,7 @@ export function createProduct(db: Db, ctx: ProductContext) {
     audit: ctx.audit,
     tourTitle,
     tourExists: async (slug) => (await tour(slug)) !== null,
+    tourPickup: async (slug, locale) => (await tour(slug, locale))?.pickupTime || null,
     tourPrice: async (slug) => (await tour(slug))?.price.vnd ?? null,
     receiveTransfer: (code, input) => {
       const env = getEnv();

@@ -1,6 +1,6 @@
 // What staff should do next with a booking, shown at the top of the admin booking page.
 import type { Booking } from "../schema/booking";
-import { balanceDue } from "./deposits";
+import { balanceDue } from "./lifecycle";
 import { refundLeft } from "./lifecycle";
 
 export type NextStep =

@@ -110,6 +110,21 @@ describe("booking deposits (VNPay)", () => {
     expect((await bookingService.listDepartures("ninh-binh-day-tour"))[0]!.seatsLeft).toBe(9);
   });
 
+  it("payment attempts per booking are limited; a broken limiter store never blocks a guest", async () => {
+    const make = (payLimiter: Parameters<typeof createDepositService>[0]["payLimiter"]) =>
+      createDepositService({ db, logger, mail: { send: async () => {} }, bookings: bookingService, vnpay, transferHoldMinutes: 120, tourTitle: async () => "", payLimiter, now: () => clock });
+    const { code, token } = await holdOn(5);
+    const args = { code, token, ipAddr: "1.2.3.4", returnUrl: "https://bacviet.example/booking/return" };
+    const limited = make(createMemoryRateLimiter({ max: 2, windowMs: 60_000 }));
+    expect((await limited.start(args)).status).toBe("redirect");
+    expect((await limited.start(args)).status).toBe("redirect");
+    expect(await limited.start(args)).toEqual({ status: "not_payable" });
+    expect(await db.select().from(bookingPayments)).toHaveLength(2);
+
+    const broken = make({ limit: async () => Promise.reject(new Error("redis down")) });
+    expect((await broken.start(args)).status).toBe("redirect");
+  });
+
   it("rejects a bad signature, an unknown order and a wrong amount; nothing changes", async () => {
     const { code, token } = await holdOn(10);
     const req = await startPayment(code, token);

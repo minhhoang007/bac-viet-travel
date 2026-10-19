@@ -48,3 +48,9 @@ export function awaitsDeposit(status: BookingStatus): boolean {
 export function refundLeft(b: { refundDueVnd: number; refundedVnd: number }): number {
   return b.refundDueVnd - b.refundedVnd;
 }
+
+/** Rest of the total still to collect (D5): sold bookings whose balance is not settled yet. */
+export function balanceDue(b: { status: BookingStatus; totalVnd: number; depositVnd: number; balancePaidAt: Date | null }): number {
+  if (!isSold(b.status) || b.balancePaidAt) return 0;
+  return Math.max(0, b.totalVnd - b.depositVnd);
+}

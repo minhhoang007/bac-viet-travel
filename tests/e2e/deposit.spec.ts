@@ -54,7 +54,7 @@ test("deposit: VNPay URL for 30%, IPN confirms, guest returns to a paid booking"
   // Back before the IPN: "confirming" (the page refreshes itself).
   const params = result(payment, true);
   await page.goto(`/booking/return?${params}`);
-  await expect(page).toHaveURL(/\/booking\/BV-[A-Z2-9]{6}\?t=.+&pay=pending$/);
+  await expect(page).toHaveURL(/\/booking\/BV-[A-Z2-9]{6}\?pay=pending$/);
   await expect(page.getByTestId("confirming")).toBeVisible();
 
   // VNPay's server calls the IPN; the page turns to "paid" on its own.

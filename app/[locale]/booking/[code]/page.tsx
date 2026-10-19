@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";
 import { setRequestLocale } from "next-intl/server";
-import { getBooking, getDeposits, isPaymentsSandbox, isTransferAvailable, isVnpayConfigured } from "@/app/_lib/booking";
+import { getBooking, getDeposits, guestBookingPath, guestToken, isPaymentsSandbox, isTransferAvailable, isVnpayConfigured, openBookingUrl } from "@/app/_lib/booking";
 import { chooseTransfer, saveTravellers, startBalance, startDeposit } from "@/app/actions/booking";
-import { balanceDue } from "@/product/booking/deposits";
+import { balanceDue } from "@/product/booking/lifecycle";
 import { travellerKinds, vietnamToday } from "@/product/booking/rules";
 import { travellersEditable } from "@/product/booking/service";
 import { isSold } from "@/product/booking/lifecycle";
@@ -36,14 +36,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return { title: getBookingContent(locale).booking.title, robots: { index: false, follow: false } };
 }
 
-/** Private guest page: the secret token in the link is the only key (no login for guests). */
+/** Private guest page: the secret token (from the guest's link, kept in a cookie) is the only key (no login for guests). */
 export default async function BookingPage({ params, searchParams }: Props) {
   const contactConfig = await currentCompany();
   await connection();
   const { locale, code } = await params;
   setRequestLocale(locale);
   const t = getBookingContent(locale);
-  const { t: token, pay } = await searchParams;
+  const { t: linkToken, pay } = await searchParams;
+  // A link with the secret: store it first, so this page is never shown (nor tracked) with it in the address.
+  if (linkToken) redirect(openBookingUrl(locale, code, linkToken, { pay }));
+  const token = await guestToken(code);
   const booking = token ? await getBooking().getForGuest(code, token) : null;
 
   // Wrong code or token: a 404 with the booking hint (not-found.tsx), same answer for both.
@@ -118,7 +121,7 @@ export default async function BookingPage({ params, searchParams }: Props) {
               </p>
             )
           )}
-          <ButtonLink href={localePath(locale, `/booking/${booking.code}/voucher?t=${encodeURIComponent(token!)}`)} variant="outline" className="mt-3" data-testid="open-voucher">
+          <ButtonLink href={guestBookingPath(locale, booking.code, { voucher: true })} variant="outline" className="mt-3" data-testid="open-voucher">
             {t.voucher.open}
           </ButtonLink>
         </section>

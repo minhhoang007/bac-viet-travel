@@ -1,12 +1,10 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { setRequestLocale } from "next-intl/server";
-import { BOOKING_COOKIE, getDeposits } from "@/app/_lib/booking";
+import { getDeposits, guestBookingPath, guestToken } from "@/app/_lib/booking";
 import { getEnv } from "@/bootstrap/env";
 import { Container } from "@/components/ui/container";
-import { localePath } from "@/core/i18n/routing";
 import type { Locale } from "@/config/app";
 import { getBookingContent } from "@/product/booking/content";
 
@@ -28,8 +26,7 @@ export default async function BookingReturnPage({ params, searchParams }: Props)
   const result = await getDeposits().returnStatus(query, { siteUrl: env.NEXT_PUBLIC_SITE_URL, teamEmail: env.extra.CONTACT_TO_EMAIL });
 
   if (result.valid && result.code) {
-    const token = (await cookies()).get(BOOKING_COOKIE(result.code))?.value;
-    if (token) redirect(localePath(locale, `/booking/${result.code}?t=${encodeURIComponent(token)}&pay=${result.status}`));
+    if (await guestToken(result.code)) redirect(guestBookingPath(locale, result.code, { pay: result.status }));
   }
 
   return (

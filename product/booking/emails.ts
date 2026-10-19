@@ -1,7 +1,7 @@
 import type { MailMessage } from "@/core/ports/mail";
 import type { Booking, Departure } from "../schema/booking";
 import { formatDay, formatVnd, getBookingContent } from "./content";
-import { refundLeft } from "./lifecycle";
+import { balanceDue, refundLeft } from "./lifecycle";
 
 /** Plain-text emails after a deposit IPN (the email module adds the HTML version). Guest language = booking locale. */
 export function depositEmails(input: {
@@ -193,13 +193,14 @@ export function bookingStatusEmail(input: { booking: Booking; departure: Departu
   const day = formatDay(d.date, vi ? "vi" : "en");
   const refund = refundLeft(b) > 0 ? formatVnd(refundLeft(b), vi ? "vi" : "en") : null;
   if (kind === "confirmed") {
+    const due = balanceDue(b);
     return {
       kind: "booking_confirmed",
       to: b.email,
       subject: vi ? `Đơn ${b.code} đã được xác nhận – ${title}` : `Booking ${b.code} confirmed – ${title}`,
       text: vi
-        ? [`Chào ${b.name},`, ``, `Bắc Việt Travel xác nhận đơn ${b.code}: ${title}, khởi hành ${day}.`, `Số tiền còn lại: ${formatVnd(b.totalVnd - b.depositVnd, "vi")}, thanh toán trước ngày đi.`, `Chúng tôi sẽ gửi giờ và điểm đón trước chuyến đi.`].join("\n")
-        : [`Hello ${b.name},`, ``, `Your booking ${b.code} is confirmed: ${title}, departing ${day}.`, `Balance due: ${formatVnd(b.totalVnd - b.depositVnd, "en")}, payable before departure.`, `We will send pick-up details before the trip.`].join("\n"),
+        ? [`Chào ${b.name},`, ``, `Bắc Việt Travel xác nhận đơn ${b.code}: ${title}, khởi hành ${day}.`, due ? `Số tiền còn lại: ${formatVnd(due, "vi")}, thanh toán trước ngày đi.` : `Bạn đã thanh toán đủ.`, `Chúng tôi sẽ gửi giờ và điểm đón trước chuyến đi.`].join("\n")
+        : [`Hello ${b.name},`, ``, `Your booking ${b.code} is confirmed: ${title}, departing ${day}.`, due ? `Balance due: ${formatVnd(due, "en")}, payable before departure.` : `You have paid in full.`, `We will send pick-up details before the trip.`].join("\n"),
     };
   }
   return {
@@ -213,17 +214,20 @@ export function bookingStatusEmail(input: { booking: Booking; departure: Departu
 }
 
 /** Reminder a few days before departure. */
-export function reminderEmail(input: { booking: Booking; departure: Departure; title: string }): MailMessage {
-  const { booking: b, departure: d, title } = input;
+export function reminderEmail(input: { booking: Booking; departure: Departure; title: string; pickup?: string | null }): MailMessage {
+  const { booking: b, departure: d, title, pickup } = input;
   const vi = b.locale !== "en";
   const day = formatDay(d.date, vi ? "vi" : "en");
-  const rest = formatVnd(b.totalVnd - b.depositVnd, vi ? "vi" : "en");
+  const due = balanceDue(b);
+  const rest = due ? formatVnd(due, vi ? "vi" : "en") : null;
+  // The tour's own pick-up time and place (e.g. "7:30 at Old Quarter hotels"); without it the guide tells the guest.
+  const where = pickup ? (vi ? `Giờ và điểm đón: ${pickup}.` : `Pick-up: ${pickup}.`) : "";
   return {
     kind: "booking_reminder",
     to: b.email,
     subject: vi ? `Sắp khởi hành: ${title} (${day})` : `Coming up: ${title} (${day})`,
     text: vi
-      ? [`Chào ${b.name},`, ``, `Chuyến ${title} của bạn khởi hành ${day} (đơn ${b.code}, ${b.seats} khách).`, `Xe đón tại khách sạn khu Phố Cổ Hà Nội từ 7:30–8:00. Hướng dẫn viên sẽ gọi xác nhận trước 1 ngày.`, `Số tiền còn lại: ${rest}.`, `Mang theo: giấy tờ tuỳ thân, giày thoải mái, áo khoác mỏng.`].join("\n")
-      : [`Hello ${b.name},`, ``, `Your trip ${title} departs ${day} (booking ${b.code}, ${b.seats} guests).`, `Hotel pick-up in Hanoi Old Quarter from 7:30–8:00. Your guide will call to confirm the day before.`, `Balance due: ${rest}.`, `Bring: ID/passport, comfortable shoes, a light jacket.`].join("\n"),
+      ? [`Chào ${b.name},`, ``, `Chuyến ${title} của bạn khởi hành ${day} (đơn ${b.code}, ${b.seats} khách).`, where ? `${where} Hướng dẫn viên sẽ gọi xác nhận trước 1 ngày.` : `Hướng dẫn viên sẽ gọi báo giờ và điểm đón trước 1 ngày.`, rest ? `Số tiền còn lại: ${rest}.` : `Bạn đã thanh toán đủ.`, `Mang theo: giấy tờ tuỳ thân, giày thoải mái, áo khoác mỏng.`].join("\n")
+      : [`Hello ${b.name},`, ``, `Your trip ${title} departs ${day} (booking ${b.code}, ${b.seats} guests).`, where ? `${where} Your guide will call to confirm the day before.` : `Your guide will call the day before with the pick-up time and place.`, rest ? `Balance due: ${rest}.` : `You have paid in full.`, `Bring: ID/passport, comfortable shoes, a light jacket.`].join("\n"),
   };
 }

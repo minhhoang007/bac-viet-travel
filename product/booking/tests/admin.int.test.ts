@@ -8,6 +8,7 @@ import { createDashboard } from "../dashboard";
 import { createBookingAdmin } from "../admin";
 import { createLogger } from "@/core/logger";
 import { createReports } from "../reports";
+import { balanceDue } from "../lifecycle";
 
 // The real product services as bootstrap builds them (admin + jobs on), with a recording mail port.
 const { db, close } = testDb();
@@ -141,8 +142,29 @@ describe("booking admin", () => {
 
     await container.jobs!.tick(); // runs product.booking.reminders
     expect(sent.map((m) => [m.kind, m.to])).toEqual([["booking_reminder", "lan@example.com"]]);
+    // This tour has no pick-up time set: no made-up place, the guide calls; the balance is still owed.
+    expect(sent[0]!.text).toContain("Hướng dẫn viên sẽ gọi báo giờ và điểm đón");
+    expect(sent[0]!.text).not.toContain("7:30–8:00");
+    expect(sent[0]!.text).toContain("Số tiền còn lại");
     expect((await row(soon.code)).reminderSentAt).not.toBeNull();
     expect(await bookingAdmin.sendReminders()).toBe(0);
+  });
+
+  it("reminder and confirmation emails: a guest who paid in full is not asked for the balance; the tour's pick-up is used", async () => {
+    const admin = createBookingAdmin({
+      db, logger: createLogger({ write: () => {} }), mail: { send: async (m) => void sent.push(m) }, audit: container.admin, tourTitle: async () => "Ninh Bình",
+      tourExists: async () => true, tourPickup: async () => "7:00 tại khách sạn phố cổ", now: () => clock,
+    });
+    const { code } = await paidBooking(10, "2026-10-04");
+    await db.update(bookings).set({ balancePaidAt: clock }).where(eq(bookings.code, code));
+    expect(await admin.confirm(staff, code)).toBe(true);
+    expect(await admin.sendReminders()).toBe(1);
+    expect(sent.map((m) => m.kind)).toEqual(["booking_confirmed", "booking_reminder"]);
+    for (const m of sent) {
+      expect(m.text).toContain("Bạn đã thanh toán đủ.");
+      expect(m.text).not.toContain("còn lại");
+    }
+    expect(sent[1]!.text).toContain("Giờ và điểm đón: 7:00 tại khách sạn phố cổ.");
   });
 
   describe("manual / OTA bookings", () => {
@@ -156,6 +178,8 @@ describe("booking admin", () => {
       expect(created.status).toBe("created");
       const code = (created as { code: string }).code;
       expect(await row(code)).toMatchObject({ status: "confirmed", source: "klook", externalRef: "KL-123456", guestEmails: false, seats: 2, totalVnd: 1_500_000 });
+      // "Confirmed (paid in full)": nothing left to collect.
+      expect(balanceDue(await row(code))).toBe(0);
       expect((await booking.getDeparture(d!.id))!.seatsLeft).toBe(2);
 
       // Website hold for 2 takes the rest; the OTA cannot add one more.
@@ -181,7 +205,8 @@ describe("booking admin", () => {
       expect(await bookingAdmin.createManual(staff, klook(d!.id, { guestEmails: "on" }))).toMatchObject({ status: "invalid", fieldErrors: { email: "required" } });
 
       const withEmail = await bookingAdmin.createManual(staff, klook(d!.id, { source: "phone", email: "guest@example.com", guestEmails: "on", status: "deposit_paid" }));
-      expect(await row((withEmail as { code: string }).code)).toMatchObject({ status: "deposit_paid", guestEmails: true, email: "guest@example.com" });
+      expect(await row((withEmail as { code: string }).code)).toMatchObject({ status: "deposit_paid", guestEmails: true, email: "guest@example.com", balancePaidAt: null });
+      expect(balanceDue(await row((withEmail as { code: string }).code))).toBe(1_500_000 - 450_000);
 
       const [past] = await db.insert(departures).values({ tourSlug: "ninh-binh-day-tour", date: "2026-09-30", capacity: 10 }).returning();
       const [closed] = await db.insert(departures).values({ tourSlug: "ninh-binh-day-tour", date: "2026-10-12", capacity: 10, status: "closed" }).returning();

@@ -3,7 +3,8 @@ import { isSold } from "@/product/booking/lifecycle";
 import { connection } from "next/server";
 import { setRequestLocale } from "next-intl/server";
 import { renderSVG } from "uqr";
-import { getBooking } from "@/app/_lib/booking";
+import { redirect } from "next/navigation";
+import { getBooking, guestBookingPath, guestToken, openBookingUrl } from "@/app/_lib/booking";
 import { getTours } from "@/app/_lib/tours";
 import { getPublicEnv } from "@/bootstrap/env";
 import { Container } from "@/components/ui/container";
@@ -31,7 +32,10 @@ export default async function VoucherPage({ params, searchParams }: Props) {
   setRequestLocale(locale);
   const t = getBookingContent(locale);
   const v = t.voucher;
-  const { t: token } = await searchParams;
+  const { t: linkToken } = await searchParams;
+  // A link with the secret: store it first, so this page is never shown (nor tracked) with it in the address.
+  if (linkToken) redirect(openBookingUrl(locale, code, linkToken, { voucher: true }));
+  const token = await guestToken(code);
   const booking = token ? await getBooking().getForGuest(code, token) : null;
   if (!booking || !isSold(booking.status)) {
     return (
@@ -46,8 +50,8 @@ export default async function VoucherPage({ params, searchParams }: Props) {
   const tour = (await getTours()).get(locale, booking.departure.tourSlug);
   const site = getPublicEnv().NEXT_PUBLIC_SITE_URL;
   const qr = renderSVG(`${site}${localePath("vi", `/admin/bookings/${booking.code}`)}`, { border: 1 });
-  const back = localePath(locale, `/booking/${booking.code}?t=${encodeURIComponent(token!)}`);
-  const ics = `/api/booking/${booking.code}/ics?t=${encodeURIComponent(token!)}&locale=${locale}`;
+  const back = guestBookingPath(locale, booking.code);
+  const ics = `/api/booking/${booking.code}/ics?locale=${locale}`;
   const row = (label: string, value: React.ReactNode) => (
     <>
       <dt className="text-muted-foreground">{label}</dt>

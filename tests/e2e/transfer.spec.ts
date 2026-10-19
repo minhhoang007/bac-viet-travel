@@ -87,7 +87,7 @@ test("bank transfer: VietQR with amount and reference, seats held 2 hours, staff
   expect((await page.request.get(`/api/booking/${code}/ics?t=${"x".repeat(32)}`)).status()).toBe(404);
   await page.goto(`/booking/${code}/voucher?t=${"x".repeat(32)}`);
   await expect(page.locator("[data-voucher=unavailable]")).toBeVisible();
-  expect(bookingUrl.searchParams.get("t")).toBeTruthy();
+  expect(bookingUrl.searchParams.get("t")).toBeNull();
 });
 
 test("tour page: when the seats cannot load, the guest is offered a retry (not \"no departures\")", async ({ page }) => {
