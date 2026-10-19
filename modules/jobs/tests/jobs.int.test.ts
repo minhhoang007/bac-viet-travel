@@ -83,6 +83,17 @@ describe("jobs module (real Postgres)", () => {
     expect(row).toMatchObject({ status: "queued", attempts: 0 });
   });
 
+  it("periodic tasks stop at the deadline, and the next tick starts with the next task (a slow one starves none)", async () => {
+    let clock = 0;
+    const ran: string[] = [];
+    const slow = (name: string) => async () => void (ran.push(name), (clock += 30_000));
+    const m = createJobsModule({ db, logger, handlers: {}, periodic: { a: slow("a"), b: slow("b"), c: slow("c") }, now: () => clock });
+    await m.tick({ budgetMs: 20_000 });
+    await m.tick({ budgetMs: 20_000 });
+    await m.tick({ budgetMs: 20_000 });
+    expect(ran).toEqual(["a", "b", "c"]);
+  });
+
   it("jobs claimed but not started before the deadline go back to the queue with their attempt", async () => {
     let clock = 0;
     const m = createJobsModule({ db, logger, handlers: { work: async () => void (clock += 30_000) }, now: () => clock });

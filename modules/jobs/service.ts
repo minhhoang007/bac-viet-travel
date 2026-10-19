@@ -55,6 +55,7 @@ export const backoffMs = (attempts: number) => Math.min(30_000 * 2 ** Math.max(0
 export function createJobsModule(deps: JobsModuleDeps): JobsModule {
   const leaseMs = deps.leaseMs ?? 5 * 60_000;
   const now = deps.now ?? Date.now;
+  let periodicTurn = 0;
 
   async function claim(batchSize: number): Promise<JobRow[]> {
     // One atomic statement: due queued/failed jobs, or running jobs whose lease expired (dead worker).
@@ -222,7 +223,15 @@ export function createJobsModule(deps: JobsModuleDeps): JobsModule {
       } catch (error) {
         deps.logger.error("job.purge_failed", { error });
       }
-      for (const [name, task] of Object.entries(deps.periodic ?? {})) {
+      // Out of time: the rest wait for the next tick. Each tick starts one task later, so a slow task never keeps
+      // the ones after it from running.
+      const tasks = Object.entries(deps.periodic ?? {});
+      const start = tasks.length ? periodicTurn++ % tasks.length : 0;
+      for (const [name, task] of [...tasks.slice(start), ...tasks.slice(0, start)]) {
+        if (now() >= deadline) {
+          deps.logger.warn("job.periodic_deferred", { task: name });
+          break;
+        }
         try {
           await task();
         } catch (error) {
