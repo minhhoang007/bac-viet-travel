@@ -1,10 +1,10 @@
 import { appConfig } from "@/config/app";
 
 /**
- * Pages the ad tags never run on: sign-in, password and account pages carry one-time links and tokens in the URL
- * (`?link=`, `?token=`), and GA4/Meta send the full URL with every page view.
+ * Pages the ad tags never run on: their URLs carry secrets (sign-in `?link=`, password `?token=`, the feedback
+ * signature `?s=`, VNPay's signed `vnp_*` return parameters), and GA4/Meta send the full URL with every page view.
  */
-const PRIVATE = /^\/(login|verify|security|demo|dashboard|admin)(\/|$)/;
+const PRIVATE = /^\/(login|verify|security|demo|dashboard|admin|feedback|booking\/return|billing)(\/|$)/;
 
 export function isPrivatePath(pathname: string): boolean {
   const [, first = ""] = pathname.split("/");

@@ -32,8 +32,10 @@ export default async function ContentQueuePage({ params, searchParams }: Props) 
   const status = raw === "all" ? undefined : CONTENT_STATUSES.includes(raw as ContentStatus) ? (raw as ContentStatus) : raw === undefined ? "pending" : undefined;
   const types = allContentTypes();
   // Only the types this staff member may work on (e.g. no tours for sales staff).
-  const allowed = new Set((await Promise.all(Object.keys(types).map(async (t) => ((await mayEditContent(user, t)) ? [t] : [])))).flat());
-  const rows = (await content.list({ status, pageSize: 100 })).rows.filter((item) => !types[item.type] || allowed.has(item.type));
+  const allowed = (await Promise.all(Object.keys(types).map(async (t) => ((await mayEditContent(user, t)) ? [t] : [])))).flat();
+  // In the query, not after it: 100 rows of a hidden type would otherwise leave the page empty.
+  const restricted = allowed.length < Object.keys(types).length;
+  const { rows } = await content.list({ status, pageSize: 100, ...(restricted && { types: allowed }) });
   const filters: { key: string; label: string }[] = [...CONTENT_STATUSES.map((s) => ({ key: s, label: c.statuses[s] })), { key: "all", label: c.all }];
   const current = status ?? "all";
 

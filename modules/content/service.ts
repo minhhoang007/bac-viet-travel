@@ -17,7 +17,8 @@ export interface ContentModule {
   types: readonly string[];
   create(actor: ContentActor, input: { type: string; slug: string; data: Record<string, unknown> }): Promise<ContentItem>;
   get(id: string): Promise<ContentItem | null>;
-  list(options?: { type?: string; status?: ContentStatus; page?: number; pageSize?: number }): Promise<{ rows: ContentItem[]; total: number }>;
+  /** `types`: only these types (e.g. those a staff member may work on). */
+  list(options?: { type?: string; types?: readonly string[]; status?: ContentStatus; page?: number; pageSize?: number }): Promise<{ rows: ContentItem[]; total: number }>;
   /** Live copies of a type (published and not hidden), newest first. */
   listPublished(type: string): Promise<{ id: string; slug: string; data: Record<string, unknown>; publishedAt: Date | null }[]>;
   /**
@@ -192,8 +193,9 @@ export function createContentModule(deps: ContentDeps): ContentModule {
       return row ?? null;
     },
 
-    async list({ type, status, page = 1, pageSize = 50 } = {}) {
-      const where = and(type ? eq(contentItems.type, type) : undefined, status ? eq(contentItems.status, status) : undefined);
+    async list({ type, types, status, page = 1, pageSize = 50 } = {}) {
+      if (types && types.length === 0) return { rows: [], total: 0 };
+      const where = and(type ? eq(contentItems.type, type) : undefined, types ? inArray(contentItems.type, [...types]) : undefined, status ? eq(contentItems.status, status) : undefined);
       const size = Math.min(Math.max(pageSize, 1), 100);
       const rows = await db.select().from(contentItems).where(where).orderBy(desc(contentItems.updatedAt)).limit(size).offset((Math.max(page, 1) - 1) * size);
       const [{ total }] = (await db.select({ total: count() }).from(contentItems).where(where)) as [{ total: number }];

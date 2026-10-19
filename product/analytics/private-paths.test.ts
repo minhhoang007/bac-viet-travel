@@ -3,7 +3,7 @@ import { isPrivatePath } from "./private-paths";
 
 describe("isPrivatePath", () => {
   it("covers the pages that carry sign-in links and tokens", () => {
-    for (const path of ["/vi/login/confirm", "/en/login/reset", "/login", "/vi/verify", "/vi/security", "/vi/demo", "/vi/dashboard/account", "/en/admin"]) {
+    for (const path of ["/vi/login/confirm", "/en/login/reset", "/login", "/vi/verify", "/vi/security", "/vi/demo", "/vi/dashboard/account", "/en/admin", "/vi/feedback/BV-ABC234", "/vi/booking/return", "/en/billing/vnpay-return"]) {
       expect(isPrivatePath(path), path).toBe(true);
     }
   });

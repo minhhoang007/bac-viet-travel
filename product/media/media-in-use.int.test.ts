@@ -50,4 +50,13 @@ describe("media in use (wired through the container)", () => {
     await media.remove(unused.id);
     expect(destroyed).toEqual([unused.publicId]);
   });
+
+  it("an image only an older saved version uses stays too (restoring it would bring the image back)", async () => {
+    const old = await asset("site/old-cover");
+    const version = JSON.stringify({ shared: { images: [{ mediaId: old.id }] } });
+    await db.execute(sql`
+      with item as (insert into content_items (type, slug, draft) values ('tour', 'sa-pa', '{}'::jsonb) returning id)
+      insert into content_versions (item_id, event, slug, data) select id, 'published', 'sa-pa', ${version}::jsonb from item`);
+    await expect(media.remove(old.id)).rejects.toMatchObject({ code: "CONFLICT" });
+  });
 });

@@ -83,15 +83,19 @@ describe("jobs module (real Postgres)", () => {
     expect(row).toMatchObject({ status: "queued", attempts: 0 });
   });
 
-  it("periodic tasks stop at the deadline, and the next tick starts with the next task (a slow one starves none)", async () => {
+  it("periodic tasks stop at twice the budget, and each day starts with the next task (a slow one starves none)", async () => {
+    const day = 86_400_000;
     let clock = 0;
     const ran: string[] = [];
-    const slow = (name: string) => async () => void (ran.push(name), (clock += 30_000));
-    const m = createJobsModule({ db, logger, handlers: {}, periodic: { a: slow("a"), b: slow("b"), c: slow("c") }, now: () => clock });
-    await m.tick({ budgetMs: 20_000 });
-    await m.tick({ budgetMs: 20_000 });
-    await m.tick({ budgetMs: 20_000 });
-    expect(ran).toEqual(["a", "b", "c"]);
+    const slow = (name: string) => async () => void (ran.push(name), (clock += 25_000));
+    const periodic = { a: slow("a"), b: slow("b"), c: slow("c") };
+    // A fresh module per tick, as a daily cron call on a fresh instance.
+    for (let d = 0; d < 3; d++) {
+      clock = d * day;
+      await createJobsModule({ db, logger, handlers: {}, periodic, now: () => clock }).tick({ budgetMs: 20_000 });
+    }
+    // 25 s each, 40 s allowed: two tasks per day, starting one later every day.
+    expect(ran).toEqual(["a", "b", "b", "c", "c", "a"]);
   });
 
   it("jobs claimed but not started before the deadline go back to the queue with their attempt", async () => {

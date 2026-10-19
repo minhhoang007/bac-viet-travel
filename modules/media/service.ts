@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gt, ilike, lt } from "drizzle-orm";
+import { and, count, desc, eq, gt, ilike, lt, sql } from "drizzle-orm";
 import { AppError } from "@/core/errors";
 import type { Logger } from "@/core/logger";
 import type { Db } from "@/db/client";
@@ -89,18 +89,24 @@ export function createMediaModule(deps: MediaDeps): MediaModule {
     origins: provider.origins,
 
     async requestUpload(actor, { name }) {
-      if (config.maxUploadsPerHour !== undefined) {
-        const since = new Date(now().getTime() - 60 * 60_000);
-        const [recent] = await db.select({ n: count() }).from(mediaAssets).where(and(eq(mediaAssets.uploadedBy, actor.id), gt(mediaAssets.createdAt, since)));
-        if ((recent?.n ?? 0) >= config.maxUploadsPerHour) {
-          logger.warn("media.upload_limited", { actor: actor.id });
-          throw new AppError("RATE_LIMIT_ERROR", "Too many uploads");
-        }
-      }
       // Random provider id (not the file name): nothing guessable, nothing to escape.
       const publicId = `${config.folder}/${crypto.randomUUID()}`;
-      const [row] = await db.insert(mediaAssets).values({ publicId, name: cleanName(name), uploadedBy: actor.id }).returning({ id: mediaAssets.id });
-      return { id: row!.id, ...provider.signUpload({ publicId, allowedFormats: config.allowedFormats }) };
+      const limit = config.maxUploadsPerHour;
+      const row = await db.transaction(async (tx) => {
+        if (limit !== undefined) {
+          // One account's requests one at a time, so requests sent at once cannot all pass the count.
+          await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`media-upload:${actor.id}`}))`);
+          const since = new Date(now().getTime() - 60 * 60_000);
+          const [recent] = await tx.select({ n: count() }).from(mediaAssets).where(and(eq(mediaAssets.uploadedBy, actor.id), gt(mediaAssets.createdAt, since)));
+          if ((recent?.n ?? 0) >= limit) {
+            logger.warn("media.upload_limited", { actor: actor.id });
+            throw new AppError("RATE_LIMIT_ERROR", "Too many uploads");
+          }
+        }
+        const [inserted] = await tx.insert(mediaAssets).values({ publicId, name: cleanName(name), uploadedBy: actor.id }).returning({ id: mediaAssets.id });
+        return inserted!;
+      });
+      return { id: row.id, ...provider.signUpload({ publicId, allowedFormats: config.allowedFormats }) };
     },
 
     async confirmUpload(id) {

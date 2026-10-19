@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 import type { Db } from "@/db/client";
 
 /**
- * Manifest `mediaInUse`: an image cannot be deleted while any content (draft or live copy) still refers to it, by
+ * Manifest `mediaInUse`: an image cannot be deleted while any content (draft, live copy or saved version) still refers to it, by
  * its id (tour images: `{ mediaId }`) or by its CDN path (a URL pasted into a post). Text search over the JSON, so a
  * new content type or field is covered without listing it here.
  */
@@ -13,6 +13,10 @@ export async function mediaInUse(db: Db, id: string): Promise<boolean> {
       WHERE m.id = ${id}
         AND (strpos(c.draft::text, m.id::text) > 0 OR strpos(coalesce(c.published::text, ''), m.id::text) > 0
           OR strpos(c.draft::text, m.public_id) > 0 OR strpos(coalesce(c.published::text, ''), m.public_id) > 0)
+    ) OR EXISTS (
+      -- Saved versions too: restoring one would bring a deleted image back into the draft.
+      SELECT 1 FROM content_versions v, media_assets m
+      WHERE m.id = ${id} AND (strpos(v.data::text, m.id::text) > 0 OR strpos(v.data::text, m.public_id) > 0)
     ) AS used`);
   return Boolean(row?.used);
 }
