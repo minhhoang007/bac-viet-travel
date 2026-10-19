@@ -4,13 +4,13 @@ import { PageLink } from "@/components/layout/page-transition";
 import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
 import { fileBlog } from "@/app/_lib/blog";
-import { PostList } from "@/components/blog/post-list";
+import { BlogMagazine } from "@/product/components/blog-magazine";
 import { Container } from "@/components/ui/container";
 import { localePath } from "@/core/i18n/routing";
 import { createMetadata } from "@/core/seo";
 import type { Locale } from "@/config/app";
 import { getAppContent } from "@/content";
-import { requireBlog, tagLabel, toListItem } from "../../_shared";
+import { requireBlog, tagLabel, toMagazineItem } from "../../_shared";
 
 type Props = { params: Promise<{ locale: Locale; tag: string }> };
 
@@ -46,7 +46,7 @@ export default async function BlogTagPage({ params }: Props) {
   const c = getAppContent(locale).blog;
 
   return (
-    <Container className="max-w-3xl py-16">
+    <Container className="py-16">
       <PageLink href={localePath(locale, "/blog")} className="text-sm text-muted-foreground hover:underline">
         ← {c.allPosts}
       </PageLink>
@@ -54,7 +54,7 @@ export default async function BlogTagPage({ params }: Props) {
         {c.tagTitle} {tagLabel(tag, locale)}
       </h1>
       <div className="mt-10">
-        <PostList posts={posts.map((p) => toListItem(p, locale))} empty={c.empty} />
+        <BlogMagazine posts={posts.map((p) => toMagazineItem(p, locale))} featured={false} empty={c.empty} bestTimeLabel={c.facts.bestTime} />
       </div>
     </Container>
   );

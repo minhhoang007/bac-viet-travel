@@ -1,11 +1,12 @@
 import { PageLink } from "@/components/layout/page-transition";
 import { notFound } from "next/navigation";
-import { Pagination, PostList } from "@/components/blog/post-list";
+import { Pagination } from "@/components/blog/post-list";
 import { Container } from "@/components/ui/container";
 import { localePath } from "@/core/i18n/routing";
 import type { Locale } from "@/config/app";
 import { getAppContent } from "@/content";
-import { requireBlog, tagLabel, toListItem } from "./_shared";
+import { BlogMagazine } from "@/product/components/blog-magazine";
+import { requireBlog, tagLabel, toMagazineItem } from "./_shared";
 
 const pageHref = (locale: Locale, n: number) => localePath(locale, n === 1 ? "/blog" : `/blog/page/${n}`);
 
@@ -18,25 +19,25 @@ export async function BlogIndex({ locale, page }: { locale: Locale; page: number
   const tags = blog.tags(locale);
 
   return (
-    <Container className="max-w-3xl py-16">
+    <Container className="py-16">
       <h1 className="blog-title text-3xl font-bold">{c.title}</h1>
-      <p className="mt-2 text-muted-foreground">
+      <p className="mt-2 max-w-2xl text-muted-foreground">
         {c.subtitle}{" "}
         <a href={localePath(locale, "/blog/rss.xml")} className="text-sm underline">
           {c.rss}
         </a>
       </p>
       {tags.length > 0 && (
-        <nav aria-label={c.tags} className="blog-tags mt-6 flex flex-wrap gap-2 text-sm">
+        <nav aria-label={c.tags} className="blog-tags -mx-4 mt-6 flex gap-2 overflow-x-auto px-4 pb-1 text-sm [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0">
           {tags.map((t) => (
-            <PageLink key={t.tag} href={localePath(locale, `/blog/tag/${t.tag}`)} className="rounded-full border border-border px-3 py-1 hover:bg-muted">
+            <PageLink key={t.tag} href={localePath(locale, `/blog/tag/${t.tag}`)} className="shrink-0 rounded-full border border-border px-3 py-1 hover:bg-muted">
               {tagLabel(t.tag, locale)} <span className="text-muted-foreground">{t.count}</span>
             </PageLink>
           ))}
         </nav>
       )}
       <div className="mt-10">
-        <PostList posts={result.posts.map((p) => toListItem(p, locale))} empty={c.empty} />
+        <BlogMagazine posts={result.posts.map((p) => toMagazineItem(p, locale))} featured={page === 1} empty={c.empty} bestTimeLabel={c.facts.bestTime} />
       </div>
       <Pagination
         previous={page > 1 ? { href: pageHref(locale, page - 1), label: c.previous } : undefined}
