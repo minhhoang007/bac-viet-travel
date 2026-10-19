@@ -195,6 +195,9 @@ const staffMay = (permission: Permission) => async (user: { id: string; role: st
 /** Whether a signed-in user holds a staff permission (admins: always), for checks outside the menu. */
 export const staffCan = (user: { id: string; role: string }, permission: Permission) => staffMay(permission)(user);
 
+/** Images used by any content cannot be deleted from the library (read by bootstrap for the media module). */
+export { mediaInUse } from "./media/service";
+
 /** Dashboard menu entries for product pages (href without locale prefix). */
 export const productNav: ProductNavItem[] = [];
 
