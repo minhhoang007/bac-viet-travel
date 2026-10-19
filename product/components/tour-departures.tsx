@@ -83,7 +83,10 @@ export function TourDepartureList({ locale, price }: { locale: Locale; price: { 
       </p>
     );
   }
-  const upcoming = departures.slice(0, 8);
+  // Dates past the online cut-off are no use to a guest here (staff-closed and sold-out ones stay: they inform).
+  const tooSoon = (d: PublicDeparture) => !d.bookable && d.status !== "closed" && d.seatsLeft > 0;
+  const listed = departures.filter((d) => !tooSoon(d));
+  const upcoming = listed.slice(0, 8);
   const seatLabel = (d: PublicDeparture) => (d.bookable ? b.seatsLeft(d.seatsLeft) : d.status === "closed" ? b.closed : d.seatsLeft <= 0 ? b.soldOut : b.tooSoon);
   const money = (vnd: number) => formatAmount(vnd, price, locale);
   const toggle = (value: "list" | "month", label: string) => (
@@ -115,7 +118,8 @@ export function TourDepartureList({ locale, price }: { locale: Locale; price: { 
                 </div>
               </div>
               <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-                <span className="text-sm font-semibold tabular-nums">{money(d.unitPriceVnd)}</span>
+                {/* The tour's own price is shown once above; only a date priced differently says so. */}
+                {d.unitPriceVnd !== price.vnd && <span className="text-sm font-semibold tabular-nums" data-departure-price>{money(d.unitPriceVnd)}</span>}
                 {d.bookable ? (
                   <IntentButtonLink href={bookHref(d.id)} variant={chosen?.id === d.id ? "primary" : "outline"} className="h-9 px-3 sm:px-4" aria-label={c.tours.chooseDay(formatDay(d.date, locale))}>
                     {b.choose}
@@ -128,7 +132,7 @@ export function TourDepartureList({ locale, price }: { locale: Locale; price: { 
           ))}
         </ul>
       )}
-      {view === "list" && departures.length > upcoming.length && (
+      {view === "list" && listed.length > upcoming.length && (
         <IntentLink href={bookHref(chosen?.id)} className="mt-3 inline-block text-sm font-medium text-primary underline underline-offset-4">
           {c.tours.departuresAll} →
         </IntentLink>
