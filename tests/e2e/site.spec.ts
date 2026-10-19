@@ -84,13 +84,13 @@ test("inquiry form validates on the server and keeps the visitor on the page", a
   await expect(form.locator("input[name=date]")).toHaveValue(/^\d{4}-\d{2}-\d{2}$/);
 });
 
-test("the guide list is a photo magazine: newest post first and large, every card with its cover and one link", async ({ page }) => {
+test("the guide list is a photo magazine: newest post first and large, a card shows its cover, one link per card", async ({ page }) => {
   await page.goto("/blog");
   const cards = page.getByTestId("post-list").locator("article");
   await expect(cards.first().locator("h2")).toHaveClass(/type-h2/);
-  const count = await cards.count();
-  expect(count).toBeGreaterThan(1);
-  await expect(page.getByTestId("post-list").locator("article img")).toHaveCount(count);
+  expect(await cards.count()).toBeGreaterThan(1);
+  // The sample guides have covers; a post published without one (blog-admin.spec, in parallel) shows a stand-in.
+  for (const name of ["Hạ Long", "Ninh Bình", "Sapa"]) await expect(cards.filter({ has: page.getByRole("heading", { name: new RegExp(name) }) }).locator("img")).toHaveCount(1);
   for (const card of await cards.all()) await expect(card.locator("a")).toHaveCount(1);
   await page.goto("/blog/tag/kinh-nghiem");
   await expect(page.getByTestId("post-list").locator("article").first().locator("h2")).toHaveClass(/type-h3/);
