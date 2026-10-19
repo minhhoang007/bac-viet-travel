@@ -3,7 +3,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { createLogger } from "@/core/logger";
 import { createMemoryRateLimiter } from "@/core/security/rate-limit";
 import { testDb } from "@/tests/integration/setup/db";
-import { bookings, departures, discountCodes } from "../../schema/booking";
+import { bookingPayments, bookings, departures, discountCodes } from "../../schema/booking";
 import { createBookingService } from "../service";
 import { createDiscountAdmin } from "../discounts";
 
@@ -281,17 +281,86 @@ describe("review fixes 2026-10-08", () => {
     const s = service();
     const old = await s.hold(guest(d.id), "ip");
     const priv = await s.holdPrivate({ ...guest(""), departureId: undefined, tourSlug: "ha-long-cruise-2d1n", date: "2026-10-20", adults: "2" }, "ip");
-    expect(old.status).toBe("held");
+    // Two more: the guest tried VNPay and it failed (no money: deleted too); a transfer still pending (kept).
+    const failedPay = await s.hold(guest(d.id), "ip");
+    const pendingPay = await s.hold(guest(d.id), "ip");
+    if (old.status !== "held" || failedPay.status !== "held" || pendingPay.status !== "held") throw new Error("hold");
+    const idOf = async (code: string) => (await db.select({ id: bookings.id }).from(bookings).where(eq(bookings.code, code)))[0]!.id;
+    await db.insert(bookingPayments).values([
+      { bookingId: await idOf(failedPay.code), txnRef: "F1", amountVnd: 300_000, status: "failed" },
+      { bookingId: await idOf(pendingPay.code), method: "transfer", txnRef: "P1", amountVnd: 300_000 },
+    ]);
     expect(priv.status).toBe("held");
     clock = new Date("2026-11-05T03:00:00Z");
     const recent = await s.hold(guest((await departure({ date: "2026-11-20" })).id), "ip");
     expect(recent.status).toBe("held");
     await s.expireStale();
 
-    expect(await s.purgeAbandoned()).toBe(2);
+    expect(await s.purgeAbandoned()).toBe(3);
     const left = await db.select({ code: bookings.code }).from(bookings);
-    expect(left.map((b) => b.code)).toEqual([recent.status === "held" ? recent.code : ""]);
+    expect(left.map((b) => b.code).sort()).toEqual([pendingPay.code, recent.status === "held" ? recent.code : ""].sort());
+    expect((await db.select().from(bookingPayments)).map((p) => p.txnRef)).toEqual(["P1"]);
     expect(await db.select().from(departures).where(eq(departures.kind, "private"))).toEqual([]);
     expect((await db.select().from(departures)).length).toBe(2); // group departures stay
+  });
+});
+
+describe("tour search, kept tour details, lost links", () => {
+  it("tours with seats on a day for a party: open, bookable, enough seats", async () => {
+    await departure({ tourSlug: "ha-long-cruise-2d1n", date: "2026-10-10", capacity: 4 });
+    await departure({ tourSlug: "sapa-trekking-2d1n", date: "2026-10-10", capacity: 2 });
+    await departure({ tourSlug: "ninh-binh-day-tour", date: "2026-10-10", capacity: 10, status: "closed" });
+    await departure({ tourSlug: "ha-long-day-trip", date: "2026-10-11", capacity: 10 });
+    await departure({ tourSlug: "removed-tour", date: "2026-10-10", capacity: 10 }); // no longer in the catalog
+    const s = service({ tourPrice: async (slug) => (slug === "removed-tour" ? null : 1_000_000) });
+    expect((await s.toursWithSeats("2026-10-10", 2)).sort()).toEqual(["ha-long-cruise-2d1n", "sapa-trekking-2d1n"]);
+    expect(await s.toursWithSeats("2026-10-10", 3)).toEqual(["ha-long-cruise-2d1n"]);
+    expect(await s.toursWithSeats("not-a-day", 2)).toEqual([]);
+  });
+
+  it("a hold keeps the tour name and pick-up as sold, in the guest's language", async () => {
+    const d = await departure();
+    const s = service({ tourSnapshot: async (slug, locale) => ({ title: `${slug} (${locale})`, pickup: "7:30 phố cổ" }) });
+    const held = await s.hold(guest(d.id), "ip");
+    if (held.status !== "held") throw new Error(held.status);
+    expect((await db.select().from(bookings))[0]).toMatchObject({ tourTitle: "ha-long-cruise-2d1n (vi)", tourPickup: "7:30 phố cổ" });
+  });
+
+  it("lost link: code + booking email → a new link by email, the old one stops working; same answer when they do not match", async () => {
+    const sent: { to: string; text: string; kind: string }[] = [];
+    const s = service({ mail: { send: async (m) => void sent.push(m) }, linkLimiter: createMemoryRateLimiter({ max: 5, windowMs: 60_000 }) });
+    const d = await departure();
+    const held = await s.hold(guest(d.id, { email: "Lan@Example.com" }), "ip");
+    if (held.status !== "held") throw new Error(held.status);
+
+    expect(await s.resendLink({ code: held.code, email: "other@example.com" }, "ip", "https://bacviet.example")).toBe("sent");
+    expect(await s.resendLink({ code: "BV-ZZZZZZ", email: "lan@example.com" }, "ip", "https://bacviet.example")).toBe("sent");
+    expect(sent).toEqual([]);
+
+    expect(await s.resendLink({ code: ` ${held.code.toLowerCase()} `, email: " lan@example.com " }, "ip", "https://bacviet.example")).toBe("sent");
+    expect(sent.map((m) => [m.kind, m.to])).toEqual([["booking_link", "Lan@Example.com"]]);
+    const newToken = sent[0]!.text.match(/\?t=([\w-]+)/)![1]!;
+    expect(newToken).not.toBe(held.token);
+    expect(await s.getForGuest(held.code, held.token)).toBeNull();
+    expect(await s.getForGuest(held.code, newToken)).not.toBeNull();
+
+    // Wrong guesses about this code from many visitors never lock the guest out...
+    for (let i = 0; i < 10; i++) await s.resendLink({ code: held.code, email: "x@example.com" }, `guess-${i}`, "https://bacviet.example");
+    expect(await s.resendLink({ code: held.code, email: "lan@example.com" }, "guest", "https://bacviet.example")).toBe("sent");
+    // ...but one visitor gets 5 tries an hour, and matching requests 5 an hour per booking (inbox flooding).
+    for (let i = 0; i < 5; i++) await s.resendLink({ code: "BV-ZZZZZZ", email: "x@example.com" }, "guesser", "https://bacviet.example");
+    expect(await s.resendLink({ code: "BV-ZZZZZZ", email: "x@example.com" }, "guesser", "https://bacviet.example")).toBe("rate_limited");
+    // Matching requests so far: 2; three more fill the hour.
+    for (let i = 0; i < 3; i++) await s.resendLink({ code: held.code, email: "lan@example.com" }, `guest-${i}`, "https://bacviet.example");
+    expect(await s.resendLink({ code: held.code, email: "lan@example.com" }, "guest-9", "https://bacviet.example")).toBe("rate_limited");
+
+    // A booking an OTA handles (no guest emails) gets none, even when asked.
+    await db.update(bookings).set({ guestEmails: false }).where(eq(bookings.code, held.code));
+    const before = sent.length;
+    expect(await service({ mail: { send: async (m) => void sent.push(m) }, linkLimiter: createMemoryRateLimiter({ max: 5, windowMs: 60_000 }) }).resendLink({ code: held.code, email: "lan@example.com" }, "ip", "https://bacviet.example")).toBe("sent");
+    expect(sent.length).toBe(before);
+    // A limiter outage refuses rather than allowing unlimited tries.
+    const broken = service({ mail: { send: async () => {} }, linkLimiter: { limit: async () => Promise.reject(new Error("down")) } });
+    expect(await broken.resendLink({ code: held.code, email: "lan@example.com" }, "ip", "https://bacviet.example")).toBe("rate_limited");
   });
 });

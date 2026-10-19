@@ -4,7 +4,7 @@ import { and, gte, lte, sql } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { bookings } from "../schema/booking";
 import { addDays, vietnamDayStart } from "./rules";
-import { SOLD_STATUSES } from "./status";
+import { depositInVnd, SOLD_STATUSES } from "./status";
 
 export interface PaidBookings {
   /** Bookings whose deposit came in today and that still stand (deposit paid or confirmed; cancelled ones drop out). */
@@ -32,7 +32,7 @@ export async function paidBookings(db: Db, today: string, now: Date): Promise<Pa
       week: sql<number>`count(*) filter (where ${sold} and ${inWeek})::int`,
       previousWeek: sql<number>`count(*) filter (where ${sold} and ${bookings.depositPaidAt} < ${iso(weekStart)})::int`,
       weekValue: sql<number>`coalesce(sum(${bookings.totalVnd}) filter (where ${sold} and ${inWeek}), 0)::bigint`,
-      weekDeposits: sql<number>`coalesce(sum(${bookings.depositVnd}) filter (where ${inWeek}), 0)::bigint`,
+      weekDeposits: sql<number>`coalesce(sum(${depositInVnd()}) filter (where ${inWeek}), 0)::bigint`,
     })
     .from(bookings)
     .where(and(gte(bookings.depositPaidAt, previousStart), lte(bookings.depositPaidAt, now)));

@@ -70,12 +70,23 @@ export const bookings = pgTable(
     addons: jsonb("addons").$type<BookedAddon[]>().notNull().default([]),
     /** Single rooms booked (supplement per room, B2). */
     singleRooms: integer("single_rooms").notNull().default(0),
+    /**
+     * The tour as the guest bought it (name, pick-up), so the voucher stays right when the tour is edited or hidden
+     * later; null on bookings made before these were kept (the voucher then reads the current tour).
+     */
+    tourTitle: text("tour_title"),
+    tourPickup: text("tour_pickup"),
     /** Seats taken: adults + children (infants share a seat). */
     seats: integer("seats").notNull(),
     unitPriceVnd: integer("unit_price_vnd").notNull(),
     totalVnd: integer("total_vnd").notNull(),
     depositVnd: integer("deposit_vnd").notNull(),
     depositPaidAt: timestamp("deposit_paid_at", { withTimezone: true }),
+    /**
+     * Money that came with the deposit beyond it (a transfer above the deposit, below the total): it counts toward
+     * the balance, so only total − deposit − this is left to collect.
+     */
+    balanceCreditVnd: integer("balance_credit_vnd").notNull().default(0),
     /** When the rest of the total was paid (online, or recorded by staff) (D5); null = still owed. */
     balancePaidAt: timestamp("balance_paid_at", { withTimezone: true }),
     confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
@@ -106,6 +117,8 @@ export const bookings = pgTable(
     uniqueIndex("bookings_code_idx").on(t.code),
     index("bookings_departure_status_idx").on(t.departureId, t.status),
     check("bookings_seats_check", sql`${t.seats} > 0`),
+    // Money never negative, and never more given back than owed (the services keep the rest of the rules).
+    check("bookings_money_check", sql`${t.totalVnd} >= 0 and ${t.depositVnd} >= 0 and ${t.refundDueVnd} >= 0 and ${t.refundedVnd} >= 0 and ${t.refundedVnd} <= ${t.refundDueVnd}`),
   ],
 );
 
@@ -130,12 +143,33 @@ export const bookingPayments = pgTable(
     providerTxnNo: text("provider_txn_no"),
     responseCode: text("response_code"),
     bankCode: text("bank_code"),
-    /** Guest link token, kept only until the IPN emails the link (then erased). */
+    /** Guest link token, kept only until the paid email is sent with the link (then erased). */
     linkToken: text("link_token"),
     paidAt: timestamp("paid_at", { withTimezone: true }),
+    /** What a paid attempt was recorded as (deposits.ts settle), so its emails can be sent again if they were not. */
+    outcome: text("outcome", { enum: ["deposit_paid", "refund_due", "extra", "balance_paid"] }),
+    /** When the guest and team emails of a paid attempt were handed to the mailer; null = still to send. */
+    notifiedAt: timestamp("notified_at", { withTimezone: true }),
     ...timestamps(),
   },
   (t) => [uniqueIndex("booking_payments_txn_ref_idx").on(t.txnRef), index("booking_payments_booking_idx").on(t.bookingId)],
+);
+
+/**
+ * Money given back, one row per refund staff marked as sent: its own amount and day, so a later refund never moves
+ * an earlier one to another period (bookings.refundedVnd keeps the running total).
+ */
+export const bookingRefunds = pgTable(
+  "booking_refunds",
+  {
+    id: id(),
+    bookingId: uuid("booking_id").notNull().references(() => bookings.id, { onDelete: "cascade" }),
+    amountVnd: integer("amount_vnd").notNull(),
+    refundedAt: timestamp("refunded_at", { withTimezone: true }).notNull(),
+    note: text("note").notNull().default(""),
+    ...timestamps(),
+  },
+  (t) => [index("booking_refunds_booking_idx").on(t.bookingId), index("booking_refunds_refunded_at_idx").on(t.refundedAt), check("booking_refunds_amount_positive", sql`${t.amountVnd} > 0`)],
 );
 
 export type BookingPayment = typeof bookingPayments.$inferSelect;

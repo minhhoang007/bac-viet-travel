@@ -1,6 +1,6 @@
 // What staff should do next with a booking, shown at the top of the admin booking page.
 import type { Booking } from "../schema/booking";
-import { balanceDue } from "./deposits";
+import { balanceDue } from "./lifecycle";
 import { refundLeft } from "./lifecycle";
 
 export type NextStep =
@@ -16,7 +16,7 @@ export type NextStep =
 
 type NextStepBooking = Pick<
   Booking,
-  "status" | "holdExpiresAt" | "totalVnd" | "depositVnd" | "balancePaidAt" | "refundDueVnd" | "refundedVnd" | "adults" | "children" | "infants" | "travellers"
+  "status" | "holdExpiresAt" | "totalVnd" | "depositVnd" | "balanceCreditVnd" | "balancePaidAt" | "refundDueVnd" | "refundedVnd" | "adults" | "children" | "infants" | "travellers"
 >;
 
 export function nextStep(b: NextStepBooking, { transferChosen }: { transferChosen: boolean }): NextStep {

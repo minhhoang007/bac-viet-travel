@@ -17,6 +17,7 @@ import { whatsappUrl, zaloUrl } from "@/config/contact";
 import { currentCompany } from "@/app/_lib/company";
 import { features } from "@/config/features";
 import { getMarketingContent } from "@/content";
+import { MobileRail } from "./components/mobile-rail";
 import { TourCard } from "./components/tour-card";
 import { getProductContent } from "./content";
 import { DESTINATIONS } from "./tours/catalog";
@@ -168,8 +169,45 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
         </Container>
       </section>
 
+      {/* Most booked tours first after the search: what most visitors came for. Phones swipe them sideways. */}
+      <section className="py-16 sm:py-28" aria-labelledby="featured-title">
+        <Container>
+          <div className="flex flex-wrap items-end justify-between gap-6">
+            <div>
+              <p className={eyebrow}>{h.eyebrows.featured}</p>
+              <h2 id="featured-title" className={`mt-5 ${title}`}>
+                {h.featuredTitle}
+              </h2>
+            </div>
+            <IntentLink href={localePath(locale, "/tours")} className={textLink}>
+              {h.viewAll}
+            </IntentLink>
+          </div>
+          <MobileRail grid="sm:grid-cols-2 sm:gap-x-8 sm:gap-y-14 lg:grid-cols-3" className="mt-10 sm:mt-14" data-testid="featured-tours">
+            {catalog.featured(locale).map((t, i) => (
+              <TourCard
+                key={t.slug}
+                slug={t.slug}
+                href={localePath(locale, `/tours/${t.slug}`)}
+                image={t.images[0]!}
+                title={t.title}
+                summary={t.summary}
+                duration={c.tours.days(t.days, t.nights)}
+                destination={c.destinations[t.destination].name}
+                price={formatPrice(t, locale)}
+                fromLabel={c.tours.from}
+                perPersonLabel={c.tours.perPerson}
+                viewLabel={c.tours.viewTour}
+                sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 84vw"
+                priority={i === 0}
+              />
+            ))}
+          </MobileRail>
+        </Container>
+      </section>
+
       {/* Philosophy: one sentence in the heading serif, then the promises as numbered pillars. */}
-      <section className="py-28 sm:py-36" aria-labelledby="philosophy-title">
+      <section className="py-16 sm:py-36" aria-labelledby="philosophy-title">
         <Container>
           <p className={eyebrow}>{h.philosophy.eyebrow}</p>
           <h2 id="philosophy-title" className="mt-6 max-w-4xl font-heading type-h2">
@@ -188,7 +226,7 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
       </section>
 
       {/* Destinations as chapters; the middle one sits lower on wide screens. */}
-      <section className="pb-28" aria-labelledby="destinations-title">
+      <section className="pb-16 sm:pb-28" aria-labelledby="destinations-title">
         <Container>
           <div className="flex flex-wrap items-end justify-between gap-6">
             <div>
@@ -201,18 +239,18 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
               {h.viewAll}
             </IntentLink>
           </div>
-          <div className="mt-14 grid gap-12 md:grid-cols-3 md:gap-8">
+          <MobileRail grid="sm:grid-cols-3 sm:gap-8" className="mt-10 sm:mt-14">
             {DESTINATIONS.map((d, i) => (
               <IntentLink key={d} href={localePath(locale, `/tours/${d}`)} className={`group block ${i === 1 ? "md:mt-24" : ""}`} data-destination-card={d}>
-                <div className="relative aspect-[4/3] overflow-hidden md:aspect-[4/5]">
-                  <Image src={DESTINATION_PHOTO[d]} alt={c.destinations[d].name} fill sizes="(min-width: 768px) 33vw, 100vw" className="object-cover saturate-[.88] transition duration-700 group-hover:scale-[1.03]" />
+                <div className="relative aspect-[4/5] overflow-hidden">
+                  <Image src={DESTINATION_PHOTO[d]} alt={c.destinations[d].name} fill sizes="(min-width: 640px) 33vw, 84vw" className="object-cover saturate-[.88] transition duration-700 group-hover:scale-[1.03]" />
                 </div>
                 <p className="mt-6 type-eyebrow text-primary">{h.chapter(i + 1)}</p>
                 <h3 className="mt-2 font-heading type-h2">{c.destinations[d].name}</h3>
                 <p className="mt-3 type-body text-muted-foreground">{c.destinations[d].tagline}</p>
               </IntentLink>
             ))}
-          </div>
+          </MobileRail>
         </Container>
       </section>
 
@@ -243,41 +281,8 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
         </div>
       </section>
 
-      <section className="py-28" aria-labelledby="featured-title">
-        <Container>
-          <div className="flex flex-wrap items-end justify-between gap-6">
-            <div>
-              <p className={eyebrow}>{h.eyebrows.featured}</p>
-              <h2 id="featured-title" className={`mt-5 ${title}`}>
-                {h.featuredTitle}
-              </h2>
-            </div>
-            <IntentLink href={localePath(locale, "/tours")} className={textLink}>
-              {h.viewAll}
-            </IntentLink>
-          </div>
-          <div className="mt-14 grid gap-x-8 gap-y-14 sm:grid-cols-2 lg:grid-cols-3">
-            {catalog.featured(locale).map((t) => (
-              <TourCard
-                key={t.slug}
-                slug={t.slug}
-                href={localePath(locale, `/tours/${t.slug}`)}
-                image={t.images[0]!}
-                title={t.title}
-                summary={t.summary}
-                duration={c.tours.days(t.days, t.nights)}
-                destination={c.destinations[t.destination].name}
-                price={formatPrice(t, locale)}
-                fromLabel={c.tours.from}
-                perPersonLabel={c.tours.perPerson}
-              />
-            ))}
-          </div>
-        </Container>
-      </section>
-
       {/* Sample reviews: data-demo makes `pnpm launch:check` fail until they are replaced by real ones. */}
-      <section className="border-y border-border py-28" aria-labelledby="reviews-title" data-demo="reviews">
+      <section className="border-y border-border py-16 sm:py-28" aria-labelledby="reviews-title" data-demo="reviews">
         <Container>
           <div className="flex flex-wrap items-end justify-between gap-6">
             <div>
@@ -310,7 +315,7 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
       </section>
 
       {posts.length > 0 && (
-        <section className="py-28" aria-labelledby="blog-title">
+        <section className="py-16 sm:py-28" aria-labelledby="blog-title">
           <Container>
             <div className="flex flex-wrap items-end justify-between gap-6">
               <div>
@@ -323,26 +328,26 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
                 {h.blogAll}
               </IntentLink>
             </div>
-            <div className="mt-14 grid gap-10 md:grid-cols-3">
+            <MobileRail grid="sm:grid-cols-3 sm:gap-10" className="mt-10 sm:mt-14">
               {posts.map((p) => (
                 <IntentLink key={p.slug} href={localePath(locale, `/blog/${p.slug}`)} className="group flex flex-col border-t border-border pt-5" data-testid="home-post">
                   {p.cover && (
                     <div className="relative aspect-[3/2] overflow-hidden">
-                      <Image src={p.cover} alt="" fill unoptimized={isHotlinked(p.cover)} sizes="(min-width: 768px) 33vw, 100vw" className="object-cover transition duration-700 group-hover:scale-[1.03]" />
+                      <Image src={p.cover} alt="" fill unoptimized={isHotlinked(p.cover)} sizes="(min-width: 640px) 33vw, 84vw" className="object-cover transition duration-700 group-hover:scale-[1.03]" />
                     </div>
                   )}
                   <h3 className="mt-5 font-heading type-h3 group-hover:text-primary">{p.title}</h3>
                   <p className="mt-2 line-clamp-3 type-body text-muted-foreground">{p.description}</p>
                 </IntentLink>
               ))}
-            </div>
+            </MobileRail>
           </Container>
         </section>
       )}
 
       <Faq id="faq" title={m.faq.title} items={m.faq.items} />
 
-      <section id="contact" className="scroll-mt-20 bg-muted py-28" aria-labelledby="contact-title">
+      <section id="contact" className="scroll-mt-20 bg-muted py-16 sm:py-28" aria-labelledby="contact-title">
         <Container className="grid gap-14 lg:grid-cols-[1fr_1.2fr]">
           <div>
             <p className={eyebrow}>{h.eyebrows.contact}</p>

@@ -14,6 +14,11 @@ export function refundOwed(): SQL {
   return gt(bookings.refundDueVnd, bookings.refundedVnd);
 }
 
+/** Money in when the deposit was paid (at depositPaidAt): the deposit plus what came with it toward the balance. */
+export const depositInVnd = (): SQL<number> => sql<number>`(${bookings.depositVnd} + ${bookings.balanceCreditVnd})`;
+/** Money in when the balance was settled (at balancePaidAt): the rest of the total. */
+export const balanceInVnd = (): SQL<number> => sql<number>`(${bookings.totalVnd} - ${bookings.depositVnd} - ${bookings.balanceCreditVnd})`;
+
 /**
  * takesSeats for a correlated subquery over `bookings b`. Written out by hand: inside a correlated subquery Drizzle
  * renders bare column names, which would resolve to the outer table.

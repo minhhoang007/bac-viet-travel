@@ -4,10 +4,12 @@ import { setRequestLocale } from "next-intl/server";
 import { requirePermission } from "@/app/_lib/staff";
 import { cancelBooking, confirmBooking, markBalancePaid, markBookingRefunded, receiveTransfer, saveContact, saveStaffNote } from "@/app/actions/booking-admin";
 import { Input } from "@/components/ui/input";
-import { balanceDue, transferNote } from "@/product/booking/deposits";
-import { awaitsDeposit, canMove, refundLeft } from "@/product/booking/lifecycle";
+import { transferNote } from "@/product/booking/deposits";
+import { balanceDue } from "@/product/booking/lifecycle";
+import { awaitsDeposit, canMove, paidSoFar, refundLeft } from "@/product/booking/lifecycle";
 import { nextStep } from "@/product/booking/next-step";
-import { vietnamToday } from "@/product/booking/rules";
+import { vietnamDayStart, vietnamToday } from "@/product/booking/rules";
+import { suggestedRefundVnd } from "@/product/policies";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { localePath } from "@/core/i18n/routing";
@@ -58,7 +60,12 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
     : step.kind === "travellers" ? c.detail.next.travellers(step.missing)
     : c.detail.next[step.kind];
   const contact = phoneLinks(b.phone);
-  const tripOver = d.date < vietnamToday(new Date());
+  const today = vietnamToday(new Date());
+  const tripOver = d.date < today;
+  // Cancellation: what the guest paid, and the refund the policy suggests for today (staff may change it).
+  const paid = paidSoFar(b);
+  const daysBefore = Math.max(0, Math.round((vietnamDayStart(d.date).getTime() - vietnamDayStart(today).getTime()) / 86_400_000));
+  const suggestedRefund = suggestedRefundVnd({ depositVnd: b.depositVnd, paidVnd: paid }, daysBefore);
   const hidden = (
     <>
       <input type="hidden" name="locale" value={locale} />
@@ -151,16 +158,14 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
               {hidden}
               <label htmlFor="cancel-reason" className="font-medium">{c.detail.cancelReason}</label>
               <Textarea id="cancel-reason" name="reason" rows={2} required maxLength={500} />
-              {b.status !== "held" && (
-                <fieldset className="grid gap-1">
-                  <legend className="font-medium">{c.detail.cancelRefundLegend}</legend>
-                  <label className="flex items-center gap-2">
-                    <input type="radio" name="refund" value="on" required /> {c.detail.cancelRefund}
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input type="radio" name="refund" value="off" /> {c.detail.cancelKeep}
-                  </label>
-                </fieldset>
+              {paid > 0 ? (
+                <>
+                  <label htmlFor="cancel-refund" className="font-medium">{c.detail.cancelRefund}</label>
+                  <Input id="cancel-refund" name="refundVnd" type="number" inputMode="numeric" min={0} max={paid} step={1} required defaultValue={suggestedRefund} aria-describedby="cancel-refund-hint" className="max-w-48" />
+                  <p id="cancel-refund-hint" className="text-muted-foreground">{c.detail.cancelRefundHint(formatVnd(paid, locale), formatVnd(suggestedRefund, locale), daysBefore)}</p>
+                </>
+              ) : (
+                <input type="hidden" name="refundVnd" value="0" />
               )}
               <ConfirmButton question={c.detail.cancelAsk} variant="destructive" className="w-fit" data-testid="admin-cancel">{c.detail.cancel}</ConfirmButton>
             </form>

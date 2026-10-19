@@ -16,6 +16,17 @@ const cancellationTiers = [
 
 const deposit = Math.round(bookingRules.depositRate * 100);
 
+/**
+ * Suggested refund when a guest cancels `daysBefore` days before departure: the policy's share of the deposit, plus
+ * any balance already paid (the trip did not happen). Staff see it pre-filled and may change it.
+ */
+export function suggestedRefundVnd(b: { depositVnd: number; paidVnd: number }, daysBefore: number): number {
+  const percent = cancellationTiers.find((t) => daysBefore >= t.minDays)?.refundPercent ?? 0;
+  // Money is rounded up to 1 000 VND (booking rules), never above what was paid.
+  const depositPart = Math.ceil((b.depositVnd * percent) / 100 / 1000) * 1000;
+  return Math.min(b.paidVnd, depositPart + Math.max(0, b.paidVnd - b.depositVnd));
+}
+
 function tiersText(locale: Locale): string {
   return cancellationTiers
     .map((t, i) => {

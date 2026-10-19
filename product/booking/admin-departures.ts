@@ -1,7 +1,7 @@
 import { and, asc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { AppError } from "@/core/errors";
 import type { ProductContext } from "@/core/product/context";
-import type { Db } from "@/db/client";
+import type { Db, DbTx } from "@/db/client";
 import { bookings, departures, type Booking, type BookingStatus, type Departure } from "../schema/booking";
 import { addDays, travellerKinds, vietnamToday } from "./rules";
 import { SOLD_STATUSES, takesSeats } from "./status";
@@ -57,7 +57,7 @@ export interface DepartureAdmin {
 export function createDepartureAdmin(deps: {
   db: Db;
   /** BookingAdmin's audit wrapper. */
-  audited: (actor: Actor, action: string, targetId: string, metadata: Record<string, unknown>, work: () => Promise<boolean>) => Promise<boolean>;
+  audited: (actor: Actor, action: string, targetId: string, metadata: Record<string, unknown>, work: (tx: DbTx) => Promise<boolean>) => Promise<boolean>;
   tourExists: (slug: string) => Promise<boolean>;
   now: () => Date;
 }): DepartureAdmin {
@@ -102,8 +102,8 @@ export function createDepartureAdmin(deps: {
       const valid = [...new Set(dates)].filter((d) => DAY.test(d) && d >= today && d <= addDays(today, 730)).slice(0, 120);
       if (valid.length === 0) throw new AppError("VALIDATION_ERROR", "No valid dates");
       let added = 0;
-      await audited(actor, "departure.add", tourSlug, { dates: valid, capacity, priceVnd, minGuests }, async () => {
-        const rows = await db
+      await audited(actor, "departure.add", tourSlug, { dates: valid, capacity, priceVnd, minGuests }, async (tx) => {
+        const rows = await tx
           .insert(departures)
           .values(valid.map((date) => ({ tourSlug, date, capacity, priceVnd, minGuests })))
           .onConflictDoNothing()
@@ -118,8 +118,8 @@ export function createDepartureAdmin(deps: {
       if (!UUID.test(id)) throw new AppError("NOT_FOUND");
       if (input.capacity !== undefined && (!Number.isInteger(input.capacity) || input.capacity < 1 || input.capacity > 100)) throw new AppError("VALIDATION_ERROR", "Invalid capacity");
       if (input.priceVnd != null && (!Number.isInteger(input.priceVnd) || input.priceVnd < 10_000 || input.priceVnd > 100_000_000)) throw new AppError("VALIDATION_ERROR", "Invalid price");
-      return audited(actor, "departure.update", id, input, () =>
-        db.transaction(async (tx) => {
+      return audited(actor, "departure.update", id, input, (outer) =>
+        outer.transaction(async (tx) => {
           // Same lock as holds: no seat can be sold between the check and the update.
           const [d] = await tx.select().from(departures).where(eq(departures.id, id)).for("update");
           if (!d) throw new AppError("NOT_FOUND");

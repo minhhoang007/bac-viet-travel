@@ -18,11 +18,29 @@ const select = "h-10 w-full rounded-md border border-border bg-background px-3 t
  * Tour grid with a filter form (GET: the URL keeps the filters and can be shared). On a destination page
  * (`destination` set) the destination is fixed and the form posts back to that page.
  */
-export function TourListing({ locale, tours, filters, destination }: { locale: Locale; tours: Tour[]; filters: TourFilters; destination?: Destination }) {
+export function TourListing({
+  locale,
+  tours,
+  filters,
+  destination,
+  available,
+}: {
+  locale: Locale;
+  tours: Tour[];
+  filters: TourFilters;
+  destination?: Destination;
+  /** Group tours with seats on the searched day: those come first, the rest are marked (private tour offered when it fits). */
+  available?: Set<string> | null;
+}) {
   const c = getProductContent(locale);
   const t = c.tours.filters;
   const f = destination ? { ...filters, destination } : filters;
-  const results = applyTourFilters(tours, f, locale);
+  const privateFits = (tour: Tour) => Boolean(tour.private && (f.guests ?? 1) <= tour.private.maxGuests);
+  // Looking for private tours: any day suits them. Otherwise: a group departure with seats that day.
+  const goes = (tour: Tour) => !available || (f.type === "private" ? privateFits(tour) : available.has(tour.slug));
+  const filtered = applyTourFilters(tours, f, locale);
+  // Stable: within each group the chosen sort order stays.
+  const results = available ? [...filtered.filter(goes), ...filtered.filter((tour) => !goes(tour))] : filtered;
   const base = localePath(locale, destination ? `/tours/${destination}` : "/tours");
   const trip = { date: f.date, guests: f.guests };
   const tripLabel = t.trip(f.date, f.guests);
@@ -116,8 +134,9 @@ export function TourListing({ locale, tours, filters, destination }: { locale: L
         ) : (
           <div className="mt-4 grid gap-x-6 gap-y-10 sm:grid-cols-2">
             {results.map((tour, i) => (
-              <div key={tour.slug} data-destination={tour.destination} className="contents">
+              <div key={tour.slug} data-destination={tour.destination} data-available={available ? goes(tour) : undefined} className="contents">
                 <TourCard
+                  note={f.date && !goes(tour) ? (privateFits(tour) ? t.privateOnly(f.date) : t.noDeparture(f.date)) : undefined}
                   slug={tour.slug}
                   href={`${localePath(locale, `/tours/${tour.slug}`)}${tourFilterQuery({ ...trip, sort: "popular" })}`}
                   image={tour.images[0]!}
@@ -128,6 +147,7 @@ export function TourListing({ locale, tours, filters, destination }: { locale: L
                   price={formatPrice(tour, locale)}
                   fromLabel={c.tours.from}
                   perPersonLabel={c.tours.perPerson}
+                  viewLabel={c.tours.viewTour}
                   priority={i === 0}
                   // Grid beside the 16rem filter column: 3 columns from xl, 2 from sm.
                   sizes="(min-width: 1280px) 300px, (min-width: 640px) 45vw, 100vw"

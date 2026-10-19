@@ -1,4 +1,4 @@
-import { getBooking } from "@/app/_lib/booking";
+import { getBooking, guestToken } from "@/app/_lib/booking";
 import { getTours } from "@/app/_lib/tours";
 import { getPublicEnv } from "@/bootstrap/env";
 import { currentCompany } from "@/app/_lib/company";
@@ -15,7 +15,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ code
   const contactConfig = await currentCompany();
   const { code } = await params;
   const url = new URL(request.url);
-  const token = url.searchParams.get("t") ?? "";
+  // From the voucher page the cookie carries the token; `?t=` still works for links saved before.
+  const token = url.searchParams.get("t") ?? (await guestToken(code)) ?? "";
   const locale = url.searchParams.get("locale") === "en" ? "en" : "vi";
   if (!getContainer().app) return new Response("Not found", { status: 404 });
   const booking = await getBooking().getForGuest(code, token);

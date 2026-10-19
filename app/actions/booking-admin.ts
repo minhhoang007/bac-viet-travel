@@ -31,8 +31,8 @@ export async function confirmBooking(formData: FormData): Promise<void> {
 export async function cancelBooking(formData: FormData): Promise<void> {
   const c = bookingCode(formData);
   const reason = String(formData.get("reason") ?? "");
-  const refund = formData.get("refund") === "on";
-  await run(formData, `/admin/bookings/${c}`, "bookings.cancel", (ctx) => service(ctx).cancel(ctx.user, c, { reason, refund }));
+  const refundVnd = Number(formData.get("refundVnd") ?? 0);
+  await run(formData, `/admin/bookings/${c}`, "bookings.cancel", (ctx) => service(ctx).cancel(ctx.user, c, { reason, refundVnd }));
 }
 
 export async function markBookingRefunded(formData: FormData): Promise<void> {

@@ -3,11 +3,13 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { users } from "@/core/users/schema";
 import { testApp } from "@/tests/integration/setup/app";
 import { resetDb, testDb } from "@/tests/integration/setup/db";
-import { bookingPayments, bookings, departures } from "../../schema/booking";
+import { bookingPayments, bookingRefunds, bookings, departures } from "../../schema/booking";
 import { createDashboard } from "../dashboard";
 import { createBookingAdmin } from "../admin";
 import { createLogger } from "@/core/logger";
 import { createReports } from "../reports";
+import { balanceDue } from "../lifecycle";
+import { createDepositService } from "../deposits";
 
 // The real product services as bootstrap builds them (admin + jobs on), with a recording mail port.
 const { db, close } = testDb();
@@ -52,9 +54,14 @@ describe("booking admin", () => {
   it("cancel with refund: seats released, refund owed, guest told; then marked refunded", async () => {
     const { code, departure } = await paidBooking(4, "2026-10-10", 3);
     expect((await booking.getDeparture(departure.id))!.seatsLeft).toBe(1);
-    await expect(bookingAdmin.cancel(staff, code, { reason: " ", refund: true })).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    const deposit = (await row(code)).depositVnd;
+    await expect(bookingAdmin.cancel(staff, code, { reason: " ", refundVnd: deposit })).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    // Never more than the guest paid (only the deposit here); nothing changes.
+    await expect(bookingAdmin.cancel(staff, code, { reason: "Bão", refundVnd: deposit + 1000 })).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    await expect(bookingAdmin.cancel(staff, code, { reason: "Bão", refundVnd: -1 })).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    expect((await row(code)).status).toBe("deposit_paid");
 
-    expect(await bookingAdmin.cancel(staff, code, { reason: "Bão, tàu không chạy", refund: true })).toBe(true);
+    expect(await bookingAdmin.cancel(staff, code, { reason: "Bão, tàu không chạy", refundVnd: deposit })).toBe(true);
     const cancelled = await row(code);
     expect(cancelled).toMatchObject({ status: "cancelled", cancelReason: "Bão, tàu không chạy", refundDueVnd: cancelled.depositVnd });
     expect((await booking.getDeparture(departure.id))!.seatsLeft).toBe(4);
@@ -73,12 +80,31 @@ describe("booking admin", () => {
     // The deposit service's own outcomes are covered in deposits.int.test.ts; here only the audit of its answer.
     const admin = createBookingAdmin({
       db, logger: createLogger({ write: () => {} }), mail: { send: async () => {} }, audit: container.admin, tourTitle: async () => "",
-      tourExists: async () => true, receiveTransfer: async () => "extra", now: () => clock,
+      tourExists: async () => true, receiveTransfer: async () => ({ result: "extra" as const, sendEmails: async () => {} }), now: () => clock,
     });
     const code = "BV-EXTRA2";
     expect(await admin.receiveTransfer(staff, code, { amountVnd: 600_000, bankRef: "FT1" })).toBe("extra");
     const { rows } = await container.admin!.listAudit({ targetId: code });
     expect(rows.map((r) => r.action)).toEqual(["booking.transfer_received"]);
+  });
+
+  it("a transfer staff record: the deposit and its audit entry saved together, the emails after", async () => {
+    const [d] = await db.insert(departures).values({ tourSlug: "ninh-binh-day-tour", date: "2026-10-10", capacity: 10 }).returning();
+    const held = await booking.hold({ departureId: d!.id, name: "Lan", email: "lan@example.com", phone: "0912345678", adults: "1", locale: "vi", agree: "on" }, "ip-transfer");
+    if (held.status !== "held") throw new Error(held.status);
+    const deposit = (await row(held.code)).depositVnd;
+    clearMail();
+    // The real deposit service, wired as the manifest does it (site links given here instead of read from the env).
+    const mail = { send: async (m: (typeof sent)[number]) => void sent.push(m) };
+    const deposits = createDepositService({ db, logger: createLogger({ write: () => {} }), mail, bookings: booking, transferHoldMinutes: 120, tourTitle: async () => "Ninh Bình", now: () => clock });
+    const admin = createBookingAdmin({
+      db, logger: createLogger({ write: () => {} }), mail, audit: container.admin, tourTitle: async () => "", tourExists: async () => true, now: () => clock,
+      receiveTransfer: (tx, code, input) => deposits.receiveTransferIn(tx, code, input, { siteUrl: "https://bacviet.example" }),
+    });
+    expect(await admin.receiveTransfer(staff, held.code, { amountVnd: deposit, bankRef: "FT77" })).toBe("deposit_paid");
+    expect((await row(held.code)).status).toBe("deposit_paid");
+    expect((await container.admin!.listAudit({ targetId: held.code })).rows.map((r) => r.action)).toEqual(["booking.transfer_received"]);
+    expect(sent.map((m) => m.kind)).toContain("booking_deposit_paid");
   });
 
   it("a late deposit (refund_due) ends as cancelled once refunded", async () => {
@@ -88,20 +114,59 @@ describe("booking admin", () => {
     expect((await row(code)).status).toBe("cancelled");
   });
 
-  it("a refund owed after an earlier refund: only the new amount is owed, and it is back in the queue", async () => {
+  it("a refund owed after an earlier refund: only the new amount is owed; each refund stays in its own month", async () => {
     const { code } = await paidBooking();
-    // A second transfer (200k) was given back earlier.
+    // A second transfer (200k) was given back earlier, in October.
     await db.update(bookings).set({ refundDueVnd: 200_000 }).where(eq(bookings.code, code));
     expect(await bookingAdmin.markRefunded(staff, code, { note: "trả 200k chuyển dư" })).toBe(true);
     expect(await row(code)).toMatchObject({ refundDueVnd: 200_000, refundedVnd: 200_000 });
 
-    expect(await bookingAdmin.cancel(staff, code, { reason: "Khách ốm", refund: true })).toBe(true);
+    clock = new Date("2026-11-02T03:00:00Z");
+    const deposit = (await row(code)).depositVnd;
+    expect(await bookingAdmin.cancel(staff, code, { reason: "Khách ốm", refundVnd: deposit })).toBe(true);
     const cancelled = await row(code);
-    expect(cancelled.refundDueVnd - cancelled.refundedVnd).toBe(cancelled.depositVnd);
+    expect(cancelled.refundDueVnd - cancelled.refundedVnd).toBe(deposit);
     expect((await bookingAdmin.list({ filter: "attention" })).rows.map((r) => r.code)).toEqual([code]);
     expect(await bookingAdmin.markRefunded(staff, code, { note: "trả cọc" })).toBe(true);
-    expect(await row(code)).toMatchObject({ refundedVnd: 200_000 + cancelled.depositVnd });
+    expect(await row(code)).toMatchObject({ refundedVnd: 200_000 + deposit });
     expect((await bookingAdmin.list({ filter: "attention" })).total).toBe(0);
+
+    // October keeps its 200k; November shows only the deposit refunded then.
+    const reports = createReports({ db });
+    expect((await reports.cash("2026-10-01", "2026-10-31")).refundedVnd).toBe(200_000);
+    expect((await reports.cash("2026-11-01", "2026-11-30")).refundedVnd).toBe(deposit);
+    expect((await db.select().from(bookingRefunds)).map((r) => [r.amountVnd, r.note])).toEqual(
+      expect.arrayContaining([[200_000, "trả 200k chuyển dư"], [deposit, "trả cọc"]]),
+    );
+  });
+
+  it("cancel: staff choose the refund (half the deposit, or the deposit plus a balance already paid)", async () => {
+    const half = await paidBooking();
+    const deposit = (await row(half.code)).depositVnd;
+    expect(await bookingAdmin.cancel(staff, half.code, { reason: "Huỷ 5 ngày trước", refundVnd: deposit / 2 })).toBe(true);
+    expect((await row(half.code)).refundDueVnd).toBe(deposit / 2);
+
+    const full = await paidBooking();
+    await db.update(bookings).set({ balancePaidAt: clock }).where(eq(bookings.code, full.code));
+    const total = (await row(full.code)).totalVnd;
+    await expect(bookingAdmin.cancel(staff, full.code, { reason: "x", refundVnd: total + 1000 })).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    expect(await bookingAdmin.cancel(staff, full.code, { reason: "Khách huỷ sớm", refundVnd: total })).toBe(true);
+    expect((await row(full.code)).refundDueVnd).toBe(total);
+    const [entry] = (await container.admin!.listAudit({ targetId: full.code })).rows;
+    expect(entry!.metadata).toMatchObject({ refundVnd: total });
+  });
+
+  it("audit and change are one transaction: when the audit entry cannot be written, the change is undone", async () => {
+    const { code } = await paidBooking();
+    // A metadata value JSON cannot hold makes the audit insert fail after the update ran.
+    const failing = { action: "booking.note", targetType: "booking", targetId: code, metadata: { bad: BigInt(1) } };
+    await expect(
+      container.admin!.audited(staff, failing, async (tx) => {
+        await tx.update(bookings).set({ staffNote: "should not stay" }).where(eq(bookings.code, code));
+        return true;
+      }),
+    ).rejects.toThrow();
+    expect((await row(code)).staffNote).toBe("");
   });
 
   it("list: filters by status, tour, dates and search", async () => {
@@ -136,13 +201,34 @@ describe("booking admin", () => {
     const soon = await paidBooking(10, "2026-10-04");
     await paidBooking(10, "2026-10-10"); // too far
     const cancelled = await paidBooking(10, "2026-10-03");
-    await bookingAdmin.cancel(staff, cancelled.code, { reason: "x", refund: false });
+    await bookingAdmin.cancel(staff, cancelled.code, { reason: "x", refundVnd: 0 });
     clearMail();
 
     await container.jobs!.tick(); // runs product.booking.reminders
     expect(sent.map((m) => [m.kind, m.to])).toEqual([["booking_reminder", "lan@example.com"]]);
+    // This tour has no pick-up time set: no made-up place, the guide calls; the balance is still owed.
+    expect(sent[0]!.text).toContain("Hướng dẫn viên sẽ gọi báo giờ và điểm đón");
+    expect(sent[0]!.text).not.toContain("7:30–8:00");
+    expect(sent[0]!.text).toContain("Số tiền còn lại");
     expect((await row(soon.code)).reminderSentAt).not.toBeNull();
     expect(await bookingAdmin.sendReminders()).toBe(0);
+  });
+
+  it("reminder and confirmation emails: a guest who paid in full is not asked for the balance; the tour's pick-up is used", async () => {
+    const admin = createBookingAdmin({
+      db, logger: createLogger({ write: () => {} }), mail: { send: async (m) => void sent.push(m) }, audit: container.admin, tourTitle: async () => "Ninh Bình",
+      tourExists: async () => true, tourPickup: async () => "7:00 tại khách sạn phố cổ", now: () => clock,
+    });
+    const { code } = await paidBooking(10, "2026-10-04");
+    await db.update(bookings).set({ balancePaidAt: clock }).where(eq(bookings.code, code));
+    expect(await admin.confirm(staff, code)).toBe(true);
+    expect(await admin.sendReminders()).toBe(1);
+    expect(sent.map((m) => m.kind)).toEqual(["booking_confirmed", "booking_reminder"]);
+    for (const m of sent) {
+      expect(m.text).toContain("Bạn đã thanh toán đủ.");
+      expect(m.text).not.toContain("còn lại");
+    }
+    expect(sent[1]!.text).toContain("Giờ và điểm đón: 7:00 tại khách sạn phố cổ.");
   });
 
   describe("manual / OTA bookings", () => {
@@ -156,6 +242,8 @@ describe("booking admin", () => {
       expect(created.status).toBe("created");
       const code = (created as { code: string }).code;
       expect(await row(code)).toMatchObject({ status: "confirmed", source: "klook", externalRef: "KL-123456", guestEmails: false, seats: 2, totalVnd: 1_500_000 });
+      // "Confirmed (paid in full)": nothing left to collect.
+      expect(balanceDue(await row(code))).toBe(0);
       expect((await booking.getDeparture(d!.id))!.seatsLeft).toBe(2);
 
       // Website hold for 2 takes the rest; the OTA cannot add one more.
@@ -164,7 +252,7 @@ describe("booking admin", () => {
       expect(await bookingAdmin.createManual(staff, klook(d!.id, { adults: "1" }))).toEqual({ status: "sold_out", seatsLeft: 0 });
 
       // OTA bookings: confirm/cancel/reminder send nothing to the guest.
-      expect(await bookingAdmin.cancel(staff, code, { reason: "Khách huỷ trên Klook", refund: false })).toBe(true);
+      expect(await bookingAdmin.cancel(staff, code, { reason: "Khách huỷ trên Klook", refundVnd: 0 })).toBe(true);
       expect(sent).toEqual([]);
       const { rows } = await container.admin!.listAudit({ targetId: code });
       expect(rows.map((r) => r.action)).toEqual(["booking.cancel", "booking.create_manual"]);
@@ -181,7 +269,8 @@ describe("booking admin", () => {
       expect(await bookingAdmin.createManual(staff, klook(d!.id, { guestEmails: "on" }))).toMatchObject({ status: "invalid", fieldErrors: { email: "required" } });
 
       const withEmail = await bookingAdmin.createManual(staff, klook(d!.id, { source: "phone", email: "guest@example.com", guestEmails: "on", status: "deposit_paid" }));
-      expect(await row((withEmail as { code: string }).code)).toMatchObject({ status: "deposit_paid", guestEmails: true, email: "guest@example.com" });
+      expect(await row((withEmail as { code: string }).code)).toMatchObject({ status: "deposit_paid", guestEmails: true, email: "guest@example.com", balancePaidAt: null });
+      expect(balanceDue(await row((withEmail as { code: string }).code))).toBe(1_500_000 - 450_000);
 
       const [past] = await db.insert(departures).values({ tourSlug: "ninh-binh-day-tour", date: "2026-09-30", capacity: 10 }).returning();
       const [closed] = await db.insert(departures).values({ tourSlug: "ninh-binh-day-tour", date: "2026-10-12", capacity: 10, status: "closed" }).returning();
@@ -362,6 +451,7 @@ describe("reports (H3)", () => {
       { bookingId: id("BV-CSHA22"), method: "transfer", purpose: "deposit", txnRef: "T4", amountVnd: 500_000, status: "paid", paidAt: oct(12) },
       { bookingId: id("BV-CSHE22"), method: "vnpay", purpose: "deposit", txnRef: "T5", amountVnd: 300_000, status: "paid", paidAt: oct(13) },
     ]);
+    await db.insert(bookingRefunds).values({ bookingId: id("BV-CSHD22"), amountVnd: 300_000, refundedAt: oct(5) });
 
     const cash = await createReports({ db }).cash("2026-10-01", "2026-10-31");
     expect(cash.byChannel).toEqual([

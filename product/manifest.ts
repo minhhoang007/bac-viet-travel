@@ -66,9 +66,16 @@ export function createProduct(db: Db, ctx: ProductContext) {
     tourPrivate: async (slug) => (await tour(slug))?.private ?? null,
     tourPricing: async (slug) => ({ ...DEFAULT_TOUR_PRICING, ...(await tour(slug))?.pricing }),
     tourAddons: async (slug) => (await tour(slug))?.addons ?? [],
+    tourSnapshot: async (slug, locale) => {
+      const t = await tour(slug, locale);
+      return t ? { title: t.title, pickup: t.pickupTime || null } : null;
+    },
     discountLimiter: ctx.rateLimiter("booking:discount-preview", { max: 20, windowMs: 10 * 60_000 }),
     // A visitor holds one date at most 3 times an hour (a guest rarely needs a second try).
     departureLimiter: ctx.rateLimiter("booking-hold:departure", { max: 3, windowMs: 60 * 60_000 }),
+    // Lost links: 5 requests an hour per visitor and per booking.
+    mail: ctx.mail,
+    linkLimiter: ctx.rateLimiter("booking-link", { max: 5, windowMs: 60 * 60_000 }),
     now: ctx.now,
   });
   // Demo site: online payment only through the VNPay sandbox; a production merchant is never used there.
@@ -83,6 +90,8 @@ export function createProduct(db: Db, ctx: ProductContext) {
     vnpay,
     transferHoldMinutes: defaultBankTransfer.holdMinutes,
     tourTitle,
+    // A guest retrying a failed card payment needs a few tries; 10 in 30 minutes is far beyond that.
+    payLimiter: ctx.rateLimiter("booking-pay", { max: 10, windowMs: 30 * 60_000 }),
     now: ctx.now,
   });
 
@@ -93,10 +102,11 @@ export function createProduct(db: Db, ctx: ProductContext) {
     audit: ctx.audit,
     tourTitle,
     tourExists: async (slug) => (await tour(slug)) !== null,
+    tourPickup: async (slug, locale) => (await tour(slug, locale))?.pickupTime || null,
     tourPrice: async (slug) => (await tour(slug))?.price.vnd ?? null,
-    receiveTransfer: (code, input) => {
+    receiveTransfer: (tx, code, input) => {
       const env = getEnv();
-      return deposits.receiveTransfer(code, input, { siteUrl: env.NEXT_PUBLIC_SITE_URL, teamEmail: env.extra.CONTACT_TO_EMAIL });
+      return deposits.receiveTransferIn(tx, code, input, { siteUrl: env.NEXT_PUBLIC_SITE_URL, teamEmail: env.extra.CONTACT_TO_EMAIL });
     },
     now: ctx.now,
   });
@@ -125,6 +135,11 @@ export function createProduct(db: Db, ctx: ProductContext) {
         const env = getEnv();
         await deposits.reconcile({ siteUrl: env.NEXT_PUBLIC_SITE_URL, teamEmail: env.extra.CONTACT_TO_EMAIL });
         await booking.expireStale();
+      },
+      // Payment emails that were never sent (the process stopped right after recording the money).
+      "booking.payment_emails": async () => {
+        const env = getEnv();
+        await deposits.sendMissedEmails({ siteUrl: env.NEXT_PUBLIC_SITE_URL, teamEmail: env.extra.CONTACT_TO_EMAIL });
       },
       "booking.purge_abandoned": async () => {
         await deposits.purgeLinkTokens();
