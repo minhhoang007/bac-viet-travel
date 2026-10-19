@@ -46,7 +46,7 @@ export async function SiteFooter({ locale }: { locale: Locale }) {
   ];
 
   return (
-    <footer className="mt-24 border-t border-border bg-muted text-sm text-muted-foreground">
+    <footer className="mt-12 border-t sm:mt-24 border-border bg-muted text-sm text-muted-foreground">
       {/* Phones and tablets: company on top, the three link lists side by side below. Desktop: one row. */}
       {/* md: the expanded contact buttons (bottom right) would cover the last links: leave room under them. */}
       <Container className="grid gap-10 py-14 md:pb-28 lg:grid-cols-[1.4fr_3fr] lg:pb-14">

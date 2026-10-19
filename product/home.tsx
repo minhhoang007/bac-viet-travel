@@ -169,7 +169,7 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
       </section>
 
       {/* Philosophy: one sentence in the heading serif, then the promises as numbered pillars. */}
-      <section className="py-28 sm:py-36" aria-labelledby="philosophy-title">
+      <section className="py-16 sm:py-36" aria-labelledby="philosophy-title">
         <Container>
           <p className={eyebrow}>{h.philosophy.eyebrow}</p>
           <h2 id="philosophy-title" className="mt-6 max-w-4xl font-heading type-h2">
@@ -188,7 +188,7 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
       </section>
 
       {/* Destinations as chapters; the middle one sits lower on wide screens. */}
-      <section className="pb-28" aria-labelledby="destinations-title">
+      <section className="pb-16 sm:pb-28" aria-labelledby="destinations-title">
         <Container>
           <div className="flex flex-wrap items-end justify-between gap-6">
             <div>
@@ -243,7 +243,7 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
         </div>
       </section>
 
-      <section className="py-28" aria-labelledby="featured-title">
+      <section className="py-16 sm:py-28"aria-labelledby="featured-title">
         <Container>
           <div className="flex flex-wrap items-end justify-between gap-6">
             <div>
@@ -256,7 +256,7 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
               {h.viewAll}
             </IntentLink>
           </div>
-          <div className="mt-14 grid gap-x-8 gap-y-14 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-10 grid gap-x-8 gap-y-10 sm:mt-14 sm:grid-cols-2 sm:gap-y-14 lg:grid-cols-3">
             {catalog.featured(locale).map((t) => (
               <TourCard
                 key={t.slug}
@@ -277,7 +277,7 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
       </section>
 
       {/* Sample reviews: data-demo makes `pnpm launch:check` fail until they are replaced by real ones. */}
-      <section className="border-y border-border py-28" aria-labelledby="reviews-title" data-demo="reviews">
+      <section className="border-y border-border py-16 sm:py-28" aria-labelledby="reviews-title" data-demo="reviews">
         <Container>
           <div className="flex flex-wrap items-end justify-between gap-6">
             <div>
@@ -310,7 +310,7 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
       </section>
 
       {posts.length > 0 && (
-        <section className="py-28" aria-labelledby="blog-title">
+        <section className="py-16 sm:py-28"aria-labelledby="blog-title">
           <Container>
             <div className="flex flex-wrap items-end justify-between gap-6">
               <div>
@@ -342,7 +342,7 @@ export async function ProductHomePage({ locale }: { locale: Locale }) {
 
       <Faq id="faq" title={m.faq.title} items={m.faq.items} />
 
-      <section id="contact" className="scroll-mt-20 bg-muted py-28" aria-labelledby="contact-title">
+      <section id="contact" className="scroll-mt-20 bg-muted py-16 sm:py-28" aria-labelledby="contact-title">
         <Container className="grid gap-14 lg:grid-cols-[1fr_1.2fr]">
           <div>
             <p className={eyebrow}>{h.eyebrows.contact}</p>

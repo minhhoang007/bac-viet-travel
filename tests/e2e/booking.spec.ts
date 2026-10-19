@@ -125,6 +125,9 @@ test("lost booking link: the not-found page offers a new link by email, with the
 test("English tour page: USD is approximate, the VND amount is what the guest pays", async ({ page }) => {
   await page.goto(`/en${TOUR}`);
   await expect(page.getByTestId("currency-note")).toContainText(/you pay ₫[\d,]+ in Vietnamese dong/);
+  // One currency on the page: the private tour price is in USD too.
+  await expect(page.getByTestId("private-offer")).toContainText(/\$\d/);
+  await expect(page.getByTestId("private-offer")).not.toContainText("₫");
 });
 
 test("English booking page shows prices in VND with a note", async ({ page }) => {

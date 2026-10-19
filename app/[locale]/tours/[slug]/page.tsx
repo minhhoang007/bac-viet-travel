@@ -13,7 +13,7 @@ import type { Locale } from "@/config/app";
 import { whatsappUrl, zaloUrl } from "@/config/contact";
 import { currentCompany } from "@/app/_lib/company";
 import { features } from "@/config/features";
-import { formatVnd, getBookingContent } from "@/product/booking/content";
+import { getBookingContent } from "@/product/booking/content";
 import { DEFAULT_TOUR_PRICING } from "@/product/booking/rules";
 import { TourBookButton, TourBookingProvider, TourDepartureList } from "@/product/components/tour-departures";
 import { TourGallery } from "@/product/components/tour-gallery";
@@ -286,7 +286,7 @@ export default async function TourPage({ params }: Props) {
               </ul>
               {tour.private && (
                 <div className="mt-4 border-t border-border pt-4" data-testid="private-offer">
-                  <p className="text-sm font-medium">{b.privateFrom(formatVnd(tour.private.tiers.at(-1)!.vnd, locale))}</p>
+                  <p className="text-sm font-medium">{b.privateFrom(formatPrice({ price: tour.private.tiers.at(-1)! }, locale))}</p>
                   <p className="mt-1 type-small text-muted-foreground">{b.privateHint}</p>
                   <IntentButtonLink href={localePath(locale, `/tours/${slug}/book?type=private`)} variant="outline" className="mt-2 w-full">
                     {b.privateCta}
@@ -328,9 +328,9 @@ export default async function TourPage({ params }: Props) {
       )}
 
       {related.length > 0 && (
-        <Container className="border-t border-border pb-24 pt-20">
+        <Container className="border-t border-border pb-12 pt-12 sm:pb-24 sm:pt-20">
           <h2 className="font-heading type-h2">{c.tours.related}</h2>
-          <div className="mt-10 grid gap-x-8 gap-y-14 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-10 grid gap-x-8 gap-y-10 sm:grid-cols-2 sm:gap-y-14 lg:grid-cols-3">
             {related.map((t) => (
               <TourCard
                 key={t.slug}
