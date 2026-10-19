@@ -1,5 +1,5 @@
 import { createHash, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
-import { and, asc, eq, gte, inArray, lt, lte, notExists, sql } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, lt, lte, ne, notExists, sql } from "drizzle-orm";
 import type { Logger } from "@/core/logger";
 import type { RateLimiter } from "@/core/security/rate-limit";
 import type { Db } from "@/db/client";
@@ -66,7 +66,7 @@ export interface BookingService {
   /** Marks stale holds as expired. Returns how many. */
   expireStale(): Promise<number>;
   /**
-   * Data minimisation: deletes abandoned holds (expired, never any payment attempt) older than `days`, with the
+   * Data minimisation: deletes abandoned holds (expired, no paid or pending payment attempt) older than `days`, with the
    * private departures they leave empty. Their contact details are not kept. Returns how many bookings.
    */
   purgeAbandoned(days?: number): Promise<number>;
@@ -338,7 +338,8 @@ export function createBookingService(deps: {
             and(
               eq(bookings.status, "expired"),
               lt(bookings.holdExpiresAt, before),
-              notExists(tx.select({ id: bookingPayments.id }).from(bookingPayments).where(eq(bookingPayments.bookingId, bookings.id))),
+              // Failed attempts carry no money (they go with the booking); a paid or still pending one keeps it.
+              notExists(tx.select({ id: bookingPayments.id }).from(bookingPayments).where(and(eq(bookingPayments.bookingId, bookings.id), ne(bookingPayments.status, "failed")))),
             ),
           )
           .returning({ departureId: bookings.departureId });

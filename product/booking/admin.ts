@@ -427,30 +427,27 @@ export function createBookingAdmin(deps: {
 
     async sendReminders() {
       const today = vietnamToday(now());
-      // Claim first (reminderSentAt), then send: a crash may skip one email but never sends twice.
-      const claimed = await db
-        .update(bookings)
-        .set({ reminderSentAt: now() })
-        .where(
-          and(
-            inArray(bookings.status, SOLD_STATUSES),
-            isNull(bookings.reminderSentAt),
-            eq(bookings.guestEmails, true),
-            sql`${bookings.email} <> ''`,
-            sql`${bookings.departureId} in (select id from departures where date > ${today} and date <= ${addDays(today, REMINDER_DAYS)})`,
-          ),
-        )
-        .returning();
-      const byId = new Map(
-        claimed.length ? (await db.select().from(departures).where(inArray(departures.id, [...new Set(claimed.map((b) => b.departureId))]))).map((d) => [d.id, d]) : [],
+      const due = and(
+        inArray(bookings.status, SOLD_STATUSES),
+        isNull(bookings.reminderSentAt),
+        eq(bookings.guestEmails, true),
+        sql`${bookings.email} <> ''`,
+        sql`${bookings.departureId} in (select id from departures where date > ${today} and date <= ${addDays(today, REMINDER_DAYS)})`,
       );
-      for (const b of claimed) {
-        const d = byId.get(b.departureId)!;
-        const pickup = (await deps.tourPickup?.(d.tourSlug, b.locale)) ?? null;
-        await send(reminderEmail({ booking: b, departure: d, title: await deps.tourTitle(d.tourSlug, b.locale), pickup }), b.code);
+      const candidates = await db.select({ id: bookings.id }).from(bookings).where(due);
+      let sent = 0;
+      // One at a time: claim (reminderSentAt), then send at once. A crash skips at most the one email in flight, and
+      // a second run never sends twice.
+      for (const { id } of candidates) {
+        const [b] = await db.update(bookings).set({ reminderSentAt: now() }).where(and(eq(bookings.id, id), due)).returning();
+        if (!b) continue;
+        const [d] = await db.select().from(departures).where(eq(departures.id, b.departureId));
+        const pickup = (await deps.tourPickup?.(d!.tourSlug, b.locale)) ?? null;
+        await send(reminderEmail({ booking: b, departure: d!, title: await deps.tourTitle(d!.tourSlug, b.locale), pickup }), b.code);
+        sent += 1;
       }
-      if (claimed.length) logger.info("booking.reminders_sent", { count: claimed.length });
-      return claimed.length;
+      if (sent) logger.info("booking.reminders_sent", { count: sent });
+      return sent;
     },
   };
 }

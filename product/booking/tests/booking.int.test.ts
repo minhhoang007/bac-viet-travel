@@ -3,7 +3,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { createLogger } from "@/core/logger";
 import { createMemoryRateLimiter } from "@/core/security/rate-limit";
 import { testDb } from "@/tests/integration/setup/db";
-import { bookings, departures, discountCodes } from "../../schema/booking";
+import { bookingPayments, bookings, departures, discountCodes } from "../../schema/booking";
 import { createBookingService } from "../service";
 import { createDiscountAdmin } from "../discounts";
 
@@ -281,16 +281,25 @@ describe("review fixes 2026-10-08", () => {
     const s = service();
     const old = await s.hold(guest(d.id), "ip");
     const priv = await s.holdPrivate({ ...guest(""), departureId: undefined, tourSlug: "ha-long-cruise-2d1n", date: "2026-10-20", adults: "2" }, "ip");
-    expect(old.status).toBe("held");
+    // Two more: the guest tried VNPay and it failed (no money: deleted too); a transfer still pending (kept).
+    const failedPay = await s.hold(guest(d.id), "ip");
+    const pendingPay = await s.hold(guest(d.id), "ip");
+    if (old.status !== "held" || failedPay.status !== "held" || pendingPay.status !== "held") throw new Error("hold");
+    const idOf = async (code: string) => (await db.select({ id: bookings.id }).from(bookings).where(eq(bookings.code, code)))[0]!.id;
+    await db.insert(bookingPayments).values([
+      { bookingId: await idOf(failedPay.code), txnRef: "F1", amountVnd: 300_000, status: "failed" },
+      { bookingId: await idOf(pendingPay.code), method: "transfer", txnRef: "P1", amountVnd: 300_000 },
+    ]);
     expect(priv.status).toBe("held");
     clock = new Date("2026-11-05T03:00:00Z");
     const recent = await s.hold(guest((await departure({ date: "2026-11-20" })).id), "ip");
     expect(recent.status).toBe("held");
     await s.expireStale();
 
-    expect(await s.purgeAbandoned()).toBe(2);
+    expect(await s.purgeAbandoned()).toBe(3);
     const left = await db.select({ code: bookings.code }).from(bookings);
-    expect(left.map((b) => b.code)).toEqual([recent.status === "held" ? recent.code : ""]);
+    expect(left.map((b) => b.code).sort()).toEqual([pendingPay.code, recent.status === "held" ? recent.code : ""].sort());
+    expect((await db.select().from(bookingPayments)).map((p) => p.txnRef)).toEqual(["P1"]);
     expect(await db.select().from(departures).where(eq(departures.kind, "private"))).toEqual([]);
     expect((await db.select().from(departures)).length).toBe(2); // group departures stay
   });

@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { and, eq, gt, isNotNull, lt, lte, ne, or, sql } from "drizzle-orm";
+import { and, asc, eq, gt, isNotNull, isNull, lt, lte, ne, or, sql } from "drizzle-orm";
 import type { Logger } from "@/core/logger";
 import type { RateLimiter } from "@/core/security/rate-limit";
 import type { MailPort } from "@/core/ports/mail";
@@ -53,9 +53,19 @@ export interface DepositService {
    * asks VNPay (querydr) and confirms it now with `links`, instead of waiting for the next jobs run.
    */
   returnStatus(params: Record<string, string>, links?: { siteUrl: string; teamEmail?: string }): Promise<{ valid: boolean; code?: string; status: "paid" | "failed" | "pending" | "unknown" }>;
-  /** Erases guest link tokens kept on payment attempts once no email needs them (settled, or older than a week). */
+  /** Erases guest link tokens kept on payment attempts once no email needs them (emailed, failed, or older than a week). */
   purgeLinkTokens(): Promise<number>;
+  /**
+   * Periodic: sends the emails of payments recorded more than 10 minutes ago whose emails were never handed to the
+   * mailer (the process stopped right after recording). Returns how many payments were caught up.
+   */
+  sendMissedEmails(links: { siteUrl: string; teamEmail?: string }): Promise<number>;
 }
+
+/** Reconcile asks VNPay about attempts up to this old (a few missed daily runs), oldest first. */
+const RECONCILE_WINDOW_MS = 7 * 24 * 60 * 60_000;
+/** Reconcile stops asking after this long; the rest waits for the next run (keeps the jobs tick within its limit). */
+const RECONCILE_BUDGET_MS = 10_000;
 
 const OK = (Message: string): IpnResult => ({ RspCode: "00", Message });
 const DAY_MS = 24 * 60 * 60_000;
@@ -159,21 +169,27 @@ export function createDepositService(deps: {
       const [departure] = await tx.select().from(departures).where(eq(departures.id, b!.departureId)).for("update");
       const [booking] = await tx.select().from(bookings).where(eq(bookings.id, payment.bookingId)).for("update");
       // Claim the attempt exactly once (a duplicate IPN loses this race and changes nothing).
+      // A paid attempt keeps its link token until its emails are sent (sendMissedEmails may need it).
       const claimed = await tx
         .update(bookingPayments)
-        .set({ status: success ? "paid" : "failed", ...fields, paidAt: success ? at : null, linkToken: null })
+        .set({ status: success ? "paid" : "failed", ...fields, paidAt: success ? at : null, ...(success ? {} : { linkToken: null }) })
         .where(and(eq(bookingPayments.id, payment.id), eq(bookingPayments.status, "pending")))
         .returning({ id: bookingPayments.id });
       if (claimed.length === 0) return { kind: "duplicate" as const };
       if (!success) return { kind: "failed" as const };
       const recorded = payment.purpose === "balance" ? await recordBalance(tx, booking!, payment, at) : await recordDeposit(tx, booking!, departure!, payment, at);
+      await tx.update(bookingPayments).set({ outcome: recorded.kind }).where(eq(bookingPayments.id, payment.id));
       return { ...recorded, departure: departure!, token: payment.linkToken };
     });
-    if ("booking" in outcome) {
-      const [email, withAmount] = SETTLED_EMAIL[outcome.kind];
-      await notify(outcome.booking, outcome.departure, { ...links, token: outcome.token }, email, withAmount ? payment.amountVnd : undefined);
-    }
+    if ("booking" in outcome) await sendSettledEmails(payment, outcome, links);
     return outcome;
+  }
+
+  /** The guest and team emails of a recorded payment, then marks it notified (and drops its link token). */
+  async function sendSettledEmails(payment: BookingPayment, settled: { kind: Recorded; booking: Booking; departure: Departure; token: string | null }, links: { siteUrl: string; teamEmail?: string }) {
+    const [email, withAmount] = SETTLED_EMAIL[settled.kind];
+    await notify(settled.booking, settled.departure, { ...links, token: settled.token }, email, withAmount ? payment.amountVnd : undefined);
+    await db.update(bookingPayments).set({ notifiedAt: now(), linkToken: null }).where(eq(bookingPayments.id, payment.id));
   }
 
   /** The IPN once its signature is checked (or a querydr result): confirms the attempt exactly once. */
@@ -290,11 +306,18 @@ export function createDepositService(deps: {
         .select({ txnRef: bookingPayments.txnRef, createdAt: bookingPayments.createdAt, code: bookings.code })
         .from(bookingPayments)
         .innerJoin(bookings, eq(bookings.id, bookingPayments.bookingId))
-        .where(and(eq(bookingPayments.method, "vnpay"), eq(bookingPayments.status, "pending"), lte(bookings.holdExpiresAt, at), gt(bookingPayments.createdAt, new Date(at.getTime() - DAY_MS))))
+        .where(and(eq(bookingPayments.method, "vnpay"), eq(bookingPayments.status, "pending"), lte(bookings.holdExpiresAt, at), gt(bookingPayments.createdAt, new Date(at.getTime() - RECONCILE_WINDOW_MS))))
+        .orderBy(asc(bookingPayments.createdAt))
         .limit(50);
       const confirmed: string[] = [];
       let failed = 0;
+      // Wall-clock budget (not the injectable clock): each query may wait up to its own timeout.
+      const stopAt = Date.now() + RECONCILE_BUDGET_MS;
       for (const payment of pending) {
+        if (Date.now() > stopAt) {
+          logger.warn("booking.deposit_reconcile_deferred", { left: pending.length - pending.indexOf(payment) });
+          break;
+        }
         try {
           const result = await vnpay.query(payment);
           if (result.status === "paid" && (await confirm(result.params, links)).RspCode === "00") confirmed.push(payment.code);
@@ -320,9 +343,24 @@ export function createDepositService(deps: {
       const done = await db
         .update(bookingPayments)
         .set({ linkToken: null })
-        .where(and(isNotNull(bookingPayments.linkToken), or(ne(bookingPayments.status, "pending"), lt(bookingPayments.createdAt, weekAgo))))
+        .where(and(isNotNull(bookingPayments.linkToken), or(isNotNull(bookingPayments.notifiedAt), eq(bookingPayments.status, "failed"), lt(bookingPayments.createdAt, weekAgo))))
         .returning({ id: bookingPayments.id });
       return done.length;
+    },
+
+    async sendMissedEmails(links) {
+      const before = new Date(now().getTime() - 10 * 60_000);
+      const missed = await db
+        .select({ p: bookingPayments, b: bookings, d: departures })
+        .from(bookingPayments)
+        .innerJoin(bookings, eq(bookings.id, bookingPayments.bookingId))
+        .innerJoin(departures, eq(departures.id, bookings.departureId))
+        .where(and(eq(bookingPayments.status, "paid"), isNull(bookingPayments.notifiedAt), isNotNull(bookingPayments.outcome), lt(bookingPayments.paidAt, before)))
+        .orderBy(asc(bookingPayments.paidAt))
+        .limit(20);
+      for (const { p, b, d } of missed) await sendSettledEmails(p, { kind: p.outcome!, booking: b, departure: d, token: p.linkToken }, links);
+      if (missed.length) logger.warn("booking.payment_emails_caught_up", { count: missed.length });
+      return missed.length;
     },
 
     async chooseTransfer({ code, token }) {

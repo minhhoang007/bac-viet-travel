@@ -129,6 +129,11 @@ export function createProduct(db: Db, ctx: ProductContext) {
         await deposits.reconcile({ siteUrl: env.NEXT_PUBLIC_SITE_URL, teamEmail: env.extra.CONTACT_TO_EMAIL });
         await booking.expireStale();
       },
+      // Payment emails that were never sent (the process stopped right after recording the money).
+      "booking.payment_emails": async () => {
+        const env = getEnv();
+        await deposits.sendMissedEmails({ siteUrl: env.NEXT_PUBLIC_SITE_URL, teamEmail: env.extra.CONTACT_TO_EMAIL });
+      },
       "booking.purge_abandoned": async () => {
         await deposits.purgeLinkTokens();
         await booking.purgeAbandoned();

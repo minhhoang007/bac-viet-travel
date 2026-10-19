@@ -132,9 +132,13 @@ export const bookingPayments = pgTable(
     providerTxnNo: text("provider_txn_no"),
     responseCode: text("response_code"),
     bankCode: text("bank_code"),
-    /** Guest link token, kept only until the IPN emails the link (then erased). */
+    /** Guest link token, kept only until the paid email is sent with the link (then erased). */
     linkToken: text("link_token"),
     paidAt: timestamp("paid_at", { withTimezone: true }),
+    /** What a paid attempt was recorded as (deposits.ts settle), so its emails can be sent again if they were not. */
+    outcome: text("outcome", { enum: ["deposit_paid", "refund_due", "extra", "balance_paid"] }),
+    /** When the guest and team emails of a paid attempt were handed to the mailer; null = still to send. */
+    notifiedAt: timestamp("notified_at", { withTimezone: true }),
     ...timestamps(),
   },
   (t) => [uniqueIndex("booking_payments_txn_ref_idx").on(t.txnRef), index("booking_payments_booking_idx").on(t.bookingId)],

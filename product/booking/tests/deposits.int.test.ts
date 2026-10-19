@@ -112,6 +112,25 @@ describe("booking deposits (VNPay)", () => {
     expect((await bookingService.listDepartures("ninh-binh-day-tour"))[0]!.seatsLeft).toBe(9);
   });
 
+  it("payment emails never sent (the process stopped after recording) go out on a later run, once, with the link", async () => {
+    const { code, token } = await holdOn(10);
+    const req = await startPayment(code, token);
+    expect((await deposits.handleIpn(ipn(req), LINKS)).RspCode).toBe("00");
+    expect((await db.select().from(bookingPayments))[0]).toMatchObject({ status: "paid", outcome: "deposit_paid", linkToken: null });
+    expect((await db.select().from(bookingPayments))[0]!.notifiedAt).not.toBeNull();
+    // As the database looks when the process stopped between recording the money and sending the emails.
+    await db.update(bookingPayments).set({ notifiedAt: null, linkToken: token });
+    sent = [];
+
+    expect(await deposits.sendMissedEmails(LINKS)).toBe(0); // too recent: the IPN may still be sending them
+    clock = new Date(clock.getTime() + 11 * 60_000);
+    expect(await deposits.sendMissedEmails(LINKS)).toBe(1);
+    expect(sent.map((m) => m.kind)).toEqual(["booking_deposit_paid", "booking_team_paid"]);
+    expect(sent[0]!.text).toContain(`https://bacviet.example/booking/${code}?t=${token}`);
+    expect((await db.select().from(bookingPayments))[0]).toMatchObject({ linkToken: null });
+    expect(await deposits.sendMissedEmails(LINKS)).toBe(0);
+  });
+
   it("payment attempts per booking are limited; a broken limiter store never blocks a guest", async () => {
     const make = (payLimiter: Parameters<typeof createDepositService>[0]["payLimiter"]) =>
       createDepositService({ db, logger, mail: { send: async () => {} }, bookings: bookingService, vnpay, transferHoldMinutes: 120, tourTitle: async () => "", payLimiter, now: () => clock });
