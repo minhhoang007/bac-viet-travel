@@ -4,7 +4,7 @@ import type { RateLimiter } from "@/core/security/rate-limit";
 import type { TurnstileCheck } from "@/core/security/turnstile";
 import { ROLES, users } from "@/core/users/schema";
 import type { Db } from "@/db/client";
-import type { BetterAuthInstance } from "./adapters/better-auth";
+import { asInvitation, dropPasswordLinks, type BetterAuthInstance } from "./adapters/better-auth";
 import { createAuthEvents, type AuthEvent } from "./events";
 import { createLoginCodes } from "./login-code";
 import { isFresh, staffGate, staffSessionExpired, type FactorFacts, type SessionFacts, type StaffAuthPolicy } from "./mfa";
@@ -325,10 +325,13 @@ export function createAuthService(
       if (!hasRole(current.user, "editor")) throw new AppError("PERMISSION_ERROR");
       try {
         await auth.api.setPassword({ headers, body: { newPassword } });
-        return "done";
       } catch (error) {
         return passwordOutcome(error) as PasswordResult;
       }
+      // As for a change or a reset: other devices are signed out, unused set-password links stop working.
+      await db.delete(sessions).where(and(eq(sessions.userId, current.user.id), ne(sessions.id, current.session.id)));
+      await dropPasswordLinks(db, current.user.id);
+      return "done";
     },
     async changePassword(headers, currentPassword, newPassword) {
       const current = await getSession(headers);
@@ -340,6 +343,7 @@ export function createAuthService(
       }
       // Here rather than Better Auth's revokeOtherSessions, which also replaces this session (losing its second factor).
       await db.delete(sessions).where(and(eq(sessions.userId, current.user.id), ne(sessions.id, current.session.id)));
+      await dropPasswordLinks(db, current.user.id);
       return "done";
     },
     async devices(headers) {
@@ -421,9 +425,10 @@ export function createAuthService(
         if (!client.success || !account.success) throw new AppError("RATE_LIMIT_ERROR");
       }
       if (deps.turnstile && !(await deps.turnstile(captchaToken, clientKey))) throw new AppError("CAPTCHA_ERROR");
-      // A disabled account reads as a wrong password (getSession would drop its session anyway).
-      const [user] = await db.select({ status: users.status }).from(users).where(eq(users.email, address));
-      if (user?.status === "disabled") return { status: "wrong", setCookies: [] };
+      // A disabled account reads as a wrong password (getSession would drop its session anyway). So does a customer
+      // account: passwords are for staff, and one left from a former employee must stop working.
+      const [user] = await db.select({ status: users.status, role: users.role }).from(users).where(eq(users.email, address));
+      if (user && (user.status === "disabled" || !hasRole(user, "editor"))) return { status: "wrong", setCookies: [] };
       try {
         const res = await auth.api.signInEmail({ body: { email: address, password }, headers, returnHeaders: true });
         const pending = "twoFactorRedirect" in res.response && Boolean(res.response.twoFactorRedirect);
@@ -443,9 +448,10 @@ export function createAuthService(
     },
     async sendPasswordSetup(email) {
       if (!methods.password) throw new AppError("MODULE_DISABLED", "Password sign-in is off");
-      await sendPasswordSetup(email);
+      await asInvitation(() => sendPasswordSetup(email));
     },
     async resetPassword(token, newPassword) {
+      if (!methods.password) throw new AppError("MODULE_DISABLED", "Password sign-in is off");
       try {
         await auth.api.resetPassword({ body: { token, newPassword } });
         return "done";

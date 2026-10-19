@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import { passkey } from "@better-auth/passkey";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
@@ -6,7 +7,7 @@ import { nextCookies } from "better-auth/next-js";
 import { magicLink } from "better-auth/plugins/magic-link";
 import { twoFactor } from "better-auth/plugins/two-factor";
 import { haveIBeenPwned } from "better-auth/plugins/haveibeenpwned";
-import { and, count, eq, ne } from "drizzle-orm";
+import { and, count, eq, like, ne } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import type { MailPort } from "@/core/ports/mail";
 import { users } from "@/core/users/schema";
@@ -40,8 +41,17 @@ export interface BetterAuthDeps {
 /** Password length: 12 at least (NIST 800-63B with no composition rules), 128 at most (hashing cost). */
 export const PASSWORD_MIN = 12;
 export const PASSWORD_MAX = 128;
-// An invitation is often opened the next day: the link to set a password lasts 24 hours.
-const RESET_LINK_HOURS = 24;
+// An invitation (sent by an admin) is often opened the next day: 24 hours. "Forgot password" (anyone may ask for it
+// for any address): 4 hours.
+const INVITE_LINK_HOURS = 24;
+const FORGOT_LINK_HOURS = 4;
+
+/** Runs `send` as an admin's invitation: the emailed link lasts INVITE_LINK_HOURS instead of FORGOT_LINK_HOURS. */
+export const asInvitation = <T,>(send: () => Promise<T>): Promise<T> => invitation.run(true, send);
+const invitation = new AsyncLocalStorage<true>();
+
+/** Drops every unused set-password link of the user (after a password is set, changed or reset). */
+export const dropPasswordLinks = (db: Db, userId: string) => db.delete(verifications).where(and(eq(verifications.value, userId), like(verifications.identifier, "reset-password:%")));
 
 // Second-factor endpoints: a success marks the session (sessions.second_factor_at).
 const SECOND_FACTOR_PATHS = new Set(["/two-factor/verify-totp", "/two-factor/verify-backup-code", "/passkey/verify-authentication"]);
@@ -133,22 +143,28 @@ export function createBetterAuth(deps: BetterAuthDeps) {
       disableSignUp: true,
       minPasswordLength: PASSWORD_MIN,
       maxPasswordLength: PASSWORD_MAX,
-      resetPasswordTokenExpiresIn: RESET_LINK_HOURS * 3600,
+      // The longest link; a "forgot password" link is shortened when it is sent (below).
+      resetPasswordTokenExpiresIn: INVITE_LINK_HOURS * 3600,
       revokeSessionsOnPasswordReset: true,
       sendResetPassword: async ({ user, token }) => {
         // Staff only: a customer account never gets a password (its email stays silent, like an unknown address).
         if (!isStaffRole((user as { role?: string }).role ?? "user")) return;
+        const hours = invitation.getStore() ? INVITE_LINK_HOURS : FORGOT_LINK_HOURS;
+        // Better Auth stored the token (at the longest lifetime) before calling this.
+        if (hours < INVITE_LINK_HOURS) await db.update(verifications).set({ expiresAt: new Date(Date.now() + hours * 3_600_000) }).where(eq(verifications.identifier, `reset-password:${token}`));
         const link = `${deps.baseURL}${deps.resetPasswordPath}?token=${encodeURIComponent(token)}`;
         await deps.mail.send({
           kind: "password_setup",
           to: user.email,
           subject: "Đặt mật khẩu / Set your password",
-          text: `Mở liên kết để đặt mật khẩu cho tài khoản ${deps.appName} (hết hạn sau ${RESET_LINK_HOURS} giờ, dùng một lần):\nOpen the link to set the password of your ${deps.appName} account (expires in ${RESET_LINK_HOURS} hours, works once):\n\n${link}\n\nKhông phải bạn yêu cầu? Bỏ qua email này, mật khẩu cũ vẫn giữ nguyên. / Did not ask for it? Ignore this email: nothing changes.`,
+          text: `Mở liên kết để đặt mật khẩu cho tài khoản ${deps.appName} (hết hạn sau ${hours} giờ, dùng một lần):\nOpen the link to set the password of your ${deps.appName} account (expires in ${hours} hours, works once):\n\n${link}\n\nKhông phải bạn yêu cầu? Bỏ qua email này, mật khẩu cũ vẫn giữ nguyên. / Did not ask for it? Ignore this email: nothing changes.`,
         });
       },
       onPasswordReset: async ({ user }, request) => {
         // Opening the emailed link proves the address (Google may then link to this account).
         await db.update(users).set({ emailVerified: true }).where(eq(users.id, user.id));
+        // The link just used is spent; older ones (an earlier invitation or request) must not work any more.
+        await dropPasswordLinks(db, user.id);
         await factorChanged(user, "password_set", { ipAddress: request?.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null, userAgent: request?.headers.get("user-agent") ?? null });
       },
     },
