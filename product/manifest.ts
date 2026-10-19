@@ -246,6 +246,8 @@ export const contentTypes: Record<string, ContentTypeDefinition> = {
     label: { vi: "Tour", en: "Tour" },
     adminPath: (id) => `/admin/tours/${id}`,
     publicPath: (slug) => `/tours/${slug}`,
+    // Sales staff do bookings only (the same rule as the Tours menu entry and app/_lib/staff.ts requireTourEditor).
+    canEdit: async (user) => (await staffRoleOf(user.id)) !== "sale",
     // A tour can be submitted and published only when complete (both languages, prices, images).
     validate: tourProblems,
     // A new slug takes its departures and discount codes along; then expire at once: static pages (home) regenerate

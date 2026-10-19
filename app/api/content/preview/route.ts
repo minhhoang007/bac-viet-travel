@@ -1,4 +1,5 @@
 import { draftMode, headers } from "next/headers";
+import { mayEditContent } from "@/app/_lib/content";
 import { allContentTypes, getContainer } from "@/bootstrap/container";
 import { hasRole } from "@/core/auth";
 import { localePath } from "@/core/i18n/routing";
@@ -23,7 +24,7 @@ export async function GET(request: Request): Promise<Response> {
   }
   const item = await content.get(url.searchParams.get("id") ?? "");
   const type = item && allContentTypes()[item.type];
-  if (!item || !type) return new Response("Not found", { status: 404 });
+  if (!item || !type || !(await mayEditContent(current.user, item.type))) return new Response("Not found", { status: 404 });
   mode.enable();
   return redirect(localePath(locale, type.publicPath(item.slug)));
 }

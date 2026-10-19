@@ -3,6 +3,7 @@
 import { notFound, redirect, unstable_rethrow } from "next/navigation";
 import { z } from "zod";
 import { requireStaff } from "@/app/_lib/admin";
+import { mayEditContent } from "@/app/_lib/content";
 import { AppError } from "@/core/errors";
 import { localePath } from "@/core/i18n/routing";
 import { zonedToUtc } from "@/core/i18n/time-zone";
@@ -29,6 +30,9 @@ async function run(formData: FormData, role: Role, action: string, step: (conten
   const back = returnTo.parse(formData.get("returnTo"));
   const id = uuid.parse(formData.get("id"));
   const rev = revision.parse(formData.get("revision"));
+  // The type's own rule (e.g. sales staff never touch tours): an item they may not work on is a plain 404.
+  const item = await content.get(id);
+  if (!item || !(await mayEditContent(user, item.type))) notFound();
   let result = "done";
   try {
     const work = async () => {
