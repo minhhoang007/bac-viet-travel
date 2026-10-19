@@ -50,7 +50,8 @@ export default async function AdminOverviewPage({ params }: { params: Promise<{ 
   const { locale } = await params;
   setRequestLocale(locale);
   // Staff who are not admins (marketing, sale…) land on their first page instead of a 404.
-  const staff = await requireStaff("editor", { secondFactor: false });
+  // With the second-factor gate: the overview shows revenue and guest names (only the layout skips the gate).
+  const staff = await requireStaff("editor");
   if (!hasRole(staff.user, "admin")) {
     if (ProductAdminOverview && (await productOverviewFor?.(staff.user))) {
       return (
