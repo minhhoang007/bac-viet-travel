@@ -2,7 +2,7 @@ import { boolean, index, integer, pgTable, text, timestamp, uuid } from "drizzle
 import { id, timestamps } from "@/db/columns";
 import { users } from "@/core/users/schema";
 
-export const AUTH_EVENT_KINDS = ["sign_in", "passkey_added", "passkey_removed", "totp_enabled", "totp_disabled", "backup_codes_new", "backup_code_used"] as const;
+export const AUTH_EVENT_KINDS = ["sign_in", "passkey_added", "passkey_removed", "totp_enabled", "totp_disabled", "backup_codes_new", "backup_code_used", "password_set", "password_changed"] as const;
 export type AuthEventKind = (typeof AUTH_EVENT_KINDS)[number];
 
 // Tables required by Better Auth (plural names, usePlural: true).

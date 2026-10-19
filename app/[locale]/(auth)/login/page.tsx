@@ -3,7 +3,8 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
 import { requireAppServices } from "@/app/_lib/session";
-import { sendMagicLink, signInWithGoogle } from "@/app/actions/auth";
+import { sendMagicLink, signInWithGoogle, signInWithPassword } from "@/app/actions/auth";
+import { PasswordSignInForm } from "@/components/auth/password-forms";
 import { signInWithCode } from "@/app/actions/security";
 import { getPublicEnv } from "@/bootstrap/env";
 import { LoginForm } from "@/components/auth/login-form";
@@ -17,7 +18,7 @@ import { Notice } from "@/components/feedback/notice";
 import { SubmitButton } from "@/components/forms/submit-button";
 import { getAppContent } from "@/content";
 
-type Props = { params: Promise<{ locale: Locale }>; searchParams: Promise<{ error?: string }> };
+type Props = { params: Promise<{ locale: Locale }>; searchParams: Promise<{ error?: string; reset?: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
@@ -26,7 +27,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function LoginPage({ params, searchParams }: Props) {
   const { locale } = await params;
-  const { error } = await searchParams;
+  const { error, reset } = await searchParams;
   setRequestLocale(locale);
   const app = await requireAppServices();
   if (await app.auth.getUser(await headers())) redirect(localePath(locale, authConfig.afterSignInPath));
@@ -47,12 +48,27 @@ export default async function LoginPage({ params, searchParams }: Props) {
           {c.errors.link}
         </Notice>
       )}
+      {reset === "done" && (
+        <Notice tone="success" className="mt-4">
+          {s.resetDone}
+        </Notice>
+      )}
       <div className="mt-8 grid gap-6">
         {/* Passkey first: one touch for staff who set one up (and it counts as the second factor). */}
         <div className="grid gap-1">
           <PasskeySignInButton label={s.passkey} failed={s.passkeyFailed} next={localePath(locale, authConfig.afterSignInPath)} />
           <p className="text-center text-xs text-muted-foreground">{s.passkeyHint}</p>
         </div>
+        {app.auth.methods.password && <p className="text-center text-xs text-muted-foreground uppercase">{c.or}</p>}
+        {app.auth.methods.password && (
+          <PasswordSignInForm
+            locale={locale}
+            action={signInWithPassword}
+            turnstileSiteKey={getPublicEnv().NEXT_PUBLIC_TURNSTILE_SITE_KEY}
+            forgotHref={localePath(locale, `${authConfig.signInPath}/reset`)}
+            labels={{ title: s.passwordTitle, email: s.email, password: s.password, submit: s.passwordSubmit, pending: s.passwordPending, forgot: s.forgot, errors: { wrong: s.passwordWrong, rate_limited: c.errors.rate_limited, captcha: s.captcha, error: c.errors.error } }}
+          />
+        )}
         {app.auth.methods.magicLink && <p className="text-center text-xs text-muted-foreground uppercase">{c.or}</p>}
         {app.auth.methods.magicLink && (
           <LoginForm locale={locale} sendMagicLink={sendMagicLink} signInWithCode={signInWithCode} turnstileSiteKey={getPublicEnv().NEXT_PUBLIC_TURNSTILE_SITE_KEY} labels={labels} />

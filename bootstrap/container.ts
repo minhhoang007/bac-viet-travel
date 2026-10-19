@@ -108,6 +108,8 @@ const MAGIC_LINK_PER_CLIENT: RateLimitRule = { max: 5, windowMs: 10 * 60_000 };
 const MAGIC_LINK_PER_RECIPIENT: RateLimitRule = { max: 3, windowMs: 10 * 60_000 };
 // Second-factor codes (TOTP, backup codes) per account: Better Auth locks only its own sign-in challenge.
 const SECOND_FACTOR_PER_USER: RateLimitRule = { max: 5, windowMs: 15 * 60_000 };
+// Password attempts per client and per address: room for typos, not for guessing.
+const PASSWORD_ATTEMPTS: RateLimitRule = { max: 10, windowMs: 15 * 60_000 };
 const CHECKOUT_LIMIT: RateLimitRule = { max: 10, windowMs: 10 * 60_000 };
 
 let cached: Container | undefined;
@@ -376,12 +378,15 @@ function buildApp(
       staff: authConfig.staff,
       confirmSignInPath: localePath(appConfig.defaultLocale, `${authConfig.signInPath}/confirm`),
       securityPath: localePath(appConfig.defaultLocale, authConfig.securityPath),
+      resetPasswordPath: localePath(appConfig.defaultLocale, `${authConfig.signInPath}/reset`),
+      checkBreachedPasswords: env.NODE_ENV !== "test",
     }),
-    { magicLink: authConfig.methods.magicLink, google: authConfig.methods.google && Boolean(google) },
+    { magicLink: authConfig.methods.magicLink, google: authConfig.methods.google && Boolean(google), password: authConfig.methods.password },
     overrides.authRateLimits ?? {
       perClient: rateLimiterFor(env, MAGIC_LINK_PER_CLIENT, logger),
       perRecipient: rateLimiterFor(env, MAGIC_LINK_PER_RECIPIENT, logger),
       secondFactor: rateLimiterFor(env, SECOND_FACTOR_PER_USER, logger),
+      password: rateLimiterFor(env, PASSWORD_ATTEMPTS, logger),
     },
     {
       db,
