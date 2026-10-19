@@ -126,7 +126,7 @@ export interface SecurityApi {
   disableTotp(headers: Headers, password?: string): Promise<void>;
   newBackupCodes(headers: Headers, password?: string): Promise<string[]>;
   hasPassword(userId: string): Promise<boolean>;
-  /** First password for a signed-in account without one ("invalid" when it already has one). */
+  /** First password for a signed-in staff account without one ("invalid" when it has one; PERMISSION_ERROR if not staff). */
   setPassword(headers: Headers, newPassword: string): Promise<PasswordResult>;
   /** "wrong": the current password does not match. Other devices are signed out. */
   changePassword(headers: Headers, currentPassword: string, newPassword: string): Promise<PasswordResult | "wrong">;
@@ -282,6 +282,8 @@ export function createAuthService(
       await run();
       return true;
     } catch (error) {
+      // A password sign-in out of code attempts: only signing in again helps (not "wrong code" forever).
+      if (codeOf(error) === "TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE") throw new AppError("RATE_LIMIT_ERROR", "Sign in again");
       if (isWrongCode(error)) return false;
       throw error;
     }
@@ -317,6 +319,10 @@ export function createAuthService(
       return (row?.n ?? 0) > 0;
     },
     async setPassword(headers, newPassword) {
+      // Passwords are for staff: a customer account keeps signing in by email link, Google or passkey.
+      const current = await getSession(headers);
+      if (!current) throw new AppError("AUTH_ERROR");
+      if (!hasRole(current.user, "editor")) throw new AppError("PERMISSION_ERROR");
       try {
         await auth.api.setPassword({ headers, body: { newPassword } });
         return "done";

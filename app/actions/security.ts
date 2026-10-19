@@ -46,7 +46,8 @@ const passwordOf = (formData?: FormData) => String(formData?.get("password") ?? 
 export async function verifySecondFactor(formData: FormData): Promise<void> {
   const app = await requireAppServices();
   const h = await headers();
-  if (!(await app.auth.getSession(h)) && !app.auth.hasPendingSecondFactor(h)) notFound();
+  const pending = !(await app.auth.getSession(h));
+  if (pending && !app.auth.hasPendingSecondFactor(h)) notFound();
   const locale = localeSchema.parse(formData.get("locale"));
   const next = safeNext(formData.get("next"));
   const parsed = code.safeParse(formData.get("code"));
@@ -58,7 +59,8 @@ export async function verifySecondFactor(formData: FormData): Promise<void> {
       if (await (backup ? app.auth.security.verifyBackupCode(h, value) : app.auth.security.verifyTotp(h, value))) redirect(localePath(locale, next));
     } catch (e) {
       unstable_rethrow(e);
-      error = isLocked(e) ? "locked" : "failed";
+      // A password sign-in out of attempts starts over from the sign-in page.
+      error = isLocked(e) ? (pending ? "expired" : "locked") : "failed";
     }
   }
   redirect(localePath(locale, `${authConfig.verifyPath}?error=${error}&next=${encodeURIComponent(next)}`));

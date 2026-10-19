@@ -52,11 +52,20 @@ export default async function VerifyPage({ params, searchParams }: Props) {
         <h1 className="text-2xl font-bold">{c.title}</h1>
         <p className="mt-2 text-sm text-muted-foreground">{sp.fresh ? c.fresh : c.intro}</p>
       </div>
-      {sp.error && <Notice tone="danger">{sp.error === "locked" ? c.locked : c.wrong}</Notice>}
+      {sp.error === "expired" ? (
+        <Notice tone="danger">
+          {c.expired}{" "}
+          <a href={localePath(locale, authConfig.signInPath)} className="font-medium underline underline-offset-4">
+            {c.signInAgain}
+          </a>
+        </Notice>
+      ) : (
+        sp.error && <Notice tone="danger">{sp.error === "locked" ? c.locked : c.wrong}</Notice>
+      )}
 
-      {factors.passkeys > 0 && <PasskeySignInButton label={c.passkey} failed={c.passkeyFailed} next={localePath(locale, next)} variant="default" />}
+      {sp.error !== "expired" && factors.passkeys > 0 && <PasskeySignInButton label={c.passkey} failed={c.passkeyFailed} next={localePath(locale, next)} variant="default" />}
 
-      {factors.totp && (
+      {sp.error !== "expired" && factors.totp && (
         <>
           <form action={verifySecondFactor} className="grid gap-2" data-testid="verify-totp">
             {hidden}

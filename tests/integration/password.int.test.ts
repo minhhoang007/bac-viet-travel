@@ -104,6 +104,24 @@ describe("sign-in with a password", () => {
     expect(await signIns(id)).toBe(before + 1);
   });
 
+  it("out of code attempts after a password: 'sign in again', not 'wrong code' forever", async () => {
+    await invitedStaff("tries@example.com");
+    const first = await passwordSession("tries@example.com");
+    const { totpURI } = await auth.security.startTotp(first, PASSWORD);
+    const secret = new URL(totpURI).searchParams.get("secret")!;
+    expect(await auth.security.verifyTotp(first, totp(secret))).toBe(true);
+
+    const pending = withCookies((await auth.signInPassword({ email: "tries@example.com", password: PASSWORD, clientKey: "c" }, origin())).setCookies);
+    const wrong = totp(secret) === "000000" ? "111111" : "000000";
+    for (let i = 0; i < 5; i++) expect(await auth.security.verifyTotp(pending, wrong)).toBe(false);
+    await expect(auth.security.verifyTotp(pending, totp(secret, Date.now() + 30_000))).rejects.toMatchObject({ code: "RATE_LIMIT_ERROR" });
+  });
+
+  it("the demo site has no passwords (its mailbox is open to visitors)", () => {
+    expect(testApp(handle.db, { env: { DEMO_MODE: "true" } }).app.auth.methods.password).toBe(false);
+    expect(auth.methods.password).toBe(true);
+  });
+
   it("the HTTP endpoints for passwords are closed: only this service signs in, resets or changes them", async () => {
     for (const path of ["/sign-in/email", "/sign-up/email", "/request-password-reset", "/reset-password", "/change-password", "/set-password"]) {
       const res = await auth.handler(new Request(`${BASE_URL}/api/auth${path}`, { method: "POST", headers: { origin: BASE_URL, "content-type": "application/json" }, body: "{}" }));
@@ -147,6 +165,11 @@ describe("password on the security page", () => {
     expect(await auth.getSession(stale)).toBeNull();
     expect(await auth.getSession(first)).not.toBeNull();
     expect((await auth.security.events(id)).map((e) => e.kind)).toContain("password_changed");
+  });
+
+  it("a customer cannot give their account a password", async () => {
+    const headers = await signIn(t, "customer@example.com");
+    await expect(auth.security.setPassword(headers, PASSWORD)).rejects.toMatchObject({ code: "PERMISSION_ERROR" });
   });
 
   it("a staff member without a password sets a first one (once)", async () => {

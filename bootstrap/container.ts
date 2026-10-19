@@ -359,6 +359,8 @@ function buildApp(
   },
 ): AppServices {
   const { db } = ctx;
+  // Never on the demo site: its mailbox is shown to visitors, so a password link there would be anyone's.
+  const password = authConfig.methods.password && !env.DEMO_MODE;
   const google =
     env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
       ? { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET }
@@ -371,7 +373,7 @@ function buildApp(
       mail,
       secret: env.extra.BETTER_AUTH_SECRET!,
       baseURL: env.NEXT_PUBLIC_SITE_URL,
-      methods: authConfig.methods,
+      methods: { ...authConfig.methods, password },
       trustedProviders: authConfig.trustedProviders,
       google,
       disableRateLimit: env.NODE_ENV === "test",
@@ -381,7 +383,7 @@ function buildApp(
       resetPasswordPath: localePath(appConfig.defaultLocale, `${authConfig.signInPath}/reset`),
       checkBreachedPasswords: env.NODE_ENV !== "test",
     }),
-    { magicLink: authConfig.methods.magicLink, google: authConfig.methods.google && Boolean(google), password: authConfig.methods.password },
+    { magicLink: authConfig.methods.magicLink, google: authConfig.methods.google && Boolean(google), password },
     overrides.authRateLimits ?? {
       perClient: rateLimiterFor(env, MAGIC_LINK_PER_CLIENT, logger),
       perRecipient: rateLimiterFor(env, MAGIC_LINK_PER_RECIPIENT, logger),

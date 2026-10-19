@@ -3,6 +3,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import postgres from "postgres";
+import { totp } from "../integration/setup/totp";
 import { e2eServerEnv } from "./server-env";
 import { signInStaff } from "./staff";
 
@@ -61,6 +62,29 @@ test("invited staff set a password from the emailed link, sign in with it, then 
   await expect(hire.getByTestId("security-password")).toContainText("Đã đặt");
   const axe = await new AxeBuilder({ page: hire }).withTags(["wcag2a", "wcag2aa"]).analyze();
   expect(axe.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id)).toEqual([]);
+
+  // The authenticator app, set up with the password asked again (an account with a password).
+  const app = hire.getByTestId("security-totp");
+  await app.getByLabel("Mật khẩu hiện tại").fill(password);
+  await app.getByTestId("totp-start").click();
+  const key = (await app.getByTestId("totp-key").textContent())!.trim();
+  await app.getByLabel("Mã từ ứng dụng Authenticator").fill(totp(key));
+  await app.getByRole("button", { name: "Xác nhận" }).click();
+  await expect(hire).toHaveURL(/\/security\?result=done$/);
+
+  // Next sign-in, another browser: password, then the code before any session, then the admin area.
+  const later = await (await browser.newContext()).newPage();
+  await later.goto("/login");
+  const again = later.getByTestId("password-sign-in");
+  await again.getByLabel("Email").fill(email);
+  await again.getByLabel("Mật khẩu", { exact: true }).fill(password);
+  await again.getByRole("button", { name: "Đăng nhập" }).click();
+  await expect(later).toHaveURL(/\/verify\?next=/);
+  await later.getByTestId("verify-totp").getByLabel("Mã từ ứng dụng Authenticator").fill(totp(key, Date.now() + 30_000));
+  await later.getByTestId("verify-totp").getByRole("button", { name: "Xác thực" }).click();
+  await expect(later).toHaveURL(/\/dashboard$/);
+  await later.goto("/admin/bookings");
+  await expect(later.getByRole("heading", { level: 1, name: "Đơn đặt tour" })).toBeVisible();
 });
 
 test("forgot password: the same answer for any address, and the login page links to it", async ({ page }) => {
