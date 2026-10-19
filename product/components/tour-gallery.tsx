@@ -74,7 +74,13 @@ export function TourGallery({
       data-testid="gallery"
       className="relative"
     >
-      <div className={cn("grid gap-2 overflow-hidden", grid)}>
+      {/* Phones: every photo in a sideways swipe, edge to edge, the next one peeking in. From sm: the 1+N grid. */}
+      <div
+        className={cn(
+          "-mx-4 flex snap-x snap-mandatory scroll-pl-4 gap-2 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:grid sm:snap-none sm:overflow-hidden sm:px-0",
+          grid,
+        )}
+      >
         {shown.map((src, i) => {
           const photo = (
             <button
@@ -82,11 +88,12 @@ export function TourGallery({
               type="button"
               onClick={(e) => open(i, e.currentTarget)}
               className={cn(
-                "relative block overflow-hidden focus-visible:outline-2 focus-visible:outline-offset-2",
+                "relative block w-[88%] shrink-0 snap-start overflow-hidden focus-visible:outline-2 focus-visible:outline-offset-2 sm:w-auto",
+                n === 1 && "w-full",
                 i === 0
                   ? cn("aspect-[4/3]", big)
                   : cn(
-                      "hidden aspect-[4/3] sm:block",
+                      "aspect-[4/3]",
                       shown.length === 2 && "sm:aspect-[16/9]",
                       shown.length >= 3 && "sm:aspect-auto",
                     ),
@@ -99,7 +106,7 @@ export function TourGallery({
                 alt={i === 0 ? title : ""}
                 fill
                 priority={i === 0}
-                sizes={i === 0 ? "(min-width: 640px) 50vw, 100vw" : "25vw"}
+                sizes={i === 0 ? "(min-width: 640px) 50vw, 88vw" : "(min-width: 640px) 25vw, 88vw"}
                 className="object-cover transition duration-500 hover:scale-105"
               />
             </button>

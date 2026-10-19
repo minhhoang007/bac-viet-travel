@@ -57,7 +57,8 @@ test("tours page lists every tour; tour page has itinerary, TouristTrip JSON-LD 
   await expect(page.getByTestId("itinerary").locator("li")).toHaveCount(2);
   const ld = await page.locator('script[type="application/ld+json"]').allTextContents();
   expect(ld.some((s) => s.includes('"@type":"TouristTrip"') && s.includes('"priceCurrency":"VND"'))).toBe(true);
-  const wa = await page.locator("#book").getByRole("link", { name: "WhatsApp" }).getAttribute("href");
+  // Other ways to reach us sit in their own box under the booking box.
+  const wa = await page.locator("#ask").getByRole("link", { name: "WhatsApp" }).getAttribute("href");
   expect(decodeURIComponent(wa!)).toContain("Du thuyền Hạ Long 2 ngày 1 đêm");
 });
 
@@ -65,7 +66,7 @@ test("inquiry form validates on the server and keeps the visitor on the page", a
   await page.goto("/tours/sapa-trekking-2d1n");
   // The inquiry is a secondary option: folded under "Ask us before booking".
   await page.getByTestId("inquiry").getByText("Hỏi tư vấn trước khi đặt").click();
-  const form = page.locator("#book form");
+  const form = page.locator("#ask form");
   await form.getByLabel("Họ tên").fill("Nguyễn Văn A");
   await form.getByLabel("Email", { exact: true }).and(form.locator("input[type=email]")).fill("not-an-email");
   await form.getByLabel("Số điện thoại / WhatsApp").fill("abc");

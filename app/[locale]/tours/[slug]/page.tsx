@@ -16,6 +16,7 @@ import { features } from "@/config/features";
 import { getBookingContent } from "@/product/booking/content";
 import { DEFAULT_TOUR_PRICING } from "@/product/booking/rules";
 import { TourBookButton, TourBookingProvider, TourDepartureList } from "@/product/components/tour-departures";
+import { MobileRail } from "@/product/components/mobile-rail";
 import { TourGallery } from "@/product/components/tour-gallery";
 import { InquiryForm } from "@/product/components/inquiry-form";
 import { TourCard } from "@/product/components/tour-card";
@@ -144,7 +145,23 @@ export default async function TourPage({ params }: Props) {
           </IntentLink>
         </nav>
         <h1 className="mt-4 max-w-4xl font-heading type-h1">{tour.title}</h1>
-        <div className="mt-8">
+        {/* The essentials at a glance, before the photos: how long, where, from how much (links to the dates). */}
+        <p className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 type-small text-muted-foreground" data-testid="tour-quick">
+          <span className="inline-flex items-center gap-1.5">
+            <Clock aria-hidden="true" className="size-4 text-primary" />
+            {duration}
+          </span>
+          <span aria-hidden="true">·</span>
+          <span className="inline-flex items-center gap-1.5">
+            <MapPin aria-hidden="true" className="size-4 text-primary" />
+            {c.destinations[tour.destination].name}
+          </span>
+          <span aria-hidden="true">·</span>
+          <a href={page.preview ? "#book" : "#departures"} className="underline-offset-4 hover:underline">
+            {c.tours.from} <strong className="font-medium text-foreground">{price}</strong> {c.tours.perPerson}
+          </a>
+        </p>
+        <div className="mt-6 sm:mt-8">
           <TourGallery images={tour.images} credits={tour.imageCredits} title={tour.title} locale={locale} slug={tour.slug} />
         </div>
       </Container>
@@ -255,7 +272,9 @@ export default async function TourPage({ params }: Props) {
           <p className="mt-10 type-small text-muted-foreground">{c.tours.priceNote}</p>
         </div>
 
-        <aside id="book" className="h-fit border border-border bg-muted p-6 lg:sticky lg:top-28">
+        {/* Two boxes: booking (price, the one main button, what it commits to), then other ways (private, ask us). */}
+        <div className="grid h-fit gap-4 lg:sticky lg:top-28">
+        <aside id="book" className="border border-border bg-muted p-6" aria-label={c.tours.bookBox}>
           <p className="text-sm text-muted-foreground">
             {c.tours.from} <span className="font-heading text-3xl text-foreground">{price}</span> {c.tours.perPerson}
           </p>
@@ -284,8 +303,14 @@ export default async function TourPage({ params }: Props) {
                   </li>
                 ))}
               </ul>
+            </>
+          )}
+        </aside>
+        <aside id="ask" className="border border-border p-6" aria-label={c.tours.otherWaysBox}>
+          {!page.preview && (
+            <>
               {tour.private && (
-                <div className="mt-4 border-t border-border pt-4" data-testid="private-offer">
+                <div className="mb-4 border-b border-border pb-4" data-testid="private-offer">
                   <p className="text-sm font-medium">{b.privateFrom(formatPrice({ price: tour.private.tiers.at(-1)! }, locale))}</p>
                   <p className="mt-1 type-small text-muted-foreground">{b.privateHint}</p>
                   <IntentButtonLink href={localePath(locale, `/tours/${slug}/book?type=private`)} variant="outline" className="mt-2 w-full">
@@ -294,7 +319,7 @@ export default async function TourPage({ params }: Props) {
                 </div>
               )}
               {features.email && (
-                <details className="mt-4 border-t border-border pt-4" data-testid="inquiry">
+                <details data-testid="inquiry">
                   <summary className="cursor-pointer text-sm font-medium">{c.tours.askAdvice}</summary>
                   <p className="mt-2 text-sm text-muted-foreground">{c.inquiry.subtitle}</p>
                   <div className="mt-4">
@@ -313,6 +338,7 @@ export default async function TourPage({ params }: Props) {
             </a>
           </div>
         </aside>
+        </div>
       </Container>
 
       {!page.preview && (
@@ -330,7 +356,7 @@ export default async function TourPage({ params }: Props) {
       {related.length > 0 && (
         <Container className="border-t border-border pb-12 pt-12 sm:pb-24 sm:pt-20">
           <h2 className="font-heading type-h2">{c.tours.related}</h2>
-          <div className="mt-10 grid gap-x-8 gap-y-10 sm:grid-cols-2 sm:gap-y-14 lg:grid-cols-3">
+          <MobileRail grid="sm:grid-cols-2 sm:gap-x-8 sm:gap-y-14 lg:grid-cols-3" className="mt-10">
             {related.map((t) => (
               <TourCard
                 key={t.slug}
@@ -344,9 +370,11 @@ export default async function TourPage({ params }: Props) {
                 price={formatPrice(t, locale)}
                 fromLabel={c.tours.from}
                 perPersonLabel={c.tours.perPerson}
+                viewLabel={c.tours.viewTour}
+                sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 84vw"
               />
             ))}
-          </div>
+          </MobileRail>
         </Container>
       )}
     </TourBookingProvider>

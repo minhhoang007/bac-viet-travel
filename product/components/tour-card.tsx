@@ -1,5 +1,6 @@
 import { IntentLink } from "./intent-link";
 import Image from "next/image";
+import { ArrowRight } from "lucide-react";
 import { isHotlinked } from "../media/unsplash";
 import { ViewTransition } from "react";
 
@@ -21,6 +22,8 @@ export interface TourCardProps {
   slug: string;
   /** A short notice under the price (e.g. no departure on the searched day). */
   note?: string;
+  /** "View tour" beside the price (the whole card stays one link target: photo and title). */
+  viewLabel?: string;
 }
 
 /** Shared name of a tour's card photo and its tour page's first photo (one per page: a tour has one card per list). */
@@ -44,12 +47,21 @@ export function TourCard(p: TourCardProps) {
             {p.title}
           </IntentLink>
         </h3>
-        <p className="mt-2 line-clamp-3 flex-1 type-body text-muted-foreground">{p.summary}</p>
-        <p className="mt-4 type-small text-muted-foreground">
-          {p.fromLabel} <span className="text-lg font-medium text-foreground" data-price>
-            {p.price}
-          </span> {p.perPersonLabel}
-        </p>
+        <p className="mt-2 line-clamp-2 flex-1 type-body text-muted-foreground sm:line-clamp-3">{p.summary}</p>
+        <div className="mt-4 flex items-baseline justify-between gap-3 border-t border-border pt-4">
+          <p className="type-small text-muted-foreground">
+            {p.fromLabel} <span className="text-lg font-medium text-foreground" data-price>
+              {p.price}
+            </span> {p.perPersonLabel}
+          </p>
+          {p.viewLabel && (
+            // Decorative repeat of the title link (screen readers already have it): hidden from them, out of tab order.
+            <IntentLink href={p.href} tabIndex={-1} aria-hidden="true" className="type-label inline-flex shrink-0 items-center gap-1.5 text-primary">
+              {p.viewLabel}
+              <ArrowRight className="size-4 transition group-hover:translate-x-0.5" />
+            </IntentLink>
+          )}
+        </div>
         {p.note && (
           <p className="mt-1 type-small font-medium text-foreground" data-tour-note>
             {p.note}

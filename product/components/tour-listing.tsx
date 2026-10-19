@@ -147,6 +147,7 @@ export function TourListing({
                   price={formatPrice(tour, locale)}
                   fromLabel={c.tours.from}
                   perPersonLabel={c.tours.perPerson}
+                  viewLabel={c.tours.viewTour}
                   priority={i === 0}
                   // Grid beside the 16rem filter column: 3 columns from xl, 2 from sm.
                   sizes="(min-width: 1280px) 300px, (min-width: 640px) 45vw, 100vw"
