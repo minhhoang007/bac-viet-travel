@@ -49,6 +49,12 @@ export function refundLeft(b: { refundDueVnd: number; refundedVnd: number }): nu
   return b.refundDueVnd - b.refundedVnd;
 }
 
+/** What the guest has paid for the trip itself (deposit, plus the balance once settled); 0 while only held. */
+export function paidSoFar(b: { status: BookingStatus; totalVnd: number; depositVnd: number; balancePaidAt: Date | null }): number {
+  if (!isSold(b.status)) return 0;
+  return b.balancePaidAt ? Math.max(b.totalVnd, b.depositVnd) : b.depositVnd;
+}
+
 /** Rest of the total still to collect (D5): sold bookings whose balance is not settled yet. */
 export function balanceDue(b: { status: BookingStatus; totalVnd: number; depositVnd: number; balancePaidAt: Date | null }): number {
   if (!isSold(b.status) || b.balancePaidAt) return 0;

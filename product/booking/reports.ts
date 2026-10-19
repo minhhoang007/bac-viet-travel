@@ -1,6 +1,6 @@
-import { and, asc, eq, gt, gte, inArray, isNull, lt, lte, not, or, sql } from "drizzle-orm";
+import { and, asc, eq, gt, gte, inArray, isNull, lt, lte, sql } from "drizzle-orm";
 import type { Db } from "@/db/client";
-import { bookingPayments, bookings, departures, type BookingSource } from "../schema/booking";
+import { bookingPayments, bookingRefunds, bookings, departures, type BookingSource } from "../schema/booking";
 import { addDays, vietnamDayStart } from "./rules";
 import { refundOwed, SOLD_STATUSES } from "./status";
 
@@ -70,8 +70,10 @@ export function createReports(deps: { db: Db }) {
   // The channel of a booking's paid deposit or balance; none recorded means staff entered the money by hand.
   // Columns are written with their table: Drizzle leaves them bare in a one-table query, and a bare "id" inside the
   // subquery would mean booking_payments.id.
-  const channel = (purpose: "deposit" | "balance") =>
-    sql<CashChannel>`coalesce((select p.method from booking_payments p where p.booking_id = bookings.id and p.purpose = ${purpose} and p.status = 'paid' order by p.paid_at limit 1), 'staff')`;
+  // Matched by paid time: the payment that settled it stamped the booking with its own time (one transfer of the whole
+  // total settles both deposit and balance).
+  const channel = (paidAt: "deposit_paid_at" | "balance_paid_at") =>
+    sql<CashChannel>`coalesce((select p.method from booking_payments p where p.booking_id = bookings.id and p.status = 'paid' and p.paid_at = bookings.${sql.raw(paidAt)} limit 1), 'staff')`;
   return {
     /**
      * Money in by the day it arrived (Vietnam days, inclusive), the same rule as the dashboard's "collected":
@@ -81,21 +83,24 @@ export function createReports(deps: { db: Db }) {
     async cash(from: string, to: string): Promise<CashReport> {
       const start = vietnamDayStart(from);
       const end = vietnamDayStart(addDays(to, 1));
-      // A payment that settled a deposit or balance stamps the booking with its own paid time (deposits.ts settle).
-      // coalesce: with no paid time on the booking (late deposit) the test is NULL, and NOT NULL would drop the payment.
-      const counted = sql`coalesce(${or(
-        and(eq(bookingPayments.purpose, "deposit"), eq(bookings.depositPaidAt, bookingPayments.paidAt)),
-        and(eq(bookingPayments.purpose, "balance"), eq(bookings.balancePaidAt, bookingPayments.paidAt)),
-      )}, false)`;
+      // A payment that settled a deposit or balance stamps the booking with its own paid time (deposits.ts settle);
+      // that part is already in deposits / balances above. The rest of each payment (all of it for a late deposit or
+      // a second payment; what a transfer brought beyond the deposit or the total) is extra money.
+      const settled = sql`case
+        when ${bookingPayments.purpose} = 'deposit' and ${bookings.depositPaidAt} = ${bookingPayments.paidAt}
+          then ${bookings.depositVnd} + case when ${bookings.balancePaidAt} = ${bookingPayments.paidAt} then ${bookings.totalVnd} - ${bookings.depositVnd} else 0 end
+        when ${bookingPayments.purpose} = 'balance' and ${bookings.balancePaidAt} = ${bookingPayments.paidAt} then ${bookings.totalVnd} - ${bookings.depositVnd}
+        else 0 end`;
       const [deposits, balances, [extra], [refunded]] = await Promise.all([
-        db.select({ channel: channel("deposit"), vnd: bookings.depositVnd }).from(bookings).where(and(gte(bookings.depositPaidAt, start), lt(bookings.depositPaidAt, end))),
-        db.select({ channel: channel("balance"), vnd: sql<number>`${bookings.totalVnd} - ${bookings.depositVnd}` }).from(bookings).where(and(gte(bookings.balancePaidAt, start), lt(bookings.balancePaidAt, end))),
+        db.select({ channel: channel("deposit_paid_at"), vnd: bookings.depositVnd }).from(bookings).where(and(gte(bookings.depositPaidAt, start), lt(bookings.depositPaidAt, end))),
+        db.select({ channel: channel("balance_paid_at"), vnd: sql<number>`${bookings.totalVnd} - ${bookings.depositVnd}` }).from(bookings).where(and(gte(bookings.balancePaidAt, start), lt(bookings.balancePaidAt, end))),
         db
-          .select({ vnd: sql<number>`coalesce(sum(${bookingPayments.amountVnd}), 0)::bigint` })
+          .select({ vnd: sql<number>`coalesce(sum(${bookingPayments.amountVnd} - ${settled}), 0)::bigint` })
           .from(bookingPayments)
           .innerJoin(bookings, eq(bookings.id, bookingPayments.bookingId))
-          .where(and(eq(bookingPayments.status, "paid"), gte(bookingPayments.paidAt, start), lt(bookingPayments.paidAt, end), not(counted))),
-        db.select({ vnd: sql<number>`coalesce(sum(${bookings.refundedVnd}), 0)::bigint` }).from(bookings).where(and(gte(bookings.refundedAt, start), lt(bookings.refundedAt, end))),
+          .where(and(eq(bookingPayments.status, "paid"), gte(bookingPayments.paidAt, start), lt(bookingPayments.paidAt, end))),
+        // Each refund on its own day (booking_refunds): a later refund never moves an earlier one.
+        db.select({ vnd: sql<number>`coalesce(sum(${bookingRefunds.amountVnd}), 0)::bigint` }).from(bookingRefunds).where(and(gte(bookingRefunds.refundedAt, start), lt(bookingRefunds.refundedAt, end))),
       ]);
       const byChannel = (["vnpay", "transfer", "staff"] as const)
         .map((ch) => ({

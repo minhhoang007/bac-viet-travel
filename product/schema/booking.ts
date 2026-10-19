@@ -106,6 +106,8 @@ export const bookings = pgTable(
     uniqueIndex("bookings_code_idx").on(t.code),
     index("bookings_departure_status_idx").on(t.departureId, t.status),
     check("bookings_seats_check", sql`${t.seats} > 0`),
+    // Money never negative, and never more given back than owed (the services keep the rest of the rules).
+    check("bookings_money_check", sql`${t.totalVnd} >= 0 and ${t.depositVnd} >= 0 and ${t.refundDueVnd} >= 0 and ${t.refundedVnd} >= 0 and ${t.refundedVnd} <= ${t.refundDueVnd}`),
   ],
 );
 
@@ -136,6 +138,23 @@ export const bookingPayments = pgTable(
     ...timestamps(),
   },
   (t) => [uniqueIndex("booking_payments_txn_ref_idx").on(t.txnRef), index("booking_payments_booking_idx").on(t.bookingId)],
+);
+
+/**
+ * Money given back, one row per refund staff marked as sent: its own amount and day, so a later refund never moves
+ * an earlier one to another period (bookings.refundedVnd keeps the running total).
+ */
+export const bookingRefunds = pgTable(
+  "booking_refunds",
+  {
+    id: id(),
+    bookingId: uuid("booking_id").notNull().references(() => bookings.id, { onDelete: "cascade" }),
+    amountVnd: integer("amount_vnd").notNull(),
+    refundedAt: timestamp("refunded_at", { withTimezone: true }).notNull(),
+    note: text("note").notNull().default(""),
+    ...timestamps(),
+  },
+  (t) => [index("booking_refunds_booking_idx").on(t.bookingId), index("booking_refunds_refunded_at_idx").on(t.refundedAt), check("booking_refunds_amount_positive", sql`${t.amountVnd} > 0`)],
 );
 
 export type BookingPayment = typeof bookingPayments.$inferSelect;

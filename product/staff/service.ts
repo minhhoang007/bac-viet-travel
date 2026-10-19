@@ -29,9 +29,9 @@ export function createStaffService(deps: { db: Db; audit?: ProductContext["audit
 
     async set(actor, userId, role) {
       if (!deps.audit) throw new AppError("MODULE_DISABLED", "Admin module is off");
-      await deps.audit.audited(actor, { action: role ? "staff.role" : "staff.remove", targetType: "user", targetId: userId, metadata: { role } }, async () => {
-        if (role) await db.insert(staffRoles).values({ userId, role }).onConflictDoUpdate({ target: staffRoles.userId, set: { role, updatedAt: new Date() } });
-        else await db.delete(staffRoles).where(eq(staffRoles.userId, userId));
+      await deps.audit.audited(actor, { action: role ? "staff.role" : "staff.remove", targetType: "user", targetId: userId, metadata: { role } }, async (tx) => {
+        if (role) await tx.insert(staffRoles).values({ userId, role }).onConflictDoUpdate({ target: staffRoles.userId, set: { role, updatedAt: new Date() } });
+        else await tx.delete(staffRoles).where(eq(staffRoles.userId, userId));
         return true;
       });
     },

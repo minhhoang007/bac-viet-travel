@@ -22,8 +22,8 @@ export function createCompanyService(deps: { db: Db; audit?: ProductContext["aud
 
   const save = async (actor: Actor, key: "company" | "bank", value: Record<string, unknown>) => {
     if (!deps.audit) throw new AppError("MODULE_DISABLED", "Admin module is off");
-    await deps.audit.audited(actor, { action: `settings.${key}`, targetType: "setting", targetId: key, metadata: key === "bank" ? value : { fields: Object.keys(value) } }, async () => {
-      await db.insert(siteSettings).values({ key, value }).onConflictDoUpdate({ target: siteSettings.key, set: { value, updatedAt: new Date() } });
+    await deps.audit.audited(actor, { action: `settings.${key}`, targetType: "setting", targetId: key, metadata: key === "bank" ? value : { fields: Object.keys(value) } }, async (tx) => {
+      await tx.insert(siteSettings).values({ key, value }).onConflictDoUpdate({ target: siteSettings.key, set: { value, updatedAt: new Date() } });
       return true;
     });
   };

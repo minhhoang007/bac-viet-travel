@@ -2,7 +2,7 @@ import { desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { AppError } from "@/core/errors";
 import type { ProductContext } from "@/core/product/context";
-import type { Db } from "@/db/client";
+import type { Db, DbTx } from "@/db/client";
 import { discountCodes, type DiscountCode } from "../schema/booking";
 import { takesSeatsB } from "./status";
 
@@ -59,7 +59,7 @@ export interface DiscountAdmin {
 export function createDiscountAdmin(deps: { db: Db; audit?: ProductContext["audit"]; now?: () => Date }): DiscountAdmin {
   const { db } = deps;
   const now = deps.now ?? (() => new Date());
-  const audited = (actor: Actor, action: string, targetId: string, metadata: Record<string, unknown>, work: () => Promise<boolean>) => {
+  const audited = (actor: Actor, action: string, targetId: string, metadata: Record<string, unknown>, work: (tx: DbTx) => Promise<boolean>) => {
     if (!deps.audit) throw new AppError("MODULE_DISABLED", "Admin module is off");
     return deps.audit.audited(actor, { action, targetType: "discount", targetId, metadata }, work);
   };
@@ -82,8 +82,8 @@ export function createDiscountAdmin(deps: { db: Db; audit?: ProductContext["audi
       if (!parsed.success) return { status: "invalid", fieldErrors: fieldErrorsOf(parsed.error) };
       const input = parsed.data;
       let taken = false;
-      await audited(actor, "discount.create", input.code, { kind: input.kind, value: input.value, validFrom: input.validFrom, validTo: input.validTo }, async () => {
-        const inserted = await db.insert(discountCodes).values(input).onConflictDoNothing().returning({ id: discountCodes.id });
+      await audited(actor, "discount.create", input.code, { kind: input.kind, value: input.value, validFrom: input.validFrom, validTo: input.validTo }, async (tx) => {
+        const inserted = await tx.insert(discountCodes).values(input).onConflictDoNothing().returning({ id: discountCodes.id });
         taken = inserted.length === 0;
         return !taken;
       });
@@ -95,8 +95,8 @@ export function createDiscountAdmin(deps: { db: Db; audit?: ProductContext["audi
       const parsed = discountUpdateSchema.safeParse(raw);
       if (!parsed.success) return { status: "invalid", fieldErrors: fieldErrorsOf(parsed.error) };
       const input = parsed.data;
-      const done = await audited(actor, "discount.update", id, { kind: input.kind, value: input.value, validFrom: input.validFrom, validTo: input.validTo, maxUses: input.maxUses }, async () => {
-        const updated = await db.update(discountCodes).set(input).where(eq(discountCodes.id, id)).returning({ id: discountCodes.id });
+      const done = await audited(actor, "discount.update", id, { kind: input.kind, value: input.value, validFrom: input.validFrom, validTo: input.validTo, maxUses: input.maxUses }, async (tx) => {
+        const updated = await tx.update(discountCodes).set(input).where(eq(discountCodes.id, id)).returning({ id: discountCodes.id });
         return updated.length > 0;
       });
       return done ? { status: "updated" } : { status: "not_found" };
@@ -104,8 +104,8 @@ export function createDiscountAdmin(deps: { db: Db; audit?: ProductContext["audi
 
     async setActive(actor, id, active) {
       if (!z.uuid().safeParse(id).success) return false;
-      return audited(actor, active ? "discount.enable" : "discount.disable", id, {}, async () => {
-        const updated = await db.update(discountCodes).set({ active }).where(eq(discountCodes.id, id)).returning({ id: discountCodes.id });
+      return audited(actor, active ? "discount.enable" : "discount.disable", id, {}, async (tx) => {
+        const updated = await tx.update(discountCodes).set({ active }).where(eq(discountCodes.id, id)).returning({ id: discountCodes.id });
         return updated.length > 0;
       });
     },

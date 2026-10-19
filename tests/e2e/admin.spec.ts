@@ -95,11 +95,14 @@ test("staff confirm one booking and cancel another; seats return to sale; everyt
   await page.goto("/admin/bookings/BV-ADMN22");
 
   await page.goto("/admin/bookings/BV-ADMN33");
-  // Cancelling is folded away, and staff must say whether the deposit goes back.
+  // Cancelling is folded away; the refund is pre-filled from the cancellation policy and staff may change it.
   await expect(page.getByTestId("admin-cancel")).toBeHidden();
   await page.getByTestId("admin-cancel-panel").getByText("Huỷ đơn…").click();
   await page.getByLabel("Lý do huỷ (gửi cho khách)").fill("Khách đổi lịch");
-  await page.getByLabel("Hoàn tiền cọc cho khách").check();
+  const refund = page.getByLabel("Số tiền hoàn cho khách (VND)");
+  await expect(page.getByTestId("admin-cancel-panel")).toContainText("Theo chính sách huỷ");
+  await expect(refund).toHaveAttribute("max", /^\d+$/);
+  await refund.fill(String(await refund.getAttribute("max")));
   await page.getByTestId("admin-cancel").click();
   await expect(page.locator("[data-admin-status=cancelled]")).toBeVisible();
   await expect(page.getByTestId("admin-next-step")).toContainText("Cần hoàn");
@@ -418,7 +421,7 @@ test("two-step verification: staff set up a second factor first, pass it each se
   page.on("dialog", (dialog) => dialog.accept());
   await page.getByTestId("admin-cancel-panel").getByText("Huỷ đơn…").click();
   await page.getByLabel("Lý do huỷ (gửi cho khách)").fill("Thử xác thực lại");
-  await page.getByLabel("Không hoàn cọc (theo chính sách huỷ)").check();
+  await page.getByLabel("Số tiền hoàn cho khách (VND)").fill("0");
   await page.getByTestId("admin-cancel").click();
   await expect(page).toHaveURL(/\/verify\?fresh=1&next=%2Fadmin%2Fbookings%2FBV-MFA222$/);
   await expect(page.getByText("Thao tác này cần xác thực lại")).toBeVisible();

@@ -3,9 +3,10 @@ import { AppError } from "@/core/errors";
 import type { Logger } from "@/core/logger";
 import type { MailPort } from "@/core/ports/mail";
 import type { ProductContext } from "@/core/product/context";
-import type { Db } from "@/db/client";
+import type { Db, DbTx } from "@/db/client";
 import { createHash, randomBytes, randomInt } from "node:crypto";
-import { bookingPayments, bookings, departures, type Booking, type BookingPayment, type BookingSource, type BookingStatus, type Departure } from "../schema/booking";
+import { paidSoFar, refundLeft } from "./lifecycle";
+import { bookingPayments, bookingRefunds, bookings, departures, type Booking, type BookingPayment, type BookingSource, type BookingStatus, type Departure } from "../schema/booking";
 import { bookingStatusEmail, reminderEmail } from "./emails";
 import type { ReceiveTransferResult } from "./deposits";
 import { createDepartureAdmin, type DepartureAdmin } from "./admin-departures";
@@ -32,7 +33,8 @@ export interface BookingAdmin extends DepartureAdmin {
   list(options?: { filter?: BookingFilter; source?: BookingSource; tourSlug?: string; from?: string; to?: string; query?: string; page?: number; pageSize?: number }): Promise<{ rows: AdminBookingRow[]; total: number }>;
   get(code: string): Promise<{ booking: Booking; departure: Departure; payments: BookingPayment[] } | null>;
   confirm(actor: Actor, code: string): Promise<boolean>;
-  cancel(actor: Actor, code: string, input: { reason: string; refund: boolean }): Promise<boolean>;
+  /** `refundVnd`: amount given back, 0 up to what the guest paid (VALIDATION_ERROR above it). */
+  cancel(actor: Actor, code: string, input: { reason: string; refundVnd: number }): Promise<boolean>;
   /**
    * The company cancels a whole group departure (too few guests, weather): closes it, then cancels every live booking
    * with a full refund of what was paid, each emailed and audited. Null when not found.
@@ -110,7 +112,8 @@ export function createBookingAdmin(deps: {
   const { db, logger } = deps;
   const now = deps.now ?? (() => new Date());
 
-  const audited = (actor: Actor, action: string, targetId: string, metadata: Record<string, unknown>, work: () => Promise<boolean>) => {
+  /** `work` writes through `tx`: the change and its audit entry commit together. */
+  const audited = (actor: Actor, action: string, targetId: string, metadata: Record<string, unknown>, work: (tx: DbTx) => Promise<boolean>) => {
     if (!deps.audit) throw new AppError("MODULE_DISABLED", "Admin module is off");
     return deps.audit.audited(actor, { action, targetType: action.startsWith("departure") ? "departure" : "booking", targetId, metadata }, work);
   };
@@ -129,23 +132,30 @@ export function createBookingAdmin(deps: {
     if (booking.guestEmails && booking.email) await send(message, booking.code);
   };
 
-  /** `refundBalance`: also give back a balance already paid (the company cancels the trip). */
-  const cancelBooking = async (actor: Actor, code: string, { reason, refund, refundBalance = false }: { reason: string; refund: boolean; refundBalance?: boolean }) => {
+  /**
+   * `refundVnd`: what goes back to the guest, from 0 up to what they paid (the policy's share of the deposit is only
+   * a suggestion; staff decide). "all": everything paid (the company cancels the trip).
+   */
+  const cancelBooking = async (actor: Actor, code: string, { reason, refundVnd }: { reason: string; refundVnd: number | "all" }) => {
     const text = reason.trim().slice(0, 500);
     if (!text) throw new AppError("VALIDATION_ERROR", "Reason required");
+    if (refundVnd !== "all" && (!Number.isInteger(refundVnd) || refundVnd < 0)) throw new AppError("VALIDATION_ERROR", "Invalid refund");
     let updated: Booking | undefined;
-    const changed = await audited(actor, "booking.cancel", code, { reason: text, refund, ...(refundBalance ? { refundBalance } : {}) }, async () => {
-      const balance = refundBalance ? sql` + case when ${bookings.balancePaidAt} is not null then ${bookings.totalVnd} - ${bookings.depositVnd} else 0 end` : sql``;
-      [updated] = await db
-        .update(bookings)
-        .set({
-          status: "cancelled",
-          cancelledAt: now(),
-          cancelReason: text,
-          // Refund the deposit only when it was paid (held bookings paid nothing).
-          ...(refund ? { refundDueVnd: sql`${bookings.refundDueVnd} + case when ${inArray(bookings.status, SOLD_STATUSES)} then ${bookings.depositVnd}${balance} else 0 end` } : {}),
-        })
+    let refunded = 0;
+    const changed = await audited(actor, "booking.cancel", code, { reason: text, refundVnd }, async (tx) => {
+      const [current] = await tx
+        .select()
+        .from(bookings)
         .where(and(eq(bookings.code, code), inArray(bookings.status, canBecome("cancelled"))))
+        .for("update");
+      if (!current) return false;
+      const paid = paidSoFar(current);
+      if (refundVnd !== "all" && refundVnd > paid) throw new AppError("VALIDATION_ERROR", "Refund above what the guest paid");
+      refunded = refundVnd === "all" ? paid : refundVnd;
+      [updated] = await tx
+        .update(bookings)
+        .set({ status: "cancelled", cancelledAt: now(), cancelReason: text, refundDueVnd: sql`${bookings.refundDueVnd} + ${refunded}` })
+        .where(eq(bookings.id, current.id))
         .returning();
       return Boolean(updated);
     });
@@ -224,8 +234,8 @@ export function createBookingAdmin(deps: {
 
     async confirm(actor, code) {
       let updated: Booking | undefined;
-      const changed = await audited(actor, "booking.confirm", code, {}, async () => {
-        [updated] = await db
+      const changed = await audited(actor, "booking.confirm", code, {}, async (tx) => {
+        [updated] = await tx
           .update(bookings)
           .set({ status: "confirmed", confirmedAt: now() })
           .where(and(eq(bookings.code, code), inArray(bookings.status, canBecome("confirmed"))))
@@ -248,8 +258,8 @@ export function createBookingAdmin(deps: {
       // Close it first, so no guest holds a seat while its bookings are being cancelled. A departure already closed
       // (sales stopped) can still be cancelled, and running it again finishes a cancellation that stopped half-way.
       // Past trips cannot: they happened.
-      const closed = await audited(actor, "departure.cancel", departureId, { reason: text }, async () => {
-        const rows = await db
+      const closed = await audited(actor, "departure.cancel", departureId, { reason: text }, async (tx) => {
+        const rows = await tx
           .update(departures)
           .set({ status: "closed" })
           .where(and(eq(departures.id, departureId), eq(departures.kind, "group"), gte(departures.date, vietnamToday(now()))))
@@ -260,7 +270,7 @@ export function createBookingAdmin(deps: {
       const live = await db.select({ code: bookings.code }).from(bookings).where(and(eq(bookings.departureId, departureId), inArray(bookings.status, canBecome("cancelled"))));
       let cancelled = 0;
       // Company cancellation: everything the guest paid goes back (policy), each booking audited and emailed.
-      for (const { code } of live) if (await cancelBooking(actor, code, { reason: text, refund: true, refundBalance: true })) cancelled += 1;
+      for (const { code } of live) if (await cancelBooking(actor, code, { reason: text, refundVnd: "all" })) cancelled += 1;
       return { cancelled };
     },
 
@@ -276,8 +286,8 @@ export function createBookingAdmin(deps: {
     },
 
     async markBalancePaid(actor, code, note) {
-      return audited(actor, "booking.balance_paid", code, { note: note.trim().slice(0, 200) }, async () => {
-        const done = await db
+      return audited(actor, "booking.balance_paid", code, { note: note.trim().slice(0, 200) }, async (tx) => {
+        const done = await tx
           .update(bookings)
           .set({ balancePaidAt: now() })
           .where(and(eq(bookings.code, code), inArray(bookings.status, SOLD_STATUSES), isNull(bookings.balancePaidAt)))
@@ -287,20 +297,25 @@ export function createBookingAdmin(deps: {
     },
 
     async markRefunded(actor, code, { note }) {
-      return audited(actor, "booking.refunded", code, { note: note.trim().slice(0, 500) }, async () => {
-        const done = await db
+      const text = note.trim().slice(0, 500);
+      return audited(actor, "booking.refunded", code, { note: text }, async (tx) => {
+        const [owed] = await tx.select().from(bookings).where(and(eq(bookings.code, code), refundOwed())).for("update");
+        if (!owed) return false;
+        const at = now();
+        // This refund keeps its own amount and day (reports by period); the booking keeps the running total.
+        await tx.insert(bookingRefunds).values({ bookingId: owed.id, amountVnd: refundLeft(owed), refundedAt: at, note: text });
+        await tx
           .update(bookings)
           .set({
             // Everything owed so far is now given back; a later refund (another cancellation) owes only its own amount.
             refundedVnd: bookings.refundDueVnd,
-            refundedAt: now(),
-            refundNote: note.trim().slice(0, 500),
+            refundedAt: at,
+            refundNote: text,
             // A late deposit (refund_due) ends as cancelled once the money is back.
             status: sql`case when ${bookings.status} = 'refund_due' then 'cancelled' else ${bookings.status} end`,
           })
-          .where(and(eq(bookings.code, code), refundOwed()))
-          .returning({ id: bookings.id });
-        return done.length > 0;
+          .where(eq(bookings.id, owed.id));
+        return true;
       });
     },
 
@@ -312,15 +327,15 @@ export function createBookingAdmin(deps: {
       if (input.email === "" && found.b.guestEmails) return false;
       const changed = (["name", "email", "phone"] as const).filter((k) => input[k] !== found.b[k]);
       if (changed.length === 0) return true;
-      return audited(actor, "booking.contact", code, { changed }, async () => {
-        const done = await db.update(bookings).set(input).where(eq(bookings.code, code)).returning({ id: bookings.id });
+      return audited(actor, "booking.contact", code, { changed }, async (tx) => {
+        const done = await tx.update(bookings).set(input).where(eq(bookings.code, code)).returning({ id: bookings.id });
         return done.length > 0;
       });
     },
 
     async setStaffNote(actor, code, note) {
-      return audited(actor, "booking.note", code, {}, async () => {
-        const done = await db.update(bookings).set({ staffNote: note.trim().slice(0, 2000) }).where(eq(bookings.code, code)).returning({ id: bookings.id });
+      return audited(actor, "booking.note", code, {}, async (tx) => {
+        const done = await tx.update(bookings).set({ staffNote: note.trim().slice(0, 2000) }).where(eq(bookings.code, code)).returning({ id: bookings.id });
         return done.length > 0;
       });
     },
@@ -336,8 +351,8 @@ export function createBookingAdmin(deps: {
       if (input.status === "confirmed" && !may.confirm) return { status: "invalid", fieldErrors: { status: "not_allowed" } };
       let result = { status: "unavailable" } as ManualBookingResult; // set inside the audited transaction
       const code = `BV-${Array.from({ length: 6 }, () => CODE_ALPHABET[randomInt(CODE_ALPHABET.length)]).join("")}`;
-      await audited(actor, "booking.create_manual", code, { source: input.source, externalRef: input.externalRef || null }, async () => {
-        result = await db.transaction(async (tx): Promise<ManualBookingResult> => {
+      await audited(actor, "booking.create_manual", code, { source: input.source, externalRef: input.externalRef || null }, async (tx) => {
+        result = await (async (): Promise<ManualBookingResult> => {
           const at = now();
           // Same lock as online holds: the website, OTAs and staff share one seat count.
           const [departure] = await tx.select().from(departures).where(eq(departures.id, input.departureId)).for("update");
@@ -384,7 +399,7 @@ export function createBookingAdmin(deps: {
             guestEmails: input.guestEmails,
           });
           return { status: "created", code };
-        });
+        })();
         return result.status === "created";
       });
       if (result.status === "created") logger.info("booking.created_manual", { code: result.code, source: input.source });

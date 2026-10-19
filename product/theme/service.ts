@@ -28,8 +28,8 @@ export function createThemeService(deps: { db: Db; audit?: ProductContext["audit
     async set(actor, choice) {
       if (!deps.audit) throw new AppError("MODULE_DISABLED", "Admin module is off");
       const value = parseThemeChoice(choice);
-      await deps.audit.audited(actor, { action: "theme.set", targetType: "setting", targetId: KEY, metadata: { ...value } }, async () => {
-        await db.insert(siteSettings).values({ key: KEY, value }).onConflictDoUpdate({ target: siteSettings.key, set: { value, updatedAt: new Date() } });
+      await deps.audit.audited(actor, { action: "theme.set", targetType: "setting", targetId: KEY, metadata: { ...value } }, async (tx) => {
+        await tx.insert(siteSettings).values({ key: KEY, value }).onConflictDoUpdate({ target: siteSettings.key, set: { value, updatedAt: new Date() } });
         return true;
       });
     },

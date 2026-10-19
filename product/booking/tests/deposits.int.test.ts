@@ -9,6 +9,8 @@ import { testDb } from "@/tests/integration/setup/db";
 import { bookingPayments, bookings, departures } from "../../schema/booking";
 import { createDepositService } from "../deposits";
 import { createBookingService } from "../service";
+import { balanceDue } from "../lifecycle";
+import { createReports } from "../reports";
 
 const { db, close } = testDb();
 const logger = createLogger({ write: () => {} });
@@ -295,6 +297,29 @@ describe("booking deposits (bank transfer, VietQR)", () => {
     clock = new Date(clock.getTime() + 60 * 60_000);
     expect(await deposits.receiveTransfer(code, { amountVnd: 300_000, bankRef: "" }, LINKS)).toBe("deposit_paid");
     expect((await status(code)).status).toBe("deposit_paid");
+  });
+
+  it("a transfer above the deposit: the whole total settles the balance; anything left over is owed back; cash report counts all of it", async () => {
+    // 1 adult: total 1,000,000, deposit 300,000.
+    const whole = await holdOn(10);
+    expect(await deposits.receiveTransfer(whole.code, { amountVnd: 1_000_000, bankRef: "FT1" }, LINKS)).toBe("deposit_paid");
+    const paid = await status(whole.code);
+    expect(paid).toMatchObject({ status: "deposit_paid", depositPaidAt: clock, balancePaidAt: clock, refundDueVnd: 0 });
+    expect(balanceDue(paid)).toBe(0);
+
+    const over = await holdOn(10, 1, "2026-10-11");
+    expect(await deposits.receiveTransfer(over.code, { amountVnd: 1_100_000, bankRef: "FT2" }, LINKS)).toBe("deposit_paid");
+    expect(await status(over.code)).toMatchObject({ balancePaidAt: clock, refundDueVnd: 100_000 });
+
+    // More than the deposit, less than the total: the deposit is paid, the rest is owed back (staff decide with the guest).
+    const part = await holdOn(10, 1, "2026-10-12");
+    expect(await deposits.receiveTransfer(part.code, { amountVnd: 700_000, bankRef: "FT3" }, LINKS)).toBe("deposit_paid");
+    expect(await status(part.code)).toMatchObject({ balancePaidAt: null, refundDueVnd: 400_000 });
+
+    const cash = await createReports({ db }).cash("2026-10-01", "2026-10-01");
+    expect(cash.collectedVnd).toBe(1_000_000 + 1_100_000 + 700_000);
+    expect(cash.extraVnd).toBe(100_000 + 400_000);
+    expect(cash.byChannel).toEqual([{ channel: "transfer", depositsVnd: 900_000, balancesVnd: 1_400_000 }]);
   });
 
   it("late transfer with the seats gone: refund due, nothing oversold", async () => {

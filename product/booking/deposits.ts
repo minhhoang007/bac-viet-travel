@@ -123,9 +123,20 @@ export function createDepositService(deps: {
         .where(and(eq(bookings.departureId, departure.id), ne(bookings.id, booking.id), takesSeats(at)));
       if (departure.capacity - (row?.taken ?? 0) < booking.seats) kind = "refund_due";
     }
+    // More than the deposit (a transfer): the whole total settles the balance too; whatever is left over (or a part
+    // that does not reach the total) is owed back, and staff see it in "attention".
+    // simplification: a partial balance is not tracked; upgrade when guests often pay in instalments.
+    const excess = Math.max(0, payment.amountVnd - booking.depositVnd);
+    const rest = Math.max(0, booking.totalVnd - booking.depositVnd);
+    const settlesBalance = excess > 0 && excess >= rest;
+    const extra = settlesBalance ? excess - rest : excess;
     const [updated] = await tx
       .update(bookings)
-      .set(kind === "deposit_paid" ? { status: kind, depositPaidAt: at } : { ...(waiting ? { status: "refund_due" as const } : {}), refundDueVnd: sql`${bookings.refundDueVnd} + ${payment.amountVnd}` })
+      .set(
+        kind === "deposit_paid"
+          ? { status: kind, depositPaidAt: at, ...(settlesBalance ? { balancePaidAt: at } : {}), ...(extra > 0 ? { refundDueVnd: sql`${bookings.refundDueVnd} + ${extra}` } : {}) }
+          : { ...(waiting ? { status: "refund_due" as const } : {}), refundDueVnd: sql`${bookings.refundDueVnd} + ${payment.amountVnd}` },
+      )
       .where(eq(bookings.id, booking.id))
       .returning();
     return { kind, booking: updated ?? booking };
