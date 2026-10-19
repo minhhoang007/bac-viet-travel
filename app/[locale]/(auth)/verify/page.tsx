@@ -28,9 +28,12 @@ export default async function VerifyPage({ params, searchParams }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
   const app = await requireAppServices();
-  const current = await app.auth.getSession(await headers());
-  if (!current) redirect(localePath(locale, authConfig.signInPath));
-  const factors = await app.auth.factors(current.user.id);
+  const h = await headers();
+  const current = await app.auth.getSession(h);
+  // No session but a password sign-in waiting for its code: only the authenticator app (or a backup code) finishes it.
+  const pending = !current && app.auth.hasPendingSecondFactor(h);
+  if (!current && !pending) redirect(localePath(locale, authConfig.signInPath));
+  const factors = current ? await app.auth.factors(current.user.id) : { passkeys: 0, totp: true };
   if (!hasSecondFactor(factors)) redirect(localePath(locale, `${authConfig.securityPath}?setup=1`));
 
   const c = getSecurityContent(locale).verify;
@@ -49,11 +52,20 @@ export default async function VerifyPage({ params, searchParams }: Props) {
         <h1 className="text-2xl font-bold">{c.title}</h1>
         <p className="mt-2 text-sm text-muted-foreground">{sp.fresh ? c.fresh : c.intro}</p>
       </div>
-      {sp.error && <Notice tone="danger">{sp.error === "locked" ? c.locked : c.wrong}</Notice>}
+      {sp.error === "expired" ? (
+        <Notice tone="danger">
+          {c.expired}{" "}
+          <a href={localePath(locale, authConfig.signInPath)} className="font-medium underline underline-offset-4">
+            {c.signInAgain}
+          </a>
+        </Notice>
+      ) : (
+        sp.error && <Notice tone="danger">{sp.error === "locked" ? c.locked : c.wrong}</Notice>
+      )}
 
-      {factors.passkeys > 0 && <PasskeySignInButton label={c.passkey} failed={c.passkeyFailed} next={localePath(locale, next)} variant="default" />}
+      {sp.error !== "expired" && factors.passkeys > 0 && <PasskeySignInButton label={c.passkey} failed={c.passkeyFailed} next={localePath(locale, next)} variant="default" />}
 
-      {factors.totp && (
+      {sp.error !== "expired" && factors.totp && (
         <>
           <form action={verifySecondFactor} className="grid gap-2" data-testid="verify-totp">
             {hidden}
@@ -82,12 +94,14 @@ export default async function VerifyPage({ params, searchParams }: Props) {
         </>
       )}
 
-      <form action={signOut}>
-        <input type="hidden" name="locale" value={locale} />
-        <button type="submit" className="text-sm text-muted-foreground underline underline-offset-4">
-          {c.signOut}
-        </button>
-      </form>
+      {current && (
+        <form action={signOut}>
+          <input type="hidden" name="locale" value={locale} />
+          <button type="submit" className="text-sm text-muted-foreground underline underline-offset-4">
+            {c.signOut}
+          </button>
+        </form>
+      )}
     </Container>
   );
 }

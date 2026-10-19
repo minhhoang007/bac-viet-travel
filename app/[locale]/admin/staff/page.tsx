@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { setRequestLocale } from "next-intl/server";
 import { requireAdmin } from "@/app/_lib/admin";
-import { removeStaff, setStaffRole } from "@/app/actions/staff";
+import { removeStaff, sendStaffPasswordLink, setStaffRole } from "@/app/actions/staff";
 import { Button } from "@/components/ui/button";
 import type { Locale } from "@/config/app";
 import { ConfirmButton } from "@/product/components/confirm-button";
@@ -26,6 +26,7 @@ export default async function StaffPage({ params, searchParams }: Props) {
   const users = await Promise.all(rows.map((r) => admin.getUser(r.userId)));
   const { result } = await searchParams;
   const hidden = <input type="hidden" name="locale" value={locale} />;
+  const passwords = container.app!.auth.methods.password;
 
   return (
     <div className="grid gap-6">
@@ -34,7 +35,7 @@ export default async function StaffPage({ params, searchParams }: Props) {
         <p className="mt-2 max-w-3xl text-sm text-muted-foreground">{c.intro}</p>
       </div>
       {result && (
-        <p role="status" className={`rounded-md border p-3 text-sm ${result === "done" ? "border-success/40 bg-success/10" : "border-danger/40 bg-danger/10"}`}>
+        <p role="status" className={`rounded-md border p-3 text-sm ${["done", "invited", "link_sent"].includes(result) ? "border-success/40 bg-success/10" : "border-danger/40 bg-danger/10"}`}>
           {c.result[result] ?? c.result.failed}
         </p>
       )}
@@ -80,7 +81,16 @@ export default async function StaffPage({ params, searchParams }: Props) {
                 <td className="py-2 pr-3">{users[i]?.email ?? "—"}</td>
                 <td className="py-2 pr-3">{c.roles[r.role]}</td>
                 <td className="py-2 pr-3 tabular-nums">{r.createdAt.toLocaleDateString(locale === "vi" ? "vi-VN" : "en-GB", { timeZone: "Asia/Ho_Chi_Minh" })}</td>
-                <td className="py-2">
+                <td className="flex flex-wrap justify-end gap-2 py-2">
+                  {passwords && (
+                    <form action={sendStaffPasswordLink}>
+                      {hidden}
+                      <input type="hidden" name="userId" value={r.userId} />
+                      <Button type="submit" variant="outline" className="h-8 px-3" aria-label={`${c.sendLink} ${users[i]?.email ?? ""}`}>
+                        {c.sendLink}
+                      </Button>
+                    </form>
+                  )}
                   <form action={removeStaff}>
                     {hidden}
                     <input type="hidden" name="userId" value={r.userId} />

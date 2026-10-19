@@ -5,6 +5,7 @@ import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/a
 import { nextCookies } from "better-auth/next-js";
 import { magicLink } from "better-auth/plugins/magic-link";
 import { twoFactor } from "better-auth/plugins/two-factor";
+import { haveIBeenPwned } from "better-auth/plugins/haveibeenpwned";
 import { and, count, eq, ne } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import type { MailPort } from "@/core/ports/mail";
@@ -20,7 +21,7 @@ export interface BetterAuthDeps {
   mail: MailPort;
   secret: string;
   baseURL: string;
-  methods: { magicLink: boolean; google: boolean };
+  methods: { magicLink: boolean; google: boolean; password: boolean };
   trustedProviders: string[];
   google?: { clientId: string; clientSecret: string };
   /** Disable Better Auth's built-in rate limiter (tests). */
@@ -30,13 +31,26 @@ export interface BetterAuthDeps {
   confirmSignInPath: string;
   /** Page (path) where the user manages passkeys, the authenticator app and devices; linked from security emails. */
   securityPath: string;
+  /** Page (path) where a staff member sets a new password from the emailed link (`?token=`). */
+  resetPasswordPath: string;
+  /** New passwords are checked against known breaches (Have I Been Pwned, k-anonymity). Off in tests (network). */
+  checkBreachedPasswords: boolean;
 }
+
+/** Password length: 12 at least (NIST 800-63B with no composition rules), 128 at most (hashing cost). */
+export const PASSWORD_MIN = 12;
+export const PASSWORD_MAX = 128;
+// An invitation is often opened the next day: the link to set a password lasts 24 hours.
+const RESET_LINK_HOURS = 24;
 
 // Second-factor endpoints: a success marks the session (sessions.second_factor_at).
 const SECOND_FACTOR_PATHS = new Set(["/two-factor/verify-totp", "/two-factor/verify-backup-code", "/passkey/verify-authentication"]);
 // Adding, removing or changing a second factor: needs a fresh second factor once the account has one.
-const FACTOR_CHANGE_PATHS = new Set(["/passkey/generate-register-options", "/passkey/delete-passkey", "/passkey/update-passkey", "/two-factor/enable", "/two-factor/disable", "/two-factor/generate-backup-codes", "/two-factor/get-totp-uri"]);
+// The password counts as a security change too: a stolen session cannot replace it without the second factor.
+const FACTOR_CHANGE_PATHS = new Set(["/passkey/generate-register-options", "/passkey/delete-passkey", "/passkey/update-passkey", "/two-factor/enable", "/two-factor/disable", "/two-factor/generate-backup-codes", "/two-factor/get-totp-uri", "/change-password", "/set-password"]);
 const EVENT_OF_PATH: Record<string, AuthEventKind> = {
+  "/change-password": "password_changed",
+  "/set-password": "password_set",
   "/passkey/verify-registration": "passkey_added",
   "/passkey/delete-passkey": "passkey_removed",
   "/two-factor/disable": "totp_disabled",
@@ -79,6 +93,26 @@ export function createBetterAuth(deps: BetterAuthDeps) {
     );
   };
 
+  // Every sign-in goes to the security log; staff get an email for a browser not seen in 90 days.
+  const signedIn = async (session: { userId: string; ipAddress?: string | null; userAgent?: string | null }) => {
+    try {
+      const client = { ipAddress: session.ipAddress, userAgent: session.userAgent };
+      const isNew = await events.isNewDevice(session.userId, session.userAgent);
+      await events.record(session.userId, "sign_in", client);
+      const [user] = await db.select({ email: users.email, role: users.role }).from(users).where(eq(users.id, session.userId));
+      if (user && isNew && isStaffRole(user.role)) {
+        const when = new Date().toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
+        await notify(
+          user.email,
+          "Đăng nhập từ thiết bị mới / New sign-in",
+          `Tài khoản của bạn vừa đăng nhập từ thiết bị mới: ${deviceLabel(session.userAgent)}, ${when}${session.ipAddress ? `, IP ${session.ipAddress}` : ""}.\nIf this was not you, sign out that device and tell an administrator:\n\n${securityUrl}`,
+        );
+      }
+    } catch {
+      // Never fail a sign-in because of the security log.
+    }
+  };
+
   return betterAuth({
     appName: deps.appName,
     baseURL: deps.baseURL,
@@ -93,7 +127,31 @@ export function createBetterAuth(deps: BetterAuthDeps) {
       // Postgres generates UUIDv7 ids (db/columns.ts).
       database: { generateId: false },
     },
-    emailAndPassword: { enabled: false },
+    emailAndPassword: {
+      enabled: deps.methods.password,
+      // No sign-up with a password: an account exists first (invitation), then its owner sets one from an email.
+      disableSignUp: true,
+      minPasswordLength: PASSWORD_MIN,
+      maxPasswordLength: PASSWORD_MAX,
+      resetPasswordTokenExpiresIn: RESET_LINK_HOURS * 3600,
+      revokeSessionsOnPasswordReset: true,
+      sendResetPassword: async ({ user, token }) => {
+        // Staff only: a customer account never gets a password (its email stays silent, like an unknown address).
+        if (!isStaffRole((user as { role?: string }).role ?? "user")) return;
+        const link = `${deps.baseURL}${deps.resetPasswordPath}?token=${encodeURIComponent(token)}`;
+        await deps.mail.send({
+          kind: "password_setup",
+          to: user.email,
+          subject: "Đặt mật khẩu / Set your password",
+          text: `Mở liên kết để đặt mật khẩu cho tài khoản ${deps.appName} (hết hạn sau ${RESET_LINK_HOURS} giờ, dùng một lần):\nOpen the link to set the password of your ${deps.appName} account (expires in ${RESET_LINK_HOURS} hours, works once):\n\n${link}\n\nKhông phải bạn yêu cầu? Bỏ qua email này, mật khẩu cũ vẫn giữ nguyên. / Did not ask for it? Ignore this email: nothing changes.`,
+        });
+      },
+      onPasswordReset: async ({ user }, request) => {
+        // Opening the emailed link proves the address (Google may then link to this account).
+        await db.update(users).set({ emailVerified: true }).where(eq(users.id, user.id));
+        await factorChanged(user, "password_set", { ipAddress: request?.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null, userAgent: request?.headers.get("user-agent") ?? null });
+      },
+    },
     user: {
       additionalFields: {
         role: { type: "string", input: false, defaultValue: "user" },
@@ -121,23 +179,15 @@ export function createBetterAuth(deps: BetterAuthDeps) {
         create: {
           // Every sign-in goes to the security log; staff get an email for a browser not seen in 90 days.
           after: async (session, ctx) => {
-            if (ctx?.path?.startsWith("/two-factor")) return; // enrolment rotates the session: not a sign-in
-            try {
-              const client = { ipAddress: session.ipAddress, userAgent: session.userAgent };
-              const isNew = await events.isNewDevice(session.userId, session.userAgent);
-              await events.record(session.userId, "sign_in", client);
-              const [user] = await db.select({ email: users.email, role: users.role }).from(users).where(eq(users.id, session.userId));
-              if (user && isNew && isStaffRole(user.role)) {
-                const when = new Date().toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
-                await notify(
-                  user.email,
-                  "Đăng nhập từ thiết bị mới / New sign-in",
-                  `Tài khoản của bạn vừa đăng nhập từ thiết bị mới: ${deviceLabel(session.userAgent)}, ${when}${session.ipAddress ? `, IP ${session.ipAddress}` : ""}.\nIf this was not you, sign out that device and tell an administrator:\n\n${securityUrl}`,
-                );
-              }
-            } catch {
-              // Never fail a sign-in because of the security log.
+            // Second-factor endpoints: enrolment rotates the session (not a sign-in); a sign-in finished there after a
+            // password is logged by the "after" hook below.
+            if (ctx?.path?.startsWith("/two-factor")) return;
+            // A password with the authenticator app on: this session is dropped at once for the code step (Better Auth).
+            if (ctx?.path === "/sign-in/email") {
+              const [u] = await db.select({ on: users.twoFactorEnabled }).from(users).where(eq(users.id, session.userId));
+              if (u?.on) return;
             }
+            await signedIn(session);
           },
         },
       },
@@ -164,6 +214,8 @@ export function createBetterAuth(deps: BetterAuthDeps) {
           const fresh = ctx.context.newSession ?? previous;
           if (!fresh) return;
           await db.update(sessions).set({ secondFactorAt: new Date() }).where(eq(sessions.id, fresh.session.id));
+          // No session before: the sign-in started with a password and finishes with this code.
+          if (!previous && ctx.context.newSession && path !== "/passkey/verify-authentication") await signedIn(ctx.context.newSession.session);
           // A passkey check opens a new session: close the one it replaces (same user) so it does not linger.
           if (previous && ctx.context.newSession && previous.session.id !== ctx.context.newSession.session.id && previous.user.id === ctx.context.newSession.user.id) {
             await db.delete(sessions).where(eq(sessions.id, previous.session.id));
@@ -217,8 +269,14 @@ export function createBetterAuth(deps: BetterAuthDeps) {
           },
         },
       }),
-      // TOTP (authenticator app) and backup codes; this app has no passwords. Ten wrong codes lock it for 15 minutes.
+      // TOTP (authenticator app) and backup codes. Ten wrong codes lock it for 15 minutes. An account with a password
+      // must give it again to set up, turn off or renew these (Better Auth); without one, the session is enough.
       twoFactor({ issuer: deps.appName, allowPasswordless: true }),
+      haveIBeenPwned({
+        enabled: deps.methods.password && deps.checkBreachedPasswords,
+        // Every way a password is set here (sign-up is off). The check fails closed: no answer, no new password.
+        paths: ["/reset-password", "/change-password", "/set-password"],
+      }),
       nextCookies(), // must be last
     ],
   });

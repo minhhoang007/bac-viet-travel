@@ -312,9 +312,6 @@ test("staff roles: admins add sales and managers; sales see bookings without con
   page.on("dialog", (dialog) => dialog.accept());
   await page.goto("/admin/staff");
   const form = page.getByTestId("staff-form");
-  await form.getByLabel("Email nhân viên").fill("nobody@bacviet.example");
-  await form.getByRole("button", { name: "Thêm / đổi vai trò" }).click();
-  await expect(page.getByRole("status")).toContainText("Chưa có tài khoản");
   await form.getByLabel("Email nhân viên").fill(email);
   await form.getByLabel("Vai trò").selectOption("sale");
   await form.getByRole("button", { name: "Thêm / đổi vai trò" }).click();
@@ -351,7 +348,8 @@ test("staff roles: admins add sales and managers; sales see bookings without con
 
   // Removed: no admin area any more.
   await page.locator(`[data-staff="${email}"]`).getByRole("button", { name: /Gỡ/ }).click();
-  await expect(page.getByTestId("staff-table")).toHaveCount(0);
+  // Other specs may add staff in parallel (staff-password.spec): check this row only.
+  await expect(page.locator(`[data-staff="${email}"]`)).toHaveCount(0);
   expect((await staff.goto("/admin/bookings"))?.status()).toBe(404);
 });
 
