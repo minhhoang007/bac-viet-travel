@@ -1,4 +1,4 @@
-import { and, count, desc, eq, ilike, lt } from "drizzle-orm";
+import { and, count, desc, eq, gt, ilike, lt } from "drizzle-orm";
 import { AppError } from "@/core/errors";
 import type { Logger } from "@/core/logger";
 import type { Db } from "@/db/client";
@@ -19,6 +19,8 @@ export interface MediaConfig {
   folder: string;
   allowedFormats: readonly string[];
   maxBytes: number;
+  /** Uploads one account may start per hour; absent: no limit. */
+  maxUploadsPerHour?: number;
 }
 
 export interface MediaModule {
@@ -87,6 +89,14 @@ export function createMediaModule(deps: MediaDeps): MediaModule {
     origins: provider.origins,
 
     async requestUpload(actor, { name }) {
+      if (config.maxUploadsPerHour !== undefined) {
+        const since = new Date(now().getTime() - 60 * 60_000);
+        const [recent] = await db.select({ n: count() }).from(mediaAssets).where(and(eq(mediaAssets.uploadedBy, actor.id), gt(mediaAssets.createdAt, since)));
+        if ((recent?.n ?? 0) >= config.maxUploadsPerHour) {
+          logger.warn("media.upload_limited", { actor: actor.id });
+          throw new AppError("RATE_LIMIT_ERROR", "Too many uploads");
+        }
+      }
       // Random provider id (not the file name): nothing guessable, nothing to escape.
       const publicId = `${config.folder}/${crypto.randomUUID()}`;
       const [row] = await db.insert(mediaAssets).values({ publicId, name: cleanName(name), uploadedBy: actor.id }).returning({ id: mediaAssets.id });
