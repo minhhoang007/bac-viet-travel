@@ -19,6 +19,8 @@ export interface TourCardProps {
   sizes?: string;
   /** Tour slug: the photo grows into the tour page's first photo on the way there (tourPhotoTransition). */
   slug: string;
+  /** A short notice under the price (e.g. no departure on the searched day). */
+  note?: string;
 }
 
 /** Shared name of a tour's card photo and its tour page's first photo (one per page: a tour has one card per list). */
@@ -48,6 +50,11 @@ export function TourCard(p: TourCardProps) {
             {p.price}
           </span> {p.perPersonLabel}
         </p>
+        {p.note && (
+          <p className="mt-1 type-small font-medium text-foreground" data-tour-note>
+            {p.note}
+          </p>
+        )}
       </div>
     </article>
   );

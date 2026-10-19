@@ -186,6 +186,17 @@ const vi = {
     helpTitle: "Cần hỗ trợ hoặc đổi ngày?",
     helpText: (code: string) => `Muốn đổi ngày đi, số khách hay thông tin liên hệ: nhắn Zalo hoặc gọi hotline, đọc mã đơn ${code}. Nhân viên sẽ xử lý trực tiếp với bạn.`,
   },
+  resend: {
+    title: "Mất đường link xem đơn?",
+    intro: "Nhập mã đơn (dạng BV-XXXXXX) và email đã dùng khi đặt. Chúng tôi gửi đường link mới vào email đó; link cũ sẽ không dùng được nữa.",
+    code: "Mã đơn",
+    email: "Email đặt tour",
+    submit: "Gửi lại đường link",
+    sending: "Đang gửi…",
+    sent: "Nếu mã đơn và email khớp, đường link mới đã được gửi. Hãy kiểm tra hộp thư (cả mục Spam).",
+    rate_limited: "Bạn đã thử nhiều lần. Vui lòng thử lại sau ít phút hoặc nhắn Zalo cho chúng tôi.",
+    error: "Chưa gửi được. Vui lòng thử lại.",
+  },
 };
 
 type BookingContent = typeof vi;
@@ -373,6 +384,17 @@ const en: BookingContent = {
     nextPaid: ["A confirmation email with the link to this page has been sent.", "Before departure we send the detailed itinerary and pick-up time by WhatsApp or email.", "The balance is paid before departure."],
     helpTitle: "Need help or a different date?",
     helpText: (code: string) => `To change the date, number of guests or contact details, message us on WhatsApp or call the hotline with your booking code ${code}. Our team will sort it out with you directly.`,
+  },
+  resend: {
+    title: "Lost your booking link?",
+    intro: "Enter your booking code (BV-XXXXXX) and the email you booked with. We send a new link to that email; the old link stops working.",
+    code: "Booking code",
+    email: "Booking email",
+    submit: "Send the link again",
+    sending: "Sending…",
+    sent: "If the code and email match, a new link is on its way. Check your inbox (and spam).",
+    rate_limited: "Too many attempts. Please try again in a few minutes or message us on WhatsApp.",
+    error: "Could not send it. Please try again.",
   },
 };
 

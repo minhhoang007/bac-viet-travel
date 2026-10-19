@@ -1,12 +1,14 @@
 import { createHash, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
-import { and, asc, eq, gte, inArray, lt, lte, ne, notExists, sql } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNotNull, lt, lte, ne, notExists, sql } from "drizzle-orm";
 import type { Logger } from "@/core/logger";
+import type { MailPort } from "@/core/ports/mail";
 import type { RateLimiter } from "@/core/security/rate-limit";
 import type { Db } from "@/db/client";
 import { bookingPayments, bookings, departures, discountCodes, type Booking, type Departure } from "../schema/booking";
 import type { Addon } from "../tours/model";
 import { addDays, applyDiscount, bookingRules, DEFAULT_TOUR_PRICING, type Discount, isBookableDate, privateQuote, privateTier, quote, vietnamToday, type PrivatePricing, type TourPricing } from "./rules";
 import { canBecome, isSold, SOLD_STATUSES, takesSeats, takesSeatsB } from "./status";
+import { bookingLinkEmail } from "./link-email";
 import { bookingInputSchema, discountCodeField, parseTravellers, privateBookingInputSchema } from "./validations";
 
 export type BookingField = "departureId" | "tourSlug" | "date" | "name" | "email" | "phone" | "adults" | "children" | "infants" | "singleRooms" | "discountCode" | "note" | "agree";
@@ -43,6 +45,13 @@ export interface BookingView extends Booking {
 export interface BookingService {
   /** Upcoming departures of a tour (from today), with live seat counts. */
   listDepartures(tourSlug: string): Promise<DepartureView[]>;
+  /** Group tours with a departure on `date` the guest can still book for `guests` seats (tour search). */
+  toursWithSeats(date: string, guests: number): Promise<string[]>;
+  /**
+   * A guest lost their link: when the code and the booking email match, a new token replaces the old one (which
+   * stops working) and the link is emailed. The answer is the same whether or not they match ("sent").
+   */
+  resendLink(input: { code: string; email: string }, clientKey: string, siteUrl: string): Promise<"sent" | "rate_limited">;
   getDeparture(id: string): Promise<DepartureView | null>;
   /** Validates, re-counts seats under a row lock and holds them for bookingRules.holdMinutes. */
   hold(raw: Record<string, unknown>, clientKey: string): Promise<HoldResult>;
@@ -75,6 +84,7 @@ export interface BookingService {
 const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // no 0/O, 1/I/L
 const CODE = /^BV-[A-Z2-9]{6}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const FIELD_ERRORS = ["required", "invalid", "too_long", "too_many", "must_agree"] as const;
 
 const newCode = () => `BV-${Array.from({ length: 6 }, () => CODE_ALPHABET[randomInt(CODE_ALPHABET.length)]).join("")}`;
@@ -99,6 +109,11 @@ export function createBookingService(deps: {
   departureLimiter?: RateLimiter;
   /** Add-ons the guest may choose on this tour (B6); none when absent. */
   tourAddons?: (slug: string) => Promise<Addon[]>;
+  /** The tour's name and pick-up in the guest's language, kept on the booking (voucher). */
+  tourSnapshot?: (slug: string, locale: string) => Promise<{ title: string; pickup: string } | null>;
+  /** Lost-link requests (resendLink): the email, and a limit per visitor and per booking. Off when absent. */
+  mail?: MailPort;
+  linkLimiter?: RateLimiter;
   now?: () => Date;
 }): BookingService {
   const { db } = deps;
@@ -164,12 +179,15 @@ export function createBookingService(deps: {
     );
   /** Single rooms only on tours with a supplement. */
   const singleRoomsAllowed = (input: Party, pricing: TourPricing) => input.singleRooms === 0 || pricing.singleSupplementVnd > 0;
-  const insertHeld = async (tx: Tx, departureId: string, input: Party, q: ReturnType<typeof applyDiscount>, token: string, at: Date): Promise<HoldResult> => {
+  const insertHeld = async (tx: Tx, departure: { id: string; tourSlug: string }, input: Party, q: ReturnType<typeof applyDiscount>, token: string, at: Date): Promise<HoldResult> => {
     const code = newCode();
+    const tour = (await deps.tourSnapshot?.(departure.tourSlug, input.locale)) ?? null;
     await tx.insert(bookings).values({
       code,
       tokenHash: hashToken(token),
-      departureId,
+      departureId: departure.id,
+      tourTitle: tour?.title ?? null,
+      tourPickup: tour?.pickup ?? null,
       holdExpiresAt: new Date(at.getTime() + bookingRules.holdMinutes * 60_000),
       name: input.name,
       email: input.email,
@@ -213,6 +231,44 @@ export function createBookingService(deps: {
         .where(and(eq(departures.tourSlug, tourSlug), eq(departures.kind, "group"), gte(departures.date, today), lte(departures.date, addDays(today, 366))))
         .orderBy(asc(departures.date));
       return (await Promise.all(rows.map((r) => view(r.d, r.taken, at)))).filter((v) => v !== null);
+    },
+
+    async resendLink(input, clientKey, siteUrl) {
+      const code = input.code.trim().toUpperCase();
+      const email = input.email.trim().toLowerCase();
+      if (!deps.mail || !deps.linkLimiter) return "sent";
+      try {
+        const byVisitor = await deps.linkLimiter.limit(`visitor:${clientKey}`);
+        const byBooking = await deps.linkLimiter.limit(`booking:${code}`);
+        if (!byVisitor.success || !byBooking.success) return "rate_limited";
+      } catch (error) {
+        // No limiter, no new links: a store outage must not open the door to guessing.
+        deps.logger.error("booking.link_limiter_failed", { error });
+        return "rate_limited";
+      }
+      if (!CODE.test(code) || !email) return "sent";
+      const [b] = await db.select().from(bookings).where(eq(bookings.code, code));
+      if (!b || !b.email || b.email.trim().toLowerCase() !== email) return "sent";
+      const token = randomBytes(24).toString("base64url");
+      await db.transaction(async (tx) => {
+        await tx.update(bookings).set({ tokenHash: hashToken(token) }).where(eq(bookings.id, b.id));
+        // Payment emails still to send carry the new link, not the old one.
+        await tx.update(bookingPayments).set({ linkToken: token }).where(and(eq(bookingPayments.bookingId, b.id), isNotNull(bookingPayments.linkToken)));
+      });
+      await deps.mail.send(bookingLinkEmail({ booking: b, siteUrl, token })).catch((error) => deps.logger.error("booking.email_failed", { code, kind: "booking_link", error }));
+      deps.logger.info("booking.link_resent", { code });
+      return "sent";
+    },
+
+    async toursWithSeats(date, guests) {
+      if (!DAY.test(date) || !Number.isInteger(guests) || guests < 1) return [];
+      const at = now();
+      const rows = await db
+        .select({ d: departures, taken: takenSql(at) })
+        .from(departures)
+        .where(and(eq(departures.date, date), eq(departures.kind, "group")));
+      const views = (await Promise.all(rows.map((r) => view(r.d, r.taken, at)))).filter((v) => v !== null);
+      return [...new Set(views.filter((v) => v.bookable && v.seatsLeft >= guests).map((v) => v.tourSlug))];
     },
 
     async getDeparture(id) {
@@ -261,7 +317,7 @@ export function createBookingService(deps: {
         if (input.discountCode && !discount) return { status: "invalid", fieldErrors: { discountCode: "invalid" } };
         const q = applyDiscount(base, discount);
 
-        return insertHeld(tx, departure.id, input, q, token, at);
+        return insertHeld(tx, departure, input, q, token, at);
       });
       if (result.status === "held") deps.logger.info("booking.held", { code: result.code });
       return result;
@@ -294,7 +350,7 @@ export function createBookingService(deps: {
           .insert(departures)
           .values({ tourSlug: input.tourSlug, date: input.date, capacity: q.seats, priceVnd: privateTier(pricing, q.seats)!.vnd, kind: "private" })
           .returning({ id: departures.id });
-        return insertHeld(tx, departure!.id, input, applyDiscount(q, discount), token, at);
+        return insertHeld(tx, { id: departure!.id, tourSlug: input.tourSlug }, input, applyDiscount(q, discount), token, at);
       });
       if (result.status === "held") deps.logger.info("booking.held_private", { code: result.code });
       return result;

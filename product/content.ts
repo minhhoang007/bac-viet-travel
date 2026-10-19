@@ -82,6 +82,8 @@ const vi = {
       count: (n: number) => `${n} tour`,
       empty: "Chưa có tour phù hợp. Thử bỏ bớt bộ lọc, hoặc nhắn Zalo để chúng tôi thiết kế tour riêng.",
       trip: (date: string | undefined, guests: number | undefined) => [date && `Ngày đi ${date.split("-").reverse().join("/")}`, guests && `${guests} khách`].filter(Boolean).join(" · "),
+      noDeparture: (date: string) => `Không có chuyến còn chỗ ngày ${date.split("-").reverse().join("/")}: xem các ngày khác`,
+      privateOnly: (date: string) => `Không có chuyến ghép còn chỗ ngày ${date.split("-").reverse().join("/")}: có thể đặt tour riêng`,
     },
     from: "Từ",
     perPerson: "/ khách",
@@ -97,6 +99,8 @@ const vi = {
     duration: "Thời gian",
     related: "Tour cùng điểm đến",
     priceNote: "Giá tham khảo cho đoàn 2 khách trở lên; giá cuối cùng tuỳ ngày khởi hành.",
+    /** English pages show USD: what the guest actually pays (shown only there). */
+    currencyNote: (vnd: string) => `Thanh toán bằng VND: ${vnd}.`,
     allDestinations: "Tất cả",
     gallery: "Ảnh tour",
     galleryLabels: {
@@ -330,6 +334,10 @@ const en: ProductContent = {
       empty: "No tours match yet. Remove a filter, or message us on WhatsApp for a private itinerary.",
       trip: (date: string | undefined, guests: number | undefined) =>
         [date && `Date ${new Date(`${date}T00:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" })}`, guests && `${guests} traveller${guests === 1 ? "" : "s"}`].filter(Boolean).join(" · "),
+      noDeparture: (date: string) =>
+        `No departure with seats on ${new Date(`${date}T00:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" })}: see other dates`,
+      privateOnly: (date: string) =>
+        `No group departure with seats on ${new Date(`${date}T00:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" })}: a private tour is possible`,
     },
     from: "From",
     perPerson: "/ person",
@@ -345,6 +353,7 @@ const en: ProductContent = {
     duration: "Duration",
     related: "More tours in this destination",
     priceNote: "Indicative price for groups of 2 or more; final price depends on the departure date.",
+    currencyNote: (vnd: string) => `USD is approximate: you pay ${vnd} in Vietnamese dong.`,
     allDestinations: "All",
     gallery: "Tour photos",
     galleryLabels: {

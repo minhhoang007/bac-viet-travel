@@ -80,6 +80,51 @@ test("server validation keeps the guest on the form; asking for more seats than 
   await page.getByLabel("Người lớn").fill("4");
   await submitHold(page, { name: "Tran B", email: "b@example.com", phone: "0912345678" });
   await expect(page.getByRole("alert").filter({ hasText: "chỗ" })).toContainText("Chỉ còn 3 chỗ cho ngày này");
+  // What the guest typed is still there after the server's answer.
+  await expect(page.getByLabel("Họ tên")).toHaveValue("Tran B");
+  await expect(page.getByLabel("Số điện thoại / WhatsApp")).toHaveValue("0912345678");
+  await expect(page.getByRole("checkbox", { name: /Tôi đồng ý/ })).toBeChecked();
+
+  // A field error takes the guest to that field.
+  await page.getByLabel("Người lớn").fill("1");
+  await page.getByLabel("Email").fill("not-an-email");
+  await page.getByRole("button", { name: "Giữ chỗ 15 phút" }).click();
+  await expect(page.getByLabel("Email")).toBeFocused();
+  await expect(page.getByLabel("Email")).toHaveAttribute("aria-invalid", "true");
+  await expect(page.getByLabel("Họ tên")).toHaveValue("Tran B");
+});
+
+test("tour search with a date: tours without a departure with seats that day are marked", async ({ page }) => {
+  // No group departure that far ahead: every tour is marked (the marked wrapper is display: contents: its note shows);
+  // these tours also run as private tours, so that is offered.
+  await page.goto("/tours?date=2027-12-30&guests=2");
+  await expect(page.locator("[data-available=false] [data-tour-note]").first()).toContainText("Không có chuyến ghép còn chỗ ngày 30/12/2027: có thể đặt tour riêng");
+  await expect(page.locator("[data-available=true]")).toHaveCount(0);
+  // A day the Ninh Bình tour runs with seats: it comes first, unmarked.
+  const { departures } = (await (await page.request.get("/api/tours/ninh-binh-day-tour/departures")).json()) as { departures: { date: string; bookable: boolean; seatsLeft: number }[] };
+  const day = departures.find((d) => d.bookable && d.seatsLeft >= 2)!.date;
+  await page.goto(`/tours?date=${day}&guests=2`);
+  await expect(page.locator("[data-available]").first()).toHaveAttribute("data-available", "true");
+  await expect(page.locator('[data-available=true]:has(a[href^="/tours/ninh-binh-day-tour"]) [data-tour-note]')).toHaveCount(0);
+  // Looking for a private tour: any day suits, nothing is marked.
+  await page.goto("/tours?date=2027-12-30&guests=2&type=private");
+  await expect(page.locator("[data-available=true]").first()).toBeAttached();
+  await expect(page.locator("[data-tour-note]")).toHaveCount(0);
+});
+
+test("lost booking link: the not-found page offers a new link by email, with the same answer for any code", async ({ page }) => {
+  const response = await page.goto("/booking/BV-ZZZZZZ");
+  expect(response?.status()).toBe(404);
+  const form = page.getByTestId("resend-link");
+  await form.getByLabel("Mã đơn").fill("BV-ZZZZZZ");
+  await form.getByLabel("Email đặt tour").fill("nobody@example.com");
+  await form.getByRole("button", { name: "Gửi lại đường link" }).click();
+  await expect(page.locator("[data-resend=sent]")).toContainText("Nếu mã đơn và email khớp");
+});
+
+test("English tour page: USD is approximate, the VND amount is what the guest pays", async ({ page }) => {
+  await page.goto(`/en${TOUR}`);
+  await expect(page.getByTestId("currency-note")).toContainText(/you pay ₫[\d,]+ in Vietnamese dong/);
 });
 
 test("English booking page shows prices in VND with a note", async ({ page }) => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState, useSyncExternalStore } from "react";
+import { startTransition, useActionState, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { isHotlinked } from "../media/unsplash";
 import Image from "next/image";
 import Script from "next/script";
@@ -96,11 +96,29 @@ export function BookingForm({
   useEffect(() => {
     if (state) (window as { turnstile?: { reset: () => void } }).turnstile?.reset();
   }, [state]);
+  // Errors on fields: take the guest to the first one (screen readers read its message through aria-describedby).
+  const formRef = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    if (state?.status === "invalid") formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+  }, [state]);
 
   if (!privateTour && departures.length === 0) return <p className="rounded-md border border-border bg-muted p-4 text-sm">{t.noDepartures}</p>;
 
   return (
-    <form action={formAction} className="relative grid gap-8 max-lg:pb-20 lg:grid-cols-[1fr_340px]" noValidate data-hydrated={hydrated || undefined}>
+    <form
+      ref={formRef}
+      action={formAction}
+      // Submitted by hand so React does not clear the fields after the answer: a guest sent back with an error keeps
+      // what they typed (the `action` still works without JavaScript).
+      onSubmit={(e) => {
+        e.preventDefault();
+        const data = new FormData(e.currentTarget);
+        startTransition(() => formAction(data));
+      }}
+      className="relative grid gap-8 max-lg:pb-20 lg:grid-cols-[1fr_340px]"
+      noValidate
+      data-hydrated={hydrated || undefined}
+    >
       <input type="hidden" name="locale" value={locale} />
       {privateTour ? <input type="hidden" name="tourSlug" value={privateTour.tourSlug} /> : <input type="hidden" name="departureId" value={departureId ?? ""} />}
       <div className="absolute -left-[9999px]" aria-hidden="true">

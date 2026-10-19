@@ -48,6 +48,11 @@ export default async function VoucherPage({ params, searchParams }: Props) {
     );
   }
   const tour = (await getTours()).get(locale, booking.departure.tourSlug);
+  // What the guest bought (kept on the booking, in its language) wins over the tour as it is today; the current tour
+  // fills in for older bookings or another language.
+  const kept = locale === booking.locale;
+  const title = (kept && booking.tourTitle) || tour?.title || booking.tourTitle || booking.departure.tourSlug;
+  const pickup = (kept && booking.tourPickup) || (tour && (tour.pickupTime || tour.departure)) || booking.tourPickup;
   const site = getPublicEnv().NEXT_PUBLIC_SITE_URL;
   const qr = renderSVG(`${site}${localePath("vi", `/admin/bookings/${booking.code}`)}`, { border: 1 });
   const back = guestBookingPath(locale, booking.code);
@@ -87,9 +92,9 @@ export default async function VoucherPage({ params, searchParams }: Props) {
         </header>
 
         <dl className="mt-4 grid gap-x-4 gap-y-2 text-sm sm:grid-cols-[150px_1fr]">
-          {row(t.booking.tour, tour?.title ?? booking.departure.tourSlug)}
+          {row(t.booking.tour, title)}
           {row(t.booking.date, <span className="capitalize">{formatDay(booking.departure.date, locale)}</span>)}
-          {tour && row(v.pickup, tour.departure)}
+          {pickup && row(v.pickup, pickup)}
           {booking.addons.length > 0 && row(t.addonsTitle, booking.addons.map((a) => t.addonLine(a.name[locale], a.qty)).join(", "))}
           {row(t.booking.contact, `${booking.name} · ${booking.phone}`)}
           {row(t.total, formatVnd(booking.totalVnd, locale))}

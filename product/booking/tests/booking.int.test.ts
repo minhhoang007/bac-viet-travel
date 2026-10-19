@@ -304,3 +304,51 @@ describe("review fixes 2026-10-08", () => {
     expect((await db.select().from(departures)).length).toBe(2); // group departures stay
   });
 });
+
+describe("tour search, kept tour details, lost links", () => {
+  it("tours with seats on a day for a party: open, bookable, enough seats", async () => {
+    await departure({ tourSlug: "ha-long-cruise-2d1n", date: "2026-10-10", capacity: 4 });
+    await departure({ tourSlug: "sapa-trekking-2d1n", date: "2026-10-10", capacity: 2 });
+    await departure({ tourSlug: "ninh-binh-day-tour", date: "2026-10-10", capacity: 10, status: "closed" });
+    await departure({ tourSlug: "ha-long-day-trip", date: "2026-10-11", capacity: 10 });
+    await departure({ tourSlug: "removed-tour", date: "2026-10-10", capacity: 10 }); // no longer in the catalog
+    const s = service({ tourPrice: async (slug) => (slug === "removed-tour" ? null : 1_000_000) });
+    expect((await s.toursWithSeats("2026-10-10", 2)).sort()).toEqual(["ha-long-cruise-2d1n", "sapa-trekking-2d1n"]);
+    expect(await s.toursWithSeats("2026-10-10", 3)).toEqual(["ha-long-cruise-2d1n"]);
+    expect(await s.toursWithSeats("not-a-day", 2)).toEqual([]);
+  });
+
+  it("a hold keeps the tour name and pick-up as sold, in the guest's language", async () => {
+    const d = await departure();
+    const s = service({ tourSnapshot: async (slug, locale) => ({ title: `${slug} (${locale})`, pickup: "7:30 phố cổ" }) });
+    const held = await s.hold(guest(d.id), "ip");
+    if (held.status !== "held") throw new Error(held.status);
+    expect((await db.select().from(bookings))[0]).toMatchObject({ tourTitle: "ha-long-cruise-2d1n (vi)", tourPickup: "7:30 phố cổ" });
+  });
+
+  it("lost link: code + booking email → a new link by email, the old one stops working; same answer when they do not match", async () => {
+    const sent: { to: string; text: string; kind: string }[] = [];
+    const s = service({ mail: { send: async (m) => void sent.push(m) }, linkLimiter: createMemoryRateLimiter({ max: 5, windowMs: 60_000 }) });
+    const d = await departure();
+    const held = await s.hold(guest(d.id, { email: "Lan@Example.com" }), "ip");
+    if (held.status !== "held") throw new Error(held.status);
+
+    expect(await s.resendLink({ code: held.code, email: "other@example.com" }, "ip", "https://bacviet.example")).toBe("sent");
+    expect(await s.resendLink({ code: "BV-ZZZZZZ", email: "lan@example.com" }, "ip", "https://bacviet.example")).toBe("sent");
+    expect(sent).toEqual([]);
+
+    expect(await s.resendLink({ code: ` ${held.code.toLowerCase()} `, email: " lan@example.com " }, "ip", "https://bacviet.example")).toBe("sent");
+    expect(sent.map((m) => [m.kind, m.to])).toEqual([["booking_link", "Lan@Example.com"]]);
+    const newToken = sent[0]!.text.match(/\?t=([\w-]+)/)![1]!;
+    expect(newToken).not.toBe(held.token);
+    expect(await s.getForGuest(held.code, held.token)).toBeNull();
+    expect(await s.getForGuest(held.code, newToken)).not.toBeNull();
+
+    // 5 an hour per booking (and per visitor), then refused: 2 asked above for this code, 3 more here.
+    for (let i = 0; i < 3; i++) await s.resendLink({ code: held.code, email: "x@example.com" }, `ip-${i}`, "https://bacviet.example");
+    expect(await s.resendLink({ code: held.code, email: "lan@example.com" }, "ip-9", "https://bacviet.example")).toBe("rate_limited");
+    // A limiter outage refuses rather than allowing unlimited tries.
+    const broken = service({ mail: { send: async () => {} }, linkLimiter: { limit: async () => Promise.reject(new Error("down")) } });
+    expect(await broken.resendLink({ code: held.code, email: "lan@example.com" }, "ip", "https://bacviet.example")).toBe("rate_limited");
+  });
+});

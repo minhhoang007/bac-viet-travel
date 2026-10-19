@@ -70,6 +70,12 @@ export const bookings = pgTable(
     addons: jsonb("addons").$type<BookedAddon[]>().notNull().default([]),
     /** Single rooms booked (supplement per room, B2). */
     singleRooms: integer("single_rooms").notNull().default(0),
+    /**
+     * The tour as the guest bought it (name, pick-up), so the voucher stays right when the tour is edited or hidden
+     * later; null on bookings made before these were kept (the voucher then reads the current tour).
+     */
+    tourTitle: text("tour_title"),
+    tourPickup: text("tour_pickup"),
     /** Seats taken: adults + children (infants share a seat). */
     seats: integer("seats").notNull(),
     unitPriceVnd: integer("unit_price_vnd").notNull(),

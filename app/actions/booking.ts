@@ -95,6 +95,22 @@ export async function chooseTransfer(formData: FormData): Promise<void> {
   redirect(guestBookingPath(locale, code, ok ? {} : { pay: "transfer_failed" }));
 }
 
+export type ResendLinkState = { status: "sent" | "rate_limited" | "error" } | null;
+
+/** Lost booking link: a new one goes to the booking email when code and email match (same answer either way). */
+export async function resendBookingLink(_prev: ResendLinkState, formData: FormData): Promise<ResendLinkState> {
+  try {
+    const status = await getBooking().resendLink(
+      { code: String(formData.get("code") ?? "").slice(0, 20), email: String(formData.get("email") ?? "").slice(0, 200) },
+      clientKeyFrom(await headers()),
+      getPublicEnv().NEXT_PUBLIC_SITE_URL,
+    );
+    return { status };
+  } catch {
+    return { status: "error" };
+  }
+}
+
 /** The guest's traveller list (D7), checked against the secret token; errors per row stay on the page. */
 export async function saveTravellers(_prev: TravellersState, formData: FormData): Promise<TravellersState> {
   const values = Object.fromEntries([...formData].filter(([k, v]) => /^(name|year)_\d{1,2}$/.test(k) && typeof v === "string").map(([k, v]) => [k, String(v).slice(0, 120)]));

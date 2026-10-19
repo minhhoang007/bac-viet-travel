@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { Locale } from "@/config/app";
 import type { Destination } from "../tours/destinations";
@@ -12,8 +12,30 @@ type Props = { locale: Locale; tours: Tour[]; destination?: Destination };
 
 function FromSearchParams(props: Props) {
   const search = useSearchParams();
+  const filters = parseTourFilters(Object.fromEntries(search));
+  const available = useAvailability(filters.date, filters.guests ?? 1);
   // Remount on a filtered URL so the form's default values follow it.
-  return <TourListing key={search.toString()} {...props} filters={parseTourFilters(Object.fromEntries(search))} />;
+  return <TourListing key={search.toString()} {...props} filters={filters} available={available} />;
+}
+
+/** Group tours with seats on the searched day (null until known, or when it cannot be loaded: no marks then). */
+function useAvailability(date: string | undefined, guests: number) {
+  const [result, setResult] = useState<{ key: string; slugs: Set<string> } | null>(null);
+  const key = date ? `${date}:${guests}` : "";
+  useEffect(() => {
+    if (!key) return;
+    let live = true;
+    fetch(`/api/tours/availability?date=${encodeURIComponent(date!)}&guests=${guests}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((body: { slugs?: string[] } | null) => {
+        if (live && body?.slugs) setResult({ key, slugs: new Set(body.slugs) });
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [key, date, guests]);
+  return result?.key === key ? result.slugs : null;
 }
 
 /**

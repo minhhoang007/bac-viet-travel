@@ -259,6 +259,11 @@ export default async function TourPage({ params }: Props) {
           <p className="text-sm text-muted-foreground">
             {c.tours.from} <span className="font-heading text-3xl text-foreground">{price}</span> {c.tours.perPerson}
           </p>
+          {locale === "en" && (
+            <p className="mt-1 type-small text-muted-foreground" data-testid="currency-note">
+              {c.tours.currencyNote(new Intl.NumberFormat("en-US", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(tour.price.vnd))}
+            </p>
+          )}
           <ul className="mt-2 grid gap-0.5 type-small text-muted-foreground" data-testid="price-by-traveller">
             <li>{c.tours.priceChild(pricing.childPercent, money(Math.ceil((tour.price.vnd * pricing.childPercent) / 100 / 1000) * 1000))}</li>
             <li>{c.tours.priceInfant(pricing.infantVnd > 0 ? money(pricing.infantVnd) : null)}</li>

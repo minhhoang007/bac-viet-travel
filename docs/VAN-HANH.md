@@ -46,17 +46,18 @@ Neon hiện ở `us-east-1` (Mỹ), mỗi truy vấn đi vòng nửa vòng trái
 
 ## 6. Thông tin công ty (thay dữ liệu demo)
 
-Một file duy nhất: `config/contact.ts`. Gửi dev: tên pháp nhân, MST, số và loại giấy phép lữ hành, người đại diện, địa chỉ, hotline, Zalo, WhatsApp, email, giờ làm việc. Sau khi thông báo website với Bộ Công Thương: link xác nhận (`moitNoticeUrl`) để hiện logo.
+**Admin → Thông tin công ty** (`/admin/company`, chỉ admin): tên pháp nhân, MST, số và loại giấy phép lữ hành, người đại diện, địa chỉ, hotline, Zalo, WhatsApp, email, giờ làm việc. Ô nào còn dữ liệu demo được tô vàng. Sau khi thông báo website với Bộ Công Thương: dán link xác nhận để hiện logo. Không cần dev; `config/contact.ts` chỉ là giá trị mặc định khi chưa lưu gì.
 
 ## 7. Chuyển khoản VietQR (nhận cọc qua ngân hàng)
 
-**Trước khi bán thật:** sửa `config/bank-transfer.ts`: mã BIN ngân hàng, số tài khoản, tên chủ tài khoản (viết hoa, không dấu, đúng như ngân hàng hiển thị), rồi đặt `demo: false`. Khi còn `demo: true`, lựa chọn chuyển khoản chỉ hiện ở chế độ VNPay sandbox, kèm cảnh báo "KHÔNG chuyển tiền thật".
+**Trước khi bán thật:** **Admin → Thông tin công ty**, phần tài khoản ngân hàng: chọn ngân hàng, số tài khoản, tên chủ tài khoản (viết hoa, không dấu, đúng như ngân hàng hiển thị), rồi lưu (cần xác thực lại; thao tác được ghi lịch sử). Khi còn tài khoản demo, lựa chọn chuyển khoản chỉ hiện ở chế độ VNPay sandbox, kèm cảnh báo "KHÔNG chuyển tiền thật".
 
 **Hằng ngày (nhân viên):**
 1. Khách chọn "Chuyển khoản ngân hàng" trên trang booking: chỗ được giữ 2 giờ; đơn hiện ở mục **Cần xử lý** trong /admin/bookings.
 2. Khi tiền vào tài khoản, tìm đơn theo **nội dung chuyển khoản** (mã đơn không có gạch ngang, ví dụ `BV7K3Q9X` = đơn `BV-7K3Q9X`).
 3. Mở đơn → khung **Đã nhận chuyển khoản** → kiểm tra số tiền, nhập mã giao dịch ngân hàng → **Ghi nhận tiền cọc**. Khách nhận email xác nhận cọc ngay; thao tác được ghi lịch sử.
-4. Tiền ít hơn tiền cọc: hệ thống không ghi nhận, liên hệ khách chuyển thêm. Tiền đến muộn khi chỗ đã hết: đơn chuyển sang **Chờ hoàn tiền**.
+4. Tiền ít hơn tiền cọc: hệ thống không ghi nhận, liên hệ khách chuyển thêm. Tiền đến muộn khi chỗ đã hết: đơn chuyển sang **Chờ hoàn tiền**. Khách chuyển **đủ tổng tiền**: ghi nhận cả cọc lẫn phần còn lại. Chuyển nhiều hơn cọc nhưng chưa đủ tổng (hoặc dư so với tổng): phần dư hiện là **cần hoàn** trong mục Cần xử lý; trao đổi với khách rồi hoàn, hoặc thu nốt và bấm "Đã nhận phần còn lại".
+6. **Huỷ đơn:** ô "Số tiền hoàn cho khách" điền sẵn theo chính sách huỷ (theo số ngày còn lại trước ngày đi, cộng phần còn lại khách đã trả); nhân viên sửa được, từ 0 đến số khách đã trả. Mỗi lần bấm "Đánh dấu đã hoàn tiền" được lưu riêng với ngày của nó, nên báo cáo tháng trước không đổi.
 5. Khách chuyển khoản mà không bấm chọn trên web (hoặc sau khi hết giờ giữ chỗ): vẫn ghi nhận được ở trang đơn như trên.
 
 Tự động xác nhận qua webhook ngân hàng (Casso, SePay…) có thể thêm sau khi đăng ký dịch vụ.

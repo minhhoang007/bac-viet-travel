@@ -66,9 +66,16 @@ export function createProduct(db: Db, ctx: ProductContext) {
     tourPrivate: async (slug) => (await tour(slug))?.private ?? null,
     tourPricing: async (slug) => ({ ...DEFAULT_TOUR_PRICING, ...(await tour(slug))?.pricing }),
     tourAddons: async (slug) => (await tour(slug))?.addons ?? [],
+    tourSnapshot: async (slug, locale) => {
+      const t = await tour(slug, locale);
+      return t ? { title: t.title, pickup: t.pickupTime || t.departure } : null;
+    },
     discountLimiter: ctx.rateLimiter("booking:discount-preview", { max: 20, windowMs: 10 * 60_000 }),
     // A visitor holds one date at most 3 times an hour (a guest rarely needs a second try).
     departureLimiter: ctx.rateLimiter("booking-hold:departure", { max: 3, windowMs: 60 * 60_000 }),
+    // Lost links: 5 requests an hour per visitor and per booking.
+    mail: ctx.mail,
+    linkLimiter: ctx.rateLimiter("booking-link", { max: 5, windowMs: 60 * 60_000 }),
     now: ctx.now,
   });
   // Demo site: online payment only through the VNPay sandbox; a production merchant is never used there.
