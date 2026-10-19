@@ -99,6 +99,8 @@ export function vnpayProvider(options: {
       }
       if (body.vnp_ResponseCode === "91") return { status: "not_found" };
       if (body.vnp_ResponseCode !== "00" || body.vnp_TxnRef !== txnRef) throw new Error(`VNPay querydr failed: ${body.vnp_ResponseCode}`);
+      // 01 "not finished yet", 05 "VNPay is processing it": not a final answer, the money may still arrive.
+      if (body.vnp_TransactionStatus === "01" || body.vnp_TransactionStatus === "05") return { status: "processing" };
       if (body.vnp_TransactionStatus !== "00") return { status: "unpaid" };
       return {
         status: "paid",

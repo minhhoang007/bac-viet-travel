@@ -189,6 +189,19 @@ export function reconcileAlertEmail(input: { to: string; confirmed: string[]; fa
   };
 }
 
+/** Team alert: VNPay says a payment succeeded after the attempt was closed as failed. The money is not recorded. */
+export function paidAfterCloseEmail(input: { to: string; code: string; txnRef: string; amountVnd: number; providerTxnNo: string }): MailMessage {
+  return {
+    kind: "booking_team_paid_after_close",
+    to: input.to,
+    subject: `[VNPay] Khách đã trả ${formatVnd(input.amountVnd, "vi")} cho đơn ${input.code} nhưng hệ thống chưa ghi nhận`,
+    text: [
+      `VNPay báo thanh toán thành công cho đơn ${input.code} (mã giao dịch ${input.txnRef}, VNPay ${input.providerTxnNo}), nhưng lượt thanh toán này đã bị đóng trước đó.`,
+      `Số tiền chưa được ghi vào đơn. Kiểm tra giao dịch trên cổng VNPay, rồi ghi nhận tiền cho đơn trong trang quản trị (còn chỗ) hoặc hoàn tiền cho khách (hết chỗ).`,
+    ].join("\n\n"),
+  };
+}
+
 /** Guest email when staff confirm or cancel a booking. */
 export function bookingStatusEmail(input: { booking: Booking; departure: Departure; title: string; kind: "confirmed" | "cancelled" }): MailMessage {
   const { booking: b, departure: d, title, kind } = input;

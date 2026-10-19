@@ -23,7 +23,8 @@ export interface OneTimePaymentProvider {
   query(input: { txnRef: string; createdAt: Date }): Promise<PaymentQueryResult>;
 }
 
-export type PaymentQueryResult = { status: "paid"; params: Record<string, string> } | { status: "unpaid" } | { status: "not_found" };
+/** "processing": the provider has not finished the transaction yet (VNPay 01/05); it may still turn into "paid". */
+export type PaymentQueryResult = { status: "paid"; params: Record<string, string> } | { status: "processing" } | { status: "unpaid" } | { status: "not_found" };
 
 export interface Payments {
   /** Present when VNPAY_TMN_CODE and VNPAY_HASH_SECRET are set. `sandbox`: no real money moves. */
