@@ -84,6 +84,18 @@ test("inquiry form validates on the server and keeps the visitor on the page", a
   await expect(form.locator("input[name=date]")).toHaveValue(/^\d{4}-\d{2}-\d{2}$/);
 });
 
+test("the guide list is a photo magazine: newest post first and large, every card with its cover and one link", async ({ page }) => {
+  await page.goto("/blog");
+  const cards = page.getByTestId("post-list").locator("article");
+  await expect(cards.first().locator("h2")).toHaveClass(/type-h2/);
+  const count = await cards.count();
+  expect(count).toBeGreaterThan(1);
+  await expect(page.getByTestId("post-list").locator("article img")).toHaveCount(count);
+  for (const card of await cards.all()) await expect(card.locator("a")).toHaveCount(1);
+  await page.goto("/blog/tag/kinh-nghiem");
+  await expect(page.getByTestId("post-list").locator("article").first().locator("h2")).toHaveClass(/type-h3/);
+});
+
 test("a blog post leads on: tours for its destination, a chat offer, related posts; tags read as words", async ({ page }) => {
   await page.goto("/blog/kinh-nghiem-du-lich-ha-long");
   // Tagged "ha-long": only Ha Long tours, each linking to its tour page.
