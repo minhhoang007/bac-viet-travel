@@ -47,7 +47,8 @@ export default async function FeedbackPage({ params, searchParams }: Props) {
         <p className="mt-3" data-feedback="saved">
           {done ? t.thanks : t.already}
         </p>
-        {feedback.rating >= 4 && review && (
+        {/* Every guest, whatever they rated: Google forbids asking only happy customers for reviews. */}
+        {review && (
           <p className="mt-6 bg-muted p-5 type-body">
             {t.reviewAsk}{" "}
             <a href={review} target="_blank" rel="noopener noreferrer" className="font-medium text-primary underline underline-offset-4" data-testid="google-review">

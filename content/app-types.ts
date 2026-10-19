@@ -27,6 +27,8 @@ export interface AppContent {
     deleteTitle: string;
     deleteText: string;
     deleteConfirmLabel: string;
+    /** Staff accounts: no self-service deletion (an admin removes them). */
+    deleteStaffText: string;
     deleteButton: string;
   };
   legal: { terms: string; privacy: string; lastUpdated: string; templateNotice: string };

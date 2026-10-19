@@ -2,6 +2,7 @@ import { setRequestLocale } from "next-intl/server";
 import { requirePageUser } from "@/app/_lib/session";
 import { deleteAccount } from "@/app/actions/account";
 import type { Locale } from "@/config/app";
+import { hasRole } from "@/core/auth";
 import { getAppContent } from "@/content";
 import { SubmitButton } from "@/components/forms/submit-button";
 import { PageHeader } from "@/components/app-shell/page-header";
@@ -31,21 +32,30 @@ export default async function AccountPage({ params }: { params: Promise<{ locale
       </section>
       <section className="rounded-md border border-danger/40 p-4">
         <h2 className="font-semibold text-danger">{c.deleteTitle}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{c.deleteText}</p>
-        <form action={deleteAccount} className="mt-3 grid gap-2">
-          <input type="hidden" name="locale" value={locale} />
-          <label htmlFor="confirm-email" className="text-sm">
-            {c.deleteConfirmLabel}
-            <input
-              id="confirm-email"
-              name="confirmEmail"
-              type="email"
-              autoComplete="off"
-              className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-            />
-          </label>
-          <SubmitButton label={c.deleteButton} variant="destructive" />
-        </form>
+        {/* Staff accounts are removed by an admin (see deleteAccount). */}
+        {hasRole(user, "editor") ? (
+          <p className="mt-1 text-sm text-muted-foreground" data-testid="delete-staff">
+            {c.deleteStaffText}
+          </p>
+        ) : (
+          <>
+            <p className="mt-1 text-sm text-muted-foreground">{c.deleteText}</p>
+            <form action={deleteAccount} className="mt-3 grid gap-2">
+              <input type="hidden" name="locale" value={locale} />
+              <label htmlFor="confirm-email" className="text-sm">
+                {c.deleteConfirmLabel}
+                <input
+                  id="confirm-email"
+                  name="confirmEmail"
+                  type="email"
+                  autoComplete="off"
+                  className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                />
+              </label>
+              <SubmitButton label={c.deleteButton} variant="destructive" />
+            </form>
+          </>
+        )}
       </section>
     </div>
   );

@@ -256,6 +256,51 @@ describe("booking deposits (VNPay)", () => {
     expect(await reconciling.reconcile(LINKS)).toBe(0); // paid now; the unpaid one is asked again but stays unpaid
   });
 
+  it("reconcile: an attempt VNPay is still processing stays open for a day; a success that arrives after closing alerts the team", async () => {
+    const { code, token } = await holdOn(10);
+    const req = await startPayment(code, token);
+    let answer: "processing" | "unpaid" = "processing";
+    const reconciling = createDepositService({
+      db,
+      logger,
+      mail: { send: async (m) => void sent.push(m) },
+      bookings: bookingService,
+      transferHoldMinutes: 120,
+      vnpay: { ...vnpay, query: async () => ({ status: answer }) },
+      tourTitle: async () => "Ninh Bình 1 ngày",
+      now: () => clock,
+    });
+    const pending = async () => (await db.select().from(bookingPayments))[0]!.status;
+    clock = new Date(clock.getTime() + 2 * 60 * 60_000);
+    await db.update(bookingPayments).set({ createdAt: new Date(clock.getTime() - 2 * 60 * 60_000) });
+    await reconciling.reconcile(LINKS);
+    expect(await pending()).toBe("pending"); // processing: not closed after 20 minutes
+
+    // VNPay later says the money arrived: recorded as usual.
+    expect((await deposits.handleIpn(ipn(req), LINKS)).RspCode).toBe("00");
+    expect((await status(code)).status).toBe("deposit_paid");
+
+    // An attempt closed as unpaid, then a signed success: answered 02, money not recorded, the team is told.
+    await db.execute(sql`TRUNCATE booking_payments, bookings, departures RESTART IDENTITY CASCADE`);
+    sent = [];
+    clock = new Date("2026-10-01T03:00:00Z");
+    const late = await holdOn(10);
+    const lateReq = await startPayment(late.code, late.token);
+    answer = "unpaid";
+    clock = new Date(clock.getTime() + 30 * 60_000);
+    await db.update(bookingPayments).set({ createdAt: new Date(clock.getTime() - 30 * 60_000) });
+    await reconciling.reconcile(LINKS);
+    expect(await pending()).toBe("failed");
+    expect(await deposits.handleIpn(ipn(lateReq), LINKS)).toEqual({ RspCode: "02", Message: "Order already confirmed" });
+    expect((await status(late.code)).depositPaidAt).toBeNull();
+    expect(sent.map((m) => [m.kind, m.to])).toEqual([["booking_team_paid_after_close", "team@example.com"]]);
+    expect(sent[0]!.text).toContain(late.code);
+    // A failed result arriving late changes nothing and alerts no one.
+    sent = [];
+    await deposits.handleIpn(ipn(lateReq, { vnp_ResponseCode: "24", vnp_TransactionStatus: "02" }), LINKS);
+    expect(sent).toEqual([]);
+  });
+
   it("reconcile: when VNPay cannot be asked, the team is told; nothing to report sends nothing", async () => {
     const { code, token } = await holdOn(10);
     await startPayment(code, token);

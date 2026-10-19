@@ -207,7 +207,9 @@ function passwordOutcome(error: unknown): PasswordResult | "wrong" {
 }
 
 // Better Auth endpoints never served over HTTP here (see `handler`).
-const SERVICE_ONLY = /\/(sign-in\/magic-link|sign-in\/email|sign-up\/email|request-password-reset|forget-password|reset-password|change-password|set-password|verify-password)(\/|$)/;
+// two-factor/*: codes are checked only through the service (per-account limit in codeCheck); the HTTP endpoints had
+// only the per-IP limit.
+const SERVICE_ONLY = /\/(sign-in\/magic-link|sign-in\/email|sign-up\/email|request-password-reset|forget-password|reset-password|change-password|set-password|verify-password|two-factor)(\/|$)/;
 
 // The cookie Better Auth sets when a password was right and the authenticator-app code is still to come.
 const PENDING_SECOND_FACTOR = /(?:^|;\s*)(?:__Secure-)?better-auth\.two_factor=/;

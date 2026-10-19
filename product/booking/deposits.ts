@@ -6,7 +6,7 @@ import type { MailPort } from "@/core/ports/mail";
 import type { OneTimePaymentProvider } from "@/core/ports/payments";
 import type { Db, DbTx } from "@/db/client";
 import { bookingPayments, bookings, departures, type Booking, type BookingPayment, type Departure } from "../schema/booking";
-import { depositEmails, reconcileAlertEmail } from "./emails";
+import { depositEmails, paidAfterCloseEmail, reconcileAlertEmail } from "./emails";
 import { balanceDue } from "./lifecycle";
 import { vietnamToday } from "./rules";
 import type { BookingService } from "./service";
@@ -69,6 +69,7 @@ export interface DepositService {
 
 /** Reconcile asks VNPay about attempts up to this old (a few missed daily runs), oldest first. */
 const RECONCILE_WINDOW_MS = 7 * 24 * 60 * 60_000;
+const PROCESSING_CLOSE_MS = 24 * 60 * 60_000;
 /** Reconcile stops asking after this long; the rest waits for the next run (keeps the jobs tick within its limit). */
 const RECONCILE_BUDGET_MS = 10_000;
 
@@ -209,6 +210,14 @@ export function createDepositService(deps: {
     await db.update(bookingPayments).set({ notifiedAt: now(), linkToken: null }).where(eq(bookingPayments.id, payment.id));
   }
 
+  async function alertPaidAfterClose(payment: BookingPayment, params: Record<string, string>, links: { teamEmail?: string }) {
+    const [b] = await db.select({ code: bookings.code }).from(bookings).where(eq(bookings.id, payment.bookingId));
+    logger.error("booking.deposit_paid_after_close", { txnRef: payment.txnRef, code: b?.code });
+    if (!links.teamEmail) return;
+    const message = paidAfterCloseEmail({ to: links.teamEmail, code: b?.code ?? "", txnRef: payment.txnRef, amountVnd: payment.amountVnd, providerTxnNo: params.vnp_TransactionNo ?? "" });
+    await deps.mail.send(message).catch((error) => logger.error("booking.email_failed", { kind: message.kind, error }));
+  }
+
   /** The IPN once its signature is checked (or a querydr result): confirms the attempt exactly once. */
   async function confirm(params: Record<string, string>, links: { siteUrl: string; teamEmail?: string }): Promise<IpnResult> {
     try {
@@ -218,8 +227,13 @@ export function createDepositService(deps: {
         .where(and(eq(bookingPayments.txnRef, params.vnp_TxnRef ?? ""), eq(bookingPayments.method, "vnpay")));
       if (!payment) return { RspCode: "01", Message: "Order not found" };
       if (Number(params.vnp_Amount) !== payment.amountVnd * 100) return { RspCode: "04", Message: "Invalid amount" };
-      if (payment.status !== "pending") return { RspCode: "02", Message: "Order already confirmed" };
       const success = params.vnp_ResponseCode === "00" && params.vnp_TransactionStatus === "00";
+      if (payment.status !== "pending") {
+        // Signed proof of money for an attempt already closed as failed: never drop it silently. A person decides
+        // (the seats may be gone), so it is not recorded automatically.
+        if (success && payment.status === "failed") await alertPaidAfterClose(payment, params, links);
+        return { RspCode: "02", Message: "Order already confirmed" };
+      }
       const outcome = await settle(
         payment,
         { success, providerTxnNo: params.vnp_TransactionNo ?? null, responseCode: params.vnp_ResponseCode ?? null, bankCode: params.vnp_BankCode ?? null },
@@ -392,7 +406,8 @@ export function createDepositService(deps: {
           const result = await vnpay.query(payment);
           if (result.status === "paid" && (await confirm(result.params, links)).RspCode === "00") confirmed.push(payment.code);
           // Not paid and past VNPay's 15-minute payment window: the guest gave up. Close it, so it is not asked again.
-          else if (result.status !== "paid" && payment.createdAt.getTime() < at.getTime() - 20 * 60_000)
+          // One VNPay has not finished ("processing") may still be paid: asked again for a day before it is closed.
+          else if (result.status !== "paid" && payment.createdAt.getTime() < at.getTime() - (result.status === "processing" ? PROCESSING_CLOSE_MS : 20 * 60_000))
             await db.update(bookingPayments).set({ status: "failed", linkToken: null }).where(and(eq(bookingPayments.txnRef, payment.txnRef), eq(bookingPayments.status, "pending")));
         } catch (error) {
           failed += 1;

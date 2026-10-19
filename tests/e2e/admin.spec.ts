@@ -327,6 +327,12 @@ test("staff roles: admins add sales and managers; sales see bookings without con
   for (const id of ["admin-confirm", "admin-cancel", "admin-transfer"]) await expect(staff.getByTestId(id)).toHaveCount(0);
   // Hidden from the menu and closed by URL too.
   for (const path of ["/admin/discounts", "/admin/reports", "/admin/staff", "/admin/tours", "/admin/tours/new"]) expect((await staff.goto(path))?.status()).toBe(404);
+  // Tour drafts stay closed through the shared content pages too: no preview, not in the review queue.
+  const [draft] = await sql<{ id: string }[]>`
+    insert into content_items (type, slug, draft) values ('tour', 'sale-hidden-draft', '{}') on conflict (type, slug) do update set slug = excluded.slug returning id`;
+  expect((await staff.goto(`/api/content/preview?id=${draft!.id}&locale=vi`))?.status()).toBe(404);
+  await staff.goto("/admin/content?status=all");
+  await expect(staff.getByText("sale-hidden-draft")).toHaveCount(0);
   // The admin home (owners' numbers) sends them to their own first page instead.
   await staff.goto("/admin");
   await expect(staff).toHaveURL(/\/admin\/bookings$/);
@@ -425,6 +431,14 @@ test("two-step verification: staff set up a second factor first, pass it each se
   await expect(page.getByText("Thao tác này cần xác thực lại")).toBeVisible();
   const [booking] = await sql<{ status: string }[]>`select status from bookings where code = 'BV-MFA222'`;
   expect(booking!.status).toBe("deposit_paid");
+
+  // A staff-entered booking below the list-price floor (a money permission) asks again too, and creates nothing.
+  await page.goto("/admin/bookings/new");
+  await page.getByLabel("Họ tên khách").fill("Khách thử xác thực");
+  await page.getByLabel("Số tiền thực thu (VND)").fill("1000");
+  await page.getByRole("button", { name: "Tạo đơn" }).click();
+  await expect(page).toHaveURL(/\/verify\?fresh=1&next=%2Fadmin%2Fbookings%2Fnew$/);
+  expect(await sql`select 1 from bookings where name = 'Khách thử xác thực'`).toHaveLength(0);
 
   // Staff sessions end after 12 hours.
   await sql`update sessions set created_at = now() - interval '13 hours' where user_id = ${user!.id}`;

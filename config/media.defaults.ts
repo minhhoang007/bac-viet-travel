@@ -6,6 +6,8 @@ export const mediaDefaults = {
   /** No SVG (active content) and no GIF: photos only. */
   allowedFormats: ["jpg", "png", "webp", "avif"] as string[],
   maxBytes: 10 * 1024 * 1024,
+  /** Uploads one account may start per hour (a stolen staff account cannot fill the provider's storage). */
+  maxUploadsPerHour: 100,
 };
 
 export type MediaConfigDefaults = typeof mediaDefaults;

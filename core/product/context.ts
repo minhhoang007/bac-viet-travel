@@ -98,6 +98,11 @@ export interface ContentTypeDefinition {
   publicPath(slug: string): string;
   /** Problems that stop submit / publish (e.g. zod issue paths); empty = complete. Drafts may be incomplete. */
   validate?(data: Record<string, unknown>): string[];
+  /**
+   * Which editors may see drafts of this type and work on its items (queue, preview, workflow actions); admins always
+   * may. Absent: every editor. The type's own pages must check the same rule.
+   */
+  canEdit?(user: { id: string; role: string }): boolean | Promise<boolean>;
   /** After a publish, hide or unhide (also from the scheduled-publish job): e.g. revalidateTag(...). */
   onChange?(item: { id: string; type: string; slug: string; publishedSlug: string | null }): Promise<void> | void;
 }

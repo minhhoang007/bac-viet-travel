@@ -222,7 +222,18 @@ export function createJobsModule(deps: JobsModuleDeps): JobsModule {
       } catch (error) {
         deps.logger.error("job.purge_failed", { error });
       }
-      for (const [name, task] of Object.entries(deps.periodic ?? {})) {
+      // Periodic tasks may run past the jobs' budget (they all used to run, whatever it took), but not past twice it:
+      // the cron call has a hard time limit (60 s on Vercel). Out of time, the rest wait for the next tick. The first
+      // task changes every day (no state: a cron call often starts on a fresh instance), so a slow task never keeps
+      // the ones after it from running for good.
+      const stopAt = deadline + budgetMs;
+      const tasks = Object.entries(deps.periodic ?? {});
+      const start = tasks.length ? Math.floor(now() / 86_400_000) % tasks.length : 0;
+      for (const [name, task] of [...tasks.slice(start), ...tasks.slice(0, start)]) {
+        if (now() >= stopAt) {
+          deps.logger.warn("job.periodic_deferred", { task: name });
+          break;
+        }
         try {
           await task();
         } catch (error) {

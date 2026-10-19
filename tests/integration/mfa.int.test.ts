@@ -115,6 +115,21 @@ describe("staff sessions and second factor", () => {
     await expect(limited.app.auth.security.verifyBackupCode(headers, "anything")).rejects.toMatchObject({ code: "RATE_LIMIT_ERROR" });
   });
 
+  it("the two-factor HTTP endpoints are closed: codes are checked only through the service and its per-account limit", async () => {
+    const { headers, secret } = await staffWithTotp("http@example.com");
+    for (const path of ["/two-factor/verify-totp", "/two-factor/verify-backup-code", "/two-factor/enable", "/two-factor/"]) {
+      const res = await auth.handler(
+        new Request(`${BASE_URL}/api/auth${path}`, {
+          method: "POST",
+          headers: { origin: BASE_URL, "content-type": "application/json", cookie: headers.get("cookie") ?? "" },
+          body: JSON.stringify({ code: totp(secret) }),
+        }),
+      );
+      expect([path, res.status]).toEqual([path, 404]);
+    }
+    expect(await auth.staffGate((await auth.getSession(headers))!)).toBe("verify");
+  });
+
   it("an authenticator setup started but not confirmed does not lock the user out of setting up", async () => {
     const headers = await makeStaff("halfway@example.com");
     await auth.security.startTotp(headers); // closed the page before entering the code
