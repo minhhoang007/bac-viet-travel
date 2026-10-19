@@ -29,6 +29,10 @@ export interface LoginFormProps {
 export function LoginForm({ locale, sendMagicLink, signInWithCode, turnstileSiteKey, labels }: LoginFormProps) {
   const [state, action] = useActionState(sendMagicLink, null);
   const [email, setEmail] = useState("");
+  // A Turnstile token works once: after an error answer, ask for a fresh one (as the booking form does).
+  useEffect(() => {
+    if (state && state.status !== "sent") (window as { turnstile?: { reset: () => void } }).turnstile?.reset();
+  }, [state]);
 
   if (state?.status === "sent") {
     return (

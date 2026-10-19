@@ -1,13 +1,17 @@
 "use client";
 
 import Script from "next/script";
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import type { NewPasswordState, PasswordResetRequestState, PasswordSignInState } from "@/app/actions/auth";
 import { FormError } from "@/components/forms/form-error";
 import { FormField } from "@/components/forms/form-field";
 import { SubmitButton } from "@/components/forms/submit-button";
 
-function Turnstile({ siteKey, locale }: { siteKey?: string; locale: string }) {
+/** `answer`: the last server answer. A Turnstile token works once: after any answer, ask for a fresh one. */
+function Turnstile({ siteKey, locale, answer }: { siteKey?: string; locale: string; answer: unknown }) {
+  useEffect(() => {
+    if (answer) (window as { turnstile?: { reset: () => void } }).turnstile?.reset();
+  }, [answer]);
   if (!siteKey) return null;
   return (
     <>
@@ -40,7 +44,7 @@ export function PasswordSignInForm({
       <input type="hidden" name="locale" value={locale} />
       <FormField id="password-email" name="email" type="email" autoComplete="username" required label={labels.email} value={email} onChange={(e) => setEmail(e.target.value)} />
       <FormField id="password-current" name="password" type="password" autoComplete="current-password" required label={labels.password} />
-      <Turnstile siteKey={turnstileSiteKey} locale={locale} />
+      <Turnstile siteKey={turnstileSiteKey} locale={locale} answer={state} />
       <FormError message={state ? labels.errors[state.status] : undefined} />
       <SubmitButton label={labels.submit} pendingLabel={labels.pending} className="justify-self-stretch" />
       <a href={forgotHref} className="justify-self-center text-sm text-primary underline underline-offset-4">
@@ -75,7 +79,7 @@ export function PasswordResetRequestForm({
     <form action={submit} className="grid gap-4" data-testid="password-reset-request" noValidate>
       <input type="hidden" name="locale" value={locale} />
       <FormField id="reset-email" name="email" type="email" autoComplete="username" required label={labels.email} />
-      <Turnstile siteKey={turnstileSiteKey} locale={locale} />
+      <Turnstile siteKey={turnstileSiteKey} locale={locale} answer={state} />
       <FormError message={error} />
       <SubmitButton label={labels.send} pendingLabel={labels.sending} className="justify-self-stretch" />
     </form>
