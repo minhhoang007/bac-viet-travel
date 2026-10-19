@@ -92,6 +92,8 @@ export interface AuthService {
   requestPasswordReset(input: { email: string; clientKey: string; captchaToken?: string | null }): Promise<void>;
   /** An admin's invitation or reset: the same email, not rate limited (the caller checks who may send it). */
   sendPasswordSetup(email: string): Promise<void>;
+  /** Unused set-password links of the account stop working (e.g. when staff are removed). */
+  dropPasswordLinks(userId: string): Promise<void>;
   /** The new password from the emailed link. Signs the account out everywhere. */
   resetPassword(token: string, newPassword: string): Promise<PasswordResult>;
   /** The account with this email, created (plain user, email not verified) when missing. Returns its id. */
@@ -270,6 +272,15 @@ export function createAuthService(
     await auth.api.requestPasswordReset({ body: { email: email.trim().toLowerCase() } });
   };
 
+  /**
+   * After a password is set or changed: other devices are signed out, unused set-password links stop working. Here
+   * rather than Better Auth's revokeOtherSessions, which also replaces this session (losing its second factor).
+   */
+  const afterPasswordChange = async (userId: string, keepSessionId: string) => {
+    await db.delete(sessions).where(and(eq(sessions.userId, userId), ne(sessions.id, keepSessionId)));
+    await dropPasswordLinks(db, userId);
+  };
+
   const hasPendingSecondFactor = (headers: Headers) => PENDING_SECOND_FACTOR.test(headers.get("cookie") ?? "");
 
   // Limited per account (RATE_LIMIT_ERROR); a wrong code is false; anything else (outage) propagates. A password
@@ -328,9 +339,8 @@ export function createAuthService(
       } catch (error) {
         return passwordOutcome(error) as PasswordResult;
       }
-      // As for a change or a reset: other devices are signed out, unused set-password links stop working.
-      await db.delete(sessions).where(and(eq(sessions.userId, current.user.id), ne(sessions.id, current.session.id)));
-      await dropPasswordLinks(db, current.user.id);
+      // As for a change or a reset.
+      await afterPasswordChange(current.user.id, current.session.id);
       return "done";
     },
     async changePassword(headers, currentPassword, newPassword) {
@@ -341,9 +351,7 @@ export function createAuthService(
       } catch (error) {
         return passwordOutcome(error);
       }
-      // Here rather than Better Auth's revokeOtherSessions, which also replaces this session (losing its second factor).
-      await db.delete(sessions).where(and(eq(sessions.userId, current.user.id), ne(sessions.id, current.session.id)));
-      await dropPasswordLinks(db, current.user.id);
+      await afterPasswordChange(current.user.id, current.session.id);
       return "done";
     },
     async devices(headers) {
@@ -428,7 +436,11 @@ export function createAuthService(
       // A disabled account reads as a wrong password (getSession would drop its session anyway). So does a customer
       // account: passwords are for staff, and one left from a former employee must stop working.
       const [user] = await db.select({ status: users.status, role: users.role }).from(users).where(eq(users.email, address));
-      if (user && (user.status === "disabled" || !hasRole(user, "editor"))) return { status: "wrong", setCookies: [] };
+      if (user && (user.status === "disabled" || !hasRole(user, "editor"))) {
+        // As slow as checking a password: the answer time must not tell which addresses have an account.
+        await (await auth.$context).password.hash(password);
+        return { status: "wrong", setCookies: [] };
+      }
       try {
         const res = await auth.api.signInEmail({ body: { email: address, password }, headers, returnHeaders: true });
         const pending = "twoFactorRedirect" in res.response && Boolean(res.response.twoFactorRedirect);
@@ -445,6 +457,9 @@ export function createAuthService(
       if (!client.success || !recipient.success) throw new AppError("RATE_LIMIT_ERROR");
       if (deps.turnstile && !(await deps.turnstile(captchaToken, clientKey))) throw new AppError("CAPTCHA_ERROR");
       await sendPasswordSetup(address);
+    },
+    async dropPasswordLinks(userId) {
+      await dropPasswordLinks(db, userId);
     },
     async sendPasswordSetup(email) {
       if (!methods.password) throw new AppError("MODULE_DISABLED", "Password sign-in is off");

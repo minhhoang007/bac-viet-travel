@@ -151,7 +151,15 @@ export function createBetterAuth(deps: BetterAuthDeps) {
         if (!isStaffRole((user as { role?: string }).role ?? "user")) return;
         const hours = invitation.getStore() ? INVITE_LINK_HOURS : FORGOT_LINK_HOURS;
         // Better Auth stored the token (at the longest lifetime) before calling this.
-        if (hours < INVITE_LINK_HOURS) await db.update(verifications).set({ expiresAt: new Date(Date.now() + hours * 3_600_000) }).where(eq(verifications.identifier, `reset-password:${token}`));
+        if (hours < INVITE_LINK_HOURS) {
+          const shortened = await db
+            .update(verifications)
+            .set({ expiresAt: new Date(Date.now() + hours * 3_600_000) })
+            .where(eq(verifications.identifier, `reset-password:${token}`))
+            .returning({ id: verifications.id });
+          // Never email a link that would last longer than it says (e.g. Better Auth starts storing tokens hashed).
+          if (shortened.length !== 1) throw new Error("Password link not found to shorten");
+        }
         const link = `${deps.baseURL}${deps.resetPasswordPath}?token=${encodeURIComponent(token)}`;
         await deps.mail.send({
           kind: "password_setup",

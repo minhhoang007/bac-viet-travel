@@ -41,11 +41,11 @@ export async function setStaffRole(formData: FormData): Promise<void> {
     if (invite) found = (await admin.getUser(await auth.ensureAccount(email.data))) ?? undefined;
     if (!found) return "not_found";
     if (found.role === "admin") return "is_admin";
+    // Disabled (removed staff, or an admin's decision on the users page): enabling it again is a decision too.
+    if (found.status === "disabled") return "disabled";
     // Staff role first, then the editor level that opens the admin area: a failure in between leaves no access.
     await container.app!.product.staff.set(actor, found.id, role);
     if (found.role === "user") await admin.setUserRole(actor, found.id, "editor");
-    // A former employee taken back (removeStaff disabled the account).
-    if (found.status === "disabled") await admin.setUserStatus(actor, found.id, "active");
     if (!invite) return "done";
     return (await sendSetup(auth, found.email, container.logger)) ? "invited" : "mail_failed";
   });
@@ -77,8 +77,8 @@ async function sendSetup(auth: NonNullable<Ctx["app"]>["auth"], email: string, l
 
 /**
  * Offboarding: the account is disabled first (every session ends; password, passkeys and codes stop working), then
- * the editor level and the staff role are removed. A failure in between leaves no access. Adding the person again
- * re-enables the account.
+ * the editor level and the staff role are removed. A failure in between leaves no access. To take the person back, an
+ * admin enables the account (users page), then adds the role.
  */
 export async function removeStaff(formData: FormData): Promise<void> {
   await staffAction(formData, async ({ admin, container, user: actor }) => {
@@ -86,6 +86,7 @@ export async function removeStaff(formData: FormData): Promise<void> {
     if (!userId.success) return "invalid";
     const target = await admin.getUser(userId.data);
     if (target && target.role !== "admin") await admin.setUserStatus(actor, userId.data, "disabled");
+    await container.app!.auth.dropPasswordLinks(userId.data);
     if (target?.role === "editor") await admin.setUserRole(actor, userId.data, "user");
     await container.app!.product.staff.set(actor, userId.data, null);
     return "done";

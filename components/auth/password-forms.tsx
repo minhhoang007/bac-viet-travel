@@ -1,26 +1,11 @@
 "use client";
 
-import Script from "next/script";
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useState } from "react";
 import type { NewPasswordState, PasswordResetRequestState, PasswordSignInState } from "@/app/actions/auth";
 import { FormError } from "@/components/forms/form-error";
 import { FormField } from "@/components/forms/form-field";
 import { SubmitButton } from "@/components/forms/submit-button";
-
-/** `answer`: the last server answer. A Turnstile token works once: after any answer, ask for a fresh one. */
-function Turnstile({ siteKey, locale, answer }: { siteKey?: string; locale: string; answer: unknown }) {
-  useEffect(() => {
-    if (answer) (window as { turnstile?: { reset: () => void } }).turnstile?.reset();
-  }, [answer]);
-  if (!siteKey) return null;
-  return (
-    <>
-      <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" strategy="afterInteractive" />
-      {/* Turnstile adds a hidden "cf-turnstile-response" field to the form. */}
-      <div className="cf-turnstile" data-sitekey={siteKey} data-language={locale} />
-    </>
-  );
-}
+import { Turnstile } from "@/components/forms/turnstile";
 
 /** Staff sign-in with email and password. The email stays typed after a wrong password (React resets the form). */
 export function PasswordSignInForm({
