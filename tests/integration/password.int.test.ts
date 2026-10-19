@@ -1,6 +1,6 @@
-import { and, count, eq, isNotNull } from "drizzle-orm";
+import { and, count, eq, isNotNull, like } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import { authEvents, sessions } from "@/core/auth/schema";
+import { authEvents, sessions, verifications } from "@/core/auth/schema";
 import { users } from "@/core/users/schema";
 import { resetDb, testDb } from "./setup/db";
 import { BASE_URL, signIn, testApp } from "./setup/app";
@@ -79,6 +79,12 @@ describe("sign-in with a password", () => {
     expect((await auth.signInPassword({ email: "ghost@example.com", password: PASSWORD, clientKey: "c" }, origin())).status).toBe("wrong");
     await handle.db.update(users).set({ status: "disabled" }).where(eq(users.id, id));
     expect((await auth.signInPassword({ email: "staff@example.com", password: PASSWORD, clientKey: "c" }, origin())).status).toBe("wrong");
+  });
+
+  it("a former employee (back to a customer account) cannot sign in with the old password", async () => {
+    const id = await invitedStaff("left@example.com");
+    await handle.db.update(users).set({ role: "user" }).where(eq(users.id, id));
+    expect((await auth.signInPassword({ email: "left@example.com", password: PASSWORD, clientKey: "c" }, origin())).status).toBe("wrong");
   });
 
   it("with the authenticator app on: no session until the code; the code finishes the sign-in (logged once)", async () => {
@@ -170,6 +176,37 @@ describe("password on the security page", () => {
   it("a customer cannot give their account a password", async () => {
     const headers = await signIn(t, "customer@example.com");
     await expect(auth.security.setPassword(headers, PASSWORD)).rejects.toMatchObject({ code: "PERMISSION_ERROR" });
+  });
+
+  it("links: an invitation lasts 24 hours, 'forgot password' 4; setting a password spends every older link", async () => {
+    const id = await auth.ensureAccount("links@example.com");
+    await handle.db.update(users).set({ role: "editor" }).where(eq(users.id, id));
+    const links = () => handle.db.select().from(verifications).where(and(eq(verifications.value, id), like(verifications.identifier, "reset-password:%")));
+    const hoursLeft = (at: Date) => Math.round((at.getTime() - Date.now()) / 3_600_000);
+
+    await auth.sendPasswordSetup("links@example.com"); // admin's invitation
+    const invite = tokenFrom(t.sent.at(-1)!.text);
+    expect(t.sent.at(-1)!.text).toContain("24 giờ");
+    await auth.requestPasswordReset({ email: "links@example.com", clientKey: "c" }); // anyone, from the login page
+    const forgot = tokenFrom(t.sent.at(-1)!.text);
+    expect(t.sent.at(-1)!.text).toContain("4 giờ");
+    const byToken = new Map((await links()).map((l) => [l.identifier.replace("reset-password:", ""), hoursLeft(l.expiresAt)]));
+    expect([byToken.get(invite), byToken.get(forgot)]).toEqual([24, 4]);
+
+    expect(await auth.resetPassword(forgot, PASSWORD)).toBe("done");
+    expect(await links()).toEqual([]);
+    expect(await auth.resetPassword(invite, PASSWORD)).toBe("invalid");
+  });
+
+  it("setting a first password signs out the other devices and spends unused links", async () => {
+    const other = await signIn(t, "devices@example.com");
+    const headers = await signIn(t, "devices@example.com");
+    const [u] = await handle.db.update(users).set({ role: "editor" }).where(eq(users.email, "devices@example.com")).returning();
+    await auth.sendPasswordSetup("devices@example.com");
+    expect(await auth.security.setPassword(headers, PASSWORD)).toBe("done");
+    expect(await auth.getSession(other)).toBeNull();
+    expect(await auth.getSession(headers)).not.toBeNull();
+    expect(await handle.db.select().from(verifications).where(and(eq(verifications.value, u!.id), like(verifications.identifier, "reset-password:%")))).toEqual([]);
   });
 
   it("a staff member without a password sets a first one (once)", async () => {

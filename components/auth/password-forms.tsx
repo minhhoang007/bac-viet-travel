@@ -1,22 +1,11 @@
 "use client";
 
-import Script from "next/script";
 import { useActionState, useState } from "react";
 import type { NewPasswordState, PasswordResetRequestState, PasswordSignInState } from "@/app/actions/auth";
 import { FormError } from "@/components/forms/form-error";
 import { FormField } from "@/components/forms/form-field";
 import { SubmitButton } from "@/components/forms/submit-button";
-
-function Turnstile({ siteKey, locale }: { siteKey?: string; locale: string }) {
-  if (!siteKey) return null;
-  return (
-    <>
-      <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" strategy="afterInteractive" />
-      {/* Turnstile adds a hidden "cf-turnstile-response" field to the form. */}
-      <div className="cf-turnstile" data-sitekey={siteKey} data-language={locale} />
-    </>
-  );
-}
+import { Turnstile } from "@/components/forms/turnstile";
 
 /** Staff sign-in with email and password. The email stays typed after a wrong password (React resets the form). */
 export function PasswordSignInForm({
@@ -40,7 +29,7 @@ export function PasswordSignInForm({
       <input type="hidden" name="locale" value={locale} />
       <FormField id="password-email" name="email" type="email" autoComplete="username" required label={labels.email} value={email} onChange={(e) => setEmail(e.target.value)} />
       <FormField id="password-current" name="password" type="password" autoComplete="current-password" required label={labels.password} />
-      <Turnstile siteKey={turnstileSiteKey} locale={locale} />
+      <Turnstile siteKey={turnstileSiteKey} locale={locale} answer={state} />
       <FormError message={state ? labels.errors[state.status] : undefined} />
       <SubmitButton label={labels.submit} pendingLabel={labels.pending} className="justify-self-stretch" />
       <a href={forgotHref} className="justify-self-center text-sm text-primary underline underline-offset-4">
@@ -75,7 +64,7 @@ export function PasswordResetRequestForm({
     <form action={submit} className="grid gap-4" data-testid="password-reset-request" noValidate>
       <input type="hidden" name="locale" value={locale} />
       <FormField id="reset-email" name="email" type="email" autoComplete="username" required label={labels.email} />
-      <Turnstile siteKey={turnstileSiteKey} locale={locale} />
+      <Turnstile siteKey={turnstileSiteKey} locale={locale} answer={state} />
       <FormError message={error} />
       <SubmitButton label={labels.send} pendingLabel={labels.sending} className="justify-self-stretch" />
     </form>

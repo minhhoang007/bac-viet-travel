@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { setRequestLocale } from "next-intl/server";
 import { notFound, redirect } from "next/navigation";
-import { productAdminNavFor, requireAdmin, requireStaff } from "@/app/_lib/admin";
+import { productAdminNavFor, requireStaff } from "@/app/_lib/admin";
 import { hasRole, type Role } from "@/core/auth";
 import { BarChart } from "@/components/admin/bar-chart";
 import { Stat } from "@/components/admin/stat";
@@ -50,7 +50,8 @@ export default async function AdminOverviewPage({ params }: { params: Promise<{ 
   const { locale } = await params;
   setRequestLocale(locale);
   // Staff who are not admins (marketing, sale…) land on their first page instead of a 404.
-  const staff = await requireStaff("editor", { secondFactor: false });
+  // With the second-factor gate: the overview shows revenue and guest names (only the layout skips the gate).
+  const staff = await requireStaff("editor");
   if (!hasRole(staff.user, "admin")) {
     if (ProductAdminOverview && (await productOverviewFor?.(staff.user))) {
       return (
@@ -64,7 +65,8 @@ export default async function AdminOverviewPage({ params }: { params: Promise<{ 
     if (!first) notFound();
     redirect(localePath(locale, first.href));
   }
-  const { admin, container } = await requireAdmin();
+  // An admin (checked above), past the gate: the same context.
+  const { admin, container } = staff;
   const c = getAppContent(locale).admin.overview;
 
   const [signups, users, pro, stats, storage, product] = await Promise.all([
