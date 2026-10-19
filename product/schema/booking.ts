@@ -82,6 +82,11 @@ export const bookings = pgTable(
     totalVnd: integer("total_vnd").notNull(),
     depositVnd: integer("deposit_vnd").notNull(),
     depositPaidAt: timestamp("deposit_paid_at", { withTimezone: true }),
+    /**
+     * Money that came with the deposit beyond it (a transfer above the deposit, below the total): it counts toward
+     * the balance, so only total − deposit − this is left to collect.
+     */
+    balanceCreditVnd: integer("balance_credit_vnd").notNull().default(0),
     /** When the rest of the total was paid (online, or recorded by staff) (D5); null = still owed. */
     balancePaidAt: timestamp("balance_paid_at", { withTimezone: true }),
     confirmedAt: timestamp("confirmed_at", { withTimezone: true }),

@@ -24,8 +24,11 @@ export function depositEmails(input: {
   const voucher = input.token ? `${input.siteUrl}${prefix}/booking/${b.code}/voucher?t=${input.token}` : null;
   const day = formatDay(d.date, locale);
   const guests = b.adults + b.children + b.infants;
-  const rest = formatVnd(b.totalVnd - b.depositVnd, locale);
+  // A transfer may bring more than the deposit (part or all of the balance): say what came, and what is left.
+  const due = balanceDue(b);
+  const rest = formatVnd(due, locale);
   const received = formatVnd(input.amountVnd ?? b.depositVnd, locale);
+  const moreThanDeposit = (input.amountVnd ?? b.depositVnd) > b.depositVnd;
 
   const guest: MailMessage =
     locale === "vi"
@@ -37,12 +40,12 @@ export function depositEmails(input: {
             text: [
               `Chào ${b.name},`,
               ``,
-              `Bắc Việt Travel đã nhận tiền đặt cọc ${formatVnd(b.depositVnd, locale)} cho đơn ${b.code}.`,
+              moreThanDeposit ? `Bắc Việt Travel đã nhận ${received} cho đơn ${b.code} (tiền cọc ${formatVnd(b.depositVnd, locale)}).` : `Bắc Việt Travel đã nhận tiền đặt cọc ${received} cho đơn ${b.code}.`,
               ``,
               `Tour: ${title}`,
               `Ngày khởi hành: ${day}`,
               `Số khách: ${guests}`,
-              `Tổng tiền: ${formatVnd(b.totalVnd, locale)} – còn lại ${rest}, thanh toán trước ngày đi.`,
+              due ? `Tổng tiền: ${formatVnd(b.totalVnd, locale)} – còn lại ${rest}, thanh toán trước ngày đi.` : `Tổng tiền: ${formatVnd(b.totalVnd, locale)} – bạn đã thanh toán đủ.`,
               ``,
               link ? `Xem đơn của bạn: ${link}` : `Mã đơn của bạn: ${b.code}`,
               ...(link && b.travellers.length === 0 ? [getBookingContent("vi").travellers.emailLine(`${link}#travellers-title`)] : []),
@@ -58,7 +61,7 @@ export function depositEmails(input: {
             text: [
               `Chào ${b.name},`,
               ``,
-              `Chúng tôi đã nhận ${formatVnd(b.depositVnd, locale)} cho đơn ${b.code}, nhưng thời gian giữ chỗ đã hết và ngày ${day} không còn đủ chỗ.`,
+              `Chúng tôi đã nhận ${received} cho đơn ${b.code}, nhưng thời gian giữ chỗ đã hết và ngày ${day} không còn đủ chỗ.`,
               `Bắc Việt Travel sẽ hoàn lại toàn bộ số tiền này, hoặc liên hệ để chuyển sang ngày khác nếu bạn muốn.`,
             ].join("\n"),
           }
@@ -70,12 +73,12 @@ export function depositEmails(input: {
             text: [
               `Hello ${b.name},`,
               ``,
-              `We have received your deposit of ${formatVnd(b.depositVnd, locale)} for booking ${b.code}.`,
+              moreThanDeposit ? `We have received ${received} for booking ${b.code} (deposit ${formatVnd(b.depositVnd, locale)}).` : `We have received your deposit of ${received} for booking ${b.code}.`,
               ``,
               `Tour: ${title}`,
               `Departure: ${day}`,
               `Guests: ${guests}`,
-              `Total: ${formatVnd(b.totalVnd, locale)} – balance ${rest}, payable before departure.`,
+              due ? `Total: ${formatVnd(b.totalVnd, locale)} – balance ${rest}, payable before departure.` : `Total: ${formatVnd(b.totalVnd, locale)} – you have paid in full.`,
               ``,
               link ? `View your booking: ${link}` : `Your booking code: ${b.code}`,
               ...(link && b.travellers.length === 0 ? [getBookingContent("en").travellers.emailLine(`${link}#travellers-title`)] : []),
@@ -91,7 +94,7 @@ export function depositEmails(input: {
             text: [
               `Hello ${b.name},`,
               ``,
-              `We received ${formatVnd(b.depositVnd, locale)} for booking ${b.code}, but your hold had expired and ${day} no longer has enough seats.`,
+              `We received ${received} for booking ${b.code}, but your hold had expired and ${day} no longer has enough seats.`,
               `We will refund the full amount, or contact you to move to another date if you prefer.`,
             ].join("\n"),
           };
@@ -156,7 +159,7 @@ export function depositEmails(input: {
         `Tour: ${title} – ${d.date}`,
         `Khách: ${b.name} · ${b.email} · ${b.phone}`,
         `Người lớn ${b.adults}, trẻ em ${b.children}, em bé ${b.infants}`,
-        `Đặt cọc: ${formatVnd(b.depositVnd, "vi")} / Tổng: ${formatVnd(b.totalVnd, "vi")}`,
+        `Đã nhận: ${formatVnd(input.amountVnd ?? b.depositVnd, "vi")} · Đặt cọc: ${formatVnd(b.depositVnd, "vi")} / Tổng: ${formatVnd(b.totalVnd, "vi")}`,
         b.note ? `Ghi chú: ${b.note}` : ``,
       ].join("\n"),
     });

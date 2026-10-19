@@ -112,7 +112,7 @@ export default async function BookingPage({ params, searchParams }: Props) {
             <div className="mt-4 border-t border-success/30 pt-4" data-testid="balance">
               <p className="font-medium">{t.booking.balanceTitle(formatVnd(balanceDue(booking), locale))}</p>
               <p className="mt-2 type-body">{t.booking.balanceText}</p>
-              <DepositButton action={startBalance} code={booking.code} token={token!} locale={locale} label={t.booking.balancePay(formatVnd(balanceDue(booking), locale))} errorText={t.booking.payUnavailable} testId="pay-balance" />
+              <DepositButton action={startBalance} code={booking.code} token={token!} locale={locale} label={t.booking.balancePay(formatVnd(balanceDue(booking), locale))} errorText={t.booking.payUnavailable} limitedText={t.errors.rate_limited} testId="pay-balance" />
             </div>
           ) : (
             booking.balancePaidAt && (
@@ -146,7 +146,7 @@ export default async function BookingPage({ params, searchParams }: Props) {
           )}
           {transfer && <TransferPanel locale={locale} code={booking.code} amountVnd={booking.depositVnd} bank={bank} />}
           {transfer && <p className="mt-6 text-sm font-medium">{t.booking.transferOrPay}</p>}
-          <DepositButton action={startDeposit} code={booking.code} token={token!} locale={locale} label={t.booking.pay(formatVnd(booking.depositVnd, locale))} errorText={t.booking.payUnavailable} />
+          <DepositButton action={startDeposit} code={booking.code} token={token!} locale={locale} label={t.booking.pay(formatVnd(booking.depositVnd, locale))} errorText={t.booking.payUnavailable} limitedText={t.errors.rate_limited} />
           <p className="mt-2 type-small text-muted-foreground">{t.booking.payHint}</p>
           {transferOffered && !transfer && (
             <form action={chooseTransfer} className="mt-4 border-t border-border pt-4">

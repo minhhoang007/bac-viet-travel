@@ -48,11 +48,11 @@ export default async function VoucherPage({ params, searchParams }: Props) {
     );
   }
   const tour = (await getTours()).get(locale, booking.departure.tourSlug);
-  // What the guest bought (kept on the booking, in its language) wins over the tour as it is today; the current tour
-  // fills in for older bookings or another language.
-  const kept = locale === booking.locale;
-  const title = (kept && booking.tourTitle) || tour?.title || booking.tourTitle || booking.departure.tourSlug;
-  const pickup = (kept && booking.tourPickup) || (tour && (tour.pickupTime || tour.departure)) || booking.tourPickup;
+  // The tour name as bought (kept on the booking, in its language) wins over the tour as it is today. Pick-up is
+  // operations: the tour's current time first (the reminder email says the same), then the one kept at booking,
+  // then the tour's departure text as before.
+  const title = (locale === booking.locale && booking.tourTitle) || tour?.title || booking.tourTitle || booking.departure.tourSlug;
+  const pickup = tour?.pickupTime || booking.tourPickup || tour?.departure;
   const site = getPublicEnv().NEXT_PUBLIC_SITE_URL;
   const qr = renderSVG(`${site}${localePath("vi", `/admin/bookings/${booking.code}`)}`, { border: 1 });
   const back = guestBookingPath(locale, booking.code);

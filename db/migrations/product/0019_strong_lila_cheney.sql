@@ -1,0 +1,1 @@
+ALTER TABLE "bookings" ADD COLUMN "balance_credit_vnd" integer DEFAULT 0 NOT NULL;

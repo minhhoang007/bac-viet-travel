@@ -105,8 +105,8 @@ export function createBookingAdmin(deps: {
   tourPickup?: (slug: string, locale: string) => Promise<string | null>;
   /** Adult website price of a tour (VND): the floor of manual amounts for staff without bookings.money. */
   tourPrice?: (slug: string) => Promise<number | null>;
-  /** Deposit service's receiveTransfer with the site links bound (emails). */
-  receiveTransfer?: (code: string, input: { amountVnd: number; bankRef: string }) => Promise<ReceiveTransferResult>;
+  /** Deposit service's receiveTransferIn with the site links bound: records in `tx`, emails sent after commit. */
+  receiveTransfer?: (tx: DbTx, code: string, input: { amountVnd: number; bankRef: string }) => Promise<{ result: ReceiveTransferResult; sendEmails: () => Promise<void> }>;
   now?: () => Date;
 }): BookingAdmin {
   const { db, logger } = deps;
@@ -278,10 +278,13 @@ export function createBookingAdmin(deps: {
       if (!deps.receiveTransfer || !CODE.test(code)) return "not_found";
       const receive = deps.receiveTransfer;
       let result: ReceiveTransferResult = "not_found"; // set inside the audited work
-      await audited(actor, "booking.transfer_received", code, { amountVnd: input.amountVnd, bankRef: input.bankRef.trim().slice(0, 100) }, async () => {
-        result = await receive(code, input);
+      let sendEmails = async () => {};
+      // The money and its audit entry in one transaction; the guest and team emails once both are saved.
+      await audited(actor, "booking.transfer_received", code, { amountVnd: input.amountVnd, bankRef: input.bankRef.trim().slice(0, 100) }, async (tx) => {
+        ({ result, sendEmails } = await receive(tx, code, input));
         return result === "deposit_paid" || result === "refund_due" || result === "extra";
       });
+      await sendEmails();
       return result;
     },
 
@@ -442,8 +445,10 @@ export function createBookingAdmin(deps: {
         const [b] = await db.update(bookings).set({ reminderSentAt: now() }).where(and(eq(bookings.id, id), due)).returning();
         if (!b) continue;
         const [d] = await db.select().from(departures).where(eq(departures.id, b.departureId));
-        const pickup = (await deps.tourPickup?.(d!.tourSlug, b.locale)) ?? null;
-        await send(reminderEmail({ booking: b, departure: d!, title: await deps.tourTitle(d!.tourSlug, b.locale), pickup }), b.code);
+        // Same sources as the voucher: the name as bought, the tour's current pick-up (else the one kept at booking).
+        const pickup = (await deps.tourPickup?.(d!.tourSlug, b.locale)) || b.tourPickup;
+        const title = b.tourTitle ?? (await deps.tourTitle(d!.tourSlug, b.locale));
+        await send(reminderEmail({ booking: b, departure: d!, title, pickup }), b.code);
         sent += 1;
       }
       if (sent) logger.info("booking.reminders_sent", { count: sent });

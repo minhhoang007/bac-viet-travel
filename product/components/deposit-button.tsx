@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
 
-type State = { status: "not_payable" | "error" } | null;
+type State = { status: "not_payable" | "rate_limited" | "error" } | null;
 
 export interface DepositButtonProps {
   action: (prev: State, formData: FormData) => Promise<State>;
@@ -12,11 +12,13 @@ export interface DepositButtonProps {
   locale: "vi" | "en";
   label: string;
   errorText: string;
+  /** Too many payment tries for now (try again in a few minutes). */
+  limitedText: string;
   testId?: string;
 }
 
 /** Posts to the deposit action, which redirects to VNPay. */
-export function DepositButton({ action, code, token, locale, label, errorText, testId = "pay-deposit" }: DepositButtonProps) {
+export function DepositButton({ action, code, token, locale, label, errorText, limitedText, testId = "pay-deposit" }: DepositButtonProps) {
   const [state, formAction, pending] = useActionState(action, null);
   return (
     <form action={formAction} className="mt-4">
@@ -28,7 +30,7 @@ export function DepositButton({ action, code, token, locale, label, errorText, t
       </Button>
       {state && (
         <p role="alert" className="mt-3 text-sm text-danger">
-          {errorText}
+          {state.status === "rate_limited" ? limitedText : errorText}
         </p>
       )}
     </form>

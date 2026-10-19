@@ -1,8 +1,8 @@
-import { and, asc, eq, gt, gte, inArray, isNull, lt, lte, sql } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, lt, lte, sql } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { bookingPayments, bookingRefunds, bookings, departures, type BookingSource } from "../schema/booking";
 import { addDays, vietnamDayStart } from "./rules";
-import { refundOwed, SOLD_STATUSES } from "./status";
+import { balanceInVnd, depositInVnd, refundOwed, SOLD_STATUSES } from "./status";
 
 /** How money came in: online (VNPay), bank transfer recorded by staff, or other money staff recorded (cash, OTA). */
 export type CashChannel = "vnpay" | "transfer" | "staff";
@@ -88,12 +88,13 @@ export function createReports(deps: { db: Db }) {
       // a second payment; what a transfer brought beyond the deposit or the total) is extra money.
       const settled = sql`case
         when ${bookingPayments.purpose} = 'deposit' and ${bookings.depositPaidAt} = ${bookingPayments.paidAt}
-          then ${bookings.depositVnd} + case when ${bookings.balancePaidAt} = ${bookingPayments.paidAt} then ${bookings.totalVnd} - ${bookings.depositVnd} else 0 end
-        when ${bookingPayments.purpose} = 'balance' and ${bookings.balancePaidAt} = ${bookingPayments.paidAt} then ${bookings.totalVnd} - ${bookings.depositVnd}
+          then ${depositInVnd()} + case when ${bookings.balancePaidAt} = ${bookingPayments.paidAt} then ${balanceInVnd()} else 0 end
+        when ${bookingPayments.purpose} = 'balance' and ${bookings.balancePaidAt} = ${bookingPayments.paidAt} then ${balanceInVnd()}
         else 0 end`;
       const [deposits, balances, [extra], [refunded]] = await Promise.all([
-        db.select({ channel: channel("deposit_paid_at"), vnd: bookings.depositVnd }).from(bookings).where(and(gte(bookings.depositPaidAt, start), lt(bookings.depositPaidAt, end))),
-        db.select({ channel: channel("balance_paid_at"), vnd: sql<number>`${bookings.totalVnd} - ${bookings.depositVnd}` }).from(bookings).where(and(gte(bookings.balancePaidAt, start), lt(bookings.balancePaidAt, end))),
+        // Deposits include what came with them toward the balance (balanceCreditVnd); balances are the rest.
+        db.select({ channel: channel("deposit_paid_at"), vnd: depositInVnd() }).from(bookings).where(and(gte(bookings.depositPaidAt, start), lt(bookings.depositPaidAt, end))),
+        db.select({ channel: channel("balance_paid_at"), vnd: balanceInVnd() }).from(bookings).where(and(gte(bookings.balancePaidAt, start), lt(bookings.balancePaidAt, end))),
         db
           .select({ vnd: sql<number>`coalesce(sum(${bookingPayments.amountVnd} - ${settled}), 0)::bigint` })
           .from(bookingPayments)
@@ -122,11 +123,11 @@ export function createReports(deps: { db: Db }) {
           phone: bookings.phone,
           tourSlug: departures.tourSlug,
           date: departures.date,
-          dueVnd: sql<number>`${bookings.totalVnd} - ${bookings.depositVnd}`,
+          dueVnd: balanceInVnd(),
         })
         .from(bookings)
         .innerJoin(departures, eq(departures.id, bookings.departureId))
-        .where(and(inArray(bookings.status, SOLD_STATUSES), isNull(bookings.balancePaidAt), gt(bookings.totalVnd, bookings.depositVnd), gte(departures.date, today)))
+        .where(and(inArray(bookings.status, SOLD_STATUSES), isNull(bookings.balancePaidAt), sql`${balanceInVnd()} > 0`, gte(departures.date, today)))
         .orderBy(asc(departures.date), asc(bookings.code))
         .limit(500);
       return rows.map((r) => ({ ...r, dueVnd: Number(r.dueVnd) }));

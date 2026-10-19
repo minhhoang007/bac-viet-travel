@@ -4,7 +4,7 @@ import type { Logger } from "@/core/logger";
 import type { RateLimiter } from "@/core/security/rate-limit";
 import type { MailPort } from "@/core/ports/mail";
 import type { OneTimePaymentProvider } from "@/core/ports/payments";
-import type { Db } from "@/db/client";
+import type { Db, DbTx } from "@/db/client";
 import { bookingPayments, bookings, departures, type Booking, type BookingPayment, type Departure } from "../schema/booking";
 import { depositEmails, reconcileAlertEmail } from "./emails";
 import { balanceDue } from "./lifecycle";
@@ -15,7 +15,7 @@ import { awaitsDeposit, isSold, takesSeats } from "./status";
 /** VNPay IPN answer (https://sandbox.vnpayment.vn/apis/docs/thanh-toan-pay/pay.html#code-returnurl). */
 export type IpnResult = { RspCode: "00" | "01" | "02" | "04" | "97" | "99"; Message: string };
 
-export type StartDepositResult = { status: "redirect"; url: string } | { status: "not_found" } | { status: "not_payable" };
+export type StartDepositResult = { status: "redirect"; url: string } | { status: "not_found" } | { status: "not_payable" } | { status: "rate_limited" };
 
 export type ChooseTransferResult = { status: "ok" } | { status: "not_found" } | { status: "not_payable" };
 /** deposit_paid / refund_due: recorded (and the guest emailed). too_little: less than the deposit, nothing recorded. */
@@ -48,6 +48,11 @@ export interface DepositService {
    * the seats gone becomes refund_due). Callers audit it.
    */
   receiveTransfer(code: string, input: { amountVnd: number; bankRef: string }, links: { siteUrl: string; teamEmail?: string }): Promise<ReceiveTransferResult>;
+  /**
+   * receiveTransfer inside the caller's transaction (the staff audit): the money and the audit entry commit together;
+   * call `sendEmails` once it has committed.
+   */
+  receiveTransferIn(tx: DbTx, code: string, input: { amountVnd: number; bankRef: string }, links: { siteUrl: string; teamEmail?: string }): Promise<{ result: ReceiveTransferResult; sendEmails: () => Promise<void> }>;
   /**
    * Return URL: signature check + what we know about that attempt. When VNPay says paid but no IPN has arrived yet,
    * asks VNPay (querydr) and confirms it now with `links`, instead of waiting for the next jobs run.
@@ -98,12 +103,12 @@ export function createDepositService(deps: {
   type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
   type Recorded = "deposit_paid" | "refund_due" | "extra" | "balance_paid";
   type Settled = { kind: "duplicate" | "failed" } | { kind: Recorded; booking: Booking; departure: Departure; token: string | null };
-  /** The email each recorded payment sends, and whether it names the amount paid (extra money, balance). */
-  const SETTLED_EMAIL: Record<Recorded, [Parameters<typeof notify>[3], boolean]> = {
-    deposit_paid: ["paid", false],
-    refund_due: ["refund_due", false],
-    extra: ["extra", true],
-    balance_paid: ["balance", true],
+  /** The email each recorded payment sends (each names the amount that actually arrived). */
+  const SETTLED_EMAIL: Record<Recorded, Parameters<typeof notify>[3]> = {
+    deposit_paid: "paid",
+    refund_due: "refund_due",
+    extra: "extra",
+    balance_paid: "balance",
   };
 
   /** Balance (D5): settles the total of a live paid booking; anything else is money to give back. */
@@ -133,18 +138,24 @@ export function createDepositService(deps: {
         .where(and(eq(bookings.departureId, departure.id), ne(bookings.id, booking.id), takesSeats(at)));
       if (departure.capacity - (row?.taken ?? 0) < booking.seats) kind = "refund_due";
     }
-    // More than the deposit (a transfer): the whole total settles the balance too; whatever is left over (or a part
-    // that does not reach the total) is owed back, and staff see it in "attention".
-    // simplification: a partial balance is not tracked; upgrade when guests often pay in instalments.
+    // More than the deposit (a transfer): it counts toward the balance (balanceCreditVnd); the whole total settles
+    // it, and only what goes beyond the total is owed back.
     const excess = Math.max(0, payment.amountVnd - booking.depositVnd);
     const rest = Math.max(0, booking.totalVnd - booking.depositVnd);
     const settlesBalance = excess > 0 && excess >= rest;
-    const extra = settlesBalance ? excess - rest : excess;
+    const credit = settlesBalance ? 0 : excess;
+    const extra = settlesBalance ? excess - rest : 0;
     const [updated] = await tx
       .update(bookings)
       .set(
         kind === "deposit_paid"
-          ? { status: kind, depositPaidAt: at, ...(settlesBalance ? { balancePaidAt: at } : {}), ...(extra > 0 ? { refundDueVnd: sql`${bookings.refundDueVnd} + ${extra}` } : {}) }
+          ? {
+              status: kind,
+              depositPaidAt: at,
+              ...(settlesBalance ? { balancePaidAt: at } : {}),
+              ...(credit > 0 ? { balanceCreditVnd: credit } : {}),
+              ...(extra > 0 ? { refundDueVnd: sql`${bookings.refundDueVnd} + ${extra}` } : {}),
+            }
           : { ...(waiting ? { status: "refund_due" as const } : {}), refundDueVnd: sql`${bookings.refundDueVnd} + ${payment.amountVnd}` },
       )
       .where(eq(bookings.id, booking.id))
@@ -161,34 +172,40 @@ export function createDepositService(deps: {
     result: { success: boolean; providerTxnNo: string | null; responseCode: string | null; bankCode: string | null },
     links: { siteUrl: string; teamEmail?: string },
   ): Promise<Settled> {
-    const { success, ...fields } = result;
-    const outcome: Settled = await db.transaction(async (tx) => {
-      const at = now();
-      const [b] = await tx.select().from(bookings).where(eq(bookings.id, payment.bookingId));
-      // Same lock order as holds (departure first), so the two never deadlock.
-      const [departure] = await tx.select().from(departures).where(eq(departures.id, b!.departureId)).for("update");
-      const [booking] = await tx.select().from(bookings).where(eq(bookings.id, payment.bookingId)).for("update");
-      // Claim the attempt exactly once (a duplicate IPN loses this race and changes nothing).
-      // A paid attempt keeps its link token until its emails are sent (sendMissedEmails may need it).
-      const claimed = await tx
-        .update(bookingPayments)
-        .set({ status: success ? "paid" : "failed", ...fields, paidAt: success ? at : null, ...(success ? {} : { linkToken: null }) })
-        .where(and(eq(bookingPayments.id, payment.id), eq(bookingPayments.status, "pending")))
-        .returning({ id: bookingPayments.id });
-      if (claimed.length === 0) return { kind: "duplicate" as const };
-      if (!success) return { kind: "failed" as const };
-      const recorded = payment.purpose === "balance" ? await recordBalance(tx, booking!, payment, at) : await recordDeposit(tx, booking!, departure!, payment, at);
-      await tx.update(bookingPayments).set({ outcome: recorded.kind }).where(eq(bookingPayments.id, payment.id));
-      return { ...recorded, departure: departure!, token: payment.linkToken };
-    });
+    const outcome = await db.transaction((tx) => settleIn(tx, payment, result));
     if ("booking" in outcome) await sendSettledEmails(payment, outcome, links);
     return outcome;
   }
 
+  /** settle's database part, inside the caller's transaction (no emails: send them once it has committed). */
+  async function settleIn(
+    tx: Tx,
+    payment: BookingPayment,
+    result: { success: boolean; providerTxnNo: string | null; responseCode: string | null; bankCode: string | null },
+  ): Promise<Settled> {
+    const { success, ...fields } = result;
+    const at = now();
+    const [b] = await tx.select().from(bookings).where(eq(bookings.id, payment.bookingId));
+    // Same lock order as holds (departure first), so the two never deadlock.
+    const [departure] = await tx.select().from(departures).where(eq(departures.id, b!.departureId)).for("update");
+    const [booking] = await tx.select().from(bookings).where(eq(bookings.id, payment.bookingId)).for("update");
+    // Claim the attempt exactly once (a duplicate IPN loses this race and changes nothing).
+    // A paid attempt keeps its link token until its emails are sent (sendMissedEmails may need it).
+    const claimed = await tx
+      .update(bookingPayments)
+      .set({ status: success ? "paid" : "failed", ...fields, paidAt: success ? at : null, ...(success ? {} : { linkToken: null }) })
+      .where(and(eq(bookingPayments.id, payment.id), eq(bookingPayments.status, "pending")))
+      .returning({ id: bookingPayments.id });
+    if (claimed.length === 0) return { kind: "duplicate" as const };
+    if (!success) return { kind: "failed" as const };
+    const recorded = payment.purpose === "balance" ? await recordBalance(tx, booking!, payment, at) : await recordDeposit(tx, booking!, departure!, payment, at);
+    await tx.update(bookingPayments).set({ outcome: recorded.kind }).where(eq(bookingPayments.id, payment.id));
+    return { ...recorded, departure: departure!, token: payment.linkToken };
+  }
+
   /** The guest and team emails of a recorded payment, then marks it notified (and drops its link token). */
   async function sendSettledEmails(payment: BookingPayment, settled: { kind: Recorded; booking: Booking; departure: Departure; token: string | null }, links: { siteUrl: string; teamEmail?: string }) {
-    const [email, withAmount] = SETTLED_EMAIL[settled.kind];
-    await notify(settled.booking, settled.departure, { ...links, token: settled.token }, email, withAmount ? payment.amountVnd : undefined);
+    await notify(settled.booking, settled.departure, { ...links, token: settled.token }, SETTLED_EMAIL[settled.kind], payment.amountVnd);
     await db.update(bookingPayments).set({ notifiedAt: now(), linkToken: null }).where(eq(bookingPayments.id, payment.id));
   }
 
@@ -217,7 +234,57 @@ export function createDepositService(deps: {
     }
   }
 
-  /** Whether the booking has a bank transfer the guest chose that staff have not recorded yet. */
+  /** Records a transfer staff saw, inside `tx`; the emails are returned to send after commit. */
+  async function receiveTransferIn(tx: Tx, code: string, { amountVnd, bankRef }: { amountVnd: number; bankRef: string }, links: { siteUrl: string; teamEmail?: string }) {
+    const none = async () => {};
+    const [booking] = await tx.select().from(bookings).where(eq(bookings.code, code));
+    if (!booking) return { result: "not_found" as const, sendEmails: none };
+    const txnRef = `${transferNote(booking.code)}CK`;
+    const waiting = awaitsDeposit(booking.status);
+    // After another payment (or a cancellation), only a transfer the guest chose can still arrive: it is owed back.
+    if (!waiting && !(await transferPending(booking.id, tx))) return { result: "not_payable" as const, sendEmails: none };
+    if (!Number.isInteger(amountVnd) || amountVnd <= 0 || (waiting && amountVnd < booking.depositVnd)) return { result: "too_little" as const, sendEmails: none };
+    // The guest may have transferred without choosing it on the site: staff record it all the same.
+    await tx.insert(bookingPayments).values({ bookingId: booking.id, method: "transfer", txnRef, amountVnd }).onConflictDoNothing();
+    const [payment] = await tx
+      .update(bookingPayments)
+      .set({ amountVnd })
+      .where(and(eq(bookingPayments.txnRef, txnRef), eq(bookingPayments.status, "pending")))
+      .returning();
+    if (!payment) return { result: "not_payable" as const, sendEmails: none }; // already recorded
+    const outcome = await settleIn(tx, payment, { success: true, providerTxnNo: bankRef.trim().slice(0, 100) || null, responseCode: null, bankCode: null });
+    logger.info("booking.transfer_received", { code, outcome: outcome.kind });
+    // Transfers recorded here are deposits (purpose "deposit"), so "balance_paid" cannot happen.
+    const result: ReceiveTransferResult = outcome.kind === "duplicate" || outcome.kind === "failed" || outcome.kind === "balance_paid" ? "not_payable" : outcome.kind;
+    return { result, sendEmails: "booking" in outcome ? () => sendSettledEmails(payment, outcome, links) : none };
+  }
+
+  async function sendMissedEmails(links: { siteUrl: string; teamEmail?: string }): Promise<number> {
+    const before = new Date(now().getTime() - 10 * 60_000);
+    const missed = await db
+      .select({ p: bookingPayments, b: bookings, d: departures })
+      .from(bookingPayments)
+      .innerJoin(bookings, eq(bookings.id, bookingPayments.bookingId))
+      .innerJoin(departures, eq(departures.id, bookings.departureId))
+      .where(and(eq(bookingPayments.status, "paid"), isNull(bookingPayments.notifiedAt), isNotNull(bookingPayments.outcome), lt(bookingPayments.paidAt, before)))
+      .orderBy(asc(bookingPayments.paidAt))
+      .limit(20);
+    let sent = 0;
+    for (const { p, b, d } of missed) {
+      // Claim it first: two runs at once (cron and an IPN) never send the same emails twice.
+      const claimed = await db.update(bookingPayments).set({ notifiedAt: now() }).where(and(eq(bookingPayments.id, p.id), isNull(bookingPayments.notifiedAt))).returning({ id: bookingPayments.id });
+      if (claimed.length === 0) continue;
+      await notify(b, d, { ...links, token: p.linkToken }, SETTLED_EMAIL[p.outcome!], p.amountVnd);
+      await db.update(bookingPayments).set({ linkToken: null }).where(eq(bookingPayments.id, p.id));
+      sent += 1;
+    }
+    if (sent) logger.warn("booking.payment_emails_caught_up", { count: sent });
+    return sent;
+  }
+
+  /** Catch-up of missed payment emails on guest and VNPay traffic too (not only the daily jobs run); never fails the caller. */
+  const catchUp = (links: { siteUrl: string; teamEmail?: string }) => sendMissedEmails(links).catch((error) => logger.error("booking.payment_emails_failed", { error }));
+
   /** A failing limiter store never blocks a guest who wants to pay. */
   const payAllowed = async (code: string) => {
     if (!deps.payLimiter) return true;
@@ -229,8 +296,9 @@ export function createDepositService(deps: {
     }
   };
 
-  async function transferPending(bookingId: string): Promise<boolean> {
-    const [row] = await db
+  /** Whether the booking has a bank transfer the guest chose that staff have not recorded yet. */
+  async function transferPending(bookingId: string, exec: Pick<Db, "select"> = db): Promise<boolean> {
+    const [row] = await exec
       .select({ id: bookingPayments.id })
       .from(bookingPayments)
       .where(and(eq(bookingPayments.bookingId, bookingId), eq(bookingPayments.method, "transfer"), eq(bookingPayments.status, "pending")));
@@ -243,7 +311,7 @@ export function createDepositService(deps: {
       const booking = await deps.bookings.getForGuest(code, token);
       if (!booking) return { status: "not_found" };
       if (booking.status !== "held" || booking.isExpired) return { status: "not_payable" };
-      if (!(await payAllowed(booking.code))) return { status: "not_payable" };
+      if (!(await payAllowed(booking.code))) return { status: "rate_limited" };
       const txnRef = `${booking.code.slice(3)}${randomBytes(6).toString("hex").toUpperCase()}`;
       // The stored createdAt is the vnp_CreateDate, so reconcile can query VNPay with the same transaction date.
       const [attempt] = await db
@@ -273,7 +341,7 @@ export function createDepositService(deps: {
       const amount = balanceDue(booking);
       const at = now();
       if (amount <= 0 || booking.departure.date < vietnamToday(at)) return { status: "not_payable" };
-      if (!(await payAllowed(booking.code))) return { status: "not_payable" };
+      if (!(await payAllowed(booking.code))) return { status: "rate_limited" };
       const txnRef = `${booking.code.slice(3)}B${randomBytes(5).toString("hex").toUpperCase()}`;
       const [attempt] = await db
         .insert(bookingPayments)
@@ -295,7 +363,9 @@ export function createDepositService(deps: {
 
     async handleIpn(params, links) {
       if (!deps.vnpay?.verify(params)) return { RspCode: "97", Message: "Invalid signature" };
-      return confirm(params, links);
+      const answer = await confirm(params, links);
+      await catchUp(links);
+      return answer;
     },
 
     async reconcile(links) {
@@ -348,20 +418,7 @@ export function createDepositService(deps: {
       return done.length;
     },
 
-    async sendMissedEmails(links) {
-      const before = new Date(now().getTime() - 10 * 60_000);
-      const missed = await db
-        .select({ p: bookingPayments, b: bookings, d: departures })
-        .from(bookingPayments)
-        .innerJoin(bookings, eq(bookings.id, bookingPayments.bookingId))
-        .innerJoin(departures, eq(departures.id, bookings.departureId))
-        .where(and(eq(bookingPayments.status, "paid"), isNull(bookingPayments.notifiedAt), isNotNull(bookingPayments.outcome), lt(bookingPayments.paidAt, before)))
-        .orderBy(asc(bookingPayments.paidAt))
-        .limit(20);
-      for (const { p, b, d } of missed) await sendSettledEmails(p, { kind: p.outcome!, booking: b, departure: d, token: p.linkToken }, links);
-      if (missed.length) logger.warn("booking.payment_emails_caught_up", { count: missed.length });
-      return missed.length;
-    },
+    sendMissedEmails,
 
     async chooseTransfer({ code, token }) {
       const booking = await deps.bookings.getForGuest(code, token);
@@ -390,26 +447,12 @@ export function createDepositService(deps: {
 
     transferPending,
 
-    async receiveTransfer(code, { amountVnd, bankRef }, links) {
-      const [booking] = await db.select().from(bookings).where(eq(bookings.code, code));
-      if (!booking) return "not_found";
-      const txnRef = `${transferNote(booking.code)}CK`;
-      const waiting = awaitsDeposit(booking.status);
-      // After another payment (or a cancellation), only a transfer the guest chose can still arrive: it is owed back.
-      if (!waiting && !(await transferPending(booking.id))) return "not_payable";
-      if (!Number.isInteger(amountVnd) || amountVnd <= 0 || (waiting && amountVnd < booking.depositVnd)) return "too_little";
-      // The guest may have transferred without choosing it on the site: staff record it all the same.
-      await db.insert(bookingPayments).values({ bookingId: booking.id, method: "transfer", txnRef, amountVnd }).onConflictDoNothing();
-      const [payment] = await db
-        .update(bookingPayments)
-        .set({ amountVnd })
-        .where(and(eq(bookingPayments.txnRef, txnRef), eq(bookingPayments.status, "pending")))
-        .returning();
-      if (!payment) return "not_payable"; // already recorded
-      const outcome = await settle(payment, { success: true, providerTxnNo: bankRef.trim().slice(0, 100) || null, responseCode: null, bankCode: null }, links);
-      logger.info("booking.transfer_received", { code, outcome: outcome.kind });
-      // Transfers recorded here are deposits (purpose "deposit"), so "balance_paid" cannot happen.
-      return outcome.kind === "duplicate" || outcome.kind === "failed" || outcome.kind === "balance_paid" ? "not_payable" : outcome.kind;
+    receiveTransferIn,
+
+    async receiveTransfer(code, input, links) {
+      const { result, sendEmails } = await db.transaction((tx) => receiveTransferIn(tx, code, input, links));
+      await sendEmails();
+      return result;
     },
 
     async returnStatus(params, links) {
@@ -436,6 +479,7 @@ export function createDepositService(deps: {
           logger.error("booking.return_query_failed", { txnRef: params.vnp_TxnRef, error });
         }
       }
+      if (links) await catchUp(links);
       if (!row) return { valid: true, status: "unknown" };
       // The IPN may arrive after the guest is back: trust VNPay's failure code, wait for the IPN on success.
       const status = row.status === "pending" ? (params.vnp_ResponseCode === "00" ? "pending" : "failed") : row.status;

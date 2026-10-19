@@ -22,8 +22,9 @@ const deposit = Math.round(bookingRules.depositRate * 100);
  */
 export function suggestedRefundVnd(b: { depositVnd: number; paidVnd: number }, daysBefore: number): number {
   const percent = cancellationTiers.find((t) => daysBefore >= t.minDays)?.refundPercent ?? 0;
-  const depositPart = Math.min(b.paidVnd, Math.round((b.depositVnd * percent) / 100));
-  return depositPart + Math.max(0, b.paidVnd - b.depositVnd);
+  // Money is rounded up to 1 000 VND (booking rules), never above what was paid.
+  const depositPart = Math.ceil((b.depositVnd * percent) / 100 / 1000) * 1000;
+  return Math.min(b.paidVnd, depositPart + Math.max(0, b.paidVnd - b.depositVnd));
 }
 
 function tiersText(locale: Locale): string {

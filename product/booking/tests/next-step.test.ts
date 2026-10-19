@@ -8,6 +8,7 @@ const base = {
   holdExpiresAt: until,
   totalVnd: 2_380_000,
   depositVnd: 714_000,
+  balanceCreditVnd: 0,
   balancePaidAt: null,
   refundDueVnd: 0,
   refundedVnd: 0,

@@ -129,6 +129,13 @@ describe("booking deposits (VNPay)", () => {
     expect(sent[0]!.text).toContain(`https://bacviet.example/booking/${code}?t=${token}`);
     expect((await db.select().from(bookingPayments))[0]).toMatchObject({ linkToken: null });
     expect(await deposits.sendMissedEmails(LINKS)).toBe(0);
+
+    // Two catch-up runs at once (the daily run and an IPN) send them once.
+    await db.update(bookingPayments).set({ notifiedAt: null, linkToken: token });
+    sent = [];
+    const runs = await Promise.all([deposits.sendMissedEmails(LINKS), deposits.sendMissedEmails(LINKS)]);
+    expect(runs[0]! + runs[1]!).toBe(1);
+    expect(sent.map((m) => m.kind)).toEqual(["booking_deposit_paid", "booking_team_paid"]);
   });
 
   it("payment attempts per booking are limited; a broken limiter store never blocks a guest", async () => {
@@ -139,7 +146,7 @@ describe("booking deposits (VNPay)", () => {
     const limited = make(createMemoryRateLimiter({ max: 2, windowMs: 60_000 }));
     expect((await limited.start(args)).status).toBe("redirect");
     expect((await limited.start(args)).status).toBe("redirect");
-    expect(await limited.start(args)).toEqual({ status: "not_payable" });
+    expect(await limited.start(args)).toEqual({ status: "rate_limited" });
     expect(await db.select().from(bookingPayments)).toHaveLength(2);
 
     const broken = make({ limit: async () => Promise.reject(new Error("redis down")) });
@@ -330,15 +337,35 @@ describe("booking deposits (bank transfer, VietQR)", () => {
     expect(await deposits.receiveTransfer(over.code, { amountVnd: 1_100_000, bankRef: "FT2" }, LINKS)).toBe("deposit_paid");
     expect(await status(over.code)).toMatchObject({ balancePaidAt: clock, refundDueVnd: 100_000 });
 
-    // More than the deposit, less than the total: the deposit is paid, the rest is owed back (staff decide with the guest).
+    // More than the deposit, less than the total: the extra counts toward the balance; only the rest is left.
     const part = await holdOn(10, 1, "2026-10-12");
+    sent = [];
     expect(await deposits.receiveTransfer(part.code, { amountVnd: 700_000, bankRef: "FT3" }, LINKS)).toBe("deposit_paid");
-    expect(await status(part.code)).toMatchObject({ balancePaidAt: null, refundDueVnd: 400_000 });
+    const partial = await status(part.code);
+    expect(partial).toMatchObject({ balancePaidAt: null, balanceCreditVnd: 400_000, refundDueVnd: 0 });
+    expect(balanceDue(partial)).toBe(300_000);
+    // The guest is told what came and what is left (not the full balance again).
+    expect(sent[0]!.text).toContain("đã nhận 700.000");
+    expect(sent[0]!.text).toContain("còn lại 300.000");
 
     const cash = await createReports({ db }).cash("2026-10-01", "2026-10-01");
     expect(cash.collectedVnd).toBe(1_000_000 + 1_100_000 + 700_000);
-    expect(cash.extraVnd).toBe(100_000 + 400_000);
-    expect(cash.byChannel).toEqual([{ channel: "transfer", depositsVnd: 900_000, balancesVnd: 1_400_000 }]);
+    expect(cash.extraVnd).toBe(100_000);
+    expect(cash.byChannel).toEqual([{ channel: "transfer", depositsVnd: 300_000 + 300_000 + 700_000, balancesVnd: 1_400_000 }]);
+    expect((await createReports({ db }).receivables("2026-10-01")).map((r) => [r.code, r.dueVnd])).toEqual([[part.code, 300_000]]);
+
+    // The guest who paid the whole total by transfer is not asked for the balance in their email.
+    sent = [];
+    const fullAgain = await holdOn(10, 1, "2026-10-13");
+    await deposits.receiveTransfer(fullAgain.code, { amountVnd: 1_000_000, bankRef: "FT4" }, LINKS);
+    expect(sent[0]!.text).toContain("bạn đã thanh toán đủ");
+    expect(sent[0]!.text).not.toContain("còn lại");
+
+    // The last 300,000 arrives the next day: counted then, and only that.
+    clock = new Date("2026-10-02T03:00:00Z");
+    await db.update(bookings).set({ balancePaidAt: clock }).where(eq(bookings.code, part.code));
+    const nextDay = await createReports({ db }).cash("2026-10-02", "2026-10-02");
+    expect(nextDay.collectedVnd).toBe(300_000);
   });
 
   it("late transfer with the seats gone: refund due, nothing oversold", async () => {
@@ -346,8 +373,11 @@ describe("booking deposits (bank transfer, VietQR)", () => {
     clock = new Date(clock.getTime() + 20 * 60_000); // first hold expired
     const second = await bookingService.hold({ departureId: first.departure.id, name: "Minh", email: "m@example.com", phone: "0912345679", adults: "1", locale: "vi", agree: "on" }, "ip");
     expect(second.status).toBe("held");
-    expect(await deposits.receiveTransfer(first.code, { amountVnd: 300_000, bankRef: "FT9" }, LINKS)).toBe("refund_due");
-    expect(await status(first.code)).toMatchObject({ status: "refund_due", refundDueVnd: 300_000 });
+    sent = [];
+    expect(await deposits.receiveTransfer(first.code, { amountVnd: 1_000_000, bankRef: "FT9" }, LINKS)).toBe("refund_due");
+    expect(await status(first.code)).toMatchObject({ status: "refund_due", refundDueVnd: 1_000_000 });
+    // The email names what actually came (all of it goes back), not the deposit.
+    expect(sent[0]!.text).toContain("đã nhận 1.000.000");
   });
 
   it("refuses an expired hold, a wrong token, and a paid booking; VNPay reconcile ignores transfers", async () => {

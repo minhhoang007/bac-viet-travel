@@ -11,7 +11,7 @@ import type { TravellersState } from "@/product/components/travellers-form";
 
 /** captcha: the bot check (Turnstile, when configured) failed or expired; the guest ticks it again. */
 export type HoldFormState = Exclude<HoldResult, { status: "held" }> | { status: "error" | "captcha" } | null;
-export type DepositFormState = { status: "not_payable" | "error" } | null;
+export type DepositFormState = { status: "not_payable" | "rate_limited" | "error" } | null;
 
 const localeOf = (formData: FormData) => (formData.get("locale") === "en" ? "en" : "vi");
 
@@ -60,6 +60,7 @@ async function payOnline(kind: "start" | "startBalance", formData: FormData): Pr
       ipAddr: clientKeyFrom(await headers()),
       returnUrl: `${getPublicEnv().NEXT_PUBLIC_SITE_URL}${localePath(locale, "/booking/return")}`,
     });
+    if (result.status === "rate_limited") return { status: "rate_limited" };
     if (result.status !== "redirect") return { status: "not_payable" };
     url = result.url;
   } catch {

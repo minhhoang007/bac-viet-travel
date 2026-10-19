@@ -85,6 +85,11 @@ test("bank transfer: VietQR with amount and reference, seats held 2 hours, staff
   expect(cal).toContain(`UID:${code}@bacviet.travel`);
   expect(cal).toMatch(/DTSTART;VALUE=DATE:\d{8}\r\nDTEND;VALUE=DATE:\d{8}/);
   expect((await page.request.get(`/api/booking/${code}/ics?t=${"x".repeat(32)}`)).status()).toBe(404);
+  // A wrong (or outdated) link does not lock the guest out: their working cookie stays.
+  await page.goto(`/booking/${code}/voucher?t=${"x".repeat(32)}`);
+  await expect(page.getByTestId("voucher-code")).toHaveText(code);
+  // Without the cookie, a wrong token shows nothing.
+  await page.context().clearCookies();
   await page.goto(`/booking/${code}/voucher?t=${"x".repeat(32)}`);
   await expect(page.locator("[data-voucher=unavailable]")).toBeVisible();
   expect(bookingUrl.searchParams.get("t")).toBeNull();

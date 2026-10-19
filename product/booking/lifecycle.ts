@@ -49,14 +49,16 @@ export function refundLeft(b: { refundDueVnd: number; refundedVnd: number }): nu
   return b.refundDueVnd - b.refundedVnd;
 }
 
-/** What the guest has paid for the trip itself (deposit, plus the balance once settled); 0 while only held. */
-export function paidSoFar(b: { status: BookingStatus; totalVnd: number; depositVnd: number; balancePaidAt: Date | null }): number {
+type Money = { status: BookingStatus; totalVnd: number; depositVnd: number; balanceCreditVnd: number; balancePaidAt: Date | null };
+
+/** What the guest has paid for the trip itself (deposit and any early part of the balance, or the whole total once settled); 0 while only held. */
+export function paidSoFar(b: Money): number {
   if (!isSold(b.status)) return 0;
-  return b.balancePaidAt ? Math.max(b.totalVnd, b.depositVnd) : b.depositVnd;
+  return b.balancePaidAt ? Math.max(b.totalVnd, b.depositVnd) : b.depositVnd + b.balanceCreditVnd;
 }
 
-/** Rest of the total still to collect (D5): sold bookings whose balance is not settled yet. */
-export function balanceDue(b: { status: BookingStatus; totalVnd: number; depositVnd: number; balancePaidAt: Date | null }): number {
+/** Rest of the total still to collect (D5): sold bookings whose balance is not settled yet, less what came early. */
+export function balanceDue(b: Money): number {
   if (!isSold(b.status) || b.balancePaidAt) return 0;
-  return Math.max(0, b.totalVnd - b.depositVnd);
+  return Math.max(0, b.totalVnd - b.depositVnd - b.balanceCreditVnd);
 }

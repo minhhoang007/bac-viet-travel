@@ -68,7 +68,7 @@ export function createProduct(db: Db, ctx: ProductContext) {
     tourAddons: async (slug) => (await tour(slug))?.addons ?? [],
     tourSnapshot: async (slug, locale) => {
       const t = await tour(slug, locale);
-      return t ? { title: t.title, pickup: t.pickupTime || t.departure } : null;
+      return t ? { title: t.title, pickup: t.pickupTime || null } : null;
     },
     discountLimiter: ctx.rateLimiter("booking:discount-preview", { max: 20, windowMs: 10 * 60_000 }),
     // A visitor holds one date at most 3 times an hour (a guest rarely needs a second try).
@@ -104,9 +104,9 @@ export function createProduct(db: Db, ctx: ProductContext) {
     tourExists: async (slug) => (await tour(slug)) !== null,
     tourPickup: async (slug, locale) => (await tour(slug, locale))?.pickupTime || null,
     tourPrice: async (slug) => (await tour(slug))?.price.vnd ?? null,
-    receiveTransfer: (code, input) => {
+    receiveTransfer: (tx, code, input) => {
       const env = getEnv();
-      return deposits.receiveTransfer(code, input, { siteUrl: env.NEXT_PUBLIC_SITE_URL, teamEmail: env.extra.CONTACT_TO_EMAIL });
+      return deposits.receiveTransferIn(tx, code, input, { siteUrl: env.NEXT_PUBLIC_SITE_URL, teamEmail: env.extra.CONTACT_TO_EMAIL });
     },
     now: ctx.now,
   });

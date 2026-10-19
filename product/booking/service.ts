@@ -110,7 +110,7 @@ export function createBookingService(deps: {
   /** Add-ons the guest may choose on this tour (B6); none when absent. */
   tourAddons?: (slug: string) => Promise<Addon[]>;
   /** The tour's name and pick-up in the guest's language, kept on the booking (voucher). */
-  tourSnapshot?: (slug: string, locale: string) => Promise<{ title: string; pickup: string } | null>;
+  tourSnapshot?: (slug: string, locale: string) => Promise<{ title: string; pickup: string | null } | null>;
   /** Lost-link requests (resendLink): the email, and a limit per visitor and per booking. Off when absent. */
   mail?: MailPort;
   linkLimiter?: RateLimiter;
@@ -237,18 +237,24 @@ export function createBookingService(deps: {
       const code = input.code.trim().toUpperCase();
       const email = input.email.trim().toLowerCase();
       if (!deps.mail || !deps.linkLimiter) return "sent";
-      try {
-        const byVisitor = await deps.linkLimiter.limit(`visitor:${clientKey}`);
-        const byBooking = await deps.linkLimiter.limit(`booking:${code}`);
-        if (!byVisitor.success || !byBooking.success) return "rate_limited";
-      } catch (error) {
-        // No limiter, no new links: a store outage must not open the door to guessing.
-        deps.logger.error("booking.link_limiter_failed", { error });
-        return "rate_limited";
-      }
+      const limiter = deps.linkLimiter;
+      const allowed = async (key: string) => {
+        try {
+          return (await limiter.limit(key)).success;
+        } catch (error) {
+          // No limiter, no new links: a store outage must not open the door to guessing.
+          deps.logger.error("booking.link_limiter_failed", { error });
+          return false;
+        }
+      };
+      // Every try counts for the visitor (guessing); only a matching one counts for the booking, so wrong guesses
+      // about a code never lock its guest out (the booking limit keeps their inbox from being flooded).
+      if (!(await allowed(`visitor:${clientKey}`))) return "rate_limited";
       if (!CODE.test(code) || !email) return "sent";
       const [b] = await db.select().from(bookings).where(eq(bookings.code, code));
-      if (!b || !b.email || b.email.trim().toLowerCase() !== email) return "sent";
+      // Bookings an OTA handles get no email from us (guestEmails = false), as everywhere else.
+      if (!b || !b.guestEmails || !b.email || b.email.trim().toLowerCase() !== email) return "sent";
+      if (!(await allowed(`booking:${code}`))) return "rate_limited";
       const token = randomBytes(24).toString("base64url");
       await db.transaction(async (tx) => {
         await tx.update(bookings).set({ tokenHash: hashToken(token) }).where(eq(bookings.id, b.id));

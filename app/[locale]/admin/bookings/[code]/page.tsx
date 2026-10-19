@@ -161,7 +161,7 @@ export default async function AdminBookingPage({ params, searchParams }: Props) 
               {paid > 0 ? (
                 <>
                   <label htmlFor="cancel-refund" className="font-medium">{c.detail.cancelRefund}</label>
-                  <Input id="cancel-refund" name="refundVnd" type="number" inputMode="numeric" min={0} max={paid} step={1000} required defaultValue={suggestedRefund} aria-describedby="cancel-refund-hint" className="max-w-48" />
+                  <Input id="cancel-refund" name="refundVnd" type="number" inputMode="numeric" min={0} max={paid} step={1} required defaultValue={suggestedRefund} aria-describedby="cancel-refund-hint" className="max-w-48" />
                   <p id="cancel-refund-hint" className="text-muted-foreground">{c.detail.cancelRefundHint(formatVnd(paid, locale), formatVnd(suggestedRefund, locale), daysBefore)}</p>
                 </>
               ) : (

@@ -344,9 +344,21 @@ describe("tour search, kept tour details, lost links", () => {
     expect(await s.getForGuest(held.code, held.token)).toBeNull();
     expect(await s.getForGuest(held.code, newToken)).not.toBeNull();
 
-    // 5 an hour per booking (and per visitor), then refused: 2 asked above for this code, 3 more here.
-    for (let i = 0; i < 3; i++) await s.resendLink({ code: held.code, email: "x@example.com" }, `ip-${i}`, "https://bacviet.example");
-    expect(await s.resendLink({ code: held.code, email: "lan@example.com" }, "ip-9", "https://bacviet.example")).toBe("rate_limited");
+    // Wrong guesses about this code from many visitors never lock the guest out...
+    for (let i = 0; i < 10; i++) await s.resendLink({ code: held.code, email: "x@example.com" }, `guess-${i}`, "https://bacviet.example");
+    expect(await s.resendLink({ code: held.code, email: "lan@example.com" }, "guest", "https://bacviet.example")).toBe("sent");
+    // ...but one visitor gets 5 tries an hour, and matching requests 5 an hour per booking (inbox flooding).
+    for (let i = 0; i < 5; i++) await s.resendLink({ code: "BV-ZZZZZZ", email: "x@example.com" }, "guesser", "https://bacviet.example");
+    expect(await s.resendLink({ code: "BV-ZZZZZZ", email: "x@example.com" }, "guesser", "https://bacviet.example")).toBe("rate_limited");
+    // Matching requests so far: 2; three more fill the hour.
+    for (let i = 0; i < 3; i++) await s.resendLink({ code: held.code, email: "lan@example.com" }, `guest-${i}`, "https://bacviet.example");
+    expect(await s.resendLink({ code: held.code, email: "lan@example.com" }, "guest-9", "https://bacviet.example")).toBe("rate_limited");
+
+    // A booking an OTA handles (no guest emails) gets none, even when asked.
+    await db.update(bookings).set({ guestEmails: false }).where(eq(bookings.code, held.code));
+    const before = sent.length;
+    expect(await service({ mail: { send: async (m) => void sent.push(m) }, linkLimiter: createMemoryRateLimiter({ max: 5, windowMs: 60_000 }) }).resendLink({ code: held.code, email: "lan@example.com" }, "ip", "https://bacviet.example")).toBe("sent");
+    expect(sent.length).toBe(before);
     // A limiter outage refuses rather than allowing unlimited tries.
     const broken = service({ mail: { send: async () => {} }, linkLimiter: { limit: async () => Promise.reject(new Error("down")) } });
     expect(await broken.resendLink({ code: held.code, email: "lan@example.com" }, "ip", "https://bacviet.example")).toBe("rate_limited");

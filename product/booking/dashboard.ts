@@ -4,7 +4,7 @@ import { bookingPayments, bookings, departures } from "../schema/booking";
 import { needsAttention } from "./admin";
 import { paidBookings } from "./metrics";
 import { addDays, vietnamDayStart, vietnamToday } from "./rules";
-import { canBecome, refundOwed, SOLD_STATUSES } from "./status";
+import { balanceInVnd, canBecome, depositInVnd, refundOwed, SOLD_STATUSES } from "./status";
 
 const TZ = "Asia/Ho_Chi_Minh";
 const ratio = (part = 0, whole = 0) => (whole > 0 ? Math.round((part / whole) * 100) : null);
@@ -40,8 +40,8 @@ export function createDashboard(deps: { db: Db; now?: () => Date }) {
   async function collectedBetween(from: Date, to: Date): Promise<number> {
     const [row] = await db
       .select({
-        deposits: sql<number>`coalesce(sum(${bookings.depositVnd}) filter (where ${bookings.depositPaidAt} >= ${from.toISOString()} and ${bookings.depositPaidAt} < ${to.toISOString()}), 0)::bigint`,
-        balances: sql<number>`coalesce(sum(${bookings.totalVnd} - ${bookings.depositVnd}) filter (where ${bookings.balancePaidAt} >= ${from.toISOString()} and ${bookings.balancePaidAt} < ${to.toISOString()}), 0)::bigint`,
+        deposits: sql<number>`coalesce(sum(${depositInVnd()}) filter (where ${bookings.depositPaidAt} >= ${from.toISOString()} and ${bookings.depositPaidAt} < ${to.toISOString()}), 0)::bigint`,
+        balances: sql<number>`coalesce(sum(${balanceInVnd()}) filter (where ${bookings.balancePaidAt} >= ${from.toISOString()} and ${bookings.balancePaidAt} < ${to.toISOString()}), 0)::bigint`,
       })
       .from(bookings);
     return Number(row?.deposits ?? 0) + Number(row?.balances ?? 0);
@@ -79,12 +79,12 @@ export function createDashboard(deps: { db: Db; now?: () => Date }) {
       const paidDay = (col: typeof bookings.depositPaidAt | typeof bookings.balancePaidAt) => sql<string>`to_char(${col} at time zone ${sql.raw(`'${TZ}'`)}, 'YYYY-MM-DD')`;
       const [depositDays, balanceDays] = await Promise.all([
         db
-          .select({ day: paidDay(bookings.depositPaidAt), vnd: sql<number>`sum(${bookings.depositVnd})::bigint` })
+          .select({ day: paidDay(bookings.depositPaidAt), vnd: sql<number>`sum(${depositInVnd()})::bigint` })
           .from(bookings)
           .where(gte(bookings.depositPaidAt, since30))
           .groupBy(paidDay(bookings.depositPaidAt)),
         db
-          .select({ day: paidDay(bookings.balancePaidAt), vnd: sql<number>`sum(${bookings.totalVnd} - ${bookings.depositVnd})::bigint` })
+          .select({ day: paidDay(bookings.balancePaidAt), vnd: sql<number>`sum(${balanceInVnd()})::bigint` })
           .from(bookings)
           .where(gte(bookings.balancePaidAt, since30))
           .groupBy(paidDay(bookings.balancePaidAt)),

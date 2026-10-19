@@ -9,6 +9,7 @@ import { createBookingAdmin } from "../admin";
 import { createLogger } from "@/core/logger";
 import { createReports } from "../reports";
 import { balanceDue } from "../lifecycle";
+import { createDepositService } from "../deposits";
 
 // The real product services as bootstrap builds them (admin + jobs on), with a recording mail port.
 const { db, close } = testDb();
@@ -79,12 +80,31 @@ describe("booking admin", () => {
     // The deposit service's own outcomes are covered in deposits.int.test.ts; here only the audit of its answer.
     const admin = createBookingAdmin({
       db, logger: createLogger({ write: () => {} }), mail: { send: async () => {} }, audit: container.admin, tourTitle: async () => "",
-      tourExists: async () => true, receiveTransfer: async () => "extra", now: () => clock,
+      tourExists: async () => true, receiveTransfer: async () => ({ result: "extra" as const, sendEmails: async () => {} }), now: () => clock,
     });
     const code = "BV-EXTRA2";
     expect(await admin.receiveTransfer(staff, code, { amountVnd: 600_000, bankRef: "FT1" })).toBe("extra");
     const { rows } = await container.admin!.listAudit({ targetId: code });
     expect(rows.map((r) => r.action)).toEqual(["booking.transfer_received"]);
+  });
+
+  it("a transfer staff record: the deposit and its audit entry saved together, the emails after", async () => {
+    const [d] = await db.insert(departures).values({ tourSlug: "ninh-binh-day-tour", date: "2026-10-10", capacity: 10 }).returning();
+    const held = await booking.hold({ departureId: d!.id, name: "Lan", email: "lan@example.com", phone: "0912345678", adults: "1", locale: "vi", agree: "on" }, "ip-transfer");
+    if (held.status !== "held") throw new Error(held.status);
+    const deposit = (await row(held.code)).depositVnd;
+    clearMail();
+    // The real deposit service, wired as the manifest does it (site links given here instead of read from the env).
+    const mail = { send: async (m: (typeof sent)[number]) => void sent.push(m) };
+    const deposits = createDepositService({ db, logger: createLogger({ write: () => {} }), mail, bookings: booking, transferHoldMinutes: 120, tourTitle: async () => "Ninh Bình", now: () => clock });
+    const admin = createBookingAdmin({
+      db, logger: createLogger({ write: () => {} }), mail, audit: container.admin, tourTitle: async () => "", tourExists: async () => true, now: () => clock,
+      receiveTransfer: (tx, code, input) => deposits.receiveTransferIn(tx, code, input, { siteUrl: "https://bacviet.example" }),
+    });
+    expect(await admin.receiveTransfer(staff, held.code, { amountVnd: deposit, bankRef: "FT77" })).toBe("deposit_paid");
+    expect((await row(held.code)).status).toBe("deposit_paid");
+    expect((await container.admin!.listAudit({ targetId: held.code })).rows.map((r) => r.action)).toEqual(["booking.transfer_received"]);
+    expect(sent.map((m) => m.kind)).toContain("booking_deposit_paid");
   });
 
   it("a late deposit (refund_due) ends as cancelled once refunded", async () => {
