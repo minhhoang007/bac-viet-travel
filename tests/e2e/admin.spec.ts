@@ -432,6 +432,14 @@ test("two-step verification: staff set up a second factor first, pass it each se
   const [booking] = await sql<{ status: string }[]>`select status from bookings where code = 'BV-MFA222'`;
   expect(booking!.status).toBe("deposit_paid");
 
+  // A staff-entered booking below the list-price floor (a money permission) asks again too, and creates nothing.
+  await page.goto("/admin/bookings/new");
+  await page.getByLabel("Họ tên khách").fill("Khách thử xác thực");
+  await page.getByLabel("Số tiền thực thu (VND)").fill("1000");
+  await page.getByRole("button", { name: "Tạo đơn" }).click();
+  await expect(page).toHaveURL(/\/verify\?fresh=1&next=%2Fadmin%2Fbookings%2Fnew$/);
+  expect(await sql`select 1 from bookings where name = 'Khách thử xác thực'`).toHaveLength(0);
+
   // Staff sessions end after 12 hours.
   await sql`update sessions set created_at = now() - interval '13 hours' where user_id = ${user!.id}`;
   expect((await page.goto("/admin/bookings"))!.status()).toBe(404);

@@ -1,7 +1,9 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { requireFreshSecondFactor } from "@/app/_lib/admin";
 import { adminAction, type AdminContext } from "@/app/_lib/admin-action";
 import { requirePermission } from "@/app/_lib/staff";
 import type { Permission } from "@/product/staff/permissions";
@@ -120,13 +122,20 @@ export type ManualBookingState = Exclude<ManualBookingResult, { status: "created
 export async function createManualBooking(_prev: ManualBookingState, formData: FormData): Promise<ManualBookingState> {
   const ctx = await requirePermission("bookings.edit");
   const l = locale.parse(formData.get("locale"));
+  // Any amount (below the list-price floor) is a money permission: like the other money actions, only with a fresh
+  // second factor. Without one the floor applies, and an amount below it asks to verify again.
+  const app = ctx.container.app!;
+  const session = await app.auth.getSession(await headers());
+  const fresh = !app.auth.staffPolicy.requireSecondFactor || (session !== null && app.auth.isFresh(session));
+  const money = ctx.allowed("bookings.money");
   let result: ManualBookingResult;
   try {
-    result = await service(ctx).createManual(ctx.user, Object.fromEntries(formData), { confirm: ctx.allowed("bookings.confirm"), money: ctx.allowed("bookings.money") });
+    result = await service(ctx).createManual(ctx.user, Object.fromEntries(formData), { confirm: ctx.allowed("bookings.confirm"), money: money && fresh });
   } catch (error) {
     ctx.container.logger.warn(EVENT, { error });
     return { status: "error" };
   }
+  if (money && !fresh && result.status === "invalid" && result.fieldErrors.amountVnd === "amount_low") await requireFreshSecondFactor("/admin/bookings/new");
   if (result.status !== "created") return result;
   redirect(localePath(l, `/admin/bookings/${result.code}?result=done`));
 }
