@@ -1,7 +1,6 @@
+import { sql } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import type { MediaProvider } from "@/modules/media";
-import { contentItems } from "@/modules/content/schema";
-import { mediaAssets } from "@/modules/media/schema";
 import { testApp } from "@/tests/integration/setup/app";
 import { resetDb, testDb } from "@/tests/integration/setup/db";
 
@@ -23,7 +22,10 @@ const { container } = testApp(db, {
 const media = container.media!;
 
 async function asset(publicId: string) {
-  const [row] = await db.insert(mediaAssets).values({ publicId, name: "x.jpg", status: "ready", width: 10, height: 10, format: "jpg", bytes: 1, version: 1 }).returning();
+  // Raw SQL: outside a module, only its public API may be imported (pnpm arch).
+  const [row] = await db.execute<{ id: string; publicId: string }>(
+    sql`insert into media_assets (public_id, name, status, width, height, format, bytes, version) values (${publicId}, 'x.jpg', 'ready', 10, 10, 'jpg', 1, 1) returning id, public_id as "publicId"`,
+  );
   return row!;
 }
 
@@ -38,10 +40,10 @@ describe("media in use (wired through the container)", () => {
     const byId = await asset("site/tour-cover");
     const byUrl = await asset("site/post-photo");
     const unused = await asset("site/unused");
-    await db.insert(contentItems).values([
-      { type: "tour", slug: "ha-giang", draft: { shared: { images: [{ mediaId: byId.id }] } } },
-      { type: "post", slug: "tips", draft: { body: "" }, published: { body: `![](https://img.test/f_auto/v1/${byUrl.publicId}.jpg)` } },
-    ]);
+    const tour = JSON.stringify({ shared: { images: [{ mediaId: byId.id }] } });
+    const post = JSON.stringify({ body: `![](https://img.test/f_auto/v1/${byUrl.publicId}.jpg)` });
+    await db.execute(sql`insert into content_items (type, slug, draft) values ('tour', 'ha-giang', ${tour}::jsonb)`);
+    await db.execute(sql`insert into content_items (type, slug, draft, published) values ('post', 'tips', '{"body":""}'::jsonb, ${post}::jsonb)`);
 
     await expect(media.remove(byId.id)).rejects.toMatchObject({ code: "CONFLICT" });
     await expect(media.remove(byUrl.id)).rejects.toMatchObject({ code: "CONFLICT" });
