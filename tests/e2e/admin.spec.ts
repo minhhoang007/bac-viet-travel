@@ -328,11 +328,11 @@ test("staff roles: admins add sales and managers; sales see bookings without con
   // Hidden from the menu and closed by URL too.
   for (const path of ["/admin/discounts", "/admin/reports", "/admin/staff", "/admin/tours", "/admin/tours/new"]) expect((await staff.goto(path))?.status()).toBe(404);
   // Tour drafts stay closed through the shared content pages too: no preview, not in the review queue.
-  const [draft] = await sql<{ id: string }[]>`
-    insert into content_items (type, slug, draft) values ('tour', 'sale-hidden-draft', '{}') on conflict (type, slug) do update set slug = excluded.slug returning id`;
-  expect((await staff.goto(`/api/content/preview?id=${draft!.id}&locale=vi`))?.status()).toBe(404);
+  // An existing tour: a row added here would change the tour counts other files check in parallel (tours-admin.spec).
+  const [tour] = await sql<{ id: string; slug: string }[]>`select id, slug from content_items where type = 'tour' order by created_at limit 1`;
+  expect((await staff.goto(`/api/content/preview?id=${tour!.id}&locale=vi`))?.status()).toBe(404);
   await staff.goto("/admin/content?status=all");
-  await expect(staff.getByText("sale-hidden-draft")).toHaveCount(0);
+  await expect(staff.locator("#app-content").getByText(tour!.slug, { exact: true })).toHaveCount(0);
   // The admin home (owners' numbers) sends them to their own first page instead.
   await staff.goto("/admin");
   await expect(staff).toHaveURL(/\/admin\/bookings$/);
