@@ -7,7 +7,7 @@ import type { Db } from "@/db/client";
 import { asInvitation, dropPasswordLinks, PASSWORD_MAX, type BetterAuthInstance } from "./adapters/better-auth";
 import { createAuthEvents, type AuthEvent } from "./events";
 import { createLoginCodes } from "./login-code";
-import { hasSecondFactor, isFresh, staffGate, staffSessionExpired, type FactorFacts, type SessionFacts, type StaffAuthPolicy } from "./mfa";
+import { hasSecondFactor, isFresh, isStaffRole, staffGate, staffSessionExpired, type FactorFacts, type SessionFacts, type StaffAuthPolicy } from "./mfa";
 import { accounts, passkeys, sessions, twoFactors } from "./schema";
 
 export type Role = (typeof ROLES)[number];
@@ -276,7 +276,7 @@ export function createAuthService(
   const sendPasswordSetup = async (email: string) => {
     const address = email.trim().toLowerCase();
     const [user] = await db.select({ id: users.id, status: users.status, role: users.role }).from(users).where(eq(users.email, address));
-    if (!user || user.status === "disabled" || !hasRole({ role: toRole(user.role) }, "editor")) return;
+    if (!user || user.status === "disabled" || !isStaffRole(user.role)) return;
     await dropPasswordLinks(db, user.id);
     await auth.api.requestPasswordReset({ body: { email: address } });
   };
@@ -453,10 +453,10 @@ export function createAuthService(
         if (!client.success || !account.success) throw new AppError("RATE_LIMIT_ERROR");
       }
       if (deps.turnstile && !(await deps.turnstile(captchaToken, clientKey))) throw new AppError("CAPTCHA_ERROR");
-      // A disabled account reads as a wrong password (getSession would drop its session anyway). So does a customer
-      // account: passwords are for staff, and one left from a former employee must stop working.
       // Longer than any password allowed here: never hashed (hashing cost).
       if (password.length > PASSWORD_MAX) return { status: "wrong", setCookies: [] };
+      // A disabled account reads as a wrong password (getSession would drop its session anyway). So does a customer
+      // account: passwords are for staff, and one left from a former employee must stop working.
       const [user] = await db.select({ id: users.id, status: users.status, role: users.role }).from(users).where(eq(users.email, address));
       if (user && (user.status === "disabled" || !hasRole(user, "editor"))) {
         // As slow as checking a password: the answer time must not tell which addresses have an account.
@@ -464,8 +464,9 @@ export function createAuthService(
         return { status: "wrong", setCookies: [] };
       }
       // No second factor yet: the first one is set up from a session opened by an emailed link (proof of the address),
-      // never with the password alone, so whoever learns it cannot enroll their own authenticator app first.
-      if (user && deps.staff.requireSecondFactor && !hasSecondFactor(await factors(user.id))) {
+      // never with the password alone, so whoever learns it cannot enroll their own authenticator app first. Without
+      // magic links there is no such session to send them to: the password stays the way in.
+      if (user && methods.magicLink && deps.staff.requireSecondFactor && !hasSecondFactor(await factors(user.id))) {
         return { status: (await passwordMatches(user.id, password)) ? "email_link" : "wrong", setCookies: [] };
       }
       try {
