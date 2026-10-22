@@ -1,6 +1,13 @@
 import { z } from "zod";
 import { MANUAL_SOURCES } from "./sources";
-import { bookingRules } from "./rules";
+import { bookingRules, isCalendarDay } from "./rules";
+
+/** At least this many digits in a phone number (a Vietnamese mobile has 10; "--------" has none). */
+export const hasPhoneDigits = (v: string) => (v.match(/\d/g)?.length ?? 0) >= 8;
+/** YYYY-MM-DD that exists on the calendar. */
+export const calendarDay = z.string().refine(isCalendarDay, "invalid");
+const guestEmail = z.string().trim().pipe(z.email("invalid").max(200, "too_long"));
+const guestPhone = z.string().trim().refine((v) => /^\+?[0-9 ().-]{8,20}$/.test(v) && hasPhoneDigits(v), "invalid");
 
 /** Discount code typed by the guest: trimmed, upper case; empty = none. */
 export const discountCodeField = z
@@ -17,8 +24,8 @@ export const bookingInputSchema = z
   .object({
     departureId: z.uuid("invalid"),
     name: z.string().trim().min(2, "required").max(100, "too_long"),
-    email: z.email("invalid").max(200, "too_long"),
-    phone: z.string().trim().regex(/^\+?[0-9 ().-]{8,20}$/, "invalid"),
+    email: guestEmail,
+    phone: guestPhone,
     adults: count(1, bookingRules.maxSeatsPerBooking),
     children: count(0, bookingRules.maxSeatsPerBooking).default(0),
     infants: count(0, bookingRules.maxInfants).default(0),
@@ -39,10 +46,10 @@ export type BookingInput = z.infer<typeof bookingInputSchema>;
 export const privateBookingInputSchema = z
   .object({
     tourSlug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "invalid"),
-    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "invalid"),
+    date: calendarDay,
     name: z.string().trim().min(2, "required").max(100, "too_long"),
-    email: z.email("invalid").max(200, "too_long"),
-    phone: z.string().trim().regex(/^\+?[0-9 ().-]{8,20}$/, "invalid"),
+    email: guestEmail,
+    phone: guestPhone,
     adults: count(1, 50),
     children: count(0, 50).default(0),
     infants: count(0, bookingRules.maxInfants).default(0),

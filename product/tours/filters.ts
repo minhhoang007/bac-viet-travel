@@ -1,3 +1,4 @@
+import { isCalendarDay } from "../booking/rules";
 import { DESTINATIONS, type Destination } from "./destinations";
 import type { Tour } from "./model";
 
@@ -36,7 +37,7 @@ export function parseTourFilters(params: Params): TourFilters {
     price: pick(PRICE_BANDS, one(params.price)),
     type: pick(TOUR_TYPES, one(params.type)),
     sort: pick(SORTS, one(params.sort)) ?? "popular",
-    ...(date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? { date } : {}),
+    ...(date && isCalendarDay(date) ? { date } : {}),
     ...(Number.isInteger(guests) && guests >= 1 && guests <= 50 ? { guests } : {}),
   };
 }

@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { getContainer } from "@/bootstrap/container";
-
-const DAY = /^\d{4}-\d{2}-\d{2}$/;
+import { isCalendarDay } from "@/product/booking/rules";
 
 /**
  * Group tours the guest can still book on a day for a party size (tour search with a date), for the static tour
@@ -12,7 +11,7 @@ export async function GET(request: Request) {
   const date = url.searchParams.get("date") ?? "";
   const guests = Number(url.searchParams.get("guests") ?? "1");
   const { app, logger } = getContainer();
-  if (!app || !DAY.test(date) || !Number.isInteger(guests) || guests < 1 || guests > 50) return NextResponse.json({ error: "invalid" }, { status: 400 });
+  if (!app || !isCalendarDay(date) || !Number.isInteger(guests) || guests < 1 || guests > 50) return NextResponse.json({ error: "invalid" }, { status: 400 });
   try {
     const slugs = await app.product.booking.toursWithSeats(date, guests);
     return NextResponse.json({ slugs }, { headers: { "cache-control": "public, s-maxage=15, stale-while-revalidate=30" } });

@@ -316,6 +316,7 @@ describe("tour search, kept tour details, lost links", () => {
     expect((await s.toursWithSeats("2026-10-10", 2)).sort()).toEqual(["ha-long-cruise-2d1n", "sapa-trekking-2d1n"]);
     expect(await s.toursWithSeats("2026-10-10", 3)).toEqual(["ha-long-cruise-2d1n"]);
     expect(await s.toursWithSeats("not-a-day", 2)).toEqual([]);
+    expect(await s.toursWithSeats("2026-13-45", 2)).toEqual([]); // the pattern fits, Postgres would refuse the day
   });
 
   it("a hold keeps the tour name and pick-up as sold, in the guest's language", async () => {

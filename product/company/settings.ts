@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { defaultBankTransfer as bankTransferConfig } from "@/config/bank-transfer";
 import { defaultContact as contactConfig } from "@/config/contact";
+import { hasPhoneDigits } from "../booking/validations";
 
 export const COMPANY_CACHE_TAG = "site-company";
 
@@ -16,7 +17,7 @@ export const companySchema = z.object({
   licenseNumber: line(100),
   representative: line(100),
   address: line(300),
-  hotline: z.string().trim().regex(/^\+?[\d\s.]{8,20}$/),
+  hotline: z.string().trim().regex(/^\+?[\d\s.]{8,20}$/).refine(hasPhoneDigits),
   email: z.email().max(200),
   /** Digits only, as Zalo links expect them. */
   zalo: z.string().trim().transform((v) => v.replace(/\D/g, "")).pipe(z.string().min(9).max(15)),
