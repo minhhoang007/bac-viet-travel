@@ -1,4 +1,4 @@
-# Bắc Việt Travel (demo)
+# Bắc Việt Travel
 
 Website công ty du lịch: tour Hạ Long, Ninh Bình, Sapa khởi hành từ Hà Nội, **đặt tour online**.
 Dựng từ Minh Starter `v1.0.0-rc.11` (profile `app`, modules `email`, `blog`, `jobs`, `admin`).
@@ -56,6 +56,16 @@ pnpm dev
 - Env: `NEXT_PUBLIC_SITE_URL`, `DATABASE_URL`, `BETTER_AUTH_SECRET`, `EMAIL_PROVIDER=resend`, `EMAIL_API_KEY`,
   `EMAIL_FROM`, `CONTACT_TO_EMAIL`, `CRON_SECRET`, `VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET`, `VNPAY_PAYMENT_URL` (mẫu: `.env.vercel`, không commit).
 - Khi có giấy phép: đổi sang tài khoản VNPay thật (`VNPAY_PAYMENT_URL=https://pay.vnpay.vn/vpcpay.html`), biểu ngữ tự tắt.
+
+## Không có trang demo
+Trang demo công khai (`DEMO_MODE`: `/demo` đăng nhập một cú bấm, hộp thư demo trong admin, dữ liệu tự reset mỗi
+ngày) đã bỏ khỏi dự án ngày 2026-10-22: `product/demo/`, `demoAccounts` trong `product/manifest.ts`, E2E demo.
+Phần của starter cho chế độ này vẫn còn (`core/auth`, `modules/email`, bảng `demo_emails`) để nâng cấp starter không
+xung đột, nhưng không có tài khoản demo nên `/demo` luôn 404. Không đặt `DEMO_MODE` trên Vercel.
+
+Vẫn giữ (không phải trang demo): các giá trị "(demo)" trong `config/contact.ts` và tài khoản ngân hàng mẫu
+(`config/bank-transfer.ts`, `demo: true`). Chúng đánh dấu thông tin công ty còn thiếu (Admin → Thông tin công ty,
+`pnpm launch:check`) và chặn mã QR chuyển khoản vào tài khoản giả.
 
 ## Ghi chú cho starter (phát hiện khi làm dự án)
 - **G7** ✅ (rc.10): `createProduct(db, ctx)` nhận logger, mail, rate limiter, payments, jobs.

@@ -39,10 +39,3 @@ export const e2eServerEnv: Record<string, string> = {
   EMAIL_FROM: "booking@example.com",
   CONTACT_TO_EMAIL: "team@example.com",
 };
-
-/** The public demo site (playwright.demo.config.ts): the same server with DEMO_MODE, built with this env too. */
-export const demoServerEnv: Record<string, string> = {
-  ...e2eServerEnv,
-  DEMO_MODE: "true",
-  DEMO_CONTACT_URL: "https://example.com/website-tour",
-};

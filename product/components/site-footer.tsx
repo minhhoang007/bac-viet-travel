@@ -5,7 +5,6 @@ import type { Locale } from "@/config/app";
 import { telUrl, whatsappUrl, zaloUrl } from "@/config/contact";
 import { currentCompany } from "@/app/_lib/company";
 import { features } from "@/config/features";
-import { getPublicEnv } from "@/bootstrap/env";
 import { Logo } from "../brand/logo";
 import { getProductContent } from "../content";
 import { DESTINATIONS } from "../tours/catalog";
@@ -17,8 +16,6 @@ export async function SiteFooter({ locale }: { locale: Locale }) {
   const f = c.footer;
   const n = c.footerNav;
   const href = (path: string) => localePath(locale, path);
-  // Demo site: the notice on top already says it is a sample; keep the "(demo)" markers (launch:check) out of view.
-  const shown = (value: string) => (getPublicEnv().demoMode ? value.replace(/\s*\(demo\)/g, "") : value);
   const columns = [
     {
       title: n.tours,
@@ -55,18 +52,18 @@ export async function SiteFooter({ locale }: { locale: Locale }) {
             <Logo size="sm" />
           </IntentLink>
           <div className="grid max-w-md gap-1 leading-relaxed">
-            <p className="font-semibold text-foreground">{shown(contactConfig.legalName)}</p>
+            <p className="font-semibold text-foreground">{contactConfig.legalName}</p>
             <p>
-              {f.taxCode}: {shown(contactConfig.taxCode)}
+              {f.taxCode}: {contactConfig.taxCode}
             </p>
             <p>
-              {contactConfig.licenseType[locale]}: {shown(contactConfig.licenseNumber)}
+              {contactConfig.licenseType[locale]}: {contactConfig.licenseNumber}
             </p>
             <p>
-              {f.representative}: {shown(contactConfig.representative)}
+              {f.representative}: {contactConfig.representative}
             </p>
             <p>
-              {f.address}: {shown(contactConfig.address)}
+              {f.address}: {contactConfig.address}
             </p>
             <p>
               {f.hotline}:{" "}

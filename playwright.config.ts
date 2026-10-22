@@ -3,8 +3,6 @@ import { e2eServerEnv } from "./tests/e2e/server-env";
 
 export default defineConfig({
   testDir: "tests/e2e",
-  // The demo site needs its own build (DEMO_MODE is read when static pages are built): playwright.demo.config.ts.
-  testIgnore: /demo\.spec\.ts/,
   // Traces of failed tests land in test-results/ (CI uploads them): open with `pnpm exec playwright show-trace`.
   use: { baseURL: "http://localhost:3100", trace: "retain-on-failure" },
   webServer: {
