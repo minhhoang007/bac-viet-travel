@@ -3,9 +3,10 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
 import { requireAppServices } from "@/app/_lib/session";
-import { confirmTotp, deletePasskey, disableTotp, newBackupCodes, signOutDevice, signOutOtherDevices, startTotp } from "@/app/actions/security";
+import { confirmTotp, deletePasskey, disableTotp, newBackupCodes, savePassword, signOutDevice, signOutOtherDevices, startTotp } from "@/app/actions/security";
 import { AddPasskeyButton } from "@/components/auth/passkey-buttons";
-import { NewBackupCodes, TotpSetup } from "@/components/auth/totp-setup";
+import { NewBackupCodes, PasswordAgain, TotpSetup } from "@/components/auth/totp-setup";
+import { SubmitButton } from "@/components/forms/submit-button";
 import { ConfirmSubmit } from "@/components/auth/confirm-submit";
 import { Notice } from "@/components/feedback/notice";
 import { Button } from "@/components/ui/button";
@@ -35,13 +36,17 @@ export default async function SecurityPage({ params, searchParams }: Props) {
 
   const c = getSecurityContent(locale).page;
   const { setup, result } = await searchParams;
-  const [factors, passkeys, devices, events] = await Promise.all([
+  const [factors, passkeys, devices, events, hasPassword] = await Promise.all([
     app.auth.factors(current.user.id),
     app.auth.security.passkeys(h),
     app.auth.security.devices(h),
     app.auth.security.events(current.user.id),
+    app.auth.security.hasPassword(current.user.id),
   ]);
   const staff = isStaffRole(current.user.role);
+  // With a password set, authenticator-app changes ask for it again (Better Auth).
+  const passwordAsk = hasPassword ? { label: c.currentPassword, wrong: c.result.password! } : undefined;
+  const input = "h-10 rounded-md border border-border bg-background px-3";
   const fmt = (d: Date) => d.toLocaleString(locale === "vi" ? "vi-VN" : "en-GB", { timeZone: "Asia/Ho_Chi_Minh", dateStyle: "short", timeStyle: "short" });
   const hidden = <input type="hidden" name="locale" value={locale} />;
   const freshLink = localePath(locale, `${authConfig.verifyPath}?fresh=1&next=${encodeURIComponent(authConfig.securityPath)}`);
@@ -110,12 +115,13 @@ export default async function SecurityPage({ params, searchParams }: Props) {
             <div>
               <h3 className="font-medium">{c.backupCodes}</h3>
               <div className="mt-2">
-                <NewBackupCodes create={newBackupCodes} labels={{ create: c.newBackupCodes, text: c.backupText, fresh: c.result.fresh!, failed: c.result.failed! }} />
+                <NewBackupCodes create={newBackupCodes} password={passwordAsk} labels={{ create: c.newBackupCodes, text: c.backupText, fresh: c.result.fresh!, failed: c.result.failed! }} />
               </div>
             </div>
-            <form action={disableTotp}>
+            <form action={disableTotp} className="grid max-w-xs gap-2">
               {hidden}
-              <ConfirmSubmit question={c.totpDisableAsk} className="h-9 px-3">
+              <PasswordAgain ask={passwordAsk} />
+              <ConfirmSubmit question={c.totpDisableAsk} className="h-9 justify-self-start px-3">
                 {c.totpDisable}
               </ConfirmSubmit>
             </form>
@@ -125,10 +131,41 @@ export default async function SecurityPage({ params, searchParams }: Props) {
             start={startTotp}
             confirm={confirmTotp}
             locale={locale}
+            password={passwordAsk}
             labels={{ setup: c.totpSetup, scan: c.totpScan, key: c.totpKey, code: getSecurityContent(locale).verify.totp, confirm: c.totpConfirm, backupText: c.backupText, fresh: c.result.fresh!, failed: c.result.failed! }}
           />
         )}
       </section>
+
+      {staff && app.auth.methods.password && (
+        <section className={card} aria-labelledby="password-title" data-testid="security-password">
+          <div>
+            <h2 id="password-title" className="text-lg font-semibold">
+              {c.password}
+              {hasPassword && <span className="ml-2 text-sm font-normal text-success">· {c.passwordOn}</span>}
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">{c.passwordText}</p>
+          </div>
+          <form action={savePassword} className="grid max-w-xs gap-3">
+            {hidden}
+            {hasPassword && (
+              <label className="grid gap-1 text-sm">
+                {c.currentPassword}
+                <input name="current" type="password" autoComplete="current-password" required className={input} />
+              </label>
+            )}
+            <label className="grid gap-1 text-sm">
+              {c.newPassword}
+              <input name="password" type="password" autoComplete="new-password" required minLength={12} maxLength={128} className={input} />
+            </label>
+            <label className="grid gap-1 text-sm">
+              {c.confirmPassword}
+              <input name="confirm" type="password" autoComplete="new-password" required className={input} />
+            </label>
+            <SubmitButton label={hasPassword ? c.changePassword : c.setPassword} variant="outline" size="default" />
+          </form>
+        </section>
+      )}
 
       <section className={card} aria-labelledby="devices-title" data-testid="security-devices">
         <h2 id="devices-title" className="text-lg font-semibold">{c.devices}</h2>

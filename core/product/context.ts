@@ -2,7 +2,7 @@ import type { Logger } from "@/core/logger";
 import type { MailPort } from "@/core/ports/mail";
 import type { Payments } from "@/core/ports/payments";
 import type { RateLimiter, RateLimitRule } from "@/core/security/rate-limit";
-import type { Db } from "@/db/client";
+import type { Db, DbTx } from "@/db/client";
 
 export type ProductJobHandler = (payload: Record<string, unknown>) => Promise<void>;
 
@@ -30,12 +30,15 @@ export interface ProductContext {
   payments: Payments;
   /** Background jobs, when the jobs module is on. Register handlers in `ProductJobs`, enqueue here. */
   jobs?: { enqueue(name: string, payload: Record<string, unknown>, options?: { runAt?: Date; maxAttempts?: number; dedupeKey?: string }): Promise<void> };
-  /** Admin audit log, when the admin module is on: records the entry only if the action succeeds and returns true. */
+  /**
+   * Admin audit log, when the admin module is on: records the entry only if the action succeeds and returns true.
+   * Write through `tx` so the change and its entry are saved together (one transaction).
+   */
   audit?: {
     audited(
       actor: { id: string; email: string },
       entry: { action: string; targetType: string; targetId: string; metadata?: Record<string, unknown> },
-      action: () => Promise<boolean>,
+      action: (tx: DbTx) => Promise<boolean>,
     ): Promise<boolean>;
   };
   /**
@@ -46,6 +49,13 @@ export interface ProductContext {
     listPublished(type: string): Promise<PublishedContent[]>;
     /** Old published slugs of live items → current slug (permanent redirects); cache it like listPublished. */
     listMoved(type: string): Promise<{ from: string; to: string }[]>;
+  };
+  /**
+   * Media library, when the media module is on (ADR-0008): CDN URLs of library images by id, e.g. for photos that
+   * staff picked in a content item. Unknown or pending ids are left out. Cache it with the content that uses it.
+   */
+  media?: {
+    imageSrc(ids: readonly string[], width?: number): Promise<Record<string, string>>;
   };
   now: () => Date;
 }
@@ -88,6 +98,11 @@ export interface ContentTypeDefinition {
   publicPath(slug: string): string;
   /** Problems that stop submit / publish (e.g. zod issue paths); empty = complete. Drafts may be incomplete. */
   validate?(data: Record<string, unknown>): string[];
+  /**
+   * Which editors may see drafts of this type and work on its items (queue, preview, workflow actions); admins always
+   * may. Absent: every editor. The type's own pages must check the same rule.
+   */
+  canEdit?(user: { id: string; role: string }): boolean | Promise<boolean>;
   /** After a publish, hide or unhide (also from the scheduled-publish job): e.g. revalidateTag(...). */
   onChange?(item: { id: string; type: string; slug: string; publishedSlug: string | null }): Promise<void> | void;
 }

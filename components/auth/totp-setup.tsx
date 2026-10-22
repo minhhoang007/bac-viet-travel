@@ -5,23 +5,40 @@ import type { BackupCodesState, TotpSetupState } from "@/app/actions/security";
 import { Button } from "@/components/ui/button";
 
 type Labels = { setup: string; scan: string; key: string; code: string; confirm: string; backupText: string; fresh: string; failed: string };
+/** Set when the account has a password: it is asked again (`password` field), with the message for a wrong one. */
+type PasswordAsk = { label: string; wrong: string };
+
+/** The account's password, asked again before an authenticator-app change. */
+export function PasswordAgain({ ask }: { ask?: PasswordAsk }) {
+  if (!ask) return null;
+  return (
+    <label className="grid gap-1 text-sm">
+      {ask.label}
+      <input name="password" type="password" autoComplete="current-password" required className="h-10 rounded-md border border-border bg-background px-3" />
+    </label>
+  );
+}
+
+const message = (status: string, labels: { fresh: string; failed: string }, ask?: PasswordAsk) =>
+  status === "fresh" ? labels.fresh : status === "password" && ask ? ask.wrong : labels.failed;
 
 /**
  * Authenticator-app setup: a button asks the server for a new secret, then shows the QR code (SVG made on the server
  * from our own otpauth URI), the setup key, the backup codes, and a form for the first code.
  */
-export function TotpSetup({ start, confirm, locale, labels }: { start: (prev: TotpSetupState) => Promise<TotpSetupState>; confirm: (formData: FormData) => Promise<void>; locale: string; labels: Labels }) {
+export function TotpSetup({ start, confirm, locale, labels, password }: { start: (prev: TotpSetupState, formData: FormData) => Promise<TotpSetupState>; confirm: (formData: FormData) => Promise<void>; locale: string; labels: Labels; password?: PasswordAsk }) {
   const [state, action, pending] = useActionState(start, null);
 
   if (state?.status !== "setup") {
     return (
       <form action={action} className="grid gap-2">
+        <PasswordAgain ask={password} />
         <Button type="submit" variant="outline" disabled={pending} data-testid="totp-start">
           {labels.setup}
         </Button>
         {state && (
           <p role="alert" className="text-sm text-danger">
-            {state.status === "fresh" ? labels.fresh : labels.failed}
+            {message(state.status, labels, password)}
           </p>
         )}
       </form>
@@ -50,17 +67,18 @@ export function TotpSetup({ start, confirm, locale, labels }: { start: (prev: To
 }
 
 /** New backup codes on demand (the old ones stop working); shown once. */
-export function NewBackupCodes({ create, labels }: { create: (prev: BackupCodesState) => Promise<BackupCodesState>; labels: { create: string; text: string; fresh: string; failed: string } }) {
+export function NewBackupCodes({ create, labels, password }: { create: (prev: BackupCodesState, formData: FormData) => Promise<BackupCodesState>; labels: { create: string; text: string; fresh: string; failed: string }; password?: PasswordAsk }) {
   const [state, action, pending] = useActionState(create, null);
   if (state?.status === "codes") return <BackupCodeList codes={state.codes} text={labels.text} />;
   return (
     <form action={action} className="grid gap-2">
+      <PasswordAgain ask={password} />
       <Button type="submit" variant="outline" disabled={pending} data-testid="backup-codes-new">
         {labels.create}
       </Button>
       {state && (
         <p role="alert" className="text-sm text-danger">
-          {state.status === "fresh" ? labels.fresh : labels.failed}
+          {message(state.status, labels, password)}
         </p>
       )}
     </form>

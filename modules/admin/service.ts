@@ -3,7 +3,7 @@ import { sessions } from "@/core/auth/schema";
 import { AppError } from "@/core/errors";
 import type { Logger } from "@/core/logger";
 import { users, type UserRow } from "@/core/users/schema";
-import type { Db } from "@/db/client";
+import type { Db, DbTx } from "@/db/client";
 import { auditLogs, type AuditLogRow } from "./schema";
 
 type DbExecutor = Pick<Db, "insert" | "update" | "select" | "delete">;
@@ -23,9 +23,10 @@ export interface AdminModule {
   setUserRole(actor: Actor, userId: string, role: UserRow["role"]): Promise<void>;
   /**
    * Runs an admin action and records it in the audit log. The entry is written only if the action succeeds
-   * and reports a change; use it for every admin action that changes state.
+   * and reports a change; use it for every admin action that changes state. Writes made through `tx` commit
+   * together with the entry (writes through another handle are not part of it).
    */
-  audited(actor: Actor, entry: AuditEntry, action: () => Promise<boolean>): Promise<boolean>;
+  audited(actor: Actor, entry: AuditEntry, action: (tx: DbTx) => Promise<boolean>): Promise<boolean>;
   listAudit(options?: { page?: number; pageSize?: number; targetId?: string }): Promise<{ rows: AuditLogRow[]; total: number }>;
   /** Stats: new users per UTC day for the last `days` days. */
   signupsByDay(days: number): Promise<{ day: string; count: number }[]>;
@@ -95,9 +96,12 @@ export function createAdminModule(deps: { db: Db; logger: Logger }): AdminModule
     },
 
     async audited(actor, entry, action) {
-      const changed = await action();
-      if (changed) await record(actor, entry);
-      return changed;
+      // One transaction: a change made through `tx` and its audit entry are saved together, or neither is.
+      return db.transaction(async (tx) => {
+        const changed = await action(tx);
+        if (changed) await record(actor, entry, tx);
+        return changed;
+      });
     },
 
     async listAudit({ page = 1, pageSize = 50, targetId } = {}) {

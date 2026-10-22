@@ -101,6 +101,8 @@ export interface ContainerOverrides {
   mediaProvider?: MediaProvider;
   /** Tests: demo account emails instead of product/manifest.ts `demoAccounts` (still DEMO_MODE only). */
   demoAccounts?: string[];
+  /** Tests: password sign-in on or off instead of config/auth.ts `methods.password` (still never with DEMO_MODE). */
+  passwordSignIn?: boolean;
 }
 
 const CONTACT_LIMIT: RateLimitRule = { max: 5, windowMs: 10 * 60_000 };
@@ -108,6 +110,8 @@ const MAGIC_LINK_PER_CLIENT: RateLimitRule = { max: 5, windowMs: 10 * 60_000 };
 const MAGIC_LINK_PER_RECIPIENT: RateLimitRule = { max: 3, windowMs: 10 * 60_000 };
 // Second-factor codes (TOTP, backup codes) per account: Better Auth locks only its own sign-in challenge.
 const SECOND_FACTOR_PER_USER: RateLimitRule = { max: 5, windowMs: 15 * 60_000 };
+// Password attempts per client and per address: room for typos, not for guessing.
+const PASSWORD_ATTEMPTS: RateLimitRule = { max: 10, windowMs: 15 * 60_000 };
 const CHECKOUT_LIMIT: RateLimitRule = { max: 10, windowMs: 10 * 60_000 };
 
 let cached: Container | undefined;
@@ -239,7 +243,20 @@ export function buildContainer(features: Features, env: Env, overrides: Containe
   if (content) periodic["content.publish_due"] = async () => void (await content.publishDue());
 
   const productContext: ProductContext | undefined = db
-    ? { db, logger, mail, rateLimiter, payments, jobs, audit: admin, content, now: overrides.now ?? (() => new Date()) }
+    ? {
+        db,
+        logger,
+        mail,
+        rateLimiter,
+        payments,
+        jobs,
+        audit: admin,
+        content,
+        media: media
+          ? { imageSrc: async (ids, width = 1600) => Object.fromEntries((await media.getMany(ids)).map((a) => [a.id, media.imageProps(a, { widths: [width] }).src])) }
+          : undefined,
+        now: overrides.now ?? (() => new Date()),
+      }
     : undefined;
   const app =
     features.profile === "app" && productContext
@@ -344,6 +361,8 @@ function buildApp(
   },
 ): AppServices {
   const { db } = ctx;
+  // Never on the demo site: its mailbox is shown to visitors, so a password link there would be anyone's.
+  const password = (overrides.passwordSignIn ?? authConfig.methods.password) && !env.DEMO_MODE;
   const google =
     env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
       ? { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET }
@@ -356,19 +375,22 @@ function buildApp(
       mail,
       secret: env.extra.BETTER_AUTH_SECRET!,
       baseURL: env.NEXT_PUBLIC_SITE_URL,
-      methods: authConfig.methods,
+      methods: { ...authConfig.methods, password },
       trustedProviders: authConfig.trustedProviders,
       google,
       disableRateLimit: env.NODE_ENV === "test",
       staff: authConfig.staff,
       confirmSignInPath: localePath(appConfig.defaultLocale, `${authConfig.signInPath}/confirm`),
       securityPath: localePath(appConfig.defaultLocale, authConfig.securityPath),
+      resetPasswordPath: localePath(appConfig.defaultLocale, `${authConfig.signInPath}/reset`),
+      checkBreachedPasswords: env.NODE_ENV !== "test",
     }),
-    { magicLink: authConfig.methods.magicLink, google: authConfig.methods.google && Boolean(google) },
+    { magicLink: authConfig.methods.magicLink, google: authConfig.methods.google && Boolean(google), password },
     overrides.authRateLimits ?? {
       perClient: rateLimiterFor(env, MAGIC_LINK_PER_CLIENT, logger),
       perRecipient: rateLimiterFor(env, MAGIC_LINK_PER_RECIPIENT, logger),
       secondFactor: rateLimiterFor(env, SECOND_FACTOR_PER_USER, logger),
+      password: rateLimiterFor(env, PASSWORD_ATTEMPTS, logger),
     },
     {
       db,

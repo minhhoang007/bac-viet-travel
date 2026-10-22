@@ -6,7 +6,7 @@ const RESPONSE_FIELDS = [
   "vnp_PayDate", "vnp_TransactionNo", "vnp_TransactionType", "vnp_TransactionStatus", "vnp_OrderInfo", "vnp_PromotionCode", "vnp_PromotionAmount",
 ];
 
-export type FakeTransaction = { amount: number; status: "00" | "01" | "02" };
+export type FakeTransaction = { amount: number; status: "00" | "01" | "02" | "05" };
 
 /** A fake VNPay querydr endpoint: answers for `transactions` (by txnRef), 91 for others, signed with `secret`. */
 export function fakeVnpayQuery(secret: string, transactions: Record<string, FakeTransaction>, options: { tamper?: boolean } = {}) {

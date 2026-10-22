@@ -1,4 +1,3 @@
-import { createHmac } from "node:crypto";
 import { and, eq, isNotNull, sql } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { createLoginCodes } from "@/core/auth/login-code";
@@ -6,6 +5,7 @@ import { authEvents, sessions } from "@/core/auth/schema";
 import { users } from "@/core/users/schema";
 import { resetDb, testDb } from "./setup/db";
 import { BASE_URL, loginCodeFrom, magicLinkFrom, signIn, testApp } from "./setup/app";
+import { totp } from "./setup/totp";
 
 const handle = testDb();
 const t = testApp(handle.db);
@@ -13,19 +13,6 @@ const { auth } = t.app;
 
 beforeEach(() => resetDb(handle.db));
 afterAll(() => handle.close());
-
-// RFC 6238 TOTP (SHA-1, 30 s, 6 digits), as authenticator apps compute it.
-function totp(base32: string, at = Date.now()): string {
-  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-  let bits = "";
-  for (const ch of base32.replace(/=+$/, "").toUpperCase()) bits += alphabet.indexOf(ch).toString(2).padStart(5, "0");
-  const key = Buffer.from(bits.match(/.{8}/g)!.map((b) => parseInt(b, 2)));
-  const counter = Buffer.alloc(8);
-  counter.writeBigUInt64BE(BigInt(Math.floor(at / 30_000)));
-  const mac = createHmac("sha1", key).update(counter).digest();
-  const offset = mac[mac.length - 1]! & 0xf;
-  return String((mac.readUInt32BE(offset) & 0x7fffffff) % 1_000_000).padStart(6, "0");
-}
 
 async function makeStaff(email: string, role: "editor" | "admin" = "editor") {
   const headers = await signIn(t, email);
@@ -126,6 +113,21 @@ describe("staff sessions and second factor", () => {
     for (let i = 0; i < 4; i++) expect(await limited.app.auth.security.verifyTotp(headers, wrong)).toBe(false);
     await expect(limited.app.auth.security.verifyTotp(headers, totp(secret))).rejects.toMatchObject({ code: "RATE_LIMIT_ERROR" });
     await expect(limited.app.auth.security.verifyBackupCode(headers, "anything")).rejects.toMatchObject({ code: "RATE_LIMIT_ERROR" });
+  });
+
+  it("the two-factor HTTP endpoints are closed: codes are checked only through the service and its per-account limit", async () => {
+    const { headers, secret } = await staffWithTotp("http@example.com");
+    for (const path of ["/two-factor/verify-totp", "/two-factor/verify-backup-code", "/two-factor/enable", "/two-factor/"]) {
+      const res = await auth.handler(
+        new Request(`${BASE_URL}/api/auth${path}`, {
+          method: "POST",
+          headers: { origin: BASE_URL, "content-type": "application/json", cookie: headers.get("cookie") ?? "" },
+          body: JSON.stringify({ code: totp(secret) }),
+        }),
+      );
+      expect([path, res.status]).toEqual([path, 404]);
+    }
+    expect(await auth.staffGate((await auth.getSession(headers))!)).toBe("verify");
   });
 
   it("an authenticator setup started but not confirmed does not lock the user out of setting up", async () => {
