@@ -101,6 +101,8 @@ export interface ContainerOverrides {
   mediaProvider?: MediaProvider;
   /** Tests: demo account emails instead of product/manifest.ts `demoAccounts` (still DEMO_MODE only). */
   demoAccounts?: string[];
+  /** Tests: password sign-in on or off instead of config/auth.ts `methods.password` (still never with DEMO_MODE). */
+  passwordSignIn?: boolean;
 }
 
 const CONTACT_LIMIT: RateLimitRule = { max: 5, windowMs: 10 * 60_000 };
@@ -360,7 +362,7 @@ function buildApp(
 ): AppServices {
   const { db } = ctx;
   // Never on the demo site: its mailbox is shown to visitors, so a password link there would be anyone's.
-  const password = authConfig.methods.password && !env.DEMO_MODE;
+  const password = (overrides.passwordSignIn ?? authConfig.methods.password) && !env.DEMO_MODE;
   const google =
     env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
       ? { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET }
