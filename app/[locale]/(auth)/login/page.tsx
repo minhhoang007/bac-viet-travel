@@ -66,7 +66,7 @@ export default async function LoginPage({ params, searchParams }: Props) {
             action={signInWithPassword}
             turnstileSiteKey={getPublicEnv().NEXT_PUBLIC_TURNSTILE_SITE_KEY}
             forgotHref={localePath(locale, `${authConfig.signInPath}/reset`)}
-            labels={{ title: s.passwordTitle, email: s.email, password: s.password, submit: s.passwordSubmit, pending: s.passwordPending, forgot: s.forgot, errors: { wrong: s.passwordWrong, rate_limited: c.errors.rate_limited, captcha: s.captcha, error: c.errors.error } }}
+            labels={{ title: s.passwordTitle, email: s.email, password: s.password, submit: s.passwordSubmit, pending: s.passwordPending, forgot: s.forgot, errors: { wrong: s.passwordWrong, email_link: s.passwordEmailLink, rate_limited: c.errors.rate_limited, captcha: s.captcha, error: c.errors.error } }}
           />
         )}
         {app.auth.methods.magicLink && <p className="text-center text-xs text-muted-foreground uppercase">{c.or}</p>}

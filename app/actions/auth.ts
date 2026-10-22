@@ -45,7 +45,7 @@ export async function sendMagicLink(_prev: MagicLinkState, formData: FormData): 
   }
 }
 
-export type PasswordSignInState = { status: "wrong" } | { status: "rate_limited" } | { status: "captcha" } | { status: "error" } | null;
+export type PasswordSignInState = { status: "wrong" } | { status: "email_link" } | { status: "rate_limited" } | { status: "captcha" } | { status: "error" } | null;
 
 /** Email and password (staff). The authenticator app on: the verify page asks for its code before any session. */
 export async function signInWithPassword(_prev: PasswordSignInState, formData: FormData): Promise<PasswordSignInState> {
@@ -55,7 +55,7 @@ export async function signInWithPassword(_prev: PasswordSignInState, formData: F
   const password = String(formData.get("password") ?? "");
   if (!email.success || !password) return { status: "wrong" };
   const h = await headers();
-  let status: "ok" | "second_factor" | "wrong";
+  let status: "ok" | "second_factor" | "email_link" | "wrong";
   try {
     ({ status } = await app.auth.signInPassword({ email: email.data, password, clientKey: clientKeyFrom(h), captchaToken: String(formData.get("cf-turnstile-response") ?? "") || null }, h));
   } catch (error) {
@@ -63,7 +63,8 @@ export async function signInWithPassword(_prev: PasswordSignInState, formData: F
     if (isAppError(error) && error.code === "CAPTCHA_ERROR") return { status: "captcha" };
     return { status: "error" };
   }
-  if (status === "wrong") return { status: "wrong" };
+  // No second factor yet: sign in by email link first (the security page then sets one up).
+  if (status === "wrong" || status === "email_link") return { status };
   const next = authConfig.afterSignInPath;
   redirect(localePath(locale, status === "ok" ? next : `${authConfig.verifyPath}?next=${encodeURIComponent(next)}`));
 }

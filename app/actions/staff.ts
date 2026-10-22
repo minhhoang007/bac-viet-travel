@@ -51,14 +51,18 @@ export async function setStaffRole(formData: FormData): Promise<void> {
   });
 }
 
-/** The email with a link to set a password (a new one replaces the old once saved). Admins only. */
+/** The email with a link to set a password (it replaces unused links; the old password works until a new one is saved). Admins only. */
 export async function sendStaffPasswordLink(formData: FormData): Promise<void> {
-  await staffAction(formData, async ({ admin, container }) => {
+  await staffAction(formData, async ({ admin, container, user: actor }) => {
     const userId = z.uuid().safeParse(formData.get("userId"));
     if (!userId.success) return "invalid";
     const target = await admin.getUser(userId.data);
     if (!target) return "invalid";
-    return (await sendSetup(container.app!.auth, target.email, container.logger)) ? "link_sent" : "mail_failed";
+    // Only active staff get password links (the auth service sends nothing to anyone else).
+    if (target.role === "user" || target.status === "disabled") return "not_staff";
+    if (!(await sendSetup(container.app!.auth, target.email, container.logger))) return "mail_failed";
+    await admin.audited(actor, { action: "staff.password_link", targetType: "user", targetId: target.id }, async () => true);
+    return "link_sent";
   });
 }
 

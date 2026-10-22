@@ -19,7 +19,7 @@ export function PasswordSignInForm({
   action: (prev: PasswordSignInState, formData: FormData) => Promise<PasswordSignInState>;
   turnstileSiteKey?: string;
   forgotHref: string;
-  labels: { title: string; email: string; password: string; submit: string; pending: string; forgot: string; errors: { wrong: string; rate_limited: string; captcha: string; error: string } };
+  labels: { title: string; email: string; password: string; submit: string; pending: string; forgot: string; errors: { wrong: string; email_link: string; rate_limited: string; captcha: string; error: string } };
 }) {
   const [state, submit] = useActionState(action, null);
   const [email, setEmail] = useState("");

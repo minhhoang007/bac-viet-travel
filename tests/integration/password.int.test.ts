@@ -1,6 +1,6 @@
 import { and, count, eq, isNotNull, like } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import { authEvents, sessions, verifications } from "@/core/auth/schema";
+import { authEvents, passkeys, sessions, verifications } from "@/core/auth/schema";
 import { users } from "@/core/users/schema";
 import { resetDb, testDb } from "./setup/db";
 import { BASE_URL, signIn, testApp } from "./setup/app";
@@ -28,6 +28,10 @@ async function invitedStaff(email: string) {
   expect(await auth.resetPassword(tokenFrom(t.sent.findLast((m) => m.to === email)!.text), PASSWORD)).toBe("done");
   return id;
 }
+
+/** A second factor already set up (a passkey row: password sign-ins then open a session, verified afterwards). */
+const passkeyOn = (userId: string) =>
+  handle.db.insert(passkeys).values({ userId, publicKey: "key", credentialID: crypto.randomUUID(), counter: 0, deviceType: "singleDevice", backedUp: false });
 
 async function passwordSession(email: string) {
   const res = await auth.signInPassword({ email, password: PASSWORD, clientKey: "c" }, origin());
@@ -60,22 +64,28 @@ describe("staff invitation and password link", () => {
     expect(await auth.security.hasPassword(id)).toBe(true);
   });
 
-  it("customers and unknown addresses get nothing, with the same silent answer", async () => {
+  it("customers, disabled staff and unknown addresses get nothing (no link stored), with the same silent answer", async () => {
     await signIn(t, "guest@example.com");
+    const [off] = await handle.db.update(users).set({ role: "editor", status: "disabled" }).where(eq(users.id, await auth.ensureAccount("off@example.com"))).returning();
     const before = t.sent.length;
     await auth.sendPasswordSetup("guest@example.com");
+    await auth.requestPasswordReset({ email: "guest@example.com", clientKey: "c" });
+    await auth.sendPasswordSetup(off!.email);
     await auth.requestPasswordReset({ email: "nobody@example.com", clientKey: "c" });
     expect(t.sent.length).toBe(before);
+    expect(await handle.db.select().from(verifications).where(like(verifications.identifier, "reset-password:%"))).toEqual([]);
   });
 });
 
 describe("sign-in with a password", () => {
   it("right password: a session; wrong password, unknown address or disabled account: the same 'wrong'", async () => {
     const id = await invitedStaff("staff@example.com");
+    await passkeyOn(id);
     const headers = await passwordSession("staff@example.com");
     expect((await auth.getSession(headers))?.user.email).toBe("staff@example.com");
 
     expect((await auth.signInPassword({ email: "staff@example.com", password: "not the password at all", clientKey: "c" }, origin())).status).toBe("wrong");
+    expect((await auth.signInPassword({ email: "staff@example.com", password: "x".repeat(129), clientKey: "c" }, origin())).status).toBe("wrong");
     expect((await auth.signInPassword({ email: "ghost@example.com", password: PASSWORD, clientKey: "c" }, origin())).status).toBe("wrong");
     await handle.db.update(users).set({ status: "disabled" }).where(eq(users.id, id));
     expect((await auth.signInPassword({ email: "staff@example.com", password: PASSWORD, clientKey: "c" }, origin())).status).toBe("wrong");
@@ -87,9 +97,24 @@ describe("sign-in with a password", () => {
     expect((await auth.signInPassword({ email: "left@example.com", password: PASSWORD, clientKey: "c" }, origin())).status).toBe("wrong");
   });
 
+  it("no second factor yet: the right password opens no session; the first one is set up after an email link", async () => {
+    const id = await invitedStaff("new@example.com");
+    const attempt = (password: string) => auth.signInPassword({ email: "new@example.com", password, clientKey: "c" }, origin());
+    expect(await attempt(PASSWORD)).toEqual({ status: "email_link", setCookies: [] });
+    expect((await attempt("not the password at all")).status).toBe("wrong");
+    expect(await handle.db.select().from(sessions).where(eq(sessions.userId, id))).toEqual([]);
+    expect(await signIns(id)).toBe(0);
+
+    // Signed in by email link: the authenticator app is set up; from then on the password asks for its code.
+    const byEmail = await signIn(t, "new@example.com");
+    const { totpURI } = await auth.security.startTotp(byEmail, PASSWORD);
+    expect(await auth.security.verifyTotp(byEmail, totp(new URL(totpURI).searchParams.get("secret")!))).toBe(true);
+    expect((await attempt(PASSWORD)).status).toBe("second_factor");
+  });
+
   it("with the authenticator app on: no session until the code; the code finishes the sign-in (logged once)", async () => {
     const id = await invitedStaff("totp@example.com");
-    const first = await passwordSession("totp@example.com");
+    const first = await signIn(t, "totp@example.com");
     const { totpURI } = await auth.security.startTotp(first, PASSWORD);
     const secret = new URL(totpURI).searchParams.get("secret")!;
     expect(await auth.security.verifyTotp(first, totp(secret))).toBe(true);
@@ -112,7 +137,7 @@ describe("sign-in with a password", () => {
 
   it("out of code attempts after a password: 'sign in again', not 'wrong code' forever", async () => {
     await invitedStaff("tries@example.com");
-    const first = await passwordSession("tries@example.com");
+    const first = await signIn(t, "tries@example.com");
     const { totpURI } = await auth.security.startTotp(first, PASSWORD);
     const secret = new URL(totpURI).searchParams.get("secret")!;
     expect(await auth.security.verifyTotp(first, totp(secret))).toBe(true);
@@ -146,7 +171,7 @@ describe("sign-in with a password", () => {
 describe("password on the security page", () => {
   it("authenticator-app changes ask for the password once one is set", async () => {
     await invitedStaff("again@example.com");
-    const headers = await passwordSession("again@example.com");
+    const headers = await signIn(t, "again@example.com");
     await expect(auth.security.startTotp(headers)).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
     await expect(auth.security.startTotp(headers, "a wrong password here")).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
     expect((await auth.security.startTotp(headers, PASSWORD)).totpURI).toMatch(/^otpauth:\/\//);
@@ -154,7 +179,7 @@ describe("password on the security page", () => {
 
   it("changing it needs a fresh second factor and the current password, then signs out the other devices", async () => {
     const id = await invitedStaff("change@example.com");
-    const setup = await passwordSession("change@example.com");
+    const setup = await signIn(t, "change@example.com");
     const { totpURI } = await auth.security.startTotp(setup, PASSWORD);
     const secret = new URL(totpURI).searchParams.get("secret")!;
     expect(await auth.security.verifyTotp(setup, totp(secret))).toBe(true); // confirms the app (rotates that session)
@@ -178,7 +203,7 @@ describe("password on the security page", () => {
     await expect(auth.security.setPassword(headers, PASSWORD)).rejects.toMatchObject({ code: "PERMISSION_ERROR" });
   });
 
-  it("links: an invitation lasts 24 hours, 'forgot password' 4; setting a password spends every older link", async () => {
+  it("links: an invitation lasts 24 hours, 'forgot password' 4; a new link replaces the unused one", async () => {
     const id = await auth.ensureAccount("links@example.com");
     await handle.db.update(users).set({ role: "editor" }).where(eq(users.id, id));
     const links = () => handle.db.select().from(verifications).where(and(eq(verifications.value, id), like(verifications.identifier, "reset-password:%")));
@@ -187,15 +212,15 @@ describe("password on the security page", () => {
     await auth.sendPasswordSetup("links@example.com"); // admin's invitation
     const invite = tokenFrom(t.sent.at(-1)!.text);
     expect(t.sent.at(-1)!.text).toContain("24 giờ");
+    expect((await links()).map((l) => hoursLeft(l.expiresAt))).toEqual([24]);
     await auth.requestPasswordReset({ email: "links@example.com", clientKey: "c" }); // anyone, from the login page
     const forgot = tokenFrom(t.sent.at(-1)!.text);
     expect(t.sent.at(-1)!.text).toContain("4 giờ");
-    const byToken = new Map((await links()).map((l) => [l.identifier.replace("reset-password:", ""), hoursLeft(l.expiresAt)]));
-    expect([byToken.get(invite), byToken.get(forgot)]).toEqual([24, 4]);
+    expect((await links()).map((l) => [l.identifier.replace("reset-password:", ""), hoursLeft(l.expiresAt)])).toEqual([[forgot, 4]]);
 
+    expect(await auth.resetPassword(invite, PASSWORD)).toBe("invalid");
     expect(await auth.resetPassword(forgot, PASSWORD)).toBe("done");
     expect(await links()).toEqual([]);
-    expect(await auth.resetPassword(invite, PASSWORD)).toBe("invalid");
   });
 
   it("setting a first password signs out the other devices and spends unused links", async () => {
