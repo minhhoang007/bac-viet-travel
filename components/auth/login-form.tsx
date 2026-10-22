@@ -1,11 +1,11 @@
 "use client";
 
-import Script from "next/script";
 import { useActionState, useEffect, useState } from "react";
 import type { LoginCodeState } from "@/app/actions/security";
 import { FormError } from "@/components/forms/form-error";
 import { FormField } from "@/components/forms/form-field";
 import { SubmitButton } from "@/components/forms/submit-button";
+import { Turnstile } from "@/components/forms/turnstile";
 
 type State = { status: "sent" } | { status: "invalid_email" } | { status: "rate_limited" } | { status: "captcha" } | { status: "error" } | null;
 
@@ -47,13 +47,7 @@ export function LoginForm({ locale, sendMagicLink, signInWithCode, turnstileSite
     <form action={action} className="grid gap-4" noValidate>
       <input type="hidden" name="locale" value={locale} />
       <FormField id="login-email" name="email" type="email" autoComplete="email webauthn" required label={labels.email} value={email} onChange={(e) => setEmail(e.target.value)} />
-      {turnstileSiteKey && (
-        <>
-          <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" strategy="afterInteractive" />
-          {/* Turnstile adds a hidden "cf-turnstile-response" field to this form. */}
-          <div className="cf-turnstile" data-sitekey={turnstileSiteKey} data-language={locale} />
-        </>
-      )}
+      <Turnstile siteKey={turnstileSiteKey} locale={locale} answer={state} />
       <FormError message={error} />
       <SubmitButton label={labels.sendLink} pendingLabel={labels.sending} className="justify-self-stretch" />
     </form>

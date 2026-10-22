@@ -58,9 +58,11 @@ describe("VNPay querydr (reconcile when the IPN is lost)", () => {
     expect(req.vnp_SecureHash).toBe(createHmac("sha512", secret).update(data).digest("hex"));
   });
 
-  it("unpaid, not found, and a forged response (throws, nothing confirmed)", async () => {
-    const fake = fakeVnpayQuery(secret, { T2: { amount: 1, status: "01" } });
-    expect(await provider(fake.fetch).query({ txnRef: "T2", createdAt })).toEqual({ status: "unpaid" });
+  it("processing, unpaid, not found, and a forged response (throws, nothing confirmed)", async () => {
+    const fake = fakeVnpayQuery(secret, { T2: { amount: 1, status: "01" }, T4: { amount: 1, status: "05" }, T5: { amount: 1, status: "02" } });
+    expect(await provider(fake.fetch).query({ txnRef: "T2", createdAt })).toEqual({ status: "processing" });
+    expect(await provider(fake.fetch).query({ txnRef: "T4", createdAt })).toEqual({ status: "processing" });
+    expect(await provider(fake.fetch).query({ txnRef: "T5", createdAt })).toEqual({ status: "unpaid" });
     expect(await provider(fake.fetch).query({ txnRef: "nope", createdAt })).toEqual({ status: "not_found" });
     const forged = fakeVnpayQuery(secret, { T3: { amount: 1, status: "00" } }, { tamper: true });
     await expect(provider(forged.fetch).query({ txnRef: "T3", createdAt })).rejects.toThrow(/invalid response signature/);

@@ -33,6 +33,7 @@ export const app: AppContent = {
     deleteTitle: "Xoá tài khoản",
     deleteText: "Xoá vĩnh viễn tài khoản và toàn bộ dữ liệu. Không thể hoàn tác.",
     deleteConfirmLabel: "Nhập email của bạn để xác nhận",
+    deleteStaffText: "Tài khoản nhân viên do quản trị viên gỡ, không xoá được ở đây.",
     deleteButton: "Xoá tài khoản",
   },
   billing: {

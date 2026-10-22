@@ -24,7 +24,12 @@ export async function requestMediaUpload(name: string): Promise<{ ok: true; id: 
   const { media, user } = await context();
   const parsed = z.string().min(1).max(500).safeParse(name);
   if (!parsed.success) return { ok: false };
-  return { ok: true, ...(await media.requestUpload(user, { name: parsed.data })) };
+  try {
+    return { ok: true, ...(await media.requestUpload(user, { name: parsed.data })) };
+  } catch (error) {
+    if (error instanceof AppError && error.code === "RATE_LIMIT_ERROR") return { ok: false }; // hourly upload limit
+    throw error;
+  }
 }
 
 /** Step 2: after the browser upload, the server checks what the provider actually stored. */

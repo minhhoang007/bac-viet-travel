@@ -35,9 +35,19 @@ async function signedIn() {
   return { app, h, current };
 }
 
-/** Second factor for this session: TOTP or a backup code (form field `kind`). Then back to `next`. */
+const isWrongPassword = (error: unknown) => isAppError(error) && error.code === "VALIDATION_ERROR";
+// Optional: an account with a password gives it again for authenticator-app changes.
+const passwordOf = (formData?: FormData) => String(formData?.get("password") ?? "") || undefined;
+
+/**
+ * Second factor: TOTP or a backup code (form field `kind`), for this session or to finish a password sign-in waiting
+ * for it. Then back to `next`.
+ */
 export async function verifySecondFactor(formData: FormData): Promise<void> {
-  const { app, h } = await signedIn();
+  const app = await requireAppServices();
+  const h = await headers();
+  const pending = !(await app.auth.getSession(h));
+  if (pending && !app.auth.hasPendingSecondFactor(h)) notFound();
   const locale = localeSchema.parse(formData.get("locale"));
   const next = safeNext(formData.get("next"));
   const parsed = code.safeParse(formData.get("code"));
@@ -49,24 +59,25 @@ export async function verifySecondFactor(formData: FormData): Promise<void> {
       if (await (backup ? app.auth.security.verifyBackupCode(h, value) : app.auth.security.verifyTotp(h, value))) redirect(localePath(locale, next));
     } catch (e) {
       unstable_rethrow(e);
-      error = isLocked(e) ? "locked" : "failed";
+      // A password sign-in out of attempts starts over from the sign-in page.
+      error = isLocked(e) ? (pending ? "expired" : "locked") : "failed";
     }
   }
   redirect(localePath(locale, `${authConfig.verifyPath}?error=${error}&next=${encodeURIComponent(next)}`));
 }
 
-export type TotpSetupState = { status: "setup"; qr: string; key: string; backupCodes: string[] } | { status: "fresh" } | { status: "failed" } | null;
+export type TotpSetupState = { status: "setup"; qr: string; key: string; backupCodes: string[] } | { status: "fresh" } | { status: "password" } | { status: "failed" } | null;
 
 /** Starts authenticator-app setup: QR code (SVG), setup key and backup codes, shown once. */
-export async function startTotp(prev: TotpSetupState): Promise<TotpSetupState> {
+export async function startTotp(prev: TotpSetupState, formData?: FormData): Promise<TotpSetupState> {
   void prev; // useActionState signature
   const { app, h } = await signedIn();
   try {
-    const { totpURI, backupCodes } = await app.auth.security.startTotp(h);
+    const { totpURI, backupCodes } = await app.auth.security.startTotp(h, passwordOf(formData));
     const key = new URL(totpURI).searchParams.get("secret") ?? "";
     return { status: "setup", qr: renderSVG(totpURI), key, backupCodes };
   } catch (e) {
-    return { status: isForbidden(e) ? "fresh" : "failed" };
+    return { status: isForbidden(e) ? "fresh" : isWrongPassword(e) ? "password" : "failed" };
   }
 }
 
@@ -94,24 +105,48 @@ export async function disableTotp(formData: FormData): Promise<void> {
   if (mustKeep(current.user.role, { passkeys: factors.passkeys, totp: false }, app.auth.staffPolicy.requireSecondFactor)) result = "last";
   else {
     try {
-      await app.auth.security.disableTotp(h);
+      await app.auth.security.disableTotp(h, passwordOf(formData));
     } catch (e) {
-      result = isForbidden(e) ? "fresh" : "failed";
+      result = isForbidden(e) ? "fresh" : isWrongPassword(e) ? "password" : "failed";
     }
   }
   redirect(securityPage(locale, result));
 }
 
-export type BackupCodesState = { status: "codes"; codes: string[] } | { status: "fresh" } | { status: "failed" } | null;
+export type BackupCodesState = { status: "codes"; codes: string[] } | { status: "fresh" } | { status: "password" } | { status: "failed" } | null;
 
-export async function newBackupCodes(prev: BackupCodesState): Promise<BackupCodesState> {
+export async function newBackupCodes(prev: BackupCodesState, formData?: FormData): Promise<BackupCodesState> {
   void prev; // useActionState signature
   const { app, h } = await signedIn();
   try {
-    return { status: "codes", codes: await app.auth.security.newBackupCodes(h) };
+    return { status: "codes", codes: await app.auth.security.newBackupCodes(h, passwordOf(formData)) };
   } catch (e) {
-    return { status: isForbidden(e) ? "fresh" : "failed" };
+    return { status: isForbidden(e) ? "fresh" : isWrongPassword(e) ? "password" : "failed" };
   }
+}
+
+/**
+ * Staff password: a first one, or a change (current password, other devices signed out). Needs a fresh second factor.
+ * Result keys: done, fresh, wrong (current password), mismatch, too_short, too_long, compromised, failed.
+ */
+export async function savePassword(formData: FormData): Promise<void> {
+  const { app, h, current } = await signedIn();
+  const locale = localeSchema.parse(formData.get("locale"));
+  const next = String(formData.get("password") ?? "");
+  const currentPassword = String(formData.get("current") ?? "");
+  let result: string;
+  if (next !== String(formData.get("confirm") ?? "")) result = "mismatch";
+  else {
+    try {
+      const outcome = (await app.auth.security.hasPassword(current.user.id))
+        ? await app.auth.security.changePassword(h, currentPassword, next)
+        : await app.auth.security.setPassword(h, next);
+      result = outcome === "wrong" ? "password" : outcome === "invalid" ? "failed" : outcome;
+    } catch (e) {
+      result = isForbidden(e) ? "fresh" : "failed";
+    }
+  }
+  redirect(securityPage(locale, result));
 }
 
 export async function deletePasskey(formData: FormData): Promise<void> {

@@ -4,6 +4,28 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+Upstreamed from a production project (Bắc Việt Travel), after two external security reviews.
+
+### Added
+- **Staff password sign-in** (`methods.password`, off by default). Staff only: no sign-up, set from an emailed one-time link (`/login/reset`; admin invitation 24 h via `auth.sendPasswordSetup`, "forgot password" 4 h), 12–128 characters, checked against known breaches (Have I Been Pwned, fails closed), 10 attempts per 15 min per client and per address, one answer for any wrong email or password. Customer accounts never sign in with one. A staff account without a second factor cannot use its password (answer `email_link`): the first factor is set up after an email-link sign-in. Setting, changing or resetting it signs out other devices and spends older links. Not on a demo site. Needs the email module (startup check).
+- `ContentTypeDefinition.canEdit(user)`: which editors may see drafts of a type and work on it (queue, preview, workflow); `ContentModule.list({ types })`.
+- `ProductContext.media.imageSrc(ids, width)`: CDN URLs of library images, for photos staff pick in content.
+- Optional `product/layout.tsx` exports `productOverviewFor(user)` (staff besides admins who see the project's overview at `/admin`) and `productSiteFigures = false` (hide the starter's site figures).
+- `components/forms/turnstile.tsx`: Turnstile rendered per form and reset after each answer (a token works once).
+- `media.maxUploadsPerHour` (default 100 per account).
+- `ContainerOverrides.passwordSignIn` (tests).
+
+### Changed
+- `audited(actor, entry, action)`: `action` receives `tx`; writes through it commit together with the audit entry (one transaction). Actions that ignore it behave as before.
+- `PaymentQueryResult` has `status: "processing"` (VNPay 01/05): not final, the money may still arrive.
+- Periodic jobs stop at twice the tick's budget and take turns going first (a slow task never starves the others).
+
+### Security
+- The `/admin` overview runs the second-factor gate (it showed figures before it); non-admin staff land on their first page instead of a 404.
+- The two-factor HTTP endpoints are closed: codes are checked only through the auth service with its per-account limit.
+- Staff accounts cannot delete themselves (a session before its second factor could); admins remove staff.
+- Draft preview, the content queue and workflow actions follow `canEdit`.
+
 ## [1.26.2] - 2026-10-14
 
 ### Fixed
