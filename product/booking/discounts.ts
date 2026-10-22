@@ -5,10 +5,11 @@ import type { ProductContext } from "@/core/product/context";
 import type { Db, DbTx } from "@/db/client";
 import { discountCodes, type DiscountCode } from "../schema/booking";
 import { takesSeatsB } from "./status";
+import { calendarDay } from "./validations";
 
 type Actor = Parameters<NonNullable<ProductContext["audit"]>["audited"]>[0];
 
-const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "invalid");
+const day = calendarDay;
 const optionalInt = (max: number) =>
   z.preprocess((v) => (v === "" || v === undefined || v === null ? null : v), z.coerce.number({ message: "invalid" }).int("invalid").min(0, "invalid").max(max, "invalid").nullable());
 

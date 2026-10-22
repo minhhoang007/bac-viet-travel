@@ -11,6 +11,7 @@ export const app: AppContent = {
     or: "hoặc",
     google: "Tiếp tục với Google",
     errors: {
+      required: "Vui lòng nhập email.",
       invalid_email: "Email không hợp lệ.",
       rate_limited: "Bạn yêu cầu quá nhiều lần. Vui lòng thử lại sau ít phút.",
       error: "Không gửi được liên kết. Vui lòng thử lại.",

@@ -114,6 +114,13 @@ export function travellerKinds(party: { adults: number; children: number; infant
   return [...Array<"adult">(party.adults).fill("adult"), ...Array<"child">(party.children).fill("child"), ...Array<"infant">(party.infants).fill("infant")];
 }
 
+/** A real YYYY-MM-DD day ("2027-02-31" and "2027-13-01" match the pattern but Postgres refuses them). */
+export function isCalendarDay(day: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return false;
+  const d = new Date(`${day}T00:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === day;
+}
+
 export function addDays(day: string, days: number): string {
   const d = new Date(`${day}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + days);

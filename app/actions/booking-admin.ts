@@ -10,11 +10,11 @@ import type { Permission } from "@/product/staff/permissions";
 import { AppError } from "@/core/errors";
 import { localePath } from "@/core/i18n/routing";
 import type { ManualBookingResult } from "@/product/booking/admin";
-import { addDays } from "@/product/booking/rules";
+import { addDays, isCalendarDay } from "@/product/booking/rules";
 
 const locale = z.enum(["vi", "en"]).catch("vi");
 const code = z.string().regex(/^BV-[A-Z2-9]{6}$/);
-const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const day = z.string().refine(isCalendarDay);
 
 const EVENT = "booking_admin.action_failed";
 

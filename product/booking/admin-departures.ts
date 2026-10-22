@@ -3,13 +3,12 @@ import { AppError } from "@/core/errors";
 import type { ProductContext } from "@/core/product/context";
 import type { Db, DbTx } from "@/db/client";
 import { bookings, departures, type Booking, type BookingStatus, type Departure } from "../schema/booking";
-import { addDays, travellerKinds, vietnamToday } from "./rules";
+import { addDays, isCalendarDay, travellerKinds, vietnamToday } from "./rules";
 import { SOLD_STATUSES, takesSeats } from "./status";
 
 type Actor = Parameters<NonNullable<ProductContext["audit"]>["audited"]>[0];
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const DAY = /^\d{4}-\d{2}-\d{2}$/;
 /** A minimum of guests is 1…capacity, or none. */
 const validMin = (min: number | null, capacity: number) => min === null || (Number.isInteger(min) && min >= 1 && min <= capacity);
 
@@ -99,7 +98,7 @@ export function createDepartureAdmin(deps: {
       if (priceVnd !== null && (!Number.isInteger(priceVnd) || priceVnd < 10_000 || priceVnd > 100_000_000)) throw new AppError("VALIDATION_ERROR", "Invalid price");
       if (!validMin(minGuests, capacity)) throw new AppError("VALIDATION_ERROR", "Invalid minimum");
       const today = vietnamToday(now());
-      const valid = [...new Set(dates)].filter((d) => DAY.test(d) && d >= today && d <= addDays(today, 730)).slice(0, 120);
+      const valid = [...new Set(dates)].filter((d) => isCalendarDay(d) && d >= today && d <= addDays(today, 730)).slice(0, 120);
       if (valid.length === 0) throw new AppError("VALIDATION_ERROR", "No valid dates");
       let added = 0;
       await audited(actor, "departure.add", tourSlug, { dates: valid, capacity, priceVnd, minGuests }, async (tx) => {

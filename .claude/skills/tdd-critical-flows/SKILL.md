@@ -45,6 +45,12 @@ transactions (`Promise.all` over separate connections), not sequential calls.
 - expired reservation without `executionStartedAt` → released; with it → `unknown`
 - streaming disconnect commits the used portion
 
+**User input** (every form, server action and URL parameter; full list in the `form-input-checks` skill)
+- empty, spaces only, too long, wrong format → the field's error code, from the server with the browser bypassed
+- a day not on the calendar (`2027-02-31`) and a phone without digits are refused
+- junk URL parameters → ignored or 400, never 5xx
+- typed text survives an error; the message sits under the field with `aria-invalid`
+
 ## Anti-patterns
 - Mocking the database in concurrency or transaction tests.
 - Asserting only the happy path.

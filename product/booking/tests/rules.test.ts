@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { bookingInputSchema } from "../validations";
-import { addDays, isBookableDate, privateQuote, privateTier, quote, travellerKinds, vietnamDayStart, vietnamToday } from "../rules";
+import { bookingInputSchema, privateBookingInputSchema } from "../validations";
+import { addDays, isBookableDate, isCalendarDay, privateQuote, privateTier, quote, travellerKinds, vietnamDayStart, vietnamToday } from "../rules";
 
 describe("booking rules", () => {
   it("prices children at 75% and the deposit at 30%, both rounded up to 1,000 VND", () => {
@@ -67,6 +67,19 @@ describe("booking rules", () => {
     expect(tooMany.error?.issues[0]).toMatchObject({ path: ["children"], message: "too_many" });
     const bad = bookingInputSchema.safeParse({ ...base, email: "x", phone: "abc", adults: "0" });
     expect(bad.error?.issues.map((i) => i.path[0]).sort()).toEqual(["adults", "email", "phone"]);
+  });
+
+  it("common bad input: a phone without digits, an email with spaces around it, a day not on the calendar", () => {
+    const base = { departureId: "0199a000-0000-7000-8000-000000000000", name: "Lan", email: "lan@example.com", phone: "0912 345 678", adults: "2", agree: "on" };
+    for (const phone of ["--------", "((((((((", "1234567"]) expect(bookingInputSchema.safeParse({ ...base, phone }).error?.issues[0]).toMatchObject({ path: ["phone"], message: "invalid" });
+    expect(bookingInputSchema.parse({ ...base, phone: "+84 (912) 345-678", email: " lan@example.com " })).toMatchObject({ email: "lan@example.com" });
+
+    const privateBase = { ...base, tourSlug: "ha-giang-loop", date: "2027-03-01" };
+    expect(privateBookingInputSchema.safeParse(privateBase).success).toBe(true);
+    for (const date of ["2027-02-29", "2027-02-31", "2027-13-01", "2027-00-10", "2027-1-1"]) expect(privateBookingInputSchema.safeParse({ ...privateBase, date }).error?.issues[0]).toMatchObject({ path: ["date"], message: "invalid" });
+    expect(privateBookingInputSchema.safeParse({ ...privateBase, date: "2028-02-29" }).success).toBe(true);
+
+    expect([isCalendarDay("2028-02-29"), isCalendarDay("2027-02-29"), isCalendarDay("2027-13-45"), isCalendarDay(""), isCalendarDay("2027-03-01T00:00")]).toEqual([true, false, false, false, false]);
   });
 });
 

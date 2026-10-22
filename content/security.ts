@@ -23,6 +23,7 @@ const vi = {
     passwordSubmit: "Đăng nhập",
     passwordPending: "Đang đăng nhập…",
     passwordWrong: "Email hoặc mật khẩu không đúng.",
+    required: "Vui lòng nhập thông tin này.",
     passwordEmailLink: "Tài khoản chưa bật xác thực 2 bước. Lần đầu, hãy đăng nhập bằng liên kết gửi qua email (bên dưới), rồi bật xác thực 2 bước. Sau đó đăng nhập bằng mật khẩu như bình thường.",
     forgot: "Quên mật khẩu?",
     resetDone: "Đã đặt mật khẩu mới. Hãy đăng nhập.",
@@ -42,6 +43,7 @@ const vi = {
     saving: "Đang lưu…",
     back: "Về trang đăng nhập",
     errors: {
+      required: "Vui lòng nhập email.",
       mismatch: "Hai mật khẩu không giống nhau.",
       too_short: "Mật khẩu cần ít nhất 12 ký tự.",
       too_long: "Mật khẩu dài quá 128 ký tự.",
@@ -157,6 +159,7 @@ const en: typeof vi = {
     passwordSubmit: "Sign in",
     passwordPending: "Signing in…",
     passwordWrong: "Wrong email or password.",
+    required: "Please fill in this field.",
     passwordEmailLink: "Two-step verification is not set up yet. The first time, sign in with an email link (below), then set it up. After that, sign in with your password as usual.",
     forgot: "Forgot your password?",
     resetDone: "Your new password is saved. Sign in with it.",
@@ -176,6 +179,7 @@ const en: typeof vi = {
     saving: "Saving…",
     back: "Back to sign-in",
     errors: {
+      required: "Please enter your email.",
       mismatch: "The two passwords differ.",
       too_short: "The password needs 12 characters or more.",
       too_long: "The password is longer than 128 characters.",

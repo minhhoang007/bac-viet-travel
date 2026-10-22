@@ -6,7 +6,7 @@ import type { RateLimiter } from "@/core/security/rate-limit";
 import type { Db } from "@/db/client";
 import { bookingPayments, bookings, departures, discountCodes, type Booking, type Departure } from "../schema/booking";
 import type { Addon } from "../tours/model";
-import { addDays, applyDiscount, bookingRules, DEFAULT_TOUR_PRICING, type Discount, isBookableDate, privateQuote, privateTier, quote, vietnamToday, type PrivatePricing, type TourPricing } from "./rules";
+import { addDays, applyDiscount, bookingRules, DEFAULT_TOUR_PRICING, type Discount, isBookableDate, isCalendarDay, privateQuote, privateTier, quote, vietnamToday, type PrivatePricing, type TourPricing } from "./rules";
 import { canBecome, isSold, SOLD_STATUSES, takesSeats, takesSeatsB } from "./status";
 import { bookingLinkEmail } from "./link-email";
 import { bookingInputSchema, discountCodeField, parseTravellers, privateBookingInputSchema } from "./validations";
@@ -84,7 +84,6 @@ export interface BookingService {
 const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // no 0/O, 1/I/L
 const CODE = /^BV-[A-Z2-9]{6}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const FIELD_ERRORS = ["required", "invalid", "too_long", "too_many", "must_agree"] as const;
 
 const newCode = () => `BV-${Array.from({ length: 6 }, () => CODE_ALPHABET[randomInt(CODE_ALPHABET.length)]).join("")}`;
@@ -267,7 +266,7 @@ export function createBookingService(deps: {
     },
 
     async toursWithSeats(date, guests) {
-      if (!DAY.test(date) || !Number.isInteger(guests) || guests < 1) return [];
+      if (!isCalendarDay(date) || !Number.isInteger(guests) || guests < 1) return [];
       const at = now();
       const rows = await db
         .select({ d: departures, taken: takenSql(at) })

@@ -10,7 +10,7 @@ import { bookingPayments, bookingRefunds, bookings, departures, type Booking, ty
 import { bookingStatusEmail, reminderEmail } from "./emails";
 import type { ReceiveTransferResult } from "./deposits";
 import { createDepartureAdmin, type DepartureAdmin } from "./admin-departures";
-import { addDays, bookingRules, vietnamToday } from "./rules";
+import { addDays, bookingRules, isCalendarDay, vietnamToday } from "./rules";
 import { paidBookings } from "./metrics";
 import { canBecome, refundOwed, SOLD_STATUSES, takesSeats } from "./status";
 import { contactUpdateSchema, manualBookingSchema } from "./validations";
@@ -78,7 +78,6 @@ export type ManualBookingResult =
 const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 const CODE = /^BV-[A-Z2-9]{6}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const REMINDER_DAYS = 3;
 
 /** Paid deposits to confirm, refunds owed, and transfers the guest chose that staff have not recorded yet. */
@@ -175,8 +174,8 @@ export function createBookingAdmin(deps: {
       else if (filter !== "all") where.push(eq(bookings.status, filter));
       if (tourSlug) where.push(eq(departures.tourSlug, tourSlug));
       if (source) where.push(eq(bookings.source, source));
-      if (from && DAY.test(from)) where.push(gte(departures.date, from));
-      if (to && DAY.test(to)) where.push(lte(departures.date, to));
+      if (from && isCalendarDay(from)) where.push(gte(departures.date, from));
+      if (to && isCalendarDay(to)) where.push(lte(departures.date, to));
       const q = query?.trim().slice(0, 100);
       if (q) {
         // Staff paste what the bank shows: the transfer note is the code without its dash; phones come with spaces.

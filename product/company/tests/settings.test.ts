@@ -23,6 +23,11 @@ describe("company settings", () => {
     expect(companySchema.safeParse({ ...valid, googleReviewUrl: "http://g.page/r/x" }).success).toBe(false);
   });
 
+  it("a hotline needs at least 8 digits", () => {
+    expect(companySchema.safeParse({ ...valid, hotline: "........" }).success).toBe(false);
+    expect(companySchema.safeParse({ ...valid, hotline: "1900 1234" }).success).toBe(true);
+  });
+
   it("lists the values still marked (demo)", () => {
     expect(demoFields(defaultContact)).toEqual(expect.arrayContaining(["legalName", "taxCode", "licenseNumber", "representative"]));
     expect(demoFields(applyCompany(companySchema.parse(valid)))).toEqual([]);

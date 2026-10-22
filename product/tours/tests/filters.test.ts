@@ -17,6 +17,7 @@ describe("tour list filters", () => {
       guests: 3,
     });
     expect(parseTourFilters({ destination: "paris", duration: "9", sort: "x", date: "tomorrow", guests: "-1", type: ["group", "private"] })).toEqual({ sort: "popular", type: "group" });
+    expect(parseTourFilters({ date: "2026-13-45" })).toEqual({ sort: "popular" });
   });
 
   it("filters by destination, length, price band and private offer", () => {

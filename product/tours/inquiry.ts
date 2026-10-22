@@ -2,22 +2,24 @@ import { z } from "zod";
 import type { Logger } from "@/core/logger";
 import type { MailPort } from "@/core/ports/mail";
 import type { RateLimiter } from "@/core/security/rate-limit";
-import { vietnamToday } from "../booking/rules";
+import { isCalendarDay, vietnamToday } from "../booking/rules";
+import { hasPhoneDigits } from "../booking/validations";
 
 /** Booking request from a tour page. The team confirms availability and price by phone / Zalo / WhatsApp / email. */
 const inquirySchema = z.object({
   tour: z.string().min(1, "required").max(120, "too_long"),
   name: z.string().trim().min(1, "required").max(100, "too_long"),
-  email: z.email("invalid_email").max(200, "too_long"),
+  email: z.string().trim().pipe(z.email("invalid_email").max(200, "too_long")),
   phone: z
     .string()
     .trim()
     .min(1, "required")
     .max(30, "too_long")
-    .regex(/^\+?[\d\s().-]{6,}$/, "invalid_phone"),
+    .regex(/^\+?[\d\s().-]{6,}$/, "invalid_phone")
+    .refine(hasPhoneDigits, "invalid_phone"),
   /** Preferred channel for the reply. */
   channel: z.enum(["phone", "zalo", "whatsapp", "email"]).catch("email"),
-  date: z.iso.date("invalid_date"),
+  date: z.iso.date("invalid_date").refine(isCalendarDay, "invalid_date"),
   adults: z.coerce.number().int("invalid_number").min(1, "invalid_number").max(50, "invalid_number"),
   children: z.coerce.number().int("invalid_number").min(0, "invalid_number").max(50, "invalid_number"),
   note: z.string().max(2000, "too_long").default(""),

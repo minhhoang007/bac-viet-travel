@@ -62,6 +62,14 @@ describe("tour inquiry", () => {
     expect(sent).toHaveLength(0);
   });
 
+  it("common bad input: a phone without digits, a day not on the calendar; spaces around the email are dropped", async () => {
+    const { service, sent } = setup();
+    for (const phone of ["------", "(((((( ", "123 45"]) expect(await service.submit({ ...valid, phone }, "ip")).toEqual({ status: "invalid", fieldErrors: { phone: "invalid_phone" } });
+    expect(await service.submit({ ...valid, date: "2026-02-31" }, "ip")).toEqual({ status: "invalid", fieldErrors: { date: "invalid_date" } });
+    expect(await service.submit({ ...valid, email: " a@example.com " }, "ip")).toEqual({ status: "success" });
+    expect(sent.map((m) => m.to)).toContain("a@example.com");
+  });
+
   it("strips control characters from the subject line", async () => {
     const { service, sent } = setup();
     await service.submit({ ...valid, name: "A\r\nBcc: evil@example.com" }, "ip");
