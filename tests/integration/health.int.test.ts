@@ -6,9 +6,12 @@ const handle = testDb();
 afterAll(() => handle.close());
 
 describe("health and shared limiters", () => {
-  it("container.health() reports the database", async () => {
+  it("container.health() reports the database and where rate limits are counted", async () => {
     const t = testApp(handle.db);
-    expect(await t.container.health()).toEqual({ db: "ok" });
+    expect(await t.container.health()).toEqual({ db: "ok", rateLimit: "local" });
+    // Upstash set but not answering (a wrong URL or token): reported, not hidden behind the in-memory fallback.
+    const wrong = testApp(handle.db, { env: { UPSTASH_REDIS_REST_URL: "http://127.0.0.1:9", UPSTASH_REDIS_REST_TOKEN: "wrong" } });
+    expect(await wrong.container.health()).toEqual({ db: "ok", rateLimit: "error" });
   });
 
   it("/api/health: 200 when healthy, 503 when the database is down, never cached", async () => {
