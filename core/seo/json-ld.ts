@@ -1,3 +1,5 @@
+import { localizedUrl, type SeoSite } from "./metadata";
+
 /**
  * Serializes structured data for `<script type="application/ld+json">`.
  * Escapes characters that could close the script element or break parsing, so user/CMS text is safe.
@@ -19,6 +21,10 @@ export interface ArticleLd {
   datePublished: string;
   dateModified?: string;
   author?: string;
+  /** The author is a team or company (schema.org Organization), not a person. */
+  authorIsOrganization?: boolean;
+  /** A page about the author. */
+  authorUrl?: string;
   publisher: string;
   locale: string;
 }
@@ -36,7 +42,20 @@ export function articleJsonLd(a: ArticleLd): Record<string, unknown> {
     datePublished: a.datePublished,
     dateModified: a.dateModified ?? a.datePublished,
     ...(a.image ? { image: [a.image] } : {}),
-    ...(a.author ? { author: { "@type": "Person", name: a.author } } : {}),
+    ...(a.author ? { author: { "@type": a.authorIsOrganization ? "Organization" : "Person", name: a.author, ...(a.authorUrl ? { url: a.authorUrl } : {}) } } : {}),
     publisher: { "@type": "Organization", name: a.publisher },
+  };
+}
+
+/**
+ * schema.org BreadcrumbList: search results show the path (site › Blog › Post) instead of the bare URL.
+ * `home`: the name of the home page (the site); `trail`: locale-less paths and names after it, in order.
+ */
+export function breadcrumbJsonLd(site: SeoSite, locale: string, home: string, trail: { path: string; name: string }[]): Record<string, unknown> {
+  const items = [{ path: "/", name: home }, ...trail];
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: items.map((item, i) => ({ "@type": "ListItem", position: i + 1, name: item.name, item: localizedUrl(site, locale, item.path) })),
   };
 }

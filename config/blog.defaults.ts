@@ -13,6 +13,19 @@ export const blogDefaults = {
   defaultAuthor: "",
   /** Words per minute for the reading-time estimate. */
   wordsPerMinute: 200,
+  /** Display names of tags per locale (tags themselves stay lowercase-with-dashes in URLs); missing = the tag. */
+  tagLabels: {} as Record<string, Partial<Record<string, string>>>,
+  /**
+   * Who writes, by the name used as `author`: a box under their posts and the author in structured data (search
+   * engines weigh who stands behind advice). `organization`: a team or the company, not a person. Text per locale;
+   * `url`: a page about them (an about page, a profile).
+   */
+  authors: {} as Record<string, { organization?: boolean; role?: Partial<Record<string, string>>; bio?: Partial<Record<string, string>>; url?: string }>,
+  /**
+   * "Quick facts" at the top of a post (database posts): short answers readers look for first, one field each in the
+   * editor, in this order. `key`: letters only (stored in the post); `label` per locale. Empty: no quick facts.
+   */
+  facts: [] as { key: string; label: Partial<Record<string, string>> }[],
 };
 
 export type BlogConfig = typeof blogDefaults;

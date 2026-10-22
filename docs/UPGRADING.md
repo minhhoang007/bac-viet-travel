@@ -44,6 +44,13 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Product code calling `audit.audited(...)`: pass its `tx` argument to your writes to make them atomic with the entry (optional).
 - Password sign-in stays off until `config/auth.ts` sets `methods: { ...authDefaults.methods, password: true }`; it needs a working email provider in production.
 
+### Next release — blog
+- No migration. Stored posts are unchanged; `facts` and `coverCredit` are new optional fields.
+- Projects overriding `content/` must add `blog.related`, `blog.toc`, `blog.aboutAuthor`, `blog.facts` (`title`, `hint`), `blog.photoBy` and `admin.posts.result.conflict` / `failed`.
+- `savePost` is now `savePostInPlace` (answers in place instead of redirecting); project code calling it must use the new name.
+- Blog post pages are static (ISR) for database posts: anything per-request in a project hook on that page must move to a client component or the hook's own cached data.
+- CSP allows `images.unsplash.com` images (hotlinked covers).
+
 ### v1.26.0 (2026-10-14) — demo mode
 - **Starter migration 0006** (`demo_emails`, new table only). Run it on production before deploying (`node --env-file=.env.vercel scripts/db-migrate.ts`).
 - Nothing changes until `DEMO_MODE=true` is set. Projects overriding `content/` must add `demo` (notice, contact, mailbox, tryAdmin).

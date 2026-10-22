@@ -25,8 +25,9 @@ test("index → post → translation, with SEO tags and rendered MDX", async ({ 
   // SEO tags as search engines read them: a full load. After in-place navigation (v1.19) the previous page's
   // hreflang links can linger in <head> next to the new ones; crawlers never navigate in place.
   await page.reload();
-  const ld = JSON.parse((await page.locator('script[type="application/ld+json"]').textContent())!);
-  expect(ld).toMatchObject({ "@type": "BlogPosting", headline: "Chào mừng đến với blog", inLanguage: "vi" });
+  // The post, its breadcrumb (and a FAQ section's questions when it has one), in one script.
+  const ld = JSON.parse((await page.locator('script[type="application/ld+json"]').textContent())!) as Record<string, unknown>[];
+  expect(ld).toEqual(expect.arrayContaining([expect.objectContaining({ "@type": "BlogPosting", headline: "Chào mừng đến với blog", inLanguage: "vi" }), expect.objectContaining({ "@type": "BreadcrumbList" })]));
   await expect(page.locator('link[rel=alternate][hreflang=en]')).toHaveAttribute("href", /\/en\/blog\/welcome-to-the-blog$/);
   await expect(page.locator('meta[property="og:type"]')).toHaveAttribute("content", "article");
 
@@ -37,7 +38,8 @@ test("index → post → translation, with SEO tags and rendered MDX", async ({ 
 
 test("tags, RSS, sitemap and 404s", async ({ page, request }) => {
   await page.goto("/blog/tag/huong-dan");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Bài viết về #huong-dan");
+  // The tag's display name (config/blog.ts tagLabels), else the tag itself.
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Bài viết về huong-dan");
   await expect(page.getByTestId("post-list").locator("article")).toHaveCount(1); // tag chips are list items too
 
   const rss = await request.get("/en/blog/rss.xml");

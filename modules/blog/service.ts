@@ -16,8 +16,15 @@ const frontmatterSchema = z.object({
   /** Path under public/ (e.g. /blog/cover.jpg) or an absolute URL. */
   cover: z.string().min(1).optional(),
   author: z.string().min(1).optional(),
+  /** Photographer of the cover when the licence asks for it (e.g. Unsplash): shown under the image. */
+  coverCredit: z.object({ name: z.string().min(1).max(120), url: z.url({ protocol: /^https$/ }).max(500) }).optional(),
   /** Same key on posts in different locales = translations of each other (hreflang, language switch). */
   translationKey: z.string().regex(/^[a-z0-9-]+$/).optional(),
+  /** Quick facts at the top of a post, by key (config/blog.ts `facts` names and orders them). */
+  facts: z
+    .record(z.string().regex(/^[A-Za-z]{1,40}$/), z.string().max(120))
+    .refine((f) => Object.keys(f).length <= 12, "at most 12 facts")
+    .optional(),
   draft: z.boolean().default(false),
 });
 
@@ -80,8 +87,16 @@ function readingMinutes(body: string, wordsPerMinute: number): number {
 
 /** A post stored in the content module (type "post"): the frontmatter fields, its locale and a Markdown body. */
 export const contentPostSchema = frontmatterSchema.omit({ draft: true }).extend({
-  /** A path under public/ (the site's CSP and next/image allow the site's own images only). */
-  cover: z.string().regex(/^\/(?!\/)[\w./-]+$/, "path under public/").optional(),
+  /**
+   * A path under public/, or an image on a CDN the site's CSP allows: the media library (Cloudinary) or Unsplash
+   * (hotlinked, as its API terms require). Nothing else, so staff cannot embed arbitrary third-party URLs.
+   */
+  cover: z
+    .union([
+      z.string().regex(/^\/(?!\/)[\w./-]+$/, "path under public/"),
+      z.url({ protocol: /^https$/ }).max(500).regex(/^https:\/\/(res\.cloudinary\.com|images\.unsplash\.com)\//, "image CDN"),
+    ])
+    .optional(),
   locale: z.string().min(2).max(10),
   body: z.string().trim().min(1).max(100_000),
 });
@@ -162,4 +177,13 @@ export function blogFromPosts(all: Post[], options: { locales: readonly string[]
       return result;
     },
   };
+}
+
+/**
+ * A live post whose words changed (title, description or text) is dated "updated" on `day` (YYYY-MM-DD) when the
+ * change goes live: readers and search engines see the guide is current, and writers need not remember the field.
+ */
+export function withUpdated(data: Record<string, unknown>, live: Record<string, unknown> | null, day: string): Record<string, unknown> {
+  if (!live || (["title", "description", "body"] as const).every((k) => data[k] === live[k])) return data;
+  return String(data.updated ?? data.date ?? "") < day ? { ...data, updated: day } : data;
 }

@@ -21,7 +21,8 @@ export default async function DemoSignInPage({ params, searchParams }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
   const accounts = demoAccounts();
-  if (!getPublicEnv().demoMode || accounts.length === 0) notFound();
+  const { demoMode, demoContactUrl: contactUrl } = getPublicEnv();
+  if (!demoMode || accounts.length === 0) notFound();
   const c = getAppContent(locale).demo.tryAdmin;
   const { result } = await searchParams;
 
@@ -31,6 +32,18 @@ export default async function DemoSignInPage({ params, searchParams }: Props) {
         <h1 className="text-3xl font-bold">{c.title}</h1>
         <p className="text-muted-foreground">{c.intro}</p>
       </div>
+      {c.steps && c.steps.length > 0 && (
+        <section className="grid gap-3 rounded-lg border border-border bg-muted p-5" aria-labelledby="demo-steps" data-testid="demo-steps">
+          <h2 id="demo-steps" className="font-semibold">
+            {c.stepsTitle}
+          </h2>
+          <ol className="grid list-decimal gap-2 pl-5 text-sm">
+            {c.steps.map((s) => (
+              <li key={s}>{s}</li>
+            ))}
+          </ol>
+        </section>
+      )}
       {result && <Notice tone="danger">{result === "rate_limited" ? c.rateLimited : c.failed}</Notice>}
       <ul className="grid gap-4 sm:grid-cols-2" data-testid="demo-accounts">
         {accounts.map((a) => (
@@ -48,6 +61,13 @@ export default async function DemoSignInPage({ params, searchParams }: Props) {
           </li>
         ))}
       </ul>
+      {contactUrl && (
+        <p className="text-center">
+          <a href={contactUrl} className="font-medium underline underline-offset-4 hover:no-underline">
+            {getAppContent(locale).demo.contact}
+          </a>
+        </p>
+      )}
     </Container>
   );
 }

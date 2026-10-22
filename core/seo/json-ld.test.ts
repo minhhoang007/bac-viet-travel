@@ -1,5 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { serializeJsonLd } from "./json-ld";
+import { breadcrumbJsonLd, serializeJsonLd } from "./json-ld";
+import type { SeoSite } from "./metadata";
+
+const site: SeoSite = { siteUrl: "https://example.com", siteName: "Example", titleTemplate: "%s | Example", defaultOgImage: "/og.png", locales: ["vi", "en"], defaultLocale: "vi" };
+
+describe("breadcrumbJsonLd", () => {
+  it("starts at the home page and links each step in the page's locale", () => {
+    const ld = breadcrumbJsonLd(site, "en", "Example", [{ path: "/blog", name: "Blog" }, { path: "/blog/a", name: "A" }]);
+    expect(ld.itemListElement).toEqual([
+      { "@type": "ListItem", position: 1, name: "Example", item: "https://example.com/en" },
+      { "@type": "ListItem", position: 2, name: "Blog", item: "https://example.com/en/blog" },
+      { "@type": "ListItem", position: 3, name: "A", item: "https://example.com/en/blog/a" },
+    ]);
+  });
+});
 
 describe("serializeJsonLd", () => {
   it("round-trips data", () => {

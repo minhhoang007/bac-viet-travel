@@ -76,7 +76,7 @@ export interface AppContent {
     contact: string;
     mailbox: { nav: string; title: string; intro: string; empty: string; to: string };
     /** /demo: one-click sign-in as a demo staff account. */
-    tryAdmin: { link: string; title: string; intro: string; signIn: string; failed: string; rateLimited: string };
+    tryAdmin: { link: string; title: string; intro: string; signIn: string; failed: string; rateLimited: string; stepsTitle?: string; steps?: string[] };
   };
   admin: {
     title: string;
@@ -212,7 +212,7 @@ export interface AppContent {
       create: string;
       saving: string;
       problemsTitle: string;
-      result: { saved: string; created: string; slug_taken: string; invalid: string };
+      result: { saved: string; created: string; slug_taken: string; invalid: string; conflict: string; failed: string };
     };
     done: string;
     failed: string;
@@ -226,6 +226,14 @@ export interface AppContent {
     /** "{n}" is replaced with the number of minutes. */
     readingTime: string;
     tagTitle: string;
+    /** Heading of the posts sharing a tag, under a post. */
+    related: string;
+    /** Table of contents of a post (its ## headings). */
+    toc: string;
+    /** Label of the writer's box under a post. */
+    aboutAuthor: string;
+    /** "Quick facts" box at the top of a post and its editor fieldset (the fields: config/blog.ts `facts`). */
+    facts: { title: string; hint: string };
     tags: string;
     empty: string;
     previous: string;
@@ -233,6 +241,8 @@ export interface AppContent {
     allPosts: string;
     updated: string;
     otherLanguage: string;
+    /** Before the photographer's name under a credited cover, e.g. "Ảnh:". */
+    photoBy: string;
     rss: string;
   };
 }
