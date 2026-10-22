@@ -27,7 +27,7 @@ import { polarProvider } from "@/providers/billing/polar";
 import { VNPAY_SANDBOX_URL, vnpayProvider } from "@/providers/billing/vnpay";
 import { consoleEmailProvider } from "@/providers/email/console";
 import { resendProvider } from "@/providers/email/resend";
-import { upstashRateLimiter } from "@/providers/rate-limit/upstash";
+import { upstashPing, upstashRateLimiter } from "@/providers/rate-limit/upstash";
 import { cloudinaryProvider } from "@/providers/media/cloudinary";
 import { s3Storage } from "@/providers/storage/s3";
 import * as productManifest from "@/product/manifest";
@@ -57,8 +57,12 @@ export interface AppServices {
 /** Services wired for the running project. Optional members exist only when their module/profile is on. */
 export interface Container {
   features: Features;
-  /** Liveness of dependencies for /api/health (no details that could leak configuration). */
-  health(): Promise<{ db: "ok" | "error" | "skipped" }>;
+  /**
+   * Liveness of dependencies for /api/health (no details that could leak configuration). `rateLimit`: "shared" (Upstash
+   * answers: limits hold across instances), "local" (no Upstash: each instance counts on its own), "error" (Upstash set
+   * but not answering, e.g. a wrong URL or token: requests fall back to counting per instance).
+   */
+  health(): Promise<{ db: "ok" | "error" | "skipped"; rateLimit: "shared" | "local" | "error" }>;
   /**
    * Shared rate limiter for project features (e.g. a booking form): Upstash when configured, else in-memory.
    * Memoized per name, so call it on every request and get the same limiter.
@@ -264,15 +268,26 @@ export function buildContainer(features: Features, env: Env, overrides: Containe
       : undefined;
 
 
-  const health = async () => {
-    if (!db) return { db: "skipped" as const };
+  const dbHealth = async () => {
+    if (!db) return "skipped" as const;
     try {
       await db.execute(sql`select 1`);
-      return { db: "ok" as const };
+      return "ok" as const;
     } catch (error) {
       logger.error("health.db_failed", { error });
-      return { db: "error" as const };
+      return "error" as const;
     }
+  };
+  // The shared rate-limit store: a wrong URL or token otherwise shows nowhere (requests quietly count per instance).
+  const rateLimitHealth = async () => {
+    if (!env.UPSTASH_REDIS_REST_URL || !env.UPSTASH_REDIS_REST_TOKEN) return "local" as const;
+    if (await upstashPing({ url: env.UPSTASH_REDIS_REST_URL, token: env.UPSTASH_REDIS_REST_TOKEN })) return "shared" as const;
+    logger.error("health.rate_limit_store_failed");
+    return "error" as const;
+  };
+  const health = async () => {
+    const [dbStatus, rateLimit] = await Promise.all([dbHealth(), rateLimitHealth()]);
+    return { db: dbStatus, rateLimit };
   };
 
   const vnpayIpnHandlers = [app?.vnpayIpn, billing?.providers.includes("vnpay") ? billing.vnpayIpnHandler : undefined].filter((h) => h !== undefined);

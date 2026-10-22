@@ -31,3 +31,20 @@ export function upstashRateLimiter(
     },
   };
 }
+
+/**
+ * Whether Upstash answers with these credentials (PING → PONG), for /api/health. False on a wrong URL or token, a
+ * refusal or no answer within `timeoutMs`; never throws.
+ */
+export async function upstashPing(options: { url: string; token: string; fetch?: typeof fetch; timeoutMs?: number }): Promise<boolean> {
+  const doFetch = options.fetch ?? fetch;
+  try {
+    const res = await doFetch(`${options.url.replace(/\/$/, "")}/ping`, {
+      headers: { Authorization: `Bearer ${options.token}` },
+      signal: AbortSignal.timeout(options.timeoutMs ?? 3000),
+    });
+    return res.ok && ((await res.json()) as { result?: unknown }).result === "PONG";
+  } catch {
+    return false;
+  }
+}

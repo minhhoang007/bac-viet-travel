@@ -56,7 +56,9 @@ Everything above, plus:
 ## Monitoring and backups
 
 1. **Uptime:** point a monitor (Better Stack, UptimeRobot…) at `https://<domain>/api/health` — 200 healthy, 503 when the
-   database is unreachable. The response also shows the deployed commit.
+   database is unreachable. The response also shows the deployed commit, and `checks.rateLimit`: `shared` (Upstash
+   answers), `local` (no Upstash: each instance counts on its own) or `error` (Upstash set but refusing or not
+   answering: check `UPSTASH_REDIS_REST_URL` is the `https://…upstash.io` REST URL and the token is not read-only).
 2. **Errors:** every server error is one JSON log line `request.error` with a `digest`; users see the same digest as
    "ref" on the error page. Search Vercel logs by digest. To get alerts, add an error tracker in `instrumentation.ts`.
 3. **Backups (Neon):** point-in-time restore is on by default (retention depends on the plan). Before a release with a
