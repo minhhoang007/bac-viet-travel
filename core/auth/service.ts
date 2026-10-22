@@ -4,10 +4,10 @@ import type { RateLimiter } from "@/core/security/rate-limit";
 import type { TurnstileCheck } from "@/core/security/turnstile";
 import { ROLES, users } from "@/core/users/schema";
 import type { Db } from "@/db/client";
-import { asInvitation, dropPasswordLinks, type BetterAuthInstance } from "./adapters/better-auth";
+import { asInvitation, dropPasswordLinks, PASSWORD_MAX, type BetterAuthInstance } from "./adapters/better-auth";
 import { createAuthEvents, type AuthEvent } from "./events";
 import { createLoginCodes } from "./login-code";
-import { isFresh, staffGate, staffSessionExpired, type FactorFacts, type SessionFacts, type StaffAuthPolicy } from "./mfa";
+import { hasSecondFactor, isFresh, isStaffRole, staffGate, staffSessionExpired, type FactorFacts, type SessionFacts, type StaffAuthPolicy } from "./mfa";
 import { accounts, passkeys, sessions, twoFactors } from "./schema";
 
 export type Role = (typeof ROLES)[number];
@@ -83,15 +83,24 @@ export interface AuthService {
   demoSignIn(email: string, callbackURL: string, headers: Headers): Promise<string | null>;
   /**
    * Email and password (methods.password). "second_factor": the password was right and the authenticator app is on,
-   * so there is no session yet: the code on the verify page finishes the sign-in. Rate limited per client and per
+   * so there is no session yet: the code on the verify page finishes the sign-in. "email_link": the password was right
+   * but the staff account has no second factor yet; the first one is set up after signing in by email link, so a
+   * leaked password alone cannot enroll someone else's authenticator app. Rate limited per client and per
    * address (RATE_LIMIT_ERROR); with Turnstile configured, a missing or failed token throws CAPTCHA_ERROR.
    * `setCookies`: the response cookies, for callers outside Next.js (in a server action they are already set).
    */
-  signInPassword(input: PasswordSignIn, headers: Headers): Promise<{ status: "ok" | "second_factor" | "wrong"; setCookies: string[] }>;
-  /** "Forgot password": emails a link to set a new one, to staff accounts only (silent otherwise). Rate limited. */
-  requestPasswordReset(input: { email: string; clientKey: string; captchaToken?: string | null }): Promise<void>;
-  /** An admin's invitation or reset: the same email, not rate limited (the caller checks who may send it). */
-  sendPasswordSetup(email: string): Promise<void>;
+  signInPassword(input: PasswordSignIn, headers: Headers): Promise<{ status: "ok" | "second_factor" | "email_link" | "wrong"; setCookies: string[] }>;
+  /**
+   * "Forgot password": emails a link to set a new one, to active staff accounts only (silent otherwise). Rate limited.
+   * `defer` (e.g. Next.js `after`): the lookup and the email run after the answer, so its time is the same for any
+   * address; without it they are awaited.
+   */
+  requestPasswordReset(input: { email: string; clientKey: string; captchaToken?: string | null; defer?: (work: () => Promise<void>) => void }): Promise<void>;
+  /**
+   * An admin's invitation or reset: the same email, not rate limited (the caller checks who may send it). Sent links
+   * replace older unused ones. False: not an active staff account, nothing sent.
+   */
+  sendPasswordSetup(email: string): Promise<boolean>;
   /** Unused set-password links of the account stop working (e.g. when staff are removed). */
   dropPasswordLinks(userId: string): Promise<void>;
   /** The new password from the emailed link. Signs the account out everywhere. */
@@ -270,8 +279,28 @@ export function createAuthService(
     }
   };
 
+  // Active staff only: no link is stored for anyone else (false: nothing sent). The adapter drops older links once sent.
   const sendPasswordSetup = async (email: string) => {
-    await auth.api.requestPasswordReset({ body: { email: email.trim().toLowerCase() } });
+    const address = email.trim().toLowerCase();
+    const [user] = await db.select({ status: users.status, role: users.role }).from(users).where(eq(users.email, address));
+    if (!user || user.status === "disabled" || !isStaffRole(user.role)) return false;
+    await auth.api.requestPasswordReset({ body: { email: address } });
+    return true;
+  };
+
+  const passwordHashOf = async (userId: string) => {
+    const [row] = await db.select({ hash: accounts.password }).from(accounts).where(and(eq(accounts.userId, userId), eq(accounts.providerId, "credential")));
+    return row?.hash ?? null;
+  };
+
+  // Checks a password without signing in. No password set: as slow as checking one.
+  const passwordMatches = async (hash: string | null, password: string) => {
+    const ctx = await auth.$context;
+    if (!hash) {
+      await ctx.password.hash(password);
+      return false;
+    }
+    return ctx.password.verify({ hash, password });
   };
 
   /**
@@ -435,13 +464,23 @@ export function createAuthService(
         if (!client.success || !account.success) throw new AppError("RATE_LIMIT_ERROR");
       }
       if (deps.turnstile && !(await deps.turnstile(captchaToken, clientKey))) throw new AppError("CAPTCHA_ERROR");
+      // Longer than any password allowed here: never hashed (hashing cost).
+      if (password.length > PASSWORD_MAX) return { status: "wrong", setCookies: [] };
       // A disabled account reads as a wrong password (getSession would drop its session anyway). So does a customer
       // account: passwords are for staff, and one left from a former employee must stop working.
-      const [user] = await db.select({ status: users.status, role: users.role }).from(users).where(eq(users.email, address));
+      const [user] = await db.select({ id: users.id, status: users.status, role: users.role }).from(users).where(eq(users.email, address));
       if (user && (user.status === "disabled" || !hasRole(user, "editor"))) {
         // As slow as checking a password: the answer time must not tell which addresses have an account.
         await (await auth.$context).password.hash(password);
         return { status: "wrong", setCookies: [] };
+      }
+      // No second factor yet: the first one is set up from a session opened by an emailed link (proof of the address),
+      // never with the password alone, so whoever learns it cannot enroll their own authenticator app first. Without
+      // magic links there is no such session to send them to: the password stays the way in.
+      if (user && methods.magicLink && deps.staff.requireSecondFactor) {
+        // Both lookups at once (one database round trip): the answer time stays close to the other answers'.
+        const [owned, hash] = await Promise.all([factors(user.id), passwordHashOf(user.id)]);
+        if (!hasSecondFactor(owned)) return { status: (await passwordMatches(hash, password)) ? "email_link" : "wrong", setCookies: [] };
       }
       try {
         const res = await auth.api.signInEmail({ body: { email: address, password }, headers, returnHeaders: true });
@@ -452,20 +491,22 @@ export function createAuthService(
         throw error;
       }
     },
-    async requestPasswordReset({ email, clientKey, captchaToken }) {
+    async requestPasswordReset({ email, clientKey, captchaToken, defer }) {
       if (!methods.password) throw new AppError("MODULE_DISABLED", "Password sign-in is off");
       const address = email.trim().toLowerCase();
       const [client, recipient] = await Promise.all([limits.perClient.limit(`password-reset:client:${clientKey}`), limits.perRecipient.limit(`password-reset:to:${address}`)]);
       if (!client.success || !recipient.success) throw new AppError("RATE_LIMIT_ERROR");
       if (deps.turnstile && !(await deps.turnstile(captchaToken, clientKey))) throw new AppError("CAPTCHA_ERROR");
-      await sendPasswordSetup(address);
+      const send = async () => void (await sendPasswordSetup(address));
+      if (defer) defer(send);
+      else await send();
     },
     async dropPasswordLinks(userId) {
       await dropPasswordLinks(db, userId);
     },
     async sendPasswordSetup(email) {
       if (!methods.password) throw new AppError("MODULE_DISABLED", "Password sign-in is off");
-      await asInvitation(() => sendPasswordSetup(email));
+      return asInvitation(() => sendPasswordSetup(email));
     },
     async resetPassword(token, newPassword) {
       if (!methods.password) throw new AppError("MODULE_DISABLED", "Password sign-in is off");

@@ -218,7 +218,8 @@ export const productAdminNav: ProductNavItem[] = [
   { href: "/admin/discounts", label: { vi: "Mã giảm giá", en: "Discount codes" }, roles: ["editor"], allow: staffMay("discounts") },
   { href: "/admin/reports", label: { vi: "Báo cáo", en: "Reports" }, roles: ["editor"], allow: staffMay("reports") },
   // Content: marketing (editor role) writes tours; publishing stays with admins (content workflow).
-  // Sales staff do bookings only, not tour content.
+  // Sales staff do bookings only, not tour content. Blog posts and images stay open to every editor, sales included
+  // (owner's choice 2026-10-22: sales do marketing too); publishing stays with admins.
   { href: "/admin/tours", label: { vi: "Tour", en: "Tours" }, roles: ["editor"], allow: async (u) => (await staffRoleOf(u.id)) !== "sale", group: "content" },
   { href: "/admin/staff", label: { vi: "Nhân viên", en: "Staff" }, group: "settings" },
   { href: "/admin/company", label: { vi: "Thông tin công ty", en: "Company details" }, group: "settings" },

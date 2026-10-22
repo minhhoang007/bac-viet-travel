@@ -6,6 +6,15 @@ import type { Sql } from "postgres";
 let n = 10;
 
 export async function signInStaff(page: Page, sql: Sql, email: string, role: "editor" | "admin"): Promise<void> {
+  await signInByEmail(page, sql, email);
+  await sql`update users set role = ${role} where email = ${email}`;
+  // Staff need a second factor (starter v1.17): as if they had set up an authenticator app and passed it just now.
+  // The real passkey/TOTP flows are covered by the starter's tests; admin.spec covers the gate and the step-up here.
+  await withSecondFactor(sql, email);
+}
+
+/** The real magic-link flow, ending on /dashboard. */
+export async function signInByEmail(page: Page, sql: Sql, email: string): Promise<void> {
   // A different /24 per worker, so files running in parallel never share an address.
   await page.context().setExtraHTTPHeaders({ "x-forwarded-for": `198.${51 + test.info().workerIndex}.100.${n++ % 250}` });
   await page.goto("/login");
@@ -19,10 +28,6 @@ export async function signInStaff(page: Page, sql: Sql, email: string, role: "ed
   }
   await page.goto(`/api/auth/magic-link/verify?token=${token}&callbackURL=%2Fdashboard`);
   await expect(page).toHaveURL(/\/dashboard$/);
-  await sql`update users set role = ${role} where email = ${email}`;
-  // Staff need a second factor (starter v1.17): as if they had set up an authenticator app and passed it just now.
-  // The real passkey/TOTP flows are covered by the starter's tests; admin.spec covers the gate and the step-up here.
-  await withSecondFactor(sql, email);
 }
 
 /** An authenticator app on record (placeholder secret: never checked here) and the user's sessions past the 2FA. */

@@ -1,16 +1,17 @@
 // Staff password sign-in (owner's choice 2026-10-19): an admin invites by email, the new hire sets a password from the
-// emailed link, signs in with it and is then asked for two-step verification before the admin area.
+// emailed link; the first sign-in is by email link (no second factor yet), then two-step verification is set up and
+// the password works from then on.
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import postgres from "postgres";
 import { totp } from "../integration/setup/totp";
 import { e2eServerEnv } from "./server-env";
-import { signInStaff } from "./staff";
+import { signInByEmail, signInStaff } from "./staff";
 
 const sql = postgres(e2eServerEnv.DATABASE_URL!, { max: 1, onnotice: () => {} });
 test.afterAll(() => sql.end());
 
-test("invited staff set a password from the emailed link, sign in with it, then add two-step verification", async ({ page, browser }) => {
+test("invited staff set a password from the emailed link, sign in by email link first, add two-step verification, then use the password", async ({ page, browser }) => {
   test.setTimeout(90_000); // two people, five pages, a breach check over the network
   const email = `new-hire-${Date.now()}@bacviet.example`;
   // Random: new passwords are checked against known breaches.
@@ -54,7 +55,10 @@ test("invited staff set a password from the emailed link, sign in with it, then 
   await expect(signIn.getByLabel("Email")).toHaveValue(email);
   await signIn.getByLabel("Mật khẩu", { exact: true }).fill(password);
   await signIn.getByRole("button", { name: "Đăng nhập" }).click();
-  await expect(hire).toHaveURL(/\/dashboard$/);
+  // No second factor yet: the password alone opens nothing; the first sign-in is by email link.
+  await expect(signIn.getByRole("alert")).toContainText("Lần đầu, hãy đăng nhập bằng liên kết gửi qua email");
+  await expect(hire).toHaveURL(/\/login(\?reset=done)?$/);
+  await signInByEmail(hire, sql, email);
 
   // Staff still need a second factor: the admin area sends them to set one up; the password shows as set.
   await hire.goto("/admin/bookings");

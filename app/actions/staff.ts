@@ -47,31 +47,39 @@ export async function setStaffRole(formData: FormData): Promise<void> {
     await container.app!.product.staff.set(actor, found.id, role);
     if (found.role === "user") await admin.setUserRole(actor, found.id, "editor");
     if (!invite) return "done";
-    return (await sendSetup(auth, found.email, container.logger)) ? "invited" : "mail_failed";
+    return { sent: "invited", skipped: "not_staff", failed: "mail_failed" }[await sendSetup(auth, found.email, container.logger)];
   });
 }
 
-/** The email with a link to set a password (a new one replaces the old once saved). Admins only. */
+/** The email with a link to set a password (it replaces unused links; the old password works until a new one is saved). Admins only. */
 export async function sendStaffPasswordLink(formData: FormData): Promise<void> {
-  await staffAction(formData, async ({ admin, container }) => {
+  await staffAction(formData, async ({ admin, container, user: actor }) => {
     const userId = z.uuid().safeParse(formData.get("userId"));
     if (!userId.success) return "invalid";
     const target = await admin.getUser(userId.data);
     if (!target) return "invalid";
-    return (await sendSetup(container.app!.auth, target.email, container.logger)) ? "link_sent" : "mail_failed";
+    // Only active staff get password links (the auth service decides and sends nothing to anyone else).
+    const outcome = await sendSetup(container.app!.auth, target.email, container.logger);
+    if (outcome !== "sent") return outcome === "skipped" ? "not_staff" : "mail_failed";
+    try {
+      await admin.audited(actor, { action: "staff.password_link", targetType: "user", targetId: target.id }, async () => true);
+    } catch (error) {
+      // The email went out: say so (sending again would replace the link just sent).
+      container.logger.warn(EVENT, { error });
+    }
+    return "link_sent";
   });
 }
 
 type Ctx = Awaited<ReturnType<typeof requireAdmin>>["container"];
 
 // A mail outage leaves the account and role in place: the admin sends the link again later.
-async function sendSetup(auth: NonNullable<Ctx["app"]>["auth"], email: string, logger: Ctx["logger"]): Promise<boolean> {
+async function sendSetup(auth: NonNullable<Ctx["app"]>["auth"], email: string, logger: Ctx["logger"]): Promise<"sent" | "skipped" | "failed"> {
   try {
-    await auth.sendPasswordSetup(email);
-    return true;
+    return (await auth.sendPasswordSetup(email)) ? "sent" : "skipped";
   } catch (error) {
     logger.warn(EVENT, { error });
-    return false;
+    return "failed";
   }
 }
 
