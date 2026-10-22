@@ -1,5 +1,6 @@
 import { and, count, eq, isNotNull, like } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { authConfig } from "@/config/auth";
 import { authEvents, passkeys, sessions, verifications } from "@/core/auth/schema";
 import { users } from "@/core/users/schema";
 import { resetDb, testDb } from "./setup/db";
@@ -7,7 +8,9 @@ import { BASE_URL, signIn, testApp } from "./setup/app";
 import { totp } from "./setup/totp";
 
 const handle = testDb();
-const t = testApp(handle.db);
+// Off by default (config/auth.defaults.ts): these tests turn it on.
+const passwordOn = { passwordSignIn: true };
+const t = testApp(handle.db, { overrides: passwordOn });
 const { auth } = t.app;
 const PASSWORD = "ha long sang som thang muoi";
 const origin = () => new Headers({ origin: BASE_URL });
@@ -149,8 +152,10 @@ describe("sign-in with a password", () => {
   });
 
   it("the demo site has no passwords (its mailbox is open to visitors)", () => {
-    expect(testApp(handle.db, { env: { DEMO_MODE: "true" } }).app.auth.methods.password).toBe(false);
+    expect(testApp(handle.db, { env: { DEMO_MODE: "true" }, overrides: passwordOn }).app.auth.methods.password).toBe(false);
     expect(auth.methods.password).toBe(true);
+    // Without the override: the project's config (off in the starter's defaults).
+    expect(testApp(handle.db).app.auth.methods.password).toBe(authConfig.methods.password);
   });
 
   it("the HTTP endpoints for passwords are closed: only this service signs in, resets or changes them", async () => {
@@ -161,7 +166,7 @@ describe("sign-in with a password", () => {
   });
 
   it("password attempts are limited per address", async () => {
-    const limited = testApp(handle.db, { realRateLimits: true });
+    const limited = testApp(handle.db, { realRateLimits: true, overrides: passwordOn });
     const attempt = () => limited.app.auth.signInPassword({ email: "limit@example.com", password: "wrong wrong wrong", clientKey: crypto.randomUUID() }, origin());
     for (let i = 0; i < 10; i++) expect((await attempt()).status).toBe("wrong");
     await expect(attempt()).rejects.toMatchObject({ code: "RATE_LIMIT_ERROR" });

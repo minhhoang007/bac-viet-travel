@@ -29,7 +29,7 @@ const vi = {
   },
   reset: {
     title: "Đặt mật khẩu",
-    requestText: "Nhập email nhân viên. Nếu đúng là tài khoản nhân viên, bạn sẽ nhận email có liên kết đặt mật khẩu (dùng được trong 24 giờ).",
+    requestText: "Nhập email nhân viên. Nếu đúng là tài khoản nhân viên, bạn sẽ nhận email có liên kết đặt mật khẩu (dùng được trong 4 giờ).",
     email: "Email",
     send: "Gửi liên kết",
     sending: "Đang gửi…",
@@ -163,7 +163,7 @@ const en: typeof vi = {
   },
   reset: {
     title: "Set your password",
-    requestText: "Enter your staff email. If it is a staff account, you get an email with a link to set a password (valid for 24 hours).",
+    requestText: "Enter your staff email. If it is a staff account, you get an email with a link to set a password (valid for 4 hours).",
     email: "Email",
     send: "Send the link",
     sending: "Sending…",

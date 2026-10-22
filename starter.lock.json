@@ -1,10 +1,14 @@
 {
-  "starterVersion": "1.26.2",
+  "starterVersion": "1.27.0",
   "initializedAt": "2026-10-01",
-  "profile": "site",
+  "profile": "app",
   "modules": [
     "email",
-    "blog"
+    "blog",
+    "jobs",
+    "admin",
+    "content",
+    "media"
   ],
   "example": false
 }

@@ -4,6 +4,40 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+Upstreamed from a production project (Bắc Việt Travel), after two external security reviews.
+
+### Added
+- **Staff password sign-in** (`methods.password`, off by default). Staff only: no sign-up, set from an emailed one-time link (`/login/reset`; admin invitation 24 h via `auth.sendPasswordSetup`, "forgot password" 4 h), 12–128 characters, checked against known breaches (Have I Been Pwned, fails closed), 10 attempts per 15 min per client and per address, one answer for any wrong email or password. Customer accounts never sign in with one. A staff account without a second factor cannot use its password (answer `email_link`): the first factor is set up after an email-link sign-in. Setting, changing or resetting it signs out other devices and spends older links. Not on a demo site. Needs the email module (startup check).
+- `ContentTypeDefinition.canEdit(user)`: which editors may see drafts of a type and work on it (queue, preview, workflow); `ContentModule.list({ types })`.
+- `ProductContext.media.imageSrc(ids, width)`: CDN URLs of library images, for photos staff pick in content.
+- Optional `product/layout.tsx` exports `productOverviewFor(user)` (staff besides admins who see the project's overview at `/admin`) and `productSiteFigures = false` (hide the starter's site figures).
+- `components/forms/turnstile.tsx`: Turnstile rendered per form and reset after each answer (a token works once).
+- `media.maxUploadsPerHour` (default 100 per account).
+- `ContainerOverrides.passwordSignIn` (tests).
+
+### Changed
+- `audited(actor, entry, action)`: `action` receives `tx`; writes through it commit together with the audit entry (one transaction). Actions that ignore it behave as before.
+- `PaymentQueryResult` has `status: "processing"` (VNPay 01/05): not final, the money may still arrive.
+- Periodic jobs stop at twice the tick's budget and take turns going first (a slow task never starves the others).
+
+### Security
+- The `/admin` overview runs the second-factor gate (it showed figures before it); non-admin staff land on their first page instead of a 404.
+- The two-factor HTTP endpoints are closed: codes are checked only through the auth service with its per-account limit.
+- Staff accounts cannot delete themselves (a session before its second factor could); admins remove staff.
+- Draft preview, the content queue and workflow actions follow `canEdit`.
+
+### Added — blog (from Bắc Việt Travel)
+- Database posts (blog source "content"): table of contents from `##` headings (heading ids for #links), FAQPage data from a "Câu hỏi thường gặp" / "FAQ" section, related posts (shared tag), writer's box and Person/Organization author in structured data (`blog.authors`), display names of tags (`blog.tagLabels`), breadcrumb JSON-LD (`breadcrumbJsonLd` in core/seo).
+- Quick facts at the top of a post, configured in `config/blog.ts` `facts` (key + label per locale; default none).
+- Post pages are static (ISR, revalidated by the "blog" tag) instead of per request; Draft Mode still renders per request.
+- Markdown images get CDN sizes (`srcSet`) for Cloudinary and Unsplash; covers may be Cloudinary or Unsplash images (allowed in CSP), with a photographer credit (`coverCredit`).
+- Embeds in staff Markdown: `<Name slug="…" />` handed to the project (`ProductPostEmbed`), never executed.
+- Post editor saves in place (`SaveInPlaceForm`, `savePostInPlace`): text, cursor and scroll stay; a conflict or an error keeps what was typed. A live post whose words change gets today's `updated` date (`withUpdated`).
+- New posts: the URL follows the title until edited (`components/forms/slug-from-title.tsx`, `slugify`).
+- Project hooks in `product/layout.tsx`: `ProductPostList` (index and tag pages, `PostListProps`), `loadProductPostEditor` (returns the `Cover`, `Body`, `Aside` parts of the editor, `PostEditorParts` in components/content/post-editor-parts.ts; loaded by the editor page only, each part given the starter's `plain` field to fall back on), `ProductPostFooter`.
+- Saving a post keeps stored quick facts whose key the config no longer lists; a unit test checks that configured fact keys can be stored.
+- Demo page: optional steps (`demo.tryAdmin.steps`) and the contact link; the notice's first link is a button.
+
 ## [1.26.2] - 2026-10-14
 
 ### Fixed
