@@ -68,9 +68,9 @@ describe("staff invitation and password link", () => {
     await signIn(t, "guest@example.com");
     const [off] = await handle.db.update(users).set({ role: "editor", status: "disabled" }).where(eq(users.id, await auth.ensureAccount("off@example.com"))).returning();
     const before = t.sent.length;
-    await auth.sendPasswordSetup("guest@example.com");
+    expect(await auth.sendPasswordSetup("guest@example.com")).toBe(false);
     await auth.requestPasswordReset({ email: "guest@example.com", clientKey: "c" });
-    await auth.sendPasswordSetup(off!.email);
+    expect(await auth.sendPasswordSetup(off!.email)).toBe(false);
     await auth.requestPasswordReset({ email: "nobody@example.com", clientKey: "c" });
     expect(t.sent.length).toBe(before);
     expect(await handle.db.select().from(verifications).where(like(verifications.identifier, "reset-password:%"))).toEqual([]);
@@ -203,24 +203,54 @@ describe("password on the security page", () => {
     await expect(auth.security.setPassword(headers, PASSWORD)).rejects.toMatchObject({ code: "PERMISSION_ERROR" });
   });
 
-  it("links: an invitation lasts 24 hours, 'forgot password' 4; a new link replaces the unused one", async () => {
+  it("links: an invitation lasts 24 hours, 'forgot password' 4; a new link replaces older ones, never an invitation by 'forgot password'", async () => {
     const id = await auth.ensureAccount("links@example.com");
     await handle.db.update(users).set({ role: "editor" }).where(eq(users.id, id));
-    const links = () => handle.db.select().from(verifications).where(and(eq(verifications.value, id), like(verifications.identifier, "reset-password:%")));
-    const hoursLeft = (at: Date) => Math.round((at.getTime() - Date.now()) / 3_600_000);
+    const links = async () =>
+      (await handle.db.select().from(verifications).where(and(eq(verifications.value, id), like(verifications.identifier, "reset-password:%"))))
+        .map((l) => [l.identifier.replace("reset-password:", ""), Math.round((l.expiresAt.getTime() - Date.now()) / 3_600_000)])
+        .sort((a, b) => Number(b[1]) - Number(a[1]));
+    const lastToken = () => tokenFrom(t.sent.at(-1)!.text);
+    const forgot = async () => {
+      await auth.requestPasswordReset({ email: "links@example.com", clientKey: "c" }); // anyone, from the login page
+      expect(t.sent.at(-1)!.text).toContain("4 giờ");
+      return lastToken();
+    };
 
-    await auth.sendPasswordSetup("links@example.com"); // admin's invitation
-    const invite = tokenFrom(t.sent.at(-1)!.text);
+    expect(await auth.sendPasswordSetup("links@example.com")).toBe(true); // admin's invitation
+    const invite = lastToken();
     expect(t.sent.at(-1)!.text).toContain("24 giờ");
-    expect((await links()).map((l) => hoursLeft(l.expiresAt))).toEqual([24]);
-    await auth.requestPasswordReset({ email: "links@example.com", clientKey: "c" }); // anyone, from the login page
-    const forgot = tokenFrom(t.sent.at(-1)!.text);
-    expect(t.sent.at(-1)!.text).toContain("4 giờ");
-    expect((await links()).map((l) => [l.identifier.replace("reset-password:", ""), hoursLeft(l.expiresAt)])).toEqual([[forgot, 4]]);
+    // Someone asks for "forgot password" (twice): the invitation stays, only the latest forgot link works.
+    const first = await forgot();
+    expect(await links()).toEqual([[invite, 24], [first, 4]]);
+    const second = await forgot();
+    expect(await links()).toEqual([[invite, 24], [second, 4]]);
+    expect(await auth.resetPassword(first, PASSWORD)).toBe("invalid");
 
-    expect(await auth.resetPassword(invite, PASSWORD)).toBe("invalid");
-    expect(await auth.resetPassword(forgot, PASSWORD)).toBe("done");
+    // The admin sends again: only that link works.
+    await auth.sendPasswordSetup("links@example.com");
+    const again = lastToken();
+    expect(await links()).toEqual([[again, 24]]);
+    expect(await auth.resetPassword(again, PASSWORD)).toBe("done");
     expect(await links()).toEqual([]);
+  });
+
+  it("two links asked at once: only one works", async () => {
+    const id = await auth.ensureAccount("race@example.com");
+    await handle.db.update(users).set({ role: "editor" }).where(eq(users.id, id));
+    await Promise.all([auth.sendPasswordSetup("race@example.com"), auth.sendPasswordSetup("race@example.com"), auth.sendPasswordSetup("race@example.com")]);
+    expect(await handle.db.select().from(verifications).where(and(eq(verifications.value, id), like(verifications.identifier, "reset-password:%")))).toHaveLength(1);
+  });
+
+  it("'forgot password' can answer first and send after (same answer time for any address)", async () => {
+    const id = await auth.ensureAccount("later@example.com");
+    await handle.db.update(users).set({ role: "editor" }).where(eq(users.id, id));
+    const deferred: (() => Promise<void>)[] = [];
+    const before = t.sent.length;
+    await auth.requestPasswordReset({ email: "later@example.com", clientKey: "c", defer: (work) => void deferred.push(work) });
+    expect(t.sent.length).toBe(before);
+    await deferred[0]!();
+    expect(t.sent.at(-1)!.to).toBe("later@example.com");
   });
 
   it("setting a first password signs out the other devices and spends unused links", async () => {

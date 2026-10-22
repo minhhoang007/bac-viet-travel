@@ -2,7 +2,9 @@
 
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { z } from "zod";
+import { getContainer } from "@/bootstrap/container";
 import { clientKeyFrom } from "@/app/_lib/client-ip";
 import { requireAppServices } from "@/app/_lib/session";
 import { isAppError } from "@/core/errors";
@@ -71,14 +73,23 @@ export async function signInWithPassword(_prev: PasswordSignInState, formData: F
 
 export type PasswordResetRequestState = { status: "sent" } | { status: "invalid_email" } | { status: "rate_limited" } | { status: "captcha" } | { status: "error" } | null;
 
-/** "Forgot password": the same answer whether or not the address is a staff account. */
+/** "Forgot password": the same answer, in the same time, whether or not the address is a staff account. */
 export async function requestPasswordReset(_prev: PasswordResetRequestState, formData: FormData): Promise<PasswordResetRequestState> {
   const app = await requireAppServices();
   const email = emailSchema.safeParse(String(formData.get("email") ?? "").trim().toLowerCase());
   if (!email.success) return { status: "invalid_email" };
   const h = await headers();
+  // The lookup and the email run after the answer (a mail outage is logged; the person can ask again).
+  const defer = (work: () => Promise<void>) =>
+    after(async () => {
+      try {
+        await work();
+      } catch (error) {
+        getContainer().logger.warn("auth.password_link_failed", { error });
+      }
+    });
   try {
-    await app.auth.requestPasswordReset({ email: email.data, clientKey: clientKeyFrom(h), captchaToken: String(formData.get("cf-turnstile-response") ?? "") || null });
+    await app.auth.requestPasswordReset({ email: email.data, clientKey: clientKeyFrom(h), captchaToken: String(formData.get("cf-turnstile-response") ?? "") || null, defer });
     return { status: "sent" };
   } catch (error) {
     if (isAppError(error) && error.code === "RATE_LIMIT_ERROR") return { status: "rate_limited" };

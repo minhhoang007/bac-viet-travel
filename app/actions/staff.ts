@@ -47,7 +47,7 @@ export async function setStaffRole(formData: FormData): Promise<void> {
     await container.app!.product.staff.set(actor, found.id, role);
     if (found.role === "user") await admin.setUserRole(actor, found.id, "editor");
     if (!invite) return "done";
-    return (await sendSetup(auth, found.email, container.logger)) ? "invited" : "mail_failed";
+    return { sent: "invited", skipped: "not_staff", failed: "mail_failed" }[await sendSetup(auth, found.email, container.logger)];
   });
 }
 
@@ -58,10 +58,15 @@ export async function sendStaffPasswordLink(formData: FormData): Promise<void> {
     if (!userId.success) return "invalid";
     const target = await admin.getUser(userId.data);
     if (!target) return "invalid";
-    // Only active staff get password links (the auth service sends nothing to anyone else).
-    if (target.role === "user" || target.status === "disabled") return "not_staff";
-    if (!(await sendSetup(container.app!.auth, target.email, container.logger))) return "mail_failed";
-    await admin.audited(actor, { action: "staff.password_link", targetType: "user", targetId: target.id }, async () => true);
+    // Only active staff get password links (the auth service decides and sends nothing to anyone else).
+    const outcome = await sendSetup(container.app!.auth, target.email, container.logger);
+    if (outcome !== "sent") return outcome === "skipped" ? "not_staff" : "mail_failed";
+    try {
+      await admin.audited(actor, { action: "staff.password_link", targetType: "user", targetId: target.id }, async () => true);
+    } catch (error) {
+      // The email went out: say so (sending again would replace the link just sent).
+      container.logger.warn(EVENT, { error });
+    }
     return "link_sent";
   });
 }
@@ -69,13 +74,12 @@ export async function sendStaffPasswordLink(formData: FormData): Promise<void> {
 type Ctx = Awaited<ReturnType<typeof requireAdmin>>["container"];
 
 // A mail outage leaves the account and role in place: the admin sends the link again later.
-async function sendSetup(auth: NonNullable<Ctx["app"]>["auth"], email: string, logger: Ctx["logger"]): Promise<boolean> {
+async function sendSetup(auth: NonNullable<Ctx["app"]>["auth"], email: string, logger: Ctx["logger"]): Promise<"sent" | "skipped" | "failed"> {
   try {
-    await auth.sendPasswordSetup(email);
-    return true;
+    return (await auth.sendPasswordSetup(email)) ? "sent" : "skipped";
   } catch (error) {
     logger.warn(EVENT, { error });
-    return false;
+    return "failed";
   }
 }
 

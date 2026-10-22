@@ -90,10 +90,17 @@ export interface AuthService {
    * `setCookies`: the response cookies, for callers outside Next.js (in a server action they are already set).
    */
   signInPassword(input: PasswordSignIn, headers: Headers): Promise<{ status: "ok" | "second_factor" | "email_link" | "wrong"; setCookies: string[] }>;
-  /** "Forgot password": emails a link to set a new one, to active staff accounts only (silent otherwise). Rate limited. */
-  requestPasswordReset(input: { email: string; clientKey: string; captchaToken?: string | null }): Promise<void>;
-  /** An admin's invitation or reset: the same email, not rate limited (the caller checks who may send it). A new link replaces unused ones. */
-  sendPasswordSetup(email: string): Promise<void>;
+  /**
+   * "Forgot password": emails a link to set a new one, to active staff accounts only (silent otherwise). Rate limited.
+   * `defer` (e.g. Next.js `after`): the lookup and the email run after the answer, so its time is the same for any
+   * address; without it they are awaited.
+   */
+  requestPasswordReset(input: { email: string; clientKey: string; captchaToken?: string | null; defer?: (work: () => Promise<void>) => void }): Promise<void>;
+  /**
+   * An admin's invitation or reset: the same email, not rate limited (the caller checks who may send it). Sent links
+   * replace older unused ones. False: not an active staff account, nothing sent.
+   */
+  sendPasswordSetup(email: string): Promise<boolean>;
   /** Unused set-password links of the account stop working (e.g. when staff are removed). */
   dropPasswordLinks(userId: string): Promise<void>;
   /** The new password from the emailed link. Signs the account out everywhere. */
@@ -272,24 +279,28 @@ export function createAuthService(
     }
   };
 
-  // Active staff only: no link is stored for anyone else. A new link replaces the unused ones (only the latest works).
+  // Active staff only: no link is stored for anyone else (false: nothing sent). The adapter drops older links once sent.
   const sendPasswordSetup = async (email: string) => {
     const address = email.trim().toLowerCase();
-    const [user] = await db.select({ id: users.id, status: users.status, role: users.role }).from(users).where(eq(users.email, address));
-    if (!user || user.status === "disabled" || !isStaffRole(user.role)) return;
-    await dropPasswordLinks(db, user.id);
+    const [user] = await db.select({ status: users.status, role: users.role }).from(users).where(eq(users.email, address));
+    if (!user || user.status === "disabled" || !isStaffRole(user.role)) return false;
     await auth.api.requestPasswordReset({ body: { email: address } });
+    return true;
+  };
+
+  const passwordHashOf = async (userId: string) => {
+    const [row] = await db.select({ hash: accounts.password }).from(accounts).where(and(eq(accounts.userId, userId), eq(accounts.providerId, "credential")));
+    return row?.hash ?? null;
   };
 
   // Checks a password without signing in. No password set: as slow as checking one.
-  const passwordMatches = async (userId: string, password: string) => {
-    const [row] = await db.select({ hash: accounts.password }).from(accounts).where(and(eq(accounts.userId, userId), eq(accounts.providerId, "credential")));
+  const passwordMatches = async (hash: string | null, password: string) => {
     const ctx = await auth.$context;
-    if (!row?.hash) {
+    if (!hash) {
       await ctx.password.hash(password);
       return false;
     }
-    return ctx.password.verify({ hash: row.hash, password });
+    return ctx.password.verify({ hash, password });
   };
 
   /**
@@ -466,8 +477,10 @@ export function createAuthService(
       // No second factor yet: the first one is set up from a session opened by an emailed link (proof of the address),
       // never with the password alone, so whoever learns it cannot enroll their own authenticator app first. Without
       // magic links there is no such session to send them to: the password stays the way in.
-      if (user && methods.magicLink && deps.staff.requireSecondFactor && !hasSecondFactor(await factors(user.id))) {
-        return { status: (await passwordMatches(user.id, password)) ? "email_link" : "wrong", setCookies: [] };
+      if (user && methods.magicLink && deps.staff.requireSecondFactor) {
+        // Both lookups at once (one database round trip): the answer time stays close to the other answers'.
+        const [owned, hash] = await Promise.all([factors(user.id), passwordHashOf(user.id)]);
+        if (!hasSecondFactor(owned)) return { status: (await passwordMatches(hash, password)) ? "email_link" : "wrong", setCookies: [] };
       }
       try {
         const res = await auth.api.signInEmail({ body: { email: address, password }, headers, returnHeaders: true });
@@ -478,20 +491,22 @@ export function createAuthService(
         throw error;
       }
     },
-    async requestPasswordReset({ email, clientKey, captchaToken }) {
+    async requestPasswordReset({ email, clientKey, captchaToken, defer }) {
       if (!methods.password) throw new AppError("MODULE_DISABLED", "Password sign-in is off");
       const address = email.trim().toLowerCase();
       const [client, recipient] = await Promise.all([limits.perClient.limit(`password-reset:client:${clientKey}`), limits.perRecipient.limit(`password-reset:to:${address}`)]);
       if (!client.success || !recipient.success) throw new AppError("RATE_LIMIT_ERROR");
       if (deps.turnstile && !(await deps.turnstile(captchaToken, clientKey))) throw new AppError("CAPTCHA_ERROR");
-      await sendPasswordSetup(address);
+      const send = async () => void (await sendPasswordSetup(address));
+      if (defer) defer(send);
+      else await send();
     },
     async dropPasswordLinks(userId) {
       await dropPasswordLinks(db, userId);
     },
     async sendPasswordSetup(email) {
       if (!methods.password) throw new AppError("MODULE_DISABLED", "Password sign-in is off");
-      await asInvitation(() => sendPasswordSetup(email));
+      return asInvitation(() => sendPasswordSetup(email));
     },
     async resetPassword(token, newPassword) {
       if (!methods.password) throw new AppError("MODULE_DISABLED", "Password sign-in is off");

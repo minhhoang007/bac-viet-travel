@@ -7,7 +7,7 @@ import { nextCookies } from "better-auth/next-js";
 import { magicLink } from "better-auth/plugins/magic-link";
 import { twoFactor } from "better-auth/plugins/two-factor";
 import { haveIBeenPwned } from "better-auth/plugins/haveibeenpwned";
-import { and, count, eq, like, ne } from "drizzle-orm";
+import { and, count, eq, like, lt, ne, or, sql } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import type { MailPort } from "@/core/ports/mail";
 import { users } from "@/core/users/schema";
@@ -83,6 +83,27 @@ export function createBetterAuth(deps: BetterAuthDeps) {
       db.select({ n: count() }).from(twoFactors).where(and(eq(twoFactors.userId, userId), ne(twoFactors.verified, false))),
     ]);
     return (p?.n ?? 0) + (t?.n ?? 0);
+  };
+
+  /**
+   * Once a new link is sent, the user's older unused ones stop working. "Older" by creation time, so two requests at
+   * once still leave only the newer link. A "forgot password" link (anyone may ask for one) drops only older
+   * "forgot password" links, never an admin's invitation.
+   */
+  const dropOlderPasswordLinks = async (userId: string, token: string, forgotOnly: boolean) => {
+    const [sent] = await db.select({ id: verifications.id, createdAt: verifications.createdAt }).from(verifications).where(eq(verifications.identifier, `reset-password:${token}`));
+    if (!sent) return; // already replaced by a newer link
+    await db.delete(verifications).where(
+      and(
+        eq(verifications.value, userId),
+        like(verifications.identifier, "reset-password:%"),
+        // Same millisecond: the smaller id counts as older (exactly one of the two stays).
+        or(lt(verifications.createdAt, sent.createdAt), and(eq(verifications.createdAt, sent.createdAt), lt(verifications.id, sent.id))),
+        // A "forgot password" link lasts FORGOT_LINK_HOURS from its creation (an hour of margin here), an invitation
+        // INVITE_LINK_HOURS.
+        forgotOnly ? lt(verifications.expiresAt, sql`${verifications.createdAt} + make_interval(hours => ${FORGOT_LINK_HOURS + 1}::int)`) : undefined,
+      ),
+    );
   };
 
   // Security emails never block the request they follow.
@@ -167,6 +188,7 @@ export function createBetterAuth(deps: BetterAuthDeps) {
           subject: "Đặt mật khẩu / Set your password",
           text: `Mở liên kết để đặt mật khẩu cho tài khoản ${deps.appName} (hết hạn sau ${hours} giờ, dùng một lần):\nOpen the link to set the password of your ${deps.appName} account (expires in ${hours} hours, works once):\n\n${link}\n\nKhông phải bạn yêu cầu? Bỏ qua email này, mật khẩu cũ vẫn giữ nguyên. / Did not ask for it? Ignore this email: nothing changes.`,
         });
+        await dropOlderPasswordLinks(user.id, token, hours < INVITE_LINK_HOURS);
       },
       onPasswordReset: async ({ user }, request) => {
         // Opening the emailed link proves the address (Google may then link to this account).
