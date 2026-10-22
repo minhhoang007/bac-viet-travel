@@ -31,17 +31,24 @@ const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: appConfig.timeZ
 
 const text = (formData: FormData, key: string, max: number) => String(formData.get(key) ?? "").trim().slice(0, max);
 
-/** The quick facts filled in (none: no `facts` at all, so the published post schema accepts it). */
-function facts(formData: FormData): { facts?: Record<string, string> } {
-  const filled = Object.fromEntries(blogConfig.facts.map(({ key }) => [key, text(formData, `facts.${key}`, 120)]).filter(([, v]) => v));
-  return Object.keys(filled).length ? { facts: filled } : {};
+/**
+ * The quick facts filled in (none: no `facts` at all, so the published post schema accepts it). Stored values of keys
+ * the project no longer configures are kept as they were: the editor does not show them, so it must not drop them.
+ */
+function facts(formData: FormData, stored?: unknown): { facts?: Record<string, string> } {
+  const configured = new Set(blogConfig.facts.map((f) => f.key));
+  const kept = stored && typeof stored === "object" ? Object.entries(stored).filter(([k, v]) => !configured.has(k) && typeof v === "string") : [];
+  const filled = blogConfig.facts.map(({ key }) => [key, text(formData, `facts.${key}`, 120)]).filter(([, v]) => v);
+  const all = Object.fromEntries([...kept, ...filled]);
+  return Object.keys(all).length ? { facts: all } : {};
 }
 
 /**
  * Post fields from the form as stored (incomplete drafts are fine; the content type's validate() lists what is
- * missing). Empty optional fields are left out so the published post schema accepts them.
+ * missing). Empty optional fields are left out so the published post schema accepts them. `stored`: the working copy
+ * being replaced, for what the form does not show.
  */
-function postData(formData: FormData): Record<string, unknown> {
+function postData(formData: FormData, stored: Record<string, unknown> = {}): Record<string, unknown> {
   const postLocale = String(formData.get("postLocale") ?? "");
   const optional = (key: string, max: number) => {
     const value = text(formData, key, max);
@@ -64,7 +71,7 @@ function postData(formData: FormData): Record<string, unknown> {
       ? { coverCredit: { name: text(formData, "coverCreditName", 120), url: text(formData, "coverCreditUrl", 500) } }
       : {}),
     ...optional("author", 100),
-    ...facts(formData),
+    ...facts(formData, stored.facts),
     ...optional("translationKey", 100),
     body: String(formData.get("body") ?? "").slice(0, 100_000),
   };
@@ -100,7 +107,7 @@ export async function savePostInPlace(formData: FormData): Promise<{ result: str
   if (!item || item.type !== POST_CONTENT_TYPE) notFound();
   try {
     const slug = text(formData, "slug", 110).toLowerCase();
-    const saved = await content.saveDraft(user, id, { revision: revision.parse(formData.get("revision")), slug, data: withUpdated(postData(formData), item.published, today()) });
+    const saved = await content.saveDraft(user, id, { revision: revision.parse(formData.get("revision")), slug, data: withUpdated(postData(formData, item.draft), item.published, today()) });
     return { result: "saved", revision: saved.revision };
   } catch (error) {
     unstable_rethrow(error);

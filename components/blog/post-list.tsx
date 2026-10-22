@@ -12,6 +12,12 @@ export interface PostListItem {
   facts?: Record<string, string>;
 }
 
+/**
+ * Props of a project's own blog list (product/layout.tsx `ProductPostList`), on the index and tag pages. `featured`:
+ * the first page of the index, where the newest post may show larger.
+ */
+export type PostListProps = { locale: string; posts: PostListItem[]; featured: boolean; empty: string };
+
 export function PostList({ posts, empty }: { posts: PostListItem[]; empty: string }) {
   if (posts.length === 0) return <p className="text-muted-foreground">{empty}</p>;
   return (
