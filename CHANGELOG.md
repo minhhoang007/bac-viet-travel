@@ -12,7 +12,8 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 - Embeds in staff Markdown: `<Name slug="…" />` handed to the project (`ProductPostEmbed`), never executed.
 - Post editor saves in place (`SaveInPlaceForm`, `savePostInPlace`): text, cursor and scroll stay; a conflict or an error keeps what was typed. A live post whose words change gets today's `updated` date (`withUpdated`).
 - New posts: the URL follows the title until edited (`components/forms/slug-from-title.tsx`, `slugify`).
-- Project hooks in `product/layout.tsx`: `ProductPostList` (index and tag pages), `productPostEditor` (`Cover`, `Body`, `Aside` parts of the editor, each given the starter's `plain` field to fall back on), `ProductPostFooter`.
+- Project hooks in `product/layout.tsx`: `ProductPostList` (index and tag pages, `PostListProps`), `loadProductPostEditor` (returns the `Cover`, `Body`, `Aside` parts of the editor, `PostEditorParts` in components/content/post-editor-parts.ts; loaded by the editor page only, each part given the starter's `plain` field to fall back on), `ProductPostFooter`.
+- Saving a post keeps stored quick facts whose key the config no longer lists; a unit test checks that configured fact keys can be stored.
 - Demo page: optional steps (`demo.tryAdmin.steps`) and the contact link; the notice's first link is a button.
 
 ## [1.26.2] - 2026-10-14

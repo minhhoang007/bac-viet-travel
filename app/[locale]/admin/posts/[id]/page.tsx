@@ -18,35 +18,16 @@ import { inputClass, requirePostsAdmin } from "../_shared";
 import { confirmMediaUpload, requestMediaUpload } from "@/app/actions/media";
 import { getContainer } from "@/bootstrap/container";
 import { MediaUploader } from "@/components/media/media-uploader";
+import type { PostEditorParts } from "@/components/content/post-editor-parts";
 import { blogConfig } from "@/config/blog";
 import * as productLayout from "@/product/layout";
 
 type Props = { params: Promise<{ locale: Locale; id: string }>; searchParams: Promise<{ result?: string }> };
 
-/**
- * What the project's editor parts get: the media library and its uploader (media module on), and `plain`, the
- * starter's own field, to show instead when the part has nothing better (e.g. no library).
- */
-type LibraryImage = { id: string; name: string; thumb: string; src: string };
-type Media = { library?: LibraryImage[]; uploader?: ReactNode; plain: ReactNode };
-
-/**
- * Optional `productPostEditor` (product/layout.tsx): the project's own parts of the post editor, each replacing the
- * starter's plain field. `Cover` posts `cover` (and `coverCreditName` / `coverCreditUrl` for a credited photo),
- * `Body` posts `body`; `Aside` goes under the workflow panel (e.g. writing checks reading the form `formId`).
- */
-const productPostEditor =
-  "productPostEditor" in productLayout
-    ? (
-        productLayout as {
-          productPostEditor?: {
-            Cover?: (p: Media & { locale: Locale; name: string; label: string; initial?: { src: string; credit?: { name: string; url: string } } }) => ReactNode;
-            Body?: (p: Media & { locale: Locale; id: string; name: string; describedBy: string; defaultValue: string }) => ReactNode | Promise<ReactNode>;
-            Aside?: (p: { locale: Locale; formId: string }) => ReactNode;
-          };
-        }
-      ).productPostEditor
-    : undefined;
+// Optional `loadProductPostEditor` (product/layout.tsx): the project's editor parts (components/content/post-editor-parts.ts),
+// loaded on this page only, so public pages importing product/layout never pull in admin editor code.
+const loadProductPostEditor =
+  "loadProductPostEditor" in productLayout ? (productLayout as { loadProductPostEditor?: () => Promise<PostEditorParts> }).loadProductPostEditor : undefined;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
@@ -84,7 +65,7 @@ export default async function EditPostPage({ params, searchParams }: Props) {
   const labels: Record<string, string> = { ...c.fields };
   const postMessage = result && result in c.result ? c.result[result as keyof typeof c.result] : null;
   // The project's editor parts get the media library and its uploader (media module on).
-  const { Cover, Body, Aside } = productPostEditor ?? {};
+  const { Cover, Body, Aside } = (await loadProductPostEditor?.()) ?? {};
   const media = Cover || Body ? getContainer().media : undefined;
   const library = media
     ? (await media.list({ pageSize: 200 })).rows.map((a) => ({ id: a.id, name: a.name || a.id, thumb: media.imageProps(a, { aspect: 4 / 3, widths: [320] }).src, src: media.imageProps(a, { widths: [1600] }).src }))
