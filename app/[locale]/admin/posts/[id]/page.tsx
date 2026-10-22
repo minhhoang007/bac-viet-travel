@@ -18,13 +18,35 @@ import { inputClass, requirePostsAdmin } from "../_shared";
 import { confirmMediaUpload, requestMediaUpload } from "@/app/actions/media";
 import { getContainer } from "@/bootstrap/container";
 import { MediaUploader } from "@/components/media/media-uploader";
-import { ImagePicker } from "@/product/components/image-picker";
-import { getImagePickerText, getMarkdownEditorText, getSeoCheckText } from "@/product/media/content";
-import { MarkdownEditor } from "@/product/components/markdown-editor";
-import { PostSeoCheck } from "@/product/components/post-seo-check";
-import { getPublicTours } from "@/app/_lib/tours";
+import { blogConfig } from "@/config/blog";
+import * as productLayout from "@/product/layout";
 
 type Props = { params: Promise<{ locale: Locale; id: string }>; searchParams: Promise<{ result?: string }> };
+
+/**
+ * What the project's editor parts get: the media library and its uploader (media module on), and `plain`, the
+ * starter's own field, to show instead when the part has nothing better (e.g. no library).
+ */
+type LibraryImage = { id: string; name: string; thumb: string; src: string };
+type Media = { library?: LibraryImage[]; uploader?: ReactNode; plain: ReactNode };
+
+/**
+ * Optional `productPostEditor` (product/layout.tsx): the project's own parts of the post editor, each replacing the
+ * starter's plain field. `Cover` posts `cover` (and `coverCreditName` / `coverCreditUrl` for a credited photo),
+ * `Body` posts `body`; `Aside` goes under the workflow panel (e.g. writing checks reading the form `formId`).
+ */
+const productPostEditor =
+  "productPostEditor" in productLayout
+    ? (
+        productLayout as {
+          productPostEditor?: {
+            Cover?: (p: Media & { locale: Locale; name: string; label: string; initial?: { src: string; credit?: { name: string; url: string } } }) => ReactNode;
+            Body?: (p: Media & { locale: Locale; id: string; name: string; describedBy: string; defaultValue: string }) => ReactNode | Promise<ReactNode>;
+            Aside?: (p: { locale: Locale; formId: string }) => ReactNode;
+          };
+        }
+      ).productPostEditor
+    : undefined;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
@@ -61,8 +83,9 @@ export default async function EditPostPage({ params, searchParams }: Props) {
   const problems = contentPostProblems(d);
   const labels: Record<string, string> = { ...c.fields };
   const postMessage = result && result in c.result ? c.result[result as keyof typeof c.result] : null;
-  // Cover: the image picker when the media library or Unsplash is on; a plain path field otherwise.
-  const media = getContainer().media;
+  // The project's editor parts get the media library and its uploader (media module on).
+  const { Cover, Body, Aside } = productPostEditor ?? {};
+  const media = Cover || Body ? getContainer().media : undefined;
   const library = media
     ? (await media.list({ pageSize: 200 })).rows.map((a) => ({ id: a.id, name: a.name || a.id, thumb: media.imageProps(a, { aspect: 4 / 3, widths: [320] }).src, src: media.imageProps(a, { widths: [1600] }).src }))
     : undefined;
@@ -77,9 +100,14 @@ export default async function EditPostPage({ params, searchParams }: Props) {
       confirmUpload={confirmMediaUpload}
     />
   ) : undefined;
-  const unsplash = Boolean(process.env.UNSPLASH_ACCESS_KEY);
+  const plainCover = (
+    <Field label={c.fields.cover} hint={c.fields.coverHint} id="post-cover">
+      <input id="post-cover" name="cover" aria-describedby="post-cover-hint" maxLength={500} defaultValue={str("cover")} className={inputClass} />
+    </Field>
+  );
+  const plainBody = <textarea id="post-body" name="body" rows={20} aria-describedby="post-body-hint" defaultValue={str("body")} className="w-full rounded-md border border-border bg-background p-3 font-mono text-sm" />;
   const facts = getAppContent(locale).blog.facts;
-  const factsData = (typeof d.facts === "object" && d.facts ? d.facts : {}) as Partial<Record<"bestTime" | "duration" | "budget" | "gettingThere", string>>;
+  const factsData = (typeof d.facts === "object" && d.facts ? d.facts : {}) as Record<string, string>;
   const credit = d.coverCredit as { name?: unknown; url?: unknown } | undefined;
   const cover = str("cover") ? { src: str("cover"), credit: typeof credit?.name === "string" && typeof credit.url === "string" ? { name: credit.name, url: credit.url } : undefined } : undefined;
 
@@ -137,41 +165,29 @@ export default async function EditPostPage({ params, searchParams }: Props) {
             <input id="post-tags" name="tags" aria-describedby="post-tags-hint" defaultValue={tags} className={inputClass} />
           </Field>
           <div className="grid gap-4 sm:grid-cols-2">
-            {library || unsplash ? (
-              <ImagePicker name="cover" label={c.fields.cover} initial={cover} library={library} uploader={uploader} unsplash={unsplash} t={getImagePickerText(locale)} />
-            ) : (
-              <Field label={c.fields.cover} hint={c.fields.coverHint} id="post-cover">
-                <input id="post-cover" name="cover" aria-describedby="post-cover-hint" maxLength={500} defaultValue={str("cover")} className={inputClass} />
-              </Field>
-            )}
+            {Cover ? <Cover locale={locale} name="cover" label={c.fields.cover} initial={cover} library={library} uploader={uploader} plain={plainCover} /> : plainCover}
             <Field label={c.fields.author} id="post-author">
               <input id="post-author" name="author" maxLength={100} defaultValue={str("author")} className={inputClass} />
             </Field>
           </div>
-          <fieldset className="grid gap-3 rounded-md border border-border p-4" data-testid="post-facts">
-            <legend className="px-1 text-sm font-medium">{facts.title}</legend>
-            <p className="text-xs text-muted-foreground">{facts.hint}</p>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {(["bestTime", "duration", "budget", "gettingThere"] as const).map((k) => (
-                <Field key={k} label={facts[k]} id={`post-facts-${k}`}>
-                  <input id={`post-facts-${k}`} name={`facts.${k}`} maxLength={120} defaultValue={factsData[k] ?? ""} className={inputClass} />
-                </Field>
-              ))}
-            </div>
-          </fieldset>
+          {blogConfig.facts.length > 0 && (
+            <fieldset className="grid gap-3 rounded-md border border-border p-4" data-testid="post-facts">
+              <legend className="px-1 text-sm font-medium">{facts.title}</legend>
+              <p className="text-xs text-muted-foreground">{facts.hint}</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {blogConfig.facts.map(({ key, label }) => (
+                  <Field key={key} label={label[locale] ?? key} id={`post-facts-${key}`}>
+                    <input id={`post-facts-${key}`} name={`facts.${key}`} maxLength={120} defaultValue={typeof factsData[key] === "string" ? factsData[key] : ""} className={inputClass} />
+                  </Field>
+                ))}
+              </div>
+            </fieldset>
+          )}
           <Field label={c.fields.translationKey} hint={c.fields.translationKeyHint} id="post-translation">
             <input id="post-translation" name="translationKey" aria-describedby="post-translation-hint" maxLength={100} defaultValue={str("translationKey")} className={inputClass} />
           </Field>
           <Field label={c.fields.body} hint={c.fields.bodyHint} id="post-body">
-            <MarkdownEditor
-              id="post-body"
-              name="body"
-              describedBy="post-body-hint"
-              defaultValue={str("body")}
-              t={getMarkdownEditorText(locale)}
-              picker={{ t: getImagePickerText(locale), library, uploader, unsplash }}
-              tours={(await getPublicTours()).list(locale).map((tour) => ({ slug: tour.slug, title: tour.title }))}
-            />
+            {Body ? <Body locale={locale} id="post-body" name="body" describedBy="post-body-hint" defaultValue={str("body")} library={library} uploader={uploader} plain={plainBody} /> : plainBody}
           </Field>
           <div className="sticky bottom-0 -mx-1 bg-background/95 px-1 py-3 backdrop-blur">
             <SubmitButton label={c.save} pendingLabel={c.saving} />
@@ -180,7 +196,7 @@ export default async function EditPostPage({ params, searchParams }: Props) {
       </div>
       <aside className="lg:sticky lg:top-24 lg:self-start">
         <WorkflowPanel item={item} versions={await content.versions(item.id)} locale={locale} isAdmin={hasRole(user, "admin")} returnTo={`/admin/posts/${item.id}`} />
-        <PostSeoCheck formId="post-form" t={getSeoCheckText(locale)} />
+        {Aside && <Aside locale={locale} formId="post-form" />}
       </aside>
     </div>
   );

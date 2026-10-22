@@ -12,18 +12,17 @@ import { PreviewBanner } from "@/components/content/preview-banner";
 import { MarkdownContent } from "@/components/blog/markdown";
 import { MdxContent } from "@/components/blog/mdx";
 import { faq, outline } from "@/components/blog/outline";
+import { isUnsplashPhoto, unsplashUtm } from "@/components/blog/unsplash";
 import { Container } from "@/components/ui/container";
 import { localePath } from "@/core/i18n/routing";
-import { articleJsonLd, createMetadata, localizedUrl, serializeJsonLd } from "@/core/seo";
+import { articleJsonLd, breadcrumbJsonLd, createMetadata, localizedUrl, serializeJsonLd } from "@/core/seo";
 import { appConfig, type Locale } from "@/config/app";
 import { blogConfig } from "@/config/blog";
 import { getAppContent } from "@/content";
 import { postFromContent, type Blog, type Post } from "@/modules/blog";
-import { UNSPLASH_UTM } from "@/product/media/unsplash";
-import { formatDate, requireBlog, tagLabel, toListItem } from "../_shared";
 import { PostList } from "@/components/blog/post-list";
+import { formatDate, requireBlog, tagLabel, toListItem } from "../_shared";
 import * as productLayout from "@/product/layout";
-import { breadcrumbLd } from "@/product/seo";
 
 // Project hook under a post (product/layout.tsx), optional like the other layout hooks.
 const ProductPostFooter = "ProductPostFooter" in productLayout ? (productLayout as { ProductPostFooter?: (p: { locale: Locale; tags: string[]; slug: string; title: string }) => ReactNode }).ProductPostFooter : undefined;
@@ -109,7 +108,8 @@ export default async function BlogPostPage({ params }: Props) {
   // of a "Câu hỏi thường gặp" section as FAQPage data. The rendered headings carry the same ids (markdown.tsx).
   const sections = post.format === "markdown" ? outline(post.body).filter((h) => h.level === 2) : [];
   const questions = post.format === "markdown" ? faq(post.body) : [];
-  const facts = (["bestTime", "duration", "budget", "gettingThere"] as const).flatMap((k) => (post.facts?.[k] ? [[k, post.facts[k]] as const] : []));
+  // Quick facts in the configured order (config/blog.ts `facts`); keys no longer configured are not shown.
+  const facts = blogConfig.facts.flatMap((f) => (post.facts?.[f.key] ? [{ key: f.key, label: f.label[locale] ?? f.key, value: post.facts[f.key]! }] : []));
   const faqLd = questions.length
     ? { "@context": "https://schema.org", "@type": "FAQPage", mainEntity: questions.map((q) => ({ "@type": "Question", name: q.question, acceptedAnswer: { "@type": "Answer", text: q.answer } })) }
     : null;
@@ -133,7 +133,7 @@ export default async function BlogPostPage({ params }: Props) {
     <Container className="max-w-3xl py-16">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: serializeJsonLd([jsonLd, breadcrumbLd(site, locale, [{ path: "/blog", name: c.title }, { path: `/blog/${slug}`, name: post.title }]), ...(faqLd ? [faqLd] : [])]) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd([jsonLd, breadcrumbJsonLd(site, locale, appConfig.name, [{ path: "/blog", name: c.title }, { path: `/blog/${slug}`, name: post.title }]), ...(faqLd ? [faqLd] : [])]) }}
       />
       <PageLink href={localePath(locale, "/blog")} className="text-sm text-muted-foreground hover:underline">
         ← {c.allPosts}
@@ -159,17 +159,21 @@ export default async function BlogPostPage({ params }: Props) {
             <div className="blog-cover relative aspect-[16/9] overflow-hidden rounded-lg">
               <Image src={post.cover} alt="" fill priority sizes="(min-width: 768px) 768px, 100vw" unoptimized={!post.cover.startsWith("/")} className="object-cover" />
             </div>
-            {/* Licensed photos (Unsplash) credit the photographer with a link back. */}
+            {/* Licensed photos credit the photographer with a link back (Unsplash: and Unsplash itself). */}
             {post.coverCredit && (
               <figcaption className="mt-2 text-xs text-muted-foreground" data-testid="cover-credit">
                 {c.photoBy}{" "}
                 <a href={post.coverCredit.url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
                   {post.coverCredit.name}
-                </a>{" "}
-                /{" "}
-                <a href={`https://unsplash.com/?${UNSPLASH_UTM}`} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
-                  Unsplash
                 </a>
+                {isUnsplashPhoto(post.cover) && (
+                  <>
+                    {" / "}
+                    <a href={`https://unsplash.com/?${unsplashUtm(appConfig.name)}`} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
+                      Unsplash
+                    </a>
+                  </>
+                )}
               </figcaption>
             )}
           </figure>
@@ -180,10 +184,10 @@ export default async function BlogPostPage({ params }: Props) {
               {c.facts.title}
             </h2>
             <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
-              {facts.map(([k, v]) => (
-                <div key={k}>
-                  <dt className="text-muted-foreground">{c.facts[k]}</dt>
-                  <dd className="font-medium">{v}</dd>
+              {facts.map((f) => (
+                <div key={f.key}>
+                  <dt className="text-muted-foreground">{f.label}</dt>
+                  <dd className="font-medium">{f.value}</dd>
                 </div>
               ))}
             </dl>

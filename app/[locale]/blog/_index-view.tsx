@@ -5,8 +5,9 @@ import { Container } from "@/components/ui/container";
 import { localePath } from "@/core/i18n/routing";
 import type { Locale } from "@/config/app";
 import { getAppContent } from "@/content";
-import { BlogMagazine } from "@/product/components/blog-magazine";
-import { requireBlog, tagLabel, toMagazineItem } from "./_shared";
+import { cn } from "@/components/ui/cn";
+import { PostListView, postListWidth } from "./_post-list-view";
+import { requireBlog, tagLabel, toListItem } from "./_shared";
 
 const pageHref = (locale: Locale, n: number) => localePath(locale, n === 1 ? "/blog" : `/blog/page/${n}`);
 
@@ -19,7 +20,7 @@ export async function BlogIndex({ locale, page }: { locale: Locale; page: number
   const tags = blog.tags(locale);
 
   return (
-    <Container className="py-16">
+    <Container className={cn("py-16", postListWidth)}>
       <h1 className="blog-title text-3xl font-bold">{c.title}</h1>
       <p className="mt-2 max-w-2xl text-muted-foreground">
         {c.subtitle}{" "}
@@ -37,7 +38,7 @@ export async function BlogIndex({ locale, page }: { locale: Locale; page: number
         </nav>
       )}
       <div className="mt-10">
-        <BlogMagazine posts={result.posts.map((p) => toMagazineItem(p, locale))} featured={page === 1} empty={c.empty} bestTimeLabel={c.facts.bestTime} />
+        <PostListView locale={locale} posts={result.posts.map((p) => toListItem(p, locale))} featured={page === 1} empty={c.empty} />
       </div>
       <Pagination
         previous={page > 1 ? { href: pageHref(locale, page - 1), label: c.previous } : undefined}

@@ -31,10 +31,9 @@ const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: appConfig.timeZ
 
 const text = (formData: FormData, key: string, max: number) => String(formData.get(key) ?? "").trim().slice(0, max);
 
-const FACTS = ["bestTime", "duration", "budget", "gettingThere"] as const;
 /** The quick facts filled in (none: no `facts` at all, so the published post schema accepts it). */
 function facts(formData: FormData): { facts?: Record<string, string> } {
-  const filled = Object.fromEntries(FACTS.map((k) => [k, text(formData, `facts.${k}`, 120)]).filter(([, v]) => v));
+  const filled = Object.fromEntries(blogConfig.facts.map(({ key }) => [key, text(formData, `facts.${key}`, 120)]).filter(([, v]) => v));
   return Object.keys(filled).length ? { facts: filled } : {};
 }
 

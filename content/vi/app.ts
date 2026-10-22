@@ -283,10 +283,6 @@ export const app: AppContent = {
     facts: {
       title: "Tóm tắt nhanh",
       hint: "Không bắt buộc. Câu trả lời ngắn hiện ở đầu bài, ví dụ “Tháng 4–6 và 9–11”.",
-      bestTime: "Thời điểm đẹp",
-      duration: "Nên đi",
-      budget: "Chi phí ước tính",
-      gettingThere: "Di chuyển",
     },
     tags: "Chủ đề",
     empty: "Chưa có bài viết nào.",

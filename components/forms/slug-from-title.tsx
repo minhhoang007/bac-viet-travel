@@ -1,6 +1,6 @@
 "use client";
 
-// Create forms (tour, post): the web address follows the title until the user edits it themselves, so non-technical
+// Create forms (e.g. a post): the web address follows the title until the user edits it themselves, so non-technical
 // staff never have to work out a slug.
 import { useState, type ReactNode } from "react";
 import { slugify } from "./slug";

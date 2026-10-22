@@ -1,8 +1,10 @@
 // Unsplash photos for the image picker, following the API terms (help.unsplash.com, "Unsplash API Guidelines"):
 // photos are hotlinked from images.unsplash.com (never copied), picking one calls its download endpoint, and every
 // use credits the photographer with a link back (UTM parameters). The Access Key stays on the server.
+import { isUnsplashPhoto, unsplashUtm } from "@/components/blog/unsplash";
+import { appConfig } from "@/config/app";
 
-export const UNSPLASH_UTM = "utm_source=bac_viet_travel&utm_medium=referral";
+export const UNSPLASH_UTM = unsplashUtm(appConfig.name);
 const API = "https://api.unsplash.com";
 
 type Fetch = typeof fetch;
@@ -83,4 +85,4 @@ const ratio = (w: number, h: number) => `${w / gcd(w, h)}:${h / gcd(w, h)}`;
  * Unsplash photos must load from Unsplash itself (its API terms), not through Next's image optimizer, which would
  * fetch and re-serve them from this site. Their CDN already resizes them: pass this as next/image `unoptimized`.
  */
-export const isHotlinked = (src: string) => src.startsWith("https://images.unsplash.com/");
+export const isHotlinked = isUnsplashPhoto;

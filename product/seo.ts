@@ -1,5 +1,5 @@
 import { defaultContact as contactConfig } from "@/config/contact";
-import { localizedUrl } from "@/core/seo";
+import { breadcrumbJsonLd } from "@/core/seo";
 import type { SeoSite } from "@/core/seo/metadata";
 
 /**
@@ -7,10 +7,5 @@ import type { SeoSite } from "@/core/seo/metadata";
  * `trail` = site paths and names after the home page, in order.
  */
 export function breadcrumbLd(site: SeoSite, locale: string, trail: { path: string; name: string }[]) {
-  const items = [{ path: "/", name: contactConfig.companyName }, ...trail];
-  return {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: items.map((item, i) => ({ "@type": "ListItem", position: i + 1, name: item.name, item: localizedUrl(site, locale, item.path) })),
-  };
+  return breadcrumbJsonLd(site, locale, contactConfig.companyName, trail);
 }
