@@ -37,14 +37,14 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
-### Next release — staff passwords and security fixes
+### v1.27.0 (2026-10-22) — staff passwords, security fixes, blog
 - No migration (the new auth event kinds are text values).
 - Projects overriding `content/` must add `account.deleteStaffText` and the new `content/security.ts` strings (password sign-in, `reset`, `verify.expired`/`signInAgain`, password fields on the security page, events `password_set`/`password_changed`).
 - Code that switches on `PaymentQueryResult["status"]` must handle `"processing"` (keep the payment open).
 - Product code calling `audit.audited(...)`: pass its `tx` argument to your writes to make them atomic with the entry (optional).
 - Password sign-in stays off until `config/auth.ts` sets `methods: { ...authDefaults.methods, password: true }`; it needs a working email provider in production.
 
-### Next release — blog
+Blog:
 - No migration. Stored posts are unchanged; `facts` and `coverCredit` are new optional fields.
 - Projects overriding `content/` must add `blog.related`, `blog.toc`, `blog.aboutAuthor`, `blog.facts` (`title`, `hint`), `blog.photoBy` and `admin.posts.result.conflict` / `failed`.
 - `savePost` is now `savePostInPlace` (answers in place instead of redirecting); project code calling it must use the new name.
