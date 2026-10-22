@@ -4,6 +4,8 @@ import { useActionState } from "react";
 import type { ContactResult } from "@/core/contact";
 import { FormError } from "@/components/forms/form-error";
 import { FormField } from "@/components/forms/form-field";
+import { keepValuesOnSubmit } from "@/components/forms/keep-values";
+import { FormPendingContext } from "@/components/forms/form-pending";
 import { SubmitButton } from "@/components/forms/submit-button";
 
 type Field = "name" | "email" | "message";
@@ -26,7 +28,7 @@ export interface ContactFormProps {
 }
 
 export function ContactForm({ action, labels, defaults }: ContactFormProps) {
-  const [state, formAction] = useActionState(action, null);
+  const [state, formAction, pending] = useActionState(action, null);
 
   if (state?.status === "success") {
     return (
@@ -50,7 +52,7 @@ export function ContactForm({ action, labels, defaults }: ContactFormProps) {
   ];
 
   return (
-    <form action={formAction} className="mx-auto grid max-w-lg gap-4 text-left" noValidate>
+    <form action={formAction} onSubmit={keepValuesOnSubmit(formAction)} className="mx-auto grid max-w-lg gap-4 text-left" noValidate>
       {fields.map((f) => (
         <FormField
           key={f.name}
@@ -65,7 +67,9 @@ export function ContactForm({ action, labels, defaults }: ContactFormProps) {
       {/* Honeypot, hidden from humans and assistive tech */}
       <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" className="hidden" />
       <FormError message={formError} />
-      <SubmitButton label={labels.submit} pendingLabel={labels.sending} className="justify-self-stretch sm:justify-self-start" />
+      <FormPendingContext value={pending}>
+        <SubmitButton label={labels.submit} pendingLabel={labels.sending} className="justify-self-stretch sm:justify-self-start" />
+      </FormPendingContext>
     </form>
   );
 }

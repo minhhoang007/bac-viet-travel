@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { keepValuesOnSubmit } from "@/components/forms/keep-values";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -65,7 +66,7 @@ export function InquiryForm({ action, labels, tour, locale }: InquiryFormProps) 
   const channels = (locale === "vi" ? ["zalo", "phone", "whatsapp", "email"] : ["whatsapp", "email", "phone", "zalo"]) as (keyof InquiryFormLabels["channels"])[];
 
   return (
-    <form action={formAction} className="grid gap-4" noValidate>
+    <form action={formAction} onSubmit={keepValuesOnSubmit(formAction)} className="grid gap-4" noValidate>
       <input type="hidden" name="tour" value={tour} />
       <input type="hidden" name="locale" value={locale} />
       <label htmlFor="inquiry-name" className="text-sm font-medium">
