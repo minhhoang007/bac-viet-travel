@@ -33,6 +33,7 @@ export const app: AppContent = {
     deleteTitle: "Delete account",
     deleteText: "Permanently delete your account and all data. This cannot be undone.",
     deleteConfirmLabel: "Type your email to confirm",
+    deleteStaffText: "Staff accounts are removed by an administrator, not here.",
     deleteButton: "Delete account",
   },
   billing: {

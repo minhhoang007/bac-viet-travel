@@ -2,6 +2,8 @@ import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
 export type Db = PostgresJsDatabase<Record<string, never>>;
+/** The handle inside `db.transaction(async (tx) => …)`. */
+export type DbTx = Parameters<Parameters<Db["transaction"]>[0]>[0];
 
 export interface DbHandle {
   db: Db;

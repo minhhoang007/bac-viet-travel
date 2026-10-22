@@ -1,14 +1,14 @@
-import { and, count, eq, ne } from "drizzle-orm";
+import { and, count, eq, isNotNull, ne } from "drizzle-orm";
 import { AppError } from "@/core/errors";
 import type { RateLimiter } from "@/core/security/rate-limit";
 import type { TurnstileCheck } from "@/core/security/turnstile";
 import { ROLES, users } from "@/core/users/schema";
 import type { Db } from "@/db/client";
-import type { BetterAuthInstance } from "./adapters/better-auth";
+import { asInvitation, dropPasswordLinks, PASSWORD_MAX, type BetterAuthInstance } from "./adapters/better-auth";
 import { createAuthEvents, type AuthEvent } from "./events";
 import { createLoginCodes } from "./login-code";
-import { isFresh, staffGate, staffSessionExpired, type FactorFacts, type SessionFacts, type StaffAuthPolicy } from "./mfa";
-import { passkeys, sessions, twoFactors } from "./schema";
+import { hasSecondFactor, isFresh, isStaffRole, staffGate, staffSessionExpired, type FactorFacts, type SessionFacts, type StaffAuthPolicy } from "./mfa";
+import { accounts, passkeys, sessions, twoFactors } from "./schema";
 
 export type Role = (typeof ROLES)[number];
 
@@ -46,9 +46,12 @@ export interface PasskeyInfo {
   createdAt: Date | null;
 }
 
+/** Outcome of setting a password: "invalid" is a used or expired link (reset) or a password already set (set). */
+export type PasswordResult = "done" | "too_short" | "too_long" | "compromised" | "invalid";
+
 export interface AuthService {
   /** Sign-in methods actually available (config + credentials). */
-  methods: { magicLink: boolean; google: boolean };
+  methods: { magicLink: boolean; google: boolean; password: boolean };
   /** Staff sign-in policy (config/auth.ts `staff`). */
   staffPolicy: StaffAuthPolicy;
   /** Current user, or null. Disabled users, and staff sessions older than staff.sessionHours, count as signed out. */
@@ -78,6 +81,34 @@ export interface AuthService {
    * one click. Null for any other email, or when the account is missing or is not an editor (never an admin).
    */
   demoSignIn(email: string, callbackURL: string, headers: Headers): Promise<string | null>;
+  /**
+   * Email and password (methods.password). "second_factor": the password was right and the authenticator app is on,
+   * so there is no session yet: the code on the verify page finishes the sign-in. "email_link": the password was right
+   * but the staff account has no second factor yet; the first one is set up after signing in by email link, so a
+   * leaked password alone cannot enroll someone else's authenticator app. Rate limited per client and per
+   * address (RATE_LIMIT_ERROR); with Turnstile configured, a missing or failed token throws CAPTCHA_ERROR.
+   * `setCookies`: the response cookies, for callers outside Next.js (in a server action they are already set).
+   */
+  signInPassword(input: PasswordSignIn, headers: Headers): Promise<{ status: "ok" | "second_factor" | "email_link" | "wrong"; setCookies: string[] }>;
+  /**
+   * "Forgot password": emails a link to set a new one, to active staff accounts only (silent otherwise). Rate limited.
+   * `defer` (e.g. Next.js `after`): the lookup and the email run after the answer, so its time is the same for any
+   * address; without it they are awaited.
+   */
+  requestPasswordReset(input: { email: string; clientKey: string; captchaToken?: string | null; defer?: (work: () => Promise<void>) => void }): Promise<void>;
+  /**
+   * An admin's invitation or reset: the same email, not rate limited (the caller checks who may send it). Sent links
+   * replace older unused ones. False: not an active staff account, nothing sent.
+   */
+  sendPasswordSetup(email: string): Promise<boolean>;
+  /** Unused set-password links of the account stop working (e.g. when staff are removed). */
+  dropPasswordLinks(userId: string): Promise<void>;
+  /** The new password from the emailed link. Signs the account out everywhere. */
+  resetPassword(token: string, newPassword: string): Promise<PasswordResult>;
+  /** The account with this email, created (plain user, email not verified) when missing. Returns its id. */
+  ensureAccount(email: string): Promise<string>;
+  /** A password sign-in waiting for its second factor (no session yet). */
+  hasPendingSecondFactor(headers: Headers): boolean;
   /** Returns the provider URL to redirect to. */
   signInGoogle(callbackURL: string, headers: Headers): Promise<string>;
   signOut(headers: Headers): Promise<void>;
@@ -86,18 +117,30 @@ export interface AuthService {
   handler(request: Request): Promise<Response>;
 }
 
-/** Account security page (signed-in user, from request headers). Changing factors needs a fresh second factor. */
+/**
+ * Account security page (signed-in user, from request headers). Changing factors or the password needs a fresh second
+ * factor. With a password set, the authenticator-app calls take it again (`password`); a wrong one throws
+ * VALIDATION_ERROR.
+ */
 export interface SecurityApi {
   passkeys(headers: Headers): Promise<PasskeyInfo[]>;
   deletePasskey(headers: Headers, id: string): Promise<void>;
   /** Starts authenticator-app setup: the otpauth:// URI (QR code) and ten backup codes, shown once. */
-  startTotp(headers: Headers): Promise<{ totpURI: string; backupCodes: string[] }>;
-  /** A TOTP code: confirms the setup, or passes the second factor for this session. False when wrong. */
+  startTotp(headers: Headers, password?: string): Promise<{ totpURI: string; backupCodes: string[] }>;
+  /**
+   * A TOTP code: confirms the setup, or passes the second factor for this session (or finishes a password sign-in
+   * waiting for it). False when wrong.
+   */
   verifyTotp(headers: Headers, code: string): Promise<boolean>;
-  /** A backup code (used once) as the second factor for this session. False when wrong. */
+  /** A backup code (used once) as the second factor, like verifyTotp. False when wrong. */
   verifyBackupCode(headers: Headers, code: string): Promise<boolean>;
-  disableTotp(headers: Headers): Promise<void>;
-  newBackupCodes(headers: Headers): Promise<string[]>;
+  disableTotp(headers: Headers, password?: string): Promise<void>;
+  newBackupCodes(headers: Headers, password?: string): Promise<string[]>;
+  hasPassword(userId: string): Promise<boolean>;
+  /** First password for a signed-in staff account without one ("invalid" when it has one; PERMISSION_ERROR if not staff). */
+  setPassword(headers: Headers, newPassword: string): Promise<PasswordResult>;
+  /** "wrong": the current password does not match. Other devices are signed out. */
+  changePassword(headers: Headers, currentPassword: string, newPassword: string): Promise<PasswordResult | "wrong">;
   devices(headers: Headers): Promise<DeviceSession[]>;
   signOutDevice(headers: Headers, sessionId: string): Promise<void>;
   signOutOtherDevices(headers: Headers): Promise<void>;
@@ -114,9 +157,19 @@ export interface MagicLinkRequest {
   captchaToken?: string | null;
 }
 
+export interface PasswordSignIn {
+  email: string;
+  password: string;
+  /** Client identifier for rate limiting (usually the IP). */
+  clientKey: string;
+  captchaToken?: string | null;
+}
+
 export interface AuthRateLimits {
   perClient: RateLimiter;
   perRecipient: RateLimiter;
+  /** Password attempts, per client and per address (keys "password:client:…", "password:to:…"). */
+  password?: RateLimiter;
   /** Second-factor code attempts per account (TOTP and backup codes): no unlimited guessing with a stolen email. */
   secondFactor?: RateLimiter;
 }
@@ -139,6 +192,38 @@ const isWrongCode = (error: unknown) => {
   const status = (error as { statusCode?: number; status?: number | string })?.statusCode ?? (error as { status?: number | string })?.status;
   return status === 401 || status === 400 || status === "UNAUTHORIZED" || status === "BAD_REQUEST";
 };
+
+// Better Auth's error code (APIError body), e.g. "PASSWORD_TOO_SHORT".
+const codeOf = (error: unknown) => (error as { body?: { code?: string } })?.body?.code;
+
+/** Better Auth's password errors as outcomes; anything else (outage, breach check down, fresh 2FA needed) propagates. */
+function passwordOutcome(error: unknown): PasswordResult | "wrong" {
+  switch (codeOf(error)) {
+    case "PASSWORD_TOO_SHORT":
+      return "too_short";
+    case "PASSWORD_TOO_LONG":
+      return "too_long";
+    case "PASSWORD_COMPROMISED":
+      return "compromised";
+    case "INVALID_TOKEN":
+    case "USER_NOT_FOUND":
+    case "PASSWORD_ALREADY_SET":
+    case "CREDENTIAL_ACCOUNT_NOT_FOUND":
+      return "invalid";
+    case "INVALID_PASSWORD":
+      return "wrong";
+    default:
+      throw error;
+  }
+}
+
+// Better Auth endpoints never served over HTTP here (see `handler`).
+// two-factor/*: codes are checked only through the service (per-account limit in codeCheck); the HTTP endpoints had
+// only the per-IP limit.
+const SERVICE_ONLY = /\/(sign-in\/magic-link|sign-in\/email|sign-up\/email|request-password-reset|forget-password|reset-password|change-password|set-password|verify-password|two-factor)(\/|$)/;
+
+// The cookie Better Auth sets when a password was right and the authenticator-app code is still to come.
+const PENDING_SECOND_FACTOR = /(?:^|;\s*)(?:__Secure-)?better-auth\.two_factor=/;
 
 export function createAuthService(
   auth: BetterAuthInstance,
@@ -184,15 +269,63 @@ export function createAuthService(
     return { passkeys: p?.n ?? 0, totp: (t?.n ?? 0) > 0 };
   };
 
-  // Limited per account (RATE_LIMIT_ERROR); a wrong code is false; anything else (outage) propagates.
+  // The authenticator-app calls with an account's password: a wrong one is the user's mistake, not an outage.
+  const withPassword = async <T,>(run: () => Promise<T>): Promise<T> => {
+    try {
+      return await run();
+    } catch (error) {
+      if (codeOf(error) === "INVALID_PASSWORD") throw new AppError("VALIDATION_ERROR", "Wrong password", { details: { field: "password" } });
+      throw error;
+    }
+  };
+
+  // Active staff only: no link is stored for anyone else (false: nothing sent). The adapter drops older links once sent.
+  const sendPasswordSetup = async (email: string) => {
+    const address = email.trim().toLowerCase();
+    const [user] = await db.select({ status: users.status, role: users.role }).from(users).where(eq(users.email, address));
+    if (!user || user.status === "disabled" || !isStaffRole(user.role)) return false;
+    await auth.api.requestPasswordReset({ body: { email: address } });
+    return true;
+  };
+
+  const passwordHashOf = async (userId: string) => {
+    const [row] = await db.select({ hash: accounts.password }).from(accounts).where(and(eq(accounts.userId, userId), eq(accounts.providerId, "credential")));
+    return row?.hash ?? null;
+  };
+
+  // Checks a password without signing in. No password set: as slow as checking one.
+  const passwordMatches = async (hash: string | null, password: string) => {
+    const ctx = await auth.$context;
+    if (!hash) {
+      await ctx.password.hash(password);
+      return false;
+    }
+    return ctx.password.verify({ hash, password });
+  };
+
+  /**
+   * After a password is set or changed: other devices are signed out, unused set-password links stop working. Here
+   * rather than Better Auth's revokeOtherSessions, which also replaces this session (losing its second factor).
+   */
+  const afterPasswordChange = async (userId: string, keepSessionId: string) => {
+    await db.delete(sessions).where(and(eq(sessions.userId, userId), ne(sessions.id, keepSessionId)));
+    await dropPasswordLinks(db, userId);
+  };
+
+  const hasPendingSecondFactor = (headers: Headers) => PENDING_SECOND_FACTOR.test(headers.get("cookie") ?? "");
+
+  // Limited per account (RATE_LIMIT_ERROR); a wrong code is false; anything else (outage) propagates. A password
+  // sign-in waiting for its code has no session yet: Better Auth counts those attempts on its own short-lived cookie.
   const codeCheck = async (headers: Headers, run: () => Promise<unknown>): Promise<boolean> => {
     const current = await getSession(headers);
-    if (!current) throw new AppError("AUTH_ERROR");
-    if (limits.secondFactor && !(await limits.secondFactor.limit(`second-factor:${current.user.id}`)).success) throw new AppError("RATE_LIMIT_ERROR");
+    if (!current && !hasPendingSecondFactor(headers)) throw new AppError("AUTH_ERROR");
+    if (current && limits.secondFactor && !(await limits.secondFactor.limit(`second-factor:${current.user.id}`)).success) throw new AppError("RATE_LIMIT_ERROR");
     try {
       await run();
       return true;
     } catch (error) {
+      // A password sign-in out of code attempts: only signing in again helps (not "wrong code" forever).
+      if (codeOf(error) === "TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE") throw new AppError("RATE_LIMIT_ERROR", "Sign in again");
       if (isWrongCode(error)) return false;
       throw error;
     }
@@ -206,19 +339,51 @@ export function createAuthService(
     async deletePasskey(headers, id) {
       await auth.api.deletePasskey({ headers, body: { id } });
     },
-    async startTotp(headers) {
-      const res = await auth.api.enableTwoFactor({ headers, body: {} });
+    async startTotp(headers, password) {
+      const res = await withPassword(() => auth.api.enableTwoFactor({ headers, body: { password } }));
       if (res.method !== "totp") throw new AppError("INTERNAL_ERROR", "TOTP setup unavailable");
       return { totpURI: res.totpURI, backupCodes: res.backupCodes };
     },
     verifyTotp: (headers, code) => codeCheck(headers, () => auth.api.verifyTOTP({ headers, body: { code } })),
     verifyBackupCode: (headers, code) => codeCheck(headers, () => auth.api.verifyBackupCode({ headers, body: { code } })),
-    async disableTotp(headers) {
-      await auth.api.disableTwoFactor({ headers, body: {} });
+    async disableTotp(headers, password) {
+      await withPassword(() => auth.api.disableTwoFactor({ headers, body: { password } }));
     },
-    async newBackupCodes(headers) {
-      const res = await auth.api.generateBackupCodes({ headers, body: {} });
+    async newBackupCodes(headers, password) {
+      const res = await withPassword(() => auth.api.generateBackupCodes({ headers, body: { password } }));
       return res.backupCodes;
+    },
+    async hasPassword(userId) {
+      const [row] = await db
+        .select({ n: count() })
+        .from(accounts)
+        .where(and(eq(accounts.userId, userId), eq(accounts.providerId, "credential"), isNotNull(accounts.password)));
+      return (row?.n ?? 0) > 0;
+    },
+    async setPassword(headers, newPassword) {
+      // Passwords are for staff: a customer account keeps signing in by email link, Google or passkey.
+      const current = await getSession(headers);
+      if (!current) throw new AppError("AUTH_ERROR");
+      if (!hasRole(current.user, "editor")) throw new AppError("PERMISSION_ERROR");
+      try {
+        await auth.api.setPassword({ headers, body: { newPassword } });
+      } catch (error) {
+        return passwordOutcome(error) as PasswordResult;
+      }
+      // As for a change or a reset.
+      await afterPasswordChange(current.user.id, current.session.id);
+      return "done";
+    },
+    async changePassword(headers, currentPassword, newPassword) {
+      const current = await getSession(headers);
+      if (!current) throw new AppError("AUTH_ERROR");
+      try {
+        await auth.api.changePassword({ headers, body: { currentPassword, newPassword } });
+      } catch (error) {
+        return passwordOutcome(error);
+      }
+      await afterPasswordChange(current.user.id, current.session.id);
+      return "done";
     },
     async devices(headers) {
       const current = await getSession(headers);
@@ -291,6 +456,75 @@ export function createAuthService(
       if (!client.success || !recipient.success) throw new AppError("RATE_LIMIT_ERROR");
       return loginCodes.redeem(email, code.trim());
     },
+    async signInPassword({ email, password, clientKey, captchaToken }, headers) {
+      if (!methods.password) throw new AppError("MODULE_DISABLED", "Password sign-in is off");
+      const address = email.trim().toLowerCase();
+      if (limits.password) {
+        const [client, account] = await Promise.all([limits.password.limit(`password:client:${clientKey}`), limits.password.limit(`password:to:${address}`)]);
+        if (!client.success || !account.success) throw new AppError("RATE_LIMIT_ERROR");
+      }
+      if (deps.turnstile && !(await deps.turnstile(captchaToken, clientKey))) throw new AppError("CAPTCHA_ERROR");
+      // Longer than any password allowed here: never hashed (hashing cost).
+      if (password.length > PASSWORD_MAX) return { status: "wrong", setCookies: [] };
+      // A disabled account reads as a wrong password (getSession would drop its session anyway). So does a customer
+      // account: passwords are for staff, and one left from a former employee must stop working.
+      const [user] = await db.select({ id: users.id, status: users.status, role: users.role }).from(users).where(eq(users.email, address));
+      if (user && (user.status === "disabled" || !hasRole(user, "editor"))) {
+        // As slow as checking a password: the answer time must not tell which addresses have an account.
+        await (await auth.$context).password.hash(password);
+        return { status: "wrong", setCookies: [] };
+      }
+      // No second factor yet: the first one is set up from a session opened by an emailed link (proof of the address),
+      // never with the password alone, so whoever learns it cannot enroll their own authenticator app first. Without
+      // magic links there is no such session to send them to: the password stays the way in.
+      if (user && methods.magicLink && deps.staff.requireSecondFactor) {
+        // Both lookups at once (one database round trip): the answer time stays close to the other answers'.
+        const [owned, hash] = await Promise.all([factors(user.id), passwordHashOf(user.id)]);
+        if (!hasSecondFactor(owned)) return { status: (await passwordMatches(hash, password)) ? "email_link" : "wrong", setCookies: [] };
+      }
+      try {
+        const res = await auth.api.signInEmail({ body: { email: address, password }, headers, returnHeaders: true });
+        const pending = "twoFactorRedirect" in res.response && Boolean(res.response.twoFactorRedirect);
+        return { status: pending ? "second_factor" : "ok", setCookies: res.headers.getSetCookie() };
+      } catch (error) {
+        if (isWrongCode(error)) return { status: "wrong", setCookies: [] };
+        throw error;
+      }
+    },
+    async requestPasswordReset({ email, clientKey, captchaToken, defer }) {
+      if (!methods.password) throw new AppError("MODULE_DISABLED", "Password sign-in is off");
+      const address = email.trim().toLowerCase();
+      const [client, recipient] = await Promise.all([limits.perClient.limit(`password-reset:client:${clientKey}`), limits.perRecipient.limit(`password-reset:to:${address}`)]);
+      if (!client.success || !recipient.success) throw new AppError("RATE_LIMIT_ERROR");
+      if (deps.turnstile && !(await deps.turnstile(captchaToken, clientKey))) throw new AppError("CAPTCHA_ERROR");
+      const send = async () => void (await sendPasswordSetup(address));
+      if (defer) defer(send);
+      else await send();
+    },
+    async dropPasswordLinks(userId) {
+      await dropPasswordLinks(db, userId);
+    },
+    async sendPasswordSetup(email) {
+      if (!methods.password) throw new AppError("MODULE_DISABLED", "Password sign-in is off");
+      return asInvitation(() => sendPasswordSetup(email));
+    },
+    async resetPassword(token, newPassword) {
+      if (!methods.password) throw new AppError("MODULE_DISABLED", "Password sign-in is off");
+      try {
+        await auth.api.resetPassword({ body: { token, newPassword } });
+        return "done";
+      } catch (error) {
+        return passwordOutcome(error) as PasswordResult;
+      }
+    },
+    async ensureAccount(email) {
+      const address = email.trim().toLowerCase();
+      await db.insert(users).values({ email: address, name: address.split("@")[0] ?? "" }).onConflictDoNothing({ target: users.email });
+      const [row] = await db.select({ id: users.id }).from(users).where(eq(users.email, address));
+      if (!row) throw new AppError("INTERNAL_ERROR", "Account not created");
+      return row.id;
+    },
+    hasPendingSecondFactor,
     async signInGoogle(callbackURL, headers) {
       const res = await auth.api.signInSocial({ body: { provider: "google", callbackURL }, headers });
       if (!res.url) throw new AppError("AUTH_ERROR", "Google sign-in unavailable");
@@ -301,7 +535,8 @@ export function createAuthService(
     },
     security,
     handler: (request) =>
-      // Sending a link only through signInMagicLink: the HTTP endpoint would skip its CAPTCHA and per-recipient limit.
-      new URL(request.url).pathname.endsWith("/sign-in/magic-link") ? Promise.resolve(new Response("Not found", { status: 404 })) : auth.handler(request),
+      // Magic links and passwords only through this service: the HTTP endpoints would skip its CAPTCHA, per-address
+      // limits and staff-only rules.
+      SERVICE_ONLY.test(new URL(request.url).pathname) ? Promise.resolve(new Response("Not found", { status: 404 })) : auth.handler(request),
   };
 }

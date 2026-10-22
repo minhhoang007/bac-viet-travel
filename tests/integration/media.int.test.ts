@@ -90,6 +90,19 @@ describe("media module", () => {
     expect(await media.get(id)).toBeNull();
   });
 
+  it("limits the uploads one account may start per hour", async () => {
+    const limited = createMediaModule({ db, logger, provider, config: { ...mediaConfig, folder: "test", maxUploadsPerHour: 2 }, now: () => clock });
+    await limited.requestUpload(editor, { name: "a.jpg" });
+    await limited.requestUpload(editor, { name: "b.jpg" });
+    await expect(limited.requestUpload(editor, { name: "c.jpg" })).rejects.toMatchObject({ code: "RATE_LIMIT_ERROR" });
+    // An hour later (createdAt is the database clock) the account may upload again, and requests sent at once are
+    // counted one by one: two of ten pass.
+    clock = new Date();
+    await db.update(mediaAssets).set({ createdAt: new Date(clock.getTime() - 61 * 60_000) });
+    const burst = await Promise.allSettled(Array.from({ length: 10 }, (_, i) => limited.requestUpload(editor, { name: `${i}.jpg` })));
+    expect(burst.filter((r) => r.status === "fulfilled")).toHaveLength(2);
+  });
+
   it("purges uploads never confirmed after an hour", async () => {
     const stale = await media.requestUpload(editor, { name: "a.jpg" });
     clock = new Date(clock.getTime() + 61 * 60_000);

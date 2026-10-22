@@ -1,7 +1,10 @@
 // Starter-owned. Projects override in config/auth.ts (ADR-0004).
 export const authDefaults = {
-  /** Sign-in methods. Magic link requires the email module. Google requires GOOGLE_CLIENT_ID/SECRET. */
-  methods: { magicLink: true, google: true },
+  /**
+   * Sign-in methods. Magic link requires the email module. Google requires GOOGLE_CLIENT_ID/SECRET. Password: staff
+   * only (no sign-up; an admin's invitation or a reset link emails a link to set it), needs the email module.
+   */
+  methods: { magicLink: true, google: true, password: false },
   /** Providers whose verified emails may be linked to an existing account (SECURITY.md). */
   trustedProviders: ["google"] as string[],
   /** Where users land after signing in (without locale prefix). */

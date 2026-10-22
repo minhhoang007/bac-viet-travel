@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { setRequestLocale } from "next-intl/server";
-import { requireAdmin } from "@/app/_lib/admin";
+import { notFound, redirect } from "next/navigation";
+import { productAdminNavFor, requireStaff } from "@/app/_lib/admin";
+import { hasRole, type Role } from "@/core/auth";
 import { BarChart } from "@/components/admin/bar-chart";
 import { Stat } from "@/components/admin/stat";
 import { formatBytes } from "@/components/ui/format-bytes";
@@ -16,6 +18,13 @@ const DAYS = 30;
 // `adminOverview` figures: e.g. a business overview with its own queries, charts and to-do lists.
 const ProductAdminOverview =
   "ProductAdminOverview" in productLayout ? (productLayout as { ProductAdminOverview?: (p: { locale: Locale }) => Promise<ReactNode> | ReactNode }).ProductAdminOverview : undefined;
+// Optional `productSiteFigures = false`: the project's overview replaces the starter's site figures (sign-ups, views,
+// storage) entirely instead of keeping them one click away, when they mean nothing to its staff.
+// Optional `productOverviewFor(user)`: staff besides admins (e.g. managers) who see the project's overview here
+// instead of being sent to their first page. They get the overview only, never the starter's site figures.
+const productOverviewFor =
+  "productOverviewFor" in productLayout ? (productLayout as { productOverviewFor?: (user: { id: string; role: Role }) => Promise<boolean> | boolean }).productOverviewFor : undefined;
+const showSiteFigures = !("productSiteFigures" in productLayout) || (productLayout as { productSiteFigures?: boolean }).productSiteFigures !== false;
 
 function List({ title, rows, empty }: { title: string; rows: { label: string; value: number }[]; empty: string }) {
   return (
@@ -40,7 +49,24 @@ function List({ title, rows, empty }: { title: string; rows: { label: string; va
 export default async function AdminOverviewPage({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const { admin, container } = await requireAdmin();
+  // Staff who are not admins (marketing, sale…) land on their first page instead of a 404.
+  // With the second-factor gate: the overview shows revenue and guest names (only the layout skips the gate).
+  const staff = await requireStaff("editor");
+  if (!hasRole(staff.user, "admin")) {
+    if (ProductAdminOverview && (await productOverviewFor?.(staff.user))) {
+      return (
+        <div className="grid gap-6">
+          <PageHeader title={getAppContent(locale).admin.nav.overview} />
+          <ProductAdminOverview locale={locale} />
+        </div>
+      );
+    }
+    const first = (await productAdminNavFor(staff.user))[0];
+    if (!first) notFound();
+    redirect(localePath(locale, first.href));
+  }
+  // An admin (checked above), past the gate: the same context.
+  const { admin, container } = staff;
   const c = getAppContent(locale).admin.overview;
 
   const [signups, users, pro, stats, storage, product] = await Promise.all([
@@ -98,7 +124,7 @@ export default async function AdminOverviewPage({ params }: { params: Promise<{ 
           ))}
         </div>
       )}
-      {ProductAdminOverview ? (
+      {ProductAdminOverview && !showSiteFigures ? null : ProductAdminOverview ? (
         // The project's own overview comes first; the starter's site figures stay one click away.
         <details className="rounded-lg border border-border p-4" data-testid="site-figures">
           <summary className="cursor-pointer font-semibold">{c.siteFigures}</summary>

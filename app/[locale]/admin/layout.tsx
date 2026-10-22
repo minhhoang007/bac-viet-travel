@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import type { Metadata } from "next";
 import { productAdminNavFor, requireStaff } from "@/app/_lib/admin";
-import { hasRole } from "@/core/auth";
+import { hasRole, type Role } from "@/core/auth";
+import * as productLayout from "@/product/layout";
 import { signOut } from "@/app/actions/auth";
 import { AppShell } from "@/components/app-shell/app-shell";
 import { sidebarDefaultOpen } from "@/app/_lib/sidebar";
@@ -10,6 +11,10 @@ import type { Locale } from "@/config/app";
 import { getAppContent } from "@/content";
 import { blogConfig } from "@/config/blog";
 import { features } from "@/config/features";
+
+// Optional `productOverviewFor(user)` (product/layout.tsx): staff besides admins who see the overview at /admin.
+const productOverviewFor =
+  "productOverviewFor" in productLayout ? (productLayout as { productOverviewFor?: (user: { id: string; role: Role }) => Promise<boolean> | boolean }).productOverviewFor : undefined;
 
 // Default title for pages without their own (documents need a <title>, WCAG 2.4.2).
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
@@ -55,11 +60,11 @@ export default async function AdminLayout({ children, params }: { children: Reac
         { label: c.nav.audit, href: href("/admin/audit"), group: groups.system },
         { label: c.backToApp, href: href("/dashboard"), group: groups.system },
       ]
-    : [...product, { label: c.backToApp, href: href("/dashboard") }];
+    : [...(await productOverviewFor?.(user)) ? [{ label: c.nav.overview, href: href("/admin") }] : [], ...product, { label: c.backToApp, href: href("/dashboard") }];
 
   return (
     <AppShell
-      brand={{ label: c.title, href: isAdmin ? href("/admin") : (product[0]?.href ?? href("/dashboard")) }}
+      brand={{ label: c.title, href: isAdmin ? href("/admin") : (nav[0]?.href ?? href("/dashboard")) }}
       nav={nav}
       user={user}
       labels={content.dashboard.shell}
