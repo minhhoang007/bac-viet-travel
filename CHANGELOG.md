@@ -4,6 +4,8 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.27.0] - 2026-10-22
+
 Upstreamed from a production project (Bắc Việt Travel), after two external security reviews.
 
 ### Added
