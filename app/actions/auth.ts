@@ -13,6 +13,7 @@ import { authConfig } from "@/config/auth";
 
 export type MagicLinkState =
   | { status: "sent" }
+  | { status: "required" }
   | { status: "invalid_email" }
   | { status: "rate_limited" }
   | { status: "captcha" }
@@ -21,10 +22,14 @@ export type MagicLinkState =
 
 const emailSchema = z.email().max(200);
 const localeSchema = z.enum(["vi", "en"]).catch("vi");
+/** The email field as typed, trimmed and lower case ("" when left empty: "required", not "invalid"). */
+const typedEmail = (formData: FormData) => String(formData.get("email") ?? "").trim().toLowerCase();
 
 export async function sendMagicLink(_prev: MagicLinkState, formData: FormData): Promise<MagicLinkState> {
   const app = await requireAppServices();
-  const email = emailSchema.safeParse(String(formData.get("email") ?? "").trim().toLowerCase());
+  const typed = typedEmail(formData);
+  if (!typed) return { status: "required" };
+  const email = emailSchema.safeParse(typed);
   if (!email.success) return { status: "invalid_email" };
   const locale = localeSchema.parse(formData.get("locale"));
   const h = await headers();
@@ -47,15 +52,19 @@ export async function sendMagicLink(_prev: MagicLinkState, formData: FormData): 
   }
 }
 
-export type PasswordSignInState = { status: "wrong" } | { status: "email_link" } | { status: "rate_limited" } | { status: "captcha" } | { status: "error" } | null;
+export type PasswordSignInState = { status: "required"; fields: ("email" | "password")[] } | { status: "wrong" } | { status: "email_link" } | { status: "rate_limited" } | { status: "captcha" } | { status: "error" } | null;
 
 /** Email and password (staff). The authenticator app on: the verify page asks for its code before any session. */
 export async function signInWithPassword(_prev: PasswordSignInState, formData: FormData): Promise<PasswordSignInState> {
   const app = await requireAppServices();
   const locale = localeSchema.parse(formData.get("locale"));
-  const email = emailSchema.safeParse(String(formData.get("email") ?? "").trim().toLowerCase());
+  const typed = typedEmail(formData);
   const password = String(formData.get("password") ?? "");
-  if (!email.success || !password) return { status: "wrong" };
+  // Empty fields are named (nothing to hide); a typed but wrong pair stays one answer for both.
+  const missing = [...(typed ? [] : ["email" as const]), ...(password ? [] : ["password" as const])];
+  if (missing.length) return { status: "required", fields: missing };
+  const email = emailSchema.safeParse(typed);
+  if (!email.success) return { status: "wrong" };
   const h = await headers();
   let status: "ok" | "second_factor" | "email_link" | "wrong";
   try {
@@ -71,12 +80,14 @@ export async function signInWithPassword(_prev: PasswordSignInState, formData: F
   redirect(localePath(locale, status === "ok" ? next : `${authConfig.verifyPath}?next=${encodeURIComponent(next)}`));
 }
 
-export type PasswordResetRequestState = { status: "sent" } | { status: "invalid_email" } | { status: "rate_limited" } | { status: "captcha" } | { status: "error" } | null;
+export type PasswordResetRequestState = { status: "sent" } | { status: "required" } | { status: "invalid_email" } | { status: "rate_limited" } | { status: "captcha" } | { status: "error" } | null;
 
 /** "Forgot password": the same answer, in the same time, whether or not the address is a staff account. */
 export async function requestPasswordReset(_prev: PasswordResetRequestState, formData: FormData): Promise<PasswordResetRequestState> {
   const app = await requireAppServices();
-  const email = emailSchema.safeParse(String(formData.get("email") ?? "").trim().toLowerCase());
+  const typed = typedEmail(formData);
+  if (!typed) return { status: "required" };
+  const email = emailSchema.safeParse(typed);
   if (!email.success) return { status: "invalid_email" };
   const h = await headers();
   // The lookup and the email run after the answer (a mail outage is logged; the person can ask again).

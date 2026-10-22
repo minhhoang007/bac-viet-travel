@@ -19,18 +19,20 @@ export function PasswordSignInForm({
   action: (prev: PasswordSignInState, formData: FormData) => Promise<PasswordSignInState>;
   turnstileSiteKey?: string;
   forgotHref: string;
-  labels: { title: string; email: string; password: string; submit: string; pending: string; forgot: string; errors: { wrong: string; email_link: string; rate_limited: string; captcha: string; error: string } };
+  labels: { title: string; email: string; password: string; submit: string; pending: string; forgot: string; errors: { required: string; wrong: string; email_link: string; rate_limited: string; captcha: string; error: string } };
 }) {
   const [state, submit] = useActionState(action, null);
   const [email, setEmail] = useState("");
+  // An empty field gets its message under it; every other answer is one line for the whole form.
+  const missing = (field: "email" | "password") => (state?.status === "required" && state.fields.includes(field) ? labels.errors.required : undefined);
   return (
     <form action={submit} className="grid gap-4" data-testid="password-sign-in" noValidate>
       <p className="font-medium">{labels.title}</p>
       <input type="hidden" name="locale" value={locale} />
-      <FormField id="password-email" name="email" type="email" autoComplete="username" required label={labels.email} value={email} onChange={(e) => setEmail(e.target.value)} />
-      <FormField id="password-current" name="password" type="password" autoComplete="current-password" required label={labels.password} />
+      <FormField id="password-email" name="email" type="email" autoComplete="username" required label={labels.email} value={email} onChange={(e) => setEmail(e.target.value)} error={missing("email")} />
+      <FormField id="password-current" name="password" type="password" autoComplete="current-password" required label={labels.password} error={missing("password")} />
       <Turnstile siteKey={turnstileSiteKey} locale={locale} answer={state} />
-      <FormError message={state ? labels.errors[state.status] : undefined} />
+      <FormError message={state && state.status !== "required" ? labels.errors[state.status] : undefined} />
       <SubmitButton label={labels.submit} pendingLabel={labels.pending} className="justify-self-stretch" />
       <a href={forgotHref} className="justify-self-center text-sm text-primary underline underline-offset-4">
         {labels.forgot}
@@ -52,6 +54,8 @@ export function PasswordResetRequestForm({
   labels: { email: string; send: string; sending: string; sent: string; invalidEmail: string; errors: Record<string, string> };
 }) {
   const [state, submit] = useActionState(action, null);
+  // Kept across answers: React resets the form after each submit.
+  const [email, setEmail] = useState("");
   if (state?.status === "sent") {
     return (
       <p role="status" className="rounded-md border border-border p-4 text-sm">
@@ -59,13 +63,13 @@ export function PasswordResetRequestForm({
       </p>
     );
   }
-  const error = state ? (state.status === "invalid_email" ? labels.invalidEmail : labels.errors[state.status]) : undefined;
+  const fieldError = state?.status === "invalid_email" ? labels.invalidEmail : state?.status === "required" ? labels.errors.required : undefined;
   return (
     <form action={submit} className="grid gap-4" data-testid="password-reset-request" noValidate>
       <input type="hidden" name="locale" value={locale} />
-      <FormField id="reset-email" name="email" type="email" autoComplete="username" required label={labels.email} />
+      <FormField id="reset-email" name="email" type="email" autoComplete="username" required label={labels.email} value={email} onChange={(e) => setEmail(e.target.value)} error={fieldError} />
       <Turnstile siteKey={turnstileSiteKey} locale={locale} answer={state} />
-      <FormError message={error} />
+      <FormError message={state && !fieldError ? labels.errors[state.status] : undefined} />
       <SubmitButton label={labels.send} pendingLabel={labels.sending} className="justify-self-stretch" />
     </form>
   );

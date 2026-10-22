@@ -7,7 +7,7 @@ import { FormField } from "@/components/forms/form-field";
 import { SubmitButton } from "@/components/forms/submit-button";
 import { Turnstile } from "@/components/forms/turnstile";
 
-type State = { status: "sent" } | { status: "invalid_email" } | { status: "rate_limited" } | { status: "captcha" } | { status: "error" } | null;
+type State = { status: "sent" } | { status: "required" } | { status: "invalid_email" } | { status: "rate_limited" } | { status: "captcha" } | { status: "error" } | null;
 
 export interface LoginFormProps {
   locale: string;
@@ -21,7 +21,7 @@ export interface LoginFormProps {
     sendLink: string;
     sending: string;
     linkSent: string;
-    errors: { invalid_email: string; rate_limited: string; error: string; captcha: string };
+    errors: { required: string; invalid_email: string; rate_limited: string; error: string; captcha: string };
     code?: { title: string; hint: string; label: string; submit: string; wrong: string };
   };
 }
@@ -40,13 +40,14 @@ export function LoginForm({ locale, sendMagicLink, signInWithCode, turnstileSite
       </div>
     );
   }
-  // "sent" returned above, so any remaining state is an error code.
-  const error = state ? labels.errors[state.status] : undefined;
+  // "sent" returned above, so any remaining state is an error code: about the email under the field, else for the form.
+  const fieldError = state?.status === "required" || state?.status === "invalid_email" ? labels.errors[state.status] : undefined;
+  const error = state && !fieldError ? labels.errors[state.status] : undefined;
 
   return (
     <form action={action} className="grid gap-4" noValidate>
       <input type="hidden" name="locale" value={locale} />
-      <FormField id="login-email" name="email" type="email" autoComplete="email webauthn" required label={labels.email} value={email} onChange={(e) => setEmail(e.target.value)} />
+      <FormField id="login-email" name="email" type="email" autoComplete="email webauthn" required label={labels.email} value={email} onChange={(e) => setEmail(e.target.value)} error={fieldError} />
       <Turnstile siteKey={turnstileSiteKey} locale={locale} answer={state} />
       <FormError message={error} />
       <SubmitButton label={labels.sendLink} pendingLabel={labels.sending} className="justify-self-stretch" />

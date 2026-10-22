@@ -11,6 +11,7 @@ export const app: AppContent = {
     or: "or",
     google: "Continue with Google",
     errors: {
+      required: "Please enter your email.",
       invalid_email: "Please enter a valid email.",
       rate_limited: "Too many requests. Please try again in a few minutes.",
       error: "Could not send the link. Please try again.",
