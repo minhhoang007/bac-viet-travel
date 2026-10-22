@@ -49,11 +49,13 @@ function List({ title, rows, empty }: { title: string; rows: { label: string; va
 export default async function AdminOverviewPage({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  // Staff who are not admins (marketing, sale…) land on their first page instead of a 404.
-  // With the second-factor gate: the overview shows revenue and guest names (only the layout skips the gate).
-  const staff = await requireStaff("editor");
-  if (!hasRole(staff.user, "admin")) {
-    if (ProductAdminOverview && (await productOverviewFor?.(staff.user))) {
+  // Staff who are not admins (marketing, sale…) land on their first page instead of a 404; with no page of their
+  // own, a plain 404 before the second-factor gate (the admin area does not reveal itself).
+  const { user } = await requireStaff("editor", { secondFactor: false });
+  if (!hasRole(user, "admin")) {
+    if (ProductAdminOverview && (await productOverviewFor?.(user))) {
+      // With the gate: the overview shows the project's figures (e.g. revenue, customer names).
+      await requireStaff("editor");
       return (
         <div className="grid gap-6">
           <PageHeader title={getAppContent(locale).admin.nav.overview} />
@@ -61,12 +63,12 @@ export default async function AdminOverviewPage({ params }: { params: Promise<{ 
         </div>
       );
     }
-    const first = (await productAdminNavFor(staff.user))[0];
+    const first = (await productAdminNavFor(user))[0];
     if (!first) notFound();
-    redirect(localePath(locale, first.href));
+    redirect(localePath(locale, first.href)); // that page runs the gate
   }
-  // An admin (checked above), past the gate: the same context.
-  const { admin, container } = staff;
+  // An admin, past the gate.
+  const { admin, container } = await requireStaff("admin");
   const c = getAppContent(locale).admin.overview;
 
   const [signups, users, pro, stats, storage, product] = await Promise.all([
