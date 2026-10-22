@@ -17,9 +17,30 @@ describe("posts stored in the content module", () => {
     expect(contentPostProblems({ locale: "vi", title: "", tags: ["Bad Tag"] })).toEqual(expect.arrayContaining(["title", "description", "date", "tags.0", "body"]));
   });
 
-  it("a cover must be a path on the site (the CSP blocks other hosts)", () => {
-    expect(contentPostProblems(data({ cover: "/blog/cover.jpg" }))).toEqual([]);
-    for (const cover of ["https://example.com/a.jpg", "//evil.example/a.jpg", "javascript:alert(1)"]) expect(contentPostProblems(data({ cover }))).toEqual(["cover"]);
+  it("a cover is a path on the site or an image on the allowed CDNs (the CSP blocks other hosts)", () => {
+    for (const cover of ["/blog/cover.jpg", "https://res.cloudinary.com/demo/image/upload/v1/site/a.jpg", "https://images.unsplash.com/photo-123?w=1600&auto=format"])
+      expect(contentPostProblems(data({ cover }))).toEqual([]);
+    for (const cover of [
+      "https://example.com/a.jpg",
+      "//evil.example/a.jpg",
+      "javascript:alert(1)",
+      "http://images.unsplash.com/photo-1",
+      "https://images.unsplash.com.evil.example/a.jpg",
+    ])
+      expect(contentPostProblems(data({ cover }))).toEqual(["cover"]);
+  });
+
+  it("keeps the cover's credit (name and https link) for licensed photos", () => {
+    const credit = { name: "Duc Nguyen", url: "https://unsplash.com/@duc?utm_source=bac_viet_travel&utm_medium=referral" };
+    expect(postFromContent("ha-long", data({ cover: "https://images.unsplash.com/photo-1", coverCredit: credit }))?.coverCredit).toEqual(credit);
+    expect(contentPostProblems(data({ coverCredit: { name: "X", url: "javascript:alert(1)" } }))).toEqual(["coverCredit.url"]);
+  });
+
+  it("keeps quick facts by key (the project names and orders them); short text, plain keys", () => {
+    const facts = { bestTime: "Tháng 4–6", budget: "2–3 triệu" };
+    expect(postFromContent("ha-long", data({ facts }))?.facts).toEqual(facts);
+    expect(contentPostProblems(data({ facts: { bestTime: "x".repeat(121) } }))).toEqual(["facts.bestTime"]);
+    expect(contentPostProblems(data({ facts: { "best-time": "x" } }))).toEqual(["facts.best-time"]);
   });
 
   it("becomes a Markdown post (never MDX), with reading time", () => {

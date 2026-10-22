@@ -8,6 +8,7 @@ import { localePath } from "@/core/i18n/routing";
 import { appConfig, type Locale } from "@/config/app";
 import { getAppContent } from "@/content";
 import { inputClass, requirePostsAdmin } from "../_shared";
+import { SlugFromTitle } from "@/components/forms/slug-from-title";
 
 type Props = { params: Promise<{ locale: Locale }>; searchParams: Promise<{ result?: string }> };
 
@@ -44,17 +45,7 @@ export default async function NewPostPage({ params, searchParams }: Props) {
             ))}
           </select>
         </label>
-        <label className="grid gap-1 text-sm">
-          {c.fields.title}
-          <input name="title" required maxLength={200} className={inputClass} />
-        </label>
-        <label className="grid gap-1 text-sm">
-          {c.fields.slug}
-          <input name="slug" required maxLength={110} pattern="[a-z0-9]+(-[a-z0-9]+)*" aria-describedby="slug-hint" className={inputClass} />
-          <span id="slug-hint" className="text-xs text-muted-foreground">
-            {c.fields.slugHint}
-          </span>
-        </label>
+        <SlugFromTitle titleLabel={c.fields.title} titleName="title" titleMaxLength={200} slugLabel={c.fields.slug} slugHint={c.fields.slugHint} className={inputClass} />
         <SubmitButton label={c.create} pendingLabel={c.saving} />
       </form>
     </div>

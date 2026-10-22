@@ -12,18 +12,27 @@ const storageOrigin = process.env.STORAGE_ENDPOINT ? new URL(process.env.STORAGE
 const media = features.media ? { connect: ["https://api.cloudinary.com"], img: ["https://res.cloudinary.com"] } : { connect: [], img: [] };
 // Cloudflare Turnstile on the sign-in form (optional): its script and challenge iframe.
 const turnstile = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ? ["https://challenges.cloudflare.com"] : [];
+// Unsplash photos are hotlinked (its API terms): blog covers may load from its CDN (modules/blog cover rule). Always
+// allowed, so a published cover keeps showing whatever the project's picker settings.
+const unsplashImg = ["https://images.unsplash.com"];
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
-  // E2E builds only (CI sets it on `pnpm build`): under `next start` an image variant can stop answering (the
-  // optimizer dedupes requests for the same variant and one never settles), so the page never fires "load" and
-  // tests time out at random. Vercel optimizes images itself; never set this for a real deployment.
-  images: { unoptimized: process.env.E2E_UNOPTIMIZED_IMAGES === "1" },
+  images: {
+    // E2E builds only (CI sets it on `pnpm build`): under `next start` an image variant can stop answering (the
+    // optimizer dedupes requests for the same variant and one never settles), so the page never fires "load" and
+    // tests time out at random. Vercel optimizes images itself; never set this for a real deployment.
+    unoptimized: process.env.E2E_UNOPTIMIZED_IMAGES === "1",
+    // Library photos (media module): already resized by Cloudinary, served through next/image like the local ones.
+    // Not images.unsplash.com: hotlinked photos use `unoptimized`, so a forgotten one fails loudly instead of being
+    // proxied through this site.
+    remotePatterns: features.media ? [{ protocol: "https", hostname: "res.cloudinary.com" }] : [],
+  },
   // Content read from disk at request time (dynamic product pages, blog…) must ship with the serverless
   // functions; Vercel only bundles files the code imports. Found on a real deployment (reuse finding G10).
   outputFileTracingIncludes: { "/**/*": ["./content/**/*"] },
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders({ isDev: process.env.NODE_ENV !== "production", connectSrc: [...(storageOrigin ? [storageOrigin] : []), ...media.connect], imgSrc: media.img, scriptSrc: turnstile, frameSrc: turnstile }) }];
+    return [{ source: "/:path*", headers: securityHeaders({ isDev: process.env.NODE_ENV !== "production", connectSrc: [...(storageOrigin ? [storageOrigin] : []), ...media.connect], imgSrc: [...media.img, ...unsplashImg], scriptSrc: turnstile, frameSrc: turnstile }) }];
   },
 };
 

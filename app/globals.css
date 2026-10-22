@@ -115,6 +115,10 @@ body {
 .prose-blog > * + .contents > :first-child {
   margin-top: 1.25em;
 }
+/* Section links (#id from the table of contents) land below the sticky site header. */
+.prose-blog :is(h2, h3) {
+  scroll-margin-top: 6rem;
+}
 .prose-blog h2 {
   margin-top: 2em;
   font-size: 1.5rem;

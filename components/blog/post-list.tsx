@@ -7,6 +7,9 @@ export interface PostListItem {
   date: string;
   readingTime: string;
   tags: { label: string; href: string }[];
+  /** For a project's own list (product/layout.tsx `ProductPostList`); this list does not show them. */
+  cover?: string;
+  facts?: Record<string, string>;
 }
 
 export function PostList({ posts, empty }: { posts: PostListItem[]; empty: string }) {

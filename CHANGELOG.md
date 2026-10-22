@@ -4,6 +4,17 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+### Added — blog (from Bắc Việt Travel)
+- Database posts (blog source "content"): table of contents from `##` headings (heading ids for #links), FAQPage data from a "Câu hỏi thường gặp" / "FAQ" section, related posts (shared tag), writer's box and Person/Organization author in structured data (`blog.authors`), display names of tags (`blog.tagLabels`), breadcrumb JSON-LD (`breadcrumbJsonLd` in core/seo).
+- Quick facts at the top of a post, configured in `config/blog.ts` `facts` (key + label per locale; default none).
+- Post pages are static (ISR, revalidated by the "blog" tag) instead of per request; Draft Mode still renders per request.
+- Markdown images get CDN sizes (`srcSet`) for Cloudinary and Unsplash; covers may be Cloudinary or Unsplash images (allowed in CSP), with a photographer credit (`coverCredit`).
+- Embeds in staff Markdown: `<Name slug="…" />` handed to the project (`ProductPostEmbed`), never executed.
+- Post editor saves in place (`SaveInPlaceForm`, `savePostInPlace`): text, cursor and scroll stay; a conflict or an error keeps what was typed. A live post whose words change gets today's `updated` date (`withUpdated`).
+- New posts: the URL follows the title until edited (`components/forms/slug-from-title.tsx`, `slugify`).
+- Project hooks in `product/layout.tsx`: `ProductPostList` (index and tag pages), `productPostEditor` (`Cover`, `Body`, `Aside` parts of the editor, each given the starter's `plain` field to fall back on), `ProductPostFooter`.
+- Demo page: optional steps (`demo.tryAdmin.steps`) and the contact link; the notice's first link is a button.
+
 ## [1.26.2] - 2026-10-14
 
 ### Fixed
