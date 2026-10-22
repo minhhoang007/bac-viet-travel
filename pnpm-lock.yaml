@@ -7,7 +7,7 @@ settings:
 overrides:
   source-map-js: '>=1.2.2'
   '@esbuild-kit/core-utils>esbuild': '>=0.25.0'
-  vite: '>=8.3.3'
+  vite: ^8.3.3
 
 importers:
 
@@ -2743,7 +2743,7 @@ packages:
     resolution: {integrity: sha512-T8sWAIbkSyAjkwTcaEc3Iu0o9A27X1/kdXrizhZkGuSKScRQtRzclfAMpOTcGdXCsqxeWlpGy3XjqaW8CpLORg==}
     peerDependencies:
       msw: ^2.4.9
-      vite: '>=8.3.3'
+      vite: ^8.3.3
     peerDependenciesMeta:
       msw:
         optional: true
@@ -5092,7 +5092,7 @@ packages:
       '@vitest/ui': 5.0.3
       happy-dom: '*'
       jsdom: '*'
-      vite: '>=8.3.3'
+      vite: ^8.3.3
     peerDependenciesMeta:
       '@edge-runtime/vm':
         optional: true

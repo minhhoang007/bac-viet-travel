@@ -10,5 +10,5 @@ overrides:
   # GHSA-67mh-4wv8-2f99 (moderate, dev server only): drizzle-kit's old loader pins esbuild 0.18.
   "@esbuild-kit/core-utils>esbuild": ">=0.25.0"
   # launch-editor advisory (high, vite 8.3.0–8.3.2; test tooling, reached via better-auth > vitest): drop once the
-  # lockfile resolves vite >= 8.3.3 on its own.
-  vite: ">=8.3.3"
+  # lockfile resolves vite >= 8.3.3 on its own (^: patch fix only, never the next major).
+  vite: "^8.3.3"
