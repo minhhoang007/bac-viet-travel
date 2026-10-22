@@ -1,5 +1,6 @@
 import { and, count, eq, isNotNull, like } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { authConfig } from "@/config/auth";
 import { authEvents, passkeys, sessions, verifications } from "@/core/auth/schema";
 import { users } from "@/core/users/schema";
 import { resetDb, testDb } from "./setup/db";
@@ -153,7 +154,8 @@ describe("sign-in with a password", () => {
   it("the demo site has no passwords (its mailbox is open to visitors)", () => {
     expect(testApp(handle.db, { env: { DEMO_MODE: "true" }, overrides: passwordOn }).app.auth.methods.password).toBe(false);
     expect(auth.methods.password).toBe(true);
-    expect(testApp(handle.db).app.auth.methods.password).toBe(false); // the starter's default
+    // Without the override: the project's config (off in the starter's defaults).
+    expect(testApp(handle.db).app.auth.methods.password).toBe(authConfig.methods.password);
   });
 
   it("the HTTP endpoints for passwords are closed: only this service signs in, resets or changes them", async () => {
