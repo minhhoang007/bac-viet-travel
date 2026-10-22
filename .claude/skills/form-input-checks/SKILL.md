@@ -32,8 +32,10 @@ directly. Every rule below must hold **on the server**; the form only makes the 
 
 - Error **under the field** with `aria-invalid` + `aria-describedby` (`FormField error=`), whole-form errors in
   `FormError` (`role="alert"`). Focus moves to the first invalid field on long forms (booking form does this).
-- **Typed text survives an error.** React 19 resets a form after each action: keep values in state (`value` +
-  `onChange`) or send them back as `defaultValue`. Password fields may clear.
+- **Typed text survives an error.** React 19 resets a form after each action (the contact and inquiry forms lost
+  everything until 2026-10): `onSubmit={keepValuesOnSubmit(formAction)}` (`components/forms/keep-values.ts`, with
+  `FormPendingContext` for `SubmitButton`), or keep values in state (`value` + `onChange`), or send them back as
+  `defaultValue`. Password fields may clear.
 - **Double submit:** use `SubmitButton` (disabled while pending). Money flows also need an idempotent server.
 - **Turnstile** resets after every server answer (`answer={state}`), or the second try fails with `captcha`.
 - Same answer for "unknown account" and "wrong password", for "unknown booking" and "wrong token"; empty fields may
@@ -55,7 +57,7 @@ directly. Every rule below must hold **on the server**; the form only makes the 
 | Server action without the browser | E2E with `noValidate` forms, or service tests | the server alone refuses |
 | Form behaviour | `tests/e2e/form-validation.spec.ts` | empty submit per form, message under the field, `aria-invalid`, text kept |
 | Junk URLs | `tests/e2e/form-validation.spec.ts` | public routes answer < 500 |
-| Accessibility | `tests/e2e/a11y.spec.ts` (`@axe-core/playwright`) | no serious/critical violations on key pages |
+| Accessibility | `form-validation.spec.ts` and page specs (`@axe-core/playwright`) | no serious/critical violations, also while a form shows its errors |
 
 New form or input route → add its row to `form-validation.spec.ts` and its bad values to the schema test, in the same
 PR. Write the failing test first (`tdd-critical-flows`).
