@@ -20,10 +20,10 @@ const frontmatterSchema = z.object({
   coverCredit: z.object({ name: z.string().min(1).max(120), url: z.url({ protocol: /^https$/ }).max(500) }).optional(),
   /** Same key on posts in different locales = translations of each other (hreflang, language switch). */
   translationKey: z.string().regex(/^[a-z0-9-]+$/).optional(),
-  /** "Tóm tắt nhanh" at the top of a guide: short answers planners look for first. All optional. */
+  /** Quick facts at the top of a post, by key (config/blog.ts `facts` names and orders them). */
   facts: z
-    .object({ bestTime: z.string().max(120), duration: z.string().max(120), budget: z.string().max(120), gettingThere: z.string().max(120) })
-    .partial()
+    .record(z.string().regex(/^[A-Za-z]{1,40}$/), z.string().max(120))
+    .refine((f) => Object.keys(f).length <= 12, "at most 12 facts")
     .optional(),
   draft: z.boolean().default(false),
 });

@@ -8,7 +8,7 @@ import { localePath } from "@/core/i18n/routing";
 import { appConfig, type Locale } from "@/config/app";
 import { getAppContent } from "@/content";
 import { inputClass, requirePostsAdmin } from "../_shared";
-import { SlugFromTitle } from "@/product/components/slug-from-title";
+import { SlugFromTitle } from "@/components/forms/slug-from-title";
 
 type Props = { params: Promise<{ locale: Locale }>; searchParams: Promise<{ result?: string }> };
 

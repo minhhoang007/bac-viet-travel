@@ -19,6 +19,9 @@ import { ConsentBanner } from "@/components/analytics/consent-banner";
 import { getAppContent } from "@/content";
 import { PostFooter } from "./components/post-footer";
 import { PostTourEmbed } from "./components/post-tour-embed";
+import { BlogMagazine } from "./components/blog-magazine";
+import type { PostListProps } from "@/components/blog/post-list";
+import { blogConfig } from "@/config/blog";
 import { staffCan } from "./manifest";
 import { SiteFooter } from "./components/site-footer";
 import { SiteHeader } from "./components/site-header";
@@ -68,6 +71,23 @@ export function ProductPostFooter({ locale, tags, slug, title }: { locale: Local
 export function ProductPostEmbed({ locale, name, slug, post }: { locale: Locale; name: string; slug: string; post: string }) {
   return name === "Tour" ? <PostTourEmbed locale={locale} slug={slug} post={post} /> : null;
 }
+
+/** Blog index and tag pages (starter hook): the guides as a photo magazine, with each guide's best time to go. */
+export function ProductPostList({ locale, posts, featured, empty }: PostListProps) {
+  // Shown only while "bestTime" is a configured quick fact (config/blog.ts), like on the post page.
+  const bestTime = blogConfig.facts.find((f) => f.key === "bestTime");
+  return (
+    <BlogMagazine
+      posts={posts.map((p) => ({ ...p, topic: p.tags[0]?.label, bestTime: bestTime ? p.facts?.bestTime : undefined }))}
+      featured={featured}
+      empty={empty}
+      bestTimeLabel={bestTime?.label[locale] ?? ""}
+    />
+  );
+}
+
+/** Post editor parts (starter hook), loaded by the editor page only: public pages never pull in admin editor code. */
+export const loadProductPostEditor = () => import("./blog/editor").then((m) => m.productPostEditor);
 
 /** Page-change progress bar and the floating quick-contact buttons on every page. */
 export async function ProductLayoutExtras({ locale }: { locale: Locale }) {

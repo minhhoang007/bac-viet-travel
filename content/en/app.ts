@@ -283,10 +283,6 @@ export const app: AppContent = {
     facts: {
       title: "Quick facts",
       hint: "Optional. Short answers shown at the top of the post, e.g. “April–June and Sept–Nov”.",
-      bestTime: "Best time",
-      duration: "How long",
-      budget: "Budget",
-      gettingThere: "Getting there",
     },
     tags: "Topics",
     empty: "No posts yet.",

@@ -25,4 +25,11 @@ export const blogConfig: BlogConfig = {
     "du-thuyen": { vi: "Du thuyền", en: "Cruise" },
     "am-thuc": { vi: "Ẩm thực", en: "Food" },
   },
+  // Quick facts of a travel guide ("bestTime" also shows on the guide list cards).
+  facts: [
+    { key: "bestTime", label: { vi: "Thời điểm đẹp", en: "Best time" } },
+    { key: "duration", label: { vi: "Nên đi", en: "How long" } },
+    { key: "budget", label: { vi: "Chi phí ước tính", en: "Budget" } },
+    { key: "gettingThere", label: { vi: "Di chuyển", en: "Getting there" } },
+  ],
 };

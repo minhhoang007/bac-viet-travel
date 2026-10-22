@@ -10,7 +10,7 @@ import { localePath } from "@/core/i18n/routing";
 import type { Locale } from "@/config/app";
 import { getAppContent } from "@/content";
 import { getTourAdminContent } from "@/product/tours/admin-content";
-import { SlugFromTitle } from "@/product/components/slug-from-title";
+import { SlugFromTitle } from "@/components/forms/slug-from-title";
 
 type Props = { params: Promise<{ locale: Locale }>; searchParams: Promise<{ result?: string }> };
 

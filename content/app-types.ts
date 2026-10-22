@@ -232,8 +232,8 @@ export interface AppContent {
     toc: string;
     /** Label of the writer's box under a post. */
     aboutAuthor: string;
-    /** "Quick facts" box at the top of a guide, and its fields in the editor. */
-    facts: { title: string; hint: string; bestTime: string; duration: string; budget: string; gettingThere: string };
+    /** "Quick facts" box at the top of a post and its editor fieldset (the fields: config/blog.ts `facts`). */
+    facts: { title: string; hint: string };
     tags: string;
     empty: string;
     previous: string;

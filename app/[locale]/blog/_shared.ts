@@ -6,7 +6,6 @@ import type { Locale } from "@/config/app";
 import { blogConfig } from "@/config/blog";
 import { getAppContent } from "@/content";
 import type { Blog, PostSummary } from "@/modules/blog";
-import type { MagazinePost } from "@/product/components/blog-magazine";
 
 /** The blog or a 404 when the module is off. */
 export async function requireBlog(): Promise<Blog> {
@@ -30,11 +29,7 @@ export function toListItem(post: PostSummary, locale: Locale): PostListItem {
     date: formatDate(post.date, locale),
     readingTime: c.readingTime.replace("{n}", String(post.readingMinutes)),
     tags: post.tags.map((t) => ({ label: tagLabel(t, locale), href: localePath(locale, `/blog/tag/${t}`) })),
+    cover: post.cover,
+    facts: post.facts,
   };
-}
-
-/** A list item with what the project's magazine list shows (product/components/blog-magazine.tsx). */
-export function toMagazineItem(post: PostSummary, locale: Locale): MagazinePost {
-  const item = toListItem(post, locale);
-  return { ...item, cover: post.cover, topic: item.tags[0]?.label, bestTime: post.facts?.bestTime };
 }

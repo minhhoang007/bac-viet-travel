@@ -36,6 +36,13 @@ describe("posts stored in the content module", () => {
     expect(contentPostProblems(data({ coverCredit: { name: "X", url: "javascript:alert(1)" } }))).toEqual(["coverCredit.url"]);
   });
 
+  it("keeps quick facts by key (the project names and orders them); short text, plain keys", () => {
+    const facts = { bestTime: "Tháng 4–6", budget: "2–3 triệu" };
+    expect(postFromContent("ha-long", data({ facts }))?.facts).toEqual(facts);
+    expect(contentPostProblems(data({ facts: { bestTime: "x".repeat(121) } }))).toEqual(["facts.bestTime"]);
+    expect(contentPostProblems(data({ facts: { "best-time": "x" } }))).toEqual(["facts.best-time"]);
+  });
+
   it("becomes a Markdown post (never MDX), with reading time", () => {
     const post = postFromContent("kinh-nghiem-di-ha-long", data());
     expect(post).toMatchObject({ slug: "kinh-nghiem-di-ha-long", locale: "vi", format: "markdown", draft: false, readingMinutes: 1 });
