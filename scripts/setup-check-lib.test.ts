@@ -36,6 +36,17 @@ describe("diagnose", () => {
     expect(failed.every((l) => l.hint)).toBe(true);
   });
 
+  it("production: flags no Upstash, a resend.dev sender and template legal text", () => {
+    const ready = { upstash: true, emailFrom: "Shop <noreply@mail.shop.vn>", legalIsTemplate: false };
+    expect(diagnose({ ...healthy, production: ready }).ok).toBe(true);
+
+    const failed = (production: SetupFacts["production"]) => diagnose({ ...healthy, production }).lines.filter((l) => !l.ok).map((l) => l.text);
+    expect(failed({ ...ready, upstash: false })).toEqual(["No Upstash: rate limits count per server instance"]);
+    expect(failed({ ...ready, emailFrom: "Test <onboarding@resend.dev>" })).toEqual([expect.stringContaining("resend.dev")]);
+    expect(failed({ ...ready, emailFrom: undefined })).toEqual(["EMAIL_FROM not set"]);
+    expect(failed({ ...ready, legalIsTemplate: true })).toEqual(["Terms and privacy are still the template"]);
+  });
+
   it("a missing .env.local is only a hint, not a failure", () => {
     const report = diagnose({ ...healthy, hasEnvFile: false, profile: "site", database: undefined });
     expect(report.ok).toBe(true);

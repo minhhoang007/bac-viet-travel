@@ -30,7 +30,9 @@ Thiếu bước này thì email đăng nhập và email liên hệ sẽ vào th�
 
 ## 4. Điều khoản và chính sách riêng tư
 - [ ] ⚙ `/terms` và `/privacy` mở được.
-- [ ] Thay toàn bộ nội dung mẫu trong `content/legal.ts` (đang ghi `TEMPLATE ONLY`). Cập nhật `updated`.
+- [ ] ⚙ Thay toàn bộ nội dung mẫu trong `content/legal.ts` (đang ghi `TEMPLATE ONLY`), cập nhật `updated`, rồi đặt
+  `legalIsTemplate = false` (khung "đây là mẫu" biến mất; `setup:check --production` và `launch:check` hết báo).
+- [ ] ⚙ `pnpm setup:check --production` (hoặc chạy với env production): Upstash, `EMAIL_FROM` không phải `resend.dev`.
 - [ ] Nhờ người có chuyên môn pháp lý xem lại nếu thu tiền hoặc xử lý dữ liệu nhạy cảm.
 
 Prompt mẫu để AI soạn bản nháp (dán vào Claude, sửa phần trong `<…>`):

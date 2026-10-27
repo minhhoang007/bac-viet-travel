@@ -1,6 +1,6 @@
 // Checks that this machine and config can run the project: Node version, env for the profile and enabled modules,
 // database connection. Prints variable names only, never values.
-// Usage: pnpm setup:check
+// Usage: pnpm setup:check   (production settings: node --env-file=.env.vercel ... or pnpm setup:check --production)
 import { existsSync, readFileSync } from "node:fs";
 import postgres from "postgres";
 import { envProblems } from "@/bootstrap/env";
@@ -8,6 +8,7 @@ import { moduleManifests } from "@/bootstrap/modules";
 import { authConfig } from "@/config/auth";
 import { billingConfig } from "@/config/billing";
 import { features } from "@/config/features";
+import { legalIsTemplate } from "@/content/legal";
 import { isModuleEnabled } from "@/core/module";
 import { diagnose, formatReport } from "./setup-check-lib";
 
@@ -33,6 +34,14 @@ const report = diagnose({
   enabledModules: moduleManifests.filter((m) => isModuleEnabled(features, m.name)).map((m) => m.name),
   envProblems: envProblems(process.env, features, moduleManifests, { auth: authConfig, billingProviders: billingConfig.providers }),
   database: await databaseStatus(process.env.DATABASE_URL),
+  production:
+    process.argv.includes("--production") || process.env.VERCEL_ENV === "production"
+      ? {
+          upstash: Boolean(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN),
+          emailFrom: process.env.EMAIL_FROM,
+          legalIsTemplate,
+        }
+      : undefined,
 });
 console.log(formatReport(report));
 process.exitCode = report.ok ? 0 : 1;

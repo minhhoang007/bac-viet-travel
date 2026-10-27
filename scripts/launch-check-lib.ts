@@ -14,6 +14,11 @@ const SECURITY_HEADERS = ["strict-transport-security", "content-security-policy"
 const meta = (html: string, attr: "name" | "property", key: string) =>
   html.match(new RegExp(`<meta[^>]*${attr}="${key}"[^>]*content="([^"]*)"`, "i"))?.[1] ??
   html.match(new RegExp(`<meta[^>]*content="([^"]*)"[^>]*${attr}="${key}"`, "i"))?.[1];
+/** Placeholder content (sample reviews, demo figures, template legal text) is marked data-demo and must be gone. */
+const demoMarker = (html: string) => {
+  const m = html.match(/\sdata-demo(?=[\s=>/])(?:=["']?([^"'\s>]*))?/i);
+  return m ? `page has data-demo${m[1] ? ` ("${m[1]}")` : ""}: replace it with real content` : undefined;
+};
 const isLocal = (url: string) => /\/\/(localhost|127\.0\.0\.1)(:|\/|$)/.test(url);
 
 /** True when the `User-agent: *` group has `Disallow: /`. Blocking one bot (e.g. GPTBot) is a choice, not an error. */
@@ -76,9 +81,8 @@ export async function checkLaunch(base: string, fetch: Fetch): Promise<LaunchRes
       const icon = await get(iconHref);
       add(icon.status === 200, "Favicon", icon.status === 200 ? undefined : `got ${icon.status}`);
     }
-    // Placeholder content (sample reviews, demo figures) is marked data-demo in the markup and must be gone.
-    const demo = home.body.match(/\sdata-demo(?=[\s=>/])(?:=["']?([^"'\s>]*))?/i);
-    add(!demo, "No demo content", demo ? `page has data-demo${demo[1] ? ` ("${demo[1]}")` : ""}: replace it with real content` : undefined);
+    const demo = demoMarker(home.body);
+    add(!demo, "No demo content", demo);
     const missing = SECURITY_HEADERS.filter((h) => !home.headers.get(h));
     add(missing.length === 0, "Security headers", missing.length ? `missing ${missing.join(", ")}` : undefined);
   }
@@ -101,7 +105,8 @@ export async function checkLaunch(base: string, fetch: Fetch): Promise<LaunchRes
 
   for (const path of ["/terms", "/privacy"]) {
     const page = await get(path);
-    add(page.status === 200, `Legal page ${path}`, page.status === 200 ? undefined : `got ${page.status}`);
+    const demo = page.status === 200 ? demoMarker(page.body) : undefined;
+    add(page.status === 200 && !demo, `Legal page ${path}`, page.status === 200 ? demo : `got ${page.status}`);
   }
   return results;
 }
