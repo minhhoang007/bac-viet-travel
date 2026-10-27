@@ -24,6 +24,7 @@ import { createContentModule, type ContentModule } from "@/modules/content";
 import { createMediaModule, type MediaModule, type MediaProvider } from "@/modules/media";
 import { createStorageModule, type ObjectStorage, type StorageModule } from "@/modules/storage";
 import { polarProvider } from "@/providers/billing/polar";
+import { sentryReporter } from "@/providers/errors/sentry";
 import { VNPAY_SANDBOX_URL, vnpayProvider } from "@/providers/billing/vnpay";
 import { consoleEmailProvider } from "@/providers/email/console";
 import { resendProvider } from "@/providers/email/resend";
@@ -122,7 +123,7 @@ export function getContainer(): Container {
 }
 
 export function buildContainer(features: Features, env: Env, overrides: ContainerOverrides = {}): Container {
-  const logger = createLogger({ level: env.LOG_LEVEL });
+  const logger = appLogger(env);
   // Profile "site" has a database only for analytics events.
   const needsDb = features.profile === "app" || features.analytics;
   const db = needsDb ? (overrides.db ?? createDb(env.extra.DATABASE_URL!).db) : undefined;
@@ -428,6 +429,14 @@ function buildApp(
 
 /** Demo site without a database: emails are dropped (logging them would print visitors' addresses). */
 const discardEmails: EmailProvider = { send: async () => ({ id: "demo-discarded" }) };
+
+/** The app logger. With SENTRY_DSN, error entries also go to Sentry (redacted, fire and forget). */
+export function appLogger(env: Pick<Env, "LOG_LEVEL" | "SENTRY_DSN">): Logger {
+  const report = env.SENTRY_DSN
+    ? sentryReporter({ dsn: env.SENTRY_DSN, environment: process.env.VERCEL_ENV ?? process.env.NODE_ENV, release: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) })
+    : undefined;
+  return createLogger({ level: env.LOG_LEVEL, onError: report && ((entry) => void report(entry)) });
+}
 
 function emailProvider(env: Env, logger: Logger): EmailProvider {
   return env.EMAIL_PROVIDER === "console" ? consoleEmailProvider(logger) : resendProvider({ apiKey: env.EMAIL_API_KEY! });

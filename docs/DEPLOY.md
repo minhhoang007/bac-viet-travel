@@ -58,7 +58,10 @@ Everything above, plus:
 1. **Uptime:** point a monitor (Better Stack, UptimeRobot…) at `https://<domain>/api/health` — 200 healthy, 503 when the
    database is unreachable. The response also shows the deployed commit.
 2. **Errors:** every server error is one JSON log line `request.error` with a `digest`; users see the same digest as
-   "ref" on the error page. Search Vercel logs by digest. To get alerts, add an error tracker in `instrumentation.ts`.
+   "ref" on the error page. Search Vercel logs by digest. **Alerts:** set `SENTRY_DSN` (free Sentry project →
+   Settings → Client Keys) and every `logger.error` line — request errors, dead jobs, dead webhooks — is also sent to
+   Sentry, redacted like the logs, no SDK. Set an alert rule in Sentry to get an email. Limits: errors in the
+   browser only are not sent (the server error of the same digest is); sending is best effort (5 s, not retried).
 3. **Backups (Neon):** point-in-time restore is on by default (retention depends on the plan). Before a release with a
    starter or product migration, create a Neon branch, run `pnpm db:migrate` against it, then migrate production.
 4. **Dependencies:** Dependabot opens weekly PRs; merge only with CI green.

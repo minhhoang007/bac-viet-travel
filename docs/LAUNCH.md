@@ -61,7 +61,8 @@ Ghi rõ những chỗ tôi cần tự xác nhận.
 - [ ] ⚙ `/api/health` trả 200. Gắn một uptime monitor (Better Stack, UptimeRobot) vào URL này.
 - [ ] Neon: biết cách restore theo thời điểm. Trước mỗi lần migration, tạo một branch để chạy thử.
 - [ ] Profile `app`: đăng nhập một lần, chạy `pnpm admin:grant <email>` với `DATABASE_URL` production, mở `/admin`.
-- [ ] (Nên có) gắn công cụ theo dõi lỗi trong `instrumentation.ts`.
+- [ ] (Nên có) đặt `SENTRY_DSN` để lỗi server, job chết, webhook chết gửi tới Sentry; bật cảnh báo email trong
+  Sentry (docs/DEPLOY.md "Monitoring").
 - [ ] Bật analytics module nếu cần đếm lượt xem (có banner đồng ý, không script của bên thứ ba).
 
 ## 7. Lần cuối
