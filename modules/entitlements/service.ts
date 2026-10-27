@@ -1,4 +1,5 @@
-import { and, desc, eq, gt, isNull, lte, or, sql } from "drizzle-orm";
+import { and, desc, eq, gt, gte, inArray, isNull, lt, lte, or, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import type { Db } from "@/db/client";
 import type { EntitlementKey, Entitlements, PlanDefinition, PlanId } from "@/config/billing.defaults";
 import { accessGrants } from "./schema";
@@ -26,6 +27,22 @@ export interface EntitlementsModule {
   grantPeriod(grant: { ownerId: string; plan: PlanId; source: GrantSource; sourceId: string; days: number }, tx?: DbExecutor): Promise<{ startsAt: Date; endsAt: Date }>;
   /** Admin stats: number of users with access to the plan right now. */
   countActiveOwners(plan: PlanId): Promise<number>;
+  /**
+   * Paid grants ending in [from, to), for renewal reminders and "access ended" notices. `coveredAfter`: the owner has
+   * another grant reaching past this one's end (renewed, stacked or unlimited), so there is nothing to tell them.
+   */
+  endingGrants(range: { from: Date; to: Date; sources?: GrantSource[] }): Promise<EndingGrant[]>;
+  /** Owners whose first paid (non-manual) access started at or after `since` (welcome emails). */
+  newPaidOwners(since: Date): Promise<{ ownerId: string; plan: PlanId }[]>;
+}
+
+export interface EndingGrant {
+  id: string;
+  ownerId: string;
+  plan: PlanId;
+  source: GrantSource;
+  endsAt: Date;
+  coveredAfter: boolean;
 }
 
 const RANK: Record<PlanId, number> = { free: 0, pro: 1 };
@@ -111,6 +128,36 @@ export function createEntitlementsModule(db: Db, plans: Record<PlanId, PlanDefin
         .from(accessGrants)
         .where(and(eq(accessGrants.plan, plan), lte(accessGrants.startsAt, t), or(isNull(accessGrants.endsAt), gt(accessGrants.endsAt, t))));
       return row?.n ?? 0;
+    },
+    async endingGrants({ from, to, sources = ["polar_subscription", "vnpay_order"] }) {
+      // Outer table aliased "g" and named literally in the subquery: Drizzle renders select-field columns
+      // unqualified, which inside the subquery would resolve to the inner table.
+      const g = alias(accessGrants, "g");
+      const rows = await db
+        .select({
+          id: g.id,
+          ownerId: g.ownerId,
+          plan: g.plan,
+          source: g.source,
+          endsAt: g.endsAt,
+          coveredAfter: sql<boolean>`exists (
+            select 1 from access_grants o
+            where o.owner_id = g.owner_id and o.id <> g.id and (o.ends_at is null or o.ends_at > g.ends_at)
+          )`,
+        })
+        .from(g)
+        .where(and(gte(g.endsAt, from), lt(g.endsAt, to), inArray(g.source, sources)))
+        .orderBy(g.endsAt);
+      return rows.map((r) => ({ ...r, plan: r.plan as PlanId, endsAt: r.endsAt! }));
+    },
+    async newPaidOwners(since) {
+      const rows = await db
+        .select({ ownerId: accessGrants.ownerId, plan: sql<PlanId>`(array_agg(${accessGrants.plan} order by ${accessGrants.startsAt}))[1]` })
+        .from(accessGrants)
+        .where(sql`${accessGrants.source} <> 'manual'`)
+        .groupBy(accessGrants.ownerId)
+        .having(sql`min(${accessGrants.startsAt}) >= ${since.toISOString()}`);
+      return rows.map(({ ownerId, plan }) => ({ ownerId, plan }));
     },
   };
 }

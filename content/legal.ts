@@ -8,7 +8,10 @@ export interface LegalDocument {
   sections: { heading: string; body: string }[];
 }
 
-// Draft for the demo: have the final text reviewed before taking real bookings.
+// Draft for the demo: have the final text reviewed before taking real bookings, then set legalIsTemplate to false.
+/** While true the pages show a "this is a template" notice (data-demo), which setup:check and launch:check flag. */
+export const legalIsTemplate = true;
+
 // Cancellation and payment policies live in product/policies.ts (they use the booking rules).
 const legal = (co: Company): Record<Locale, { terms: LegalDocument; privacy: LegalDocument }> => ({
   vi: {

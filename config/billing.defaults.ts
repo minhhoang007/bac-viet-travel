@@ -40,6 +40,8 @@ export const billingDefaults = {
       },
     },
   } satisfies Record<PlanId, PlanDefinition> as Record<PlanId, PlanDefinition>,
+  /** Lifecycle emails (receipt, welcome, renewal reminders, access ended) when the email module is on. */
+  emails: true as boolean,
   /** Days a VNPay purchase grants per interval. */
   periodDays: { month: 30, year: 365 } as Record<BillingInterval, number>,
 };

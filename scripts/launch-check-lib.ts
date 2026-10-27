@@ -14,6 +14,11 @@ const SECURITY_HEADERS = ["strict-transport-security", "content-security-policy"
 const meta = (html: string, attr: "name" | "property", key: string) =>
   html.match(new RegExp(`<meta[^>]*${attr}="${key}"[^>]*content="([^"]*)"`, "i"))?.[1] ??
   html.match(new RegExp(`<meta[^>]*content="([^"]*)"[^>]*${attr}="${key}"`, "i"))?.[1];
+/** Placeholder content (sample reviews, demo figures, template legal text) is marked data-demo and must be gone. */
+const demoMarker = (html: string) => {
+  const m = html.match(/\sdata-demo(?=[\s=>/])(?:=["']?([^"'\s>]*))?/i);
+  return m ? `page has data-demo${m[1] ? ` ("${m[1]}")` : ""}: replace it with real content` : undefined;
+};
 const isLocal = (url: string) => /\/\/(localhost|127\.0\.0\.1)(:|\/|$)/.test(url);
 
 /** True when the `User-agent: *` group has `Disallow: /`. Blocking one bot (e.g. GPTBot) is a choice, not an error. */
@@ -76,9 +81,8 @@ export async function checkLaunch(base: string, fetch: Fetch): Promise<LaunchRes
       const icon = await get(iconHref);
       add(icon.status === 200, "Favicon", icon.status === 200 ? undefined : `got ${icon.status}`);
     }
-    // Placeholder content (sample reviews, demo figures) is marked data-demo in the markup and must be gone.
-    const demo = home.body.match(/\sdata-demo(?=[\s=>/])(?:=["']?([^"'\s>]*))?/i);
-    add(!demo, "No demo content", demo ? `page has data-demo${demo[1] ? ` ("${demo[1]}")` : ""}: replace it with real content` : undefined);
+    const demo = demoMarker(home.body);
+    add(!demo, "No demo content", demo);
     // Company details (footer, licence bar) still hold the "(demo)" placeholders: Admin → Thông tin công ty.
     const placeholder = home.body.includes("(demo)");
     add(!placeholder, "Company details", placeholder ? 'the page shows "(demo)" values: fill in Admin → Thông tin công ty' : undefined);
@@ -104,8 +108,52 @@ export async function checkLaunch(base: string, fetch: Fetch): Promise<LaunchRes
 
   for (const path of ["/terms", "/privacy"]) {
     const page = await get(path);
-    add(page.status === 200, `Legal page ${path}`, page.status === 200 ? undefined : `got ${page.status}`);
+    const demo = page.status === 200 ? demoMarker(page.body) : undefined;
+    add(page.status === 200 && !demo, `Legal page ${path}`, page.status === 200 ? demo : `got ${page.status}`);
   }
+  return results;
+}
+
+/** DNS TXT lookup (records joined per entry); throws or returns [] when the name has none. Injected for tests. */
+export type ResolveTxt = (name: string) => Promise<string[]>;
+
+/** Domain of an EMAIL_FROM value such as `Tên <noreply@mail.example.com>` or `noreply@example.com`. */
+export function emailDomain(from: string): string | undefined {
+  return from.match(/@([a-z0-9.-]+\.[a-z]{2,})>?\s*$/i)?.[1]?.toLowerCase();
+}
+
+/** Email sending checks for EMAIL_FROM (Resend records, see docs/LAUNCH.md §2): own domain, DKIM, SPF, DMARC. */
+export async function checkEmailDns(from: string, resolveTxt: ResolveTxt): Promise<LaunchResult[]> {
+  const results: LaunchResult[] = [];
+  const add = (ok: boolean, name: string, detail?: string) => results.push({ ok, name, ...(detail && { detail }) });
+  const domain = emailDomain(from);
+  if (!domain) return [{ ok: false, name: "EMAIL_FROM", detail: `no email address in "${from}"` }];
+  if (domain === "resend.dev" || domain.endsWith(".resend.dev")) {
+    return [{ ok: false, name: "EMAIL_FROM", detail: "resend.dev only delivers to the Resend account owner: verify your own domain" }];
+  }
+  add(true, "EMAIL_FROM", domain);
+  const txt = async (name: string) => {
+    try {
+      return await resolveTxt(name);
+    } catch {
+      return [];
+    }
+  };
+
+  const dkim = await txt(`resend._domainkey.${domain}`);
+  add(dkim.some((r) => /\bp=/.test(r)), "Email DKIM", dkim.length ? undefined : `no TXT at resend._domainkey.${domain}`);
+
+  // Resend puts SPF on the bounce subdomain `send.<domain>`; an SPF record on the domain itself also counts.
+  const spf = [...(await txt(`send.${domain}`)), ...(await txt(domain))].filter((r) => r.startsWith("v=spf1"));
+  add(spf.length > 0, "Email SPF", spf.length ? undefined : `no v=spf1 TXT at send.${domain} or ${domain}`);
+
+  // DMARC may sit on the sending domain or on a parent (organizational) domain.
+  const labels = domain.split(".");
+  let dmarc: string | undefined;
+  for (let i = 0; i < labels.length - 1 && !dmarc; i++) {
+    dmarc = (await txt(`_dmarc.${labels.slice(i).join(".")}`)).find((r) => r.startsWith("v=DMARC1"));
+  }
+  add(Boolean(dmarc), "Email DMARC", dmarc ?? `no v=DMARC1 TXT at _dmarc.${domain} or a parent domain`);
   return results;
 }
 

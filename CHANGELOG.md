@@ -4,6 +4,27 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.28.1] - 2026-10-27
+
+### Fixed
+- Welcome email names the plan of the owner's first paid grant (was the alphabetically first plan).
+- `setup:check --production` parses `EMAIL_FROM` like `launch:check` and reports a value without an address.
+
+## [1.28.0] - 2026-10-27
+
+V2 P1: what a paid SaaS needs before it charges customers.
+
+### Added
+- **Billing lifecycle emails** (email module on, `billingConfig.emails`, default true): VNPay receipt, welcome on the first paid plan, renewal reminders 7/3/1 days before a VNPay period ends, "access ended". Periodic task `billing.notices`; a paid IPN queues a run right away. Each email is queued once (`billing_notices`, claimed in the same transaction as the `email.send` job). Only events of the last 2 days are mailed: upgrading never mails old payments.
+- `EntitlementsModule.endingGrants()` and `newPaidOwners()`.
+- **Error tracking**: `SENTRY_DSN` sends every `logger.error` entry (request errors, dead jobs, dead webhooks) to Sentry, redacted like the logs, no SDK (`providers/errors/sentry.ts`, `createLogger({ onError })`, `appLogger(env)`).
+- `.github/workflows/jobs-tick.yml`: calls `/api/jobs/run` hourly on Vercel Hobby, off until the repository variable `JOBS_TICK=on`.
+- `pnpm launch:check` checks the `EMAIL_FROM` domain's DNS (Resend DKIM, SPF, DMARC) and fails on `resend.dev`; fails on legal pages still showing the template notice.
+- `pnpm setup:check --production` (or `VERCEL_ENV=production`): fails on no Upstash, `EMAIL_FROM` unset or on `resend.dev`, template legal text.
+
+### Changed
+- `content/legal.ts` exports `legalIsTemplate` (true): the template notice on `/terms` and `/privacy` shows only while it is true and is marked `data-demo`.
+
 ## [1.27.0] - 2026-10-22
 
 Upstreamed from a production project (Bắc Việt Travel), after two external security reviews.

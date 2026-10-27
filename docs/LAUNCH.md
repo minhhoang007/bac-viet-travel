@@ -1,6 +1,6 @@
 # Launch checklist
 
-Làm một lần trước khi công bố. Những mục có ⚙ đã được `pnpm launch:check https://<domain>` kiểm tự động.
+Làm một lần trước khi công bố. Những mục có ⚙ đã được `pnpm launch:check https://<domain>` kiểm tự động (DNS email: chạy với env production, ví dụ `node --env-file=.env.vercel ...`, để có `EMAIL_FROM`).
 Các mục còn lại phải làm bằng tay.
 
 ## 1. Domain và URL
@@ -13,10 +13,10 @@ Các mục còn lại phải làm bằng tay.
 Thiếu bước này thì email đăng nhập và email liên hệ sẽ vào thư rác, hoặc không gửi được.
 
 - [ ] Resend → Domains → Add domain. Nên dùng một subdomain, ví dụ `mail.<domain>`.
-- [ ] Thêm **đúng các bản ghi Resend hiển thị** vào DNS của domain:
+- [ ] ⚙ Thêm **đúng các bản ghi Resend hiển thị** vào DNS của domain:
   - **SPF** (TXT, và MX cho bounce): cho phép Resend gửi thay domain của bạn.
   - **DKIM** (TXT `resend._domainkey…`): ký email để chứng minh không bị sửa.
-- [ ] Thêm **DMARC** (TXT ở `_dmarc.<domain>`). Bắt đầu nhẹ:
+- [ ] ⚙ Thêm **DMARC** (TXT ở `_dmarc.<domain>`). Bắt đầu nhẹ:
   `v=DMARC1; p=none; rua=mailto:dmarc@<domain>`. Khi báo cáo đã sạch thì nâng lên `p=quarantine`.
 - [ ] Chờ Resend báo **Verified**, rồi đặt `EMAIL_FROM="Tên <noreply@mail.<domain>>"`.
   Domain thử nghiệm `resend.dev` chỉ gửi được tới email của chính chủ tài khoản Resend.
@@ -30,7 +30,9 @@ Thiếu bước này thì email đăng nhập và email liên hệ sẽ vào th�
 
 ## 4. Điều khoản và chính sách riêng tư
 - [ ] ⚙ `/terms` và `/privacy` mở được.
-- [ ] Thay toàn bộ nội dung mẫu trong `content/legal.ts` (đang ghi `TEMPLATE ONLY`). Cập nhật `updated`.
+- [ ] ⚙ Thay toàn bộ nội dung mẫu trong `content/legal.ts` (đang ghi `TEMPLATE ONLY`), cập nhật `updated`, rồi đặt
+  `legalIsTemplate = false` (khung "đây là mẫu" biến mất; `setup:check --production` và `launch:check` hết báo).
+- [ ] ⚙ `pnpm setup:check --production` (hoặc chạy với env production): Upstash, `EMAIL_FROM` không phải `resend.dev`.
 - [ ] Nhờ người có chuyên môn pháp lý xem lại nếu thu tiền hoặc xử lý dữ liệu nhạy cảm.
 
 Prompt mẫu để AI soạn bản nháp (dán vào Claude, sửa phần trong `<…>`):
@@ -61,7 +63,8 @@ Ghi rõ những chỗ tôi cần tự xác nhận.
 - [ ] ⚙ `/api/health` trả 200. Gắn một uptime monitor (Better Stack, UptimeRobot) vào URL này.
 - [ ] Neon: biết cách restore theo thời điểm. Trước mỗi lần migration, tạo một branch để chạy thử.
 - [ ] Profile `app`: đăng nhập một lần, chạy `pnpm admin:grant <email>` với `DATABASE_URL` production, mở `/admin`.
-- [ ] (Nên có) gắn công cụ theo dõi lỗi trong `instrumentation.ts`.
+- [ ] (Nên có) đặt `SENTRY_DSN` để lỗi server, job chết, webhook chết gửi tới Sentry; bật cảnh báo email trong
+  Sentry (docs/DEPLOY.md "Monitoring").
 - [ ] Bật analytics module nếu cần đếm lượt xem (có banner đồng ý, không script của bên thứ ba).
 
 ## 7. Lần cuối

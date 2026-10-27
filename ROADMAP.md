@@ -5,7 +5,7 @@ Mỗi task có **tiêu chí kiểm chứng** (theo skill `karpathy-guidelines`: 
 
 Trạng thái: ⬜ chưa làm · 🟨 đang làm · ✅ xong
 
-**Tình trạng (2026-10-08):** `v1.21.0`. Phase 0 → V1.2 và các mục tuỳ chọn đã xong; dùng thật ở 2 dự án (Hạ Long Tours: site, Bắc Việt Travel: app, đang chạy production). Việc tiếp theo: **V2 — Vận hành SaaS thật** (cuối file), chờ duyệt.
+**Tình trạng (2026-10-27):** `v1.28.0`. Phase 0 → V1.2 và các mục tuỳ chọn đã xong; dùng thật ở 2 dự án (Hạ Long Tours: site, Bắc Việt Travel: app, đang chạy production). Việc tiếp theo: **V2 P2** (cuối file), khi một dự án thật cần.
 
 ---
 
@@ -201,10 +201,10 @@ Chi tiết từng bản: [CHANGELOG.md](CHANGELOG.md). Mỗi bản sinh ra từ 
 | 2 | Chuyển 4 bảng admin (users, audit, billing, jobs) sang kit | E2E phân trang/tìm kiếm; axe |
 | 3 | Mẫu dùng trong `_example-notes` + skill `product-feature` | Review docs |
 
-### V2 — Vận hành SaaS thật ⬜ (đề xuất 2026-10-08, chờ duyệt)
+### V2 — Vận hành SaaS thật 🟨 (duyệt 2026-10-27; P1 xong trong v1.28.0)
 Đánh giá: starter đã đủ để chạy một **site bán hàng / đặt chỗ** (Bắc Việt đang chạy). Để chạy một **SaaS thu phí định kỳ** còn thiếu các mục dưới. Thứ tự = mức cần thiết.
 
-**P1 — trước khi thu tiền khách SaaS**
+**P1 — trước khi thu tiền khách SaaS** ✅ v1.28.0 (PR #88–#92). Còn lại: lỗi chỉ ở trình duyệt chưa gửi Sentry; chưa thử Sentry thật.
 | # | Task | Vì sao |
 |---|---|---|
 | 1 | Email vòng đời gói: biên nhận VNPay; nhắc gia hạn 7/3/1 ngày trước khi hết hạn (VNPay gia hạn tay); báo hết hạn / mất quyền; email chào mừng | Hiện billing không gửi email nào: khách VNPay quên gia hạn là mất |
