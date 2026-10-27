@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkLaunch, formatLaunch, type Fetch } from "./launch-check-lib";
+import { checkEmailDns, checkLaunch, formatLaunch, type Fetch, type ResolveTxt } from "./launch-check-lib";
 
 const ORIGIN = "https://example.com";
 const HOME = `<html><head><title>Example</title><meta name="description" content="A site">
@@ -92,5 +92,34 @@ describe("checkLaunch", () => {
     const results = await checkLaunch("http://example.com", down);
     expect(results.find((r) => r.name === "HTTPS")?.ok).toBe(false);
     expect(results.find((r) => r.name === "Home page responds 200")?.detail).toBe("got no response");
+  });
+});
+
+describe("checkEmailDns", () => {
+  const dns = (records: Record<string, string[]>): ResolveTxt => async (name) => {
+    const found = records[name];
+    if (!found) throw new Error("ENOTFOUND");
+    return found;
+  };
+  const verified = {
+    "resend._domainkey.mail.example.com": ["p=MIGfMA0GCSqGSIb3DQEB"],
+    "send.mail.example.com": ["v=spf1 include:amazonses.com ~all"],
+    "_dmarc.example.com": ["v=DMARC1; p=none"],
+  };
+  const byName = (results: Awaited<ReturnType<typeof checkEmailDns>>) => Object.fromEntries(results.map((r) => [r.name, r.ok]));
+
+  it("passes a verified Resend subdomain with DMARC on the parent domain", async () => {
+    const results = await checkEmailDns("Bắc Việt <noreply@mail.example.com>", dns(verified));
+    expect(byName(results)).toEqual({ EMAIL_FROM: true, "Email DKIM": true, "Email SPF": true, "Email DMARC": true });
+  });
+
+  it("names each missing record", async () => {
+    const results = await checkEmailDns("noreply@mail.example.com", dns({}));
+    expect(results.filter((r) => !r.ok).map((r) => r.name)).toEqual(["Email DKIM", "Email SPF", "Email DMARC"]);
+  });
+
+  it("rejects resend.dev and a value without an address", async () => {
+    expect(await checkEmailDns("Test <onboarding@resend.dev>", dns(verified))).toMatchObject([{ ok: false, name: "EMAIL_FROM" }]);
+    expect(await checkEmailDns("no address", dns(verified))).toMatchObject([{ ok: false, name: "EMAIL_FROM" }]);
   });
 });
