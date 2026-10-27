@@ -16,7 +16,7 @@ import { createTurnstileCheck } from "@/core/security/turnstile";
 import { createDb, type Db } from "@/db/client";
 import { createAdminModule, type AdminModule } from "@/modules/admin";
 import { createAnalyticsModule, type AnalyticsModule } from "@/modules/analytics";
-import { createBillingModule, PROCESS_WEBHOOK_JOB, type BillingModule, type OneTimePaymentProvider, type SubscriptionProvider } from "@/modules/billing";
+import { createBillingModule, createBillingNotices, PROCESS_WEBHOOK_JOB, SEND_NOTICES_JOB, type BillingModule, type OneTimePaymentProvider, type SubscriptionProvider } from "@/modules/billing";
 import { createDemoMailbox, createEmailModule, SEND_EMAIL_JOB, type DemoMailbox, type EmailProvider } from "@/modules/email";
 import { createEntitlementsModule, type EntitlementsModule } from "@/modules/entitlements";
 import { createJobsModule, type JobHandler, type JobsModule } from "@/modules/jobs";
@@ -168,9 +168,28 @@ export function buildContainer(features: Features, env: Env, overrides: Containe
 
   const entitlements = features.entitlements && db ? createEntitlementsModule(db, billingConfig.plans, overrides.now) : undefined;
 
+  // Lifecycle emails go through the email send job, queued in the same transaction as their billing_notices claim.
+  const notices =
+    features.billing && billingConfig.emails && email && db && jobs && entitlements
+      ? createBillingNotices({
+          db,
+          logger,
+          entitlements,
+          plans: billingConfig.plans,
+          queueEmail: (message, tx) => jobs.enqueue(SEND_EMAIL_JOB, { message }, { maxAttempts: 6, tx }),
+          siteUrl: env.NEXT_PUBLIC_SITE_URL,
+          brand: appConfig.name,
+          now: overrides.now,
+        })
+      : undefined;
+  if (notices) {
+    handlers[SEND_NOTICES_JOB] = async () => void (await notices.sendDue());
+    periodic["billing.notices"] = async () => void (await notices.sendDue());
+  }
+
   const billing =
     features.billing && db && jobs && entitlements
-      ? buildBilling(env, { db, logger, jobs, entitlements, overrides, vnpay: payments.vnpay, checkoutLimiter: rateLimiter("billing:checkout", CHECKOUT_LIMIT) })
+      ? buildBilling(env, { db, logger, jobs, entitlements, overrides, vnpay: payments.vnpay, checkoutLimiter: rateLimiter("billing:checkout", CHECKOUT_LIMIT), notices: Boolean(notices) })
       : undefined;
   if (billing) {
     handlers[PROCESS_WEBHOOK_JOB] = (payload) => billing.processWebhookEvent(String(payload.eventRowId));
@@ -299,7 +318,7 @@ export function allContentTypes(): Record<string, ContentTypeDefinition> {
 
 function buildBilling(
   env: Env,
-  ctx: { db: Db; logger: Logger; jobs: JobsModule; entitlements: EntitlementsModule; overrides: ContainerOverrides; vnpay?: OneTimePaymentProvider; checkoutLimiter: RateLimiter },
+  ctx: { db: Db; logger: Logger; jobs: JobsModule; entitlements: EntitlementsModule; overrides: ContainerOverrides; vnpay?: OneTimePaymentProvider; checkoutLimiter: RateLimiter; notices: boolean },
 ): BillingModule {
   const enabled = billingConfig.providers;
   const polar = enabled.includes("polar")
@@ -322,6 +341,7 @@ function buildBilling(
     },
     vnpay,
     checkoutLimiter: ctx.checkoutLimiter,
+    notices: ctx.notices,
     now: ctx.overrides.now,
   });
 }
