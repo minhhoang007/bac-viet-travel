@@ -37,6 +37,16 @@ Starter migrations live only in `db/migrations/starter/` with their own journal 
 - Config: new defaults / renamed keys ...
 -->
 
+### v1.28.0 (2026-10-27) — billing emails, error tracking, launch checks
+- **Migration** `0007_billing_notices` (new table only). Run it on a copy of the production database first, then the
+  owner migrates production (`starter-upgrade` skill).
+- Billing lifecycle emails start on deploy when the email and billing modules are on. Turn them off with
+  `billingConfig.emails = false`. Only payments and endings of the last 2 days are mailed.
+- Projects with real legal text: set `legalIsTemplate = false` in `content/legal.ts` (otherwise the template notice
+  now shows and `launch:check` / `setup:check --production` fail). Projects overriding `LegalPage` callers: `notice` is optional.
+- Projects with their own `jobs-cron.yml`: keep it, or switch to `jobs-tick.yml` (`JOBS_TICK=on`), not both.
+- Optional: `SENTRY_DSN`.
+
 ### v1.27.0 (2026-10-22) — staff passwords, security fixes, blog
 - No migration (the new auth event kinds are text values).
 - Projects overriding `content/` must add `account.deleteStaffText` and the new `content/security.ts` strings (password sign-in, `reset`, `verify.expired`/`signInAgain`, password fields on the security page, events `password_set`/`password_changed`).
