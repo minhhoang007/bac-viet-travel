@@ -38,10 +38,15 @@ export interface Logger {
   child(fields: LogFields): Logger;
 }
 
+/** A redacted log entry, as written. */
+export type LogEntry = LogFields & { time: string; level: LogLevel; msg: string };
+
 export function createLogger(options: {
   level?: LogLevel;
   base?: LogFields;
   write?: (line: string) => void;
+  /** Also called for every error entry (already redacted), e.g. to send it to an error tracker. Must not throw. */
+  onError?: (entry: LogEntry) => void;
 } = {}): Logger {
   const min = LEVEL_ORDER[options.level ?? "info"];
   const base = options.base ?? {};
@@ -49,8 +54,15 @@ export function createLogger(options: {
 
   const log = (level: LogLevel, msg: string, fields?: LogFields) => {
     if (LEVEL_ORDER[level] < min) return;
-    const entry = { time: new Date().toISOString(), level, msg, ...(redact({ ...base, ...fields }) as LogFields) };
+    const entry: LogEntry = { time: new Date().toISOString(), level, msg, ...(redact({ ...base, ...fields }) as LogFields) };
     write(JSON.stringify(entry));
+    if (level === "error" && options.onError) {
+      try {
+        options.onError(entry);
+      } catch {
+        // a broken tracker must never break the code that logged
+      }
+    }
   };
 
   return {

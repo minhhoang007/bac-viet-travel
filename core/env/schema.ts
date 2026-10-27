@@ -12,6 +12,8 @@ export const baseEnvSchema = z
     // Optional shared rate-limit store. Without it, an in-memory limiter is used.
     UPSTASH_REDIS_REST_URL: z.url().optional(),
     UPSTASH_REDIS_REST_TOKEN: z.string().min(1).optional(),
+    // Optional error tracker: every logger.error entry (redacted) is also sent to this Sentry project.
+    SENTRY_DSN: z.url().optional(),
     // Email provider when the email module is on. "console" prints emails (development/test only).
     EMAIL_PROVIDER: z.enum(["resend", "console"]).default("resend"),
     EMAIL_API_KEY: z.string().min(1).optional(),
