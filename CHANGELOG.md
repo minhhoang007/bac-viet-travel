@@ -4,6 +4,12 @@ All notable changes to this starter are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.28.1] - 2026-10-27
+
+### Fixed
+- Welcome email names the plan of the owner's first paid grant (was the alphabetically first plan).
+- `setup:check --production` parses `EMAIL_FROM` like `launch:check` and reports a value without an address.
+
 ## [1.28.0] - 2026-10-27
 
 V2 P1: what a paid SaaS needs before it charges customers.
