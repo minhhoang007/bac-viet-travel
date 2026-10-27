@@ -37,7 +37,12 @@ Everything above, plus:
    (subscription.* events) → `POLAR_WEBHOOK_SECRET`. `POLAR_SERVER=production` in production.
 3. **VNPay:** `VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET`; register the IPN URL `https://<domain>/api/billing/vnpay/ipn`
    with VNPay; production `VNPAY_PAYMENT_URL=https://pay.vnpay.vn/vpcpay.html` (confirm with VNPay).
-4. **Before going live:** one sandbox purchase per provider end to end (checkout → webhook/IPN → Pro shown on
+4. **Lifecycle emails** (email module on, `billingConfig.emails`, default true): VNPay receipt, welcome on the first
+   paid plan, renewal reminders 7/3/1 days before a VNPay period ends, "access ended". Sent by the periodic task
+   `billing.notices` (a paid IPN also queues one right away); with the daily cron a reminder can arrive up to a day
+   late, so turn on the hourly tick above. Only events of the last 2 days are mailed, so an upgrade never mails old
+   payments. Polar sends its own receipts.
+5. **Before going live:** one sandbox purchase per provider end to end (checkout → webhook/IPN → Pro shown on
    /dashboard/billing → Polar portal cancel → access until period end). Tests only simulate provider traffic.
 
 ## Admin, analytics, storage (V1.2)

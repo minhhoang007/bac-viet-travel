@@ -9,6 +9,7 @@ import type { BillingInterval, BillingProviderId, PlanDefinition, PlanId } from 
 import type { EntitlementsModule } from "@/modules/entitlements";
 import type { JobsModule } from "@/modules/jobs";
 import type { OneTimePaymentProvider, ProviderSubscription, SubscriptionProvider } from "./ports";
+import { SEND_NOTICES_JOB } from "./notices";
 import { billingOrders, subscriptions, webhookEvents } from "./schema";
 
 export const PROCESS_WEBHOOK_JOB = "billing.process_webhook";
@@ -31,6 +32,8 @@ export interface BillingDeps {
   vnpay?: OneTimePaymentProvider;
   /** Per-user limit on checkout / portal / payment creation (each call hits the provider or writes an order). */
   checkoutLimiter?: RateLimiter;
+  /** Lifecycle emails are on (notices.ts): a paid IPN queues a send right away. */
+  notices?: boolean;
   now?: () => Date;
 }
 
@@ -123,6 +126,8 @@ export function createBillingModule(deps: BillingDeps): BillingModule {
         { ownerId: claimed.ownerId, plan: claimed.plan as PlanId, source: "vnpay_order", sourceId: claimed.id, days: deps.periodDays[claimed.interval] },
         tx,
       );
+      // Receipt and welcome go out right after the payment instead of at the next scheduled run.
+      if (deps.notices) await deps.jobs.enqueue(SEND_NOTICES_JOB, {}, { dedupeKey: SEND_NOTICES_JOB, tx });
     });
     logger.info("billing.vnpay_ipn", { orderId: order.id, success });
     return VNPAY_CONFIRMED;
