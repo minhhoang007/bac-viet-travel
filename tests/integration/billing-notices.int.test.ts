@@ -74,6 +74,15 @@ describe("billing lifecycle emails", () => {
     expect(kinds()).toEqual(["billing.receipt", "billing.receipt", "billing.welcome"]);
   });
 
+  it("welcome names the first plan bought, not the alphabetically first", async () => {
+    const u = await user();
+    await ent.grantPeriod({ ownerId: u.id, plan: "pro", source: "vnpay_order", sourceId: "first", days: 30 });
+    clock = new Date(clock.getTime() + 60_000);
+    await ent.upsertGrant({ ownerId: u.id, plan: "business" as "pro", source: "manual", sourceId: "x", startsAt: clock, endsAt: null });
+    await ent.upsertGrant({ ownerId: u.id, plan: "a_plan" as "pro", source: "polar_subscription", sourceId: "later", startsAt: clock, endsAt: new Date(clock.getTime() + DAY) });
+    expect(await ent.newPaidOwners(new Date(clock.getTime() - DAY))).toEqual([{ ownerId: u.id, plan: "pro" }]);
+  });
+
   it("old payments (before the upgrade) get nothing", async () => {
     const u = await user();
     clock = new Date(clock.getTime() - 5 * DAY);

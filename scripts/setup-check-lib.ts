@@ -1,4 +1,5 @@
 // Pure part of `pnpm setup:check` (see scripts/setup-check.ts): turns facts about the machine and config into a report.
+import { emailDomain } from "./launch-check-lib";
 
 export interface SetupFacts {
   nodeVersion: string;
@@ -49,8 +50,9 @@ export function diagnose(f: SetupFacts): { lines: SetupLine[]; ok: boolean } {
         ? { ok: true, text: "Rate limits shared (Upstash)" }
         : { ok: false, text: "No Upstash: rate limits count per server instance", hint: "set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN (docs/DEPLOY.md)" },
     );
-    const domain = p.emailFrom?.match(/@([^\s>]+)>?\s*$/)?.[1]?.toLowerCase();
-    if (domain === undefined) lines.push({ ok: false, text: "EMAIL_FROM not set", hint: "a sender on your verified domain (docs/LAUNCH.md §2)" });
+    const domain = p.emailFrom === undefined ? undefined : emailDomain(p.emailFrom);
+    if (p.emailFrom === undefined) lines.push({ ok: false, text: "EMAIL_FROM not set", hint: "a sender on your verified domain (docs/LAUNCH.md §2)" });
+    else if (domain === undefined) lines.push({ ok: false, text: "EMAIL_FROM has no email address", hint: 'e.g. "Shop <noreply@mail.shop.vn>"' });
     else if (domain === "resend.dev" || domain.endsWith(".resend.dev"))
       lines.push({ ok: false, text: "EMAIL_FROM uses resend.dev: mail only reaches the Resend account owner", hint: "verify your domain in Resend (docs/LAUNCH.md §2)" });
     else lines.push({ ok: true, text: `EMAIL_FROM on ${domain}` });

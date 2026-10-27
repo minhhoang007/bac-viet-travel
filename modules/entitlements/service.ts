@@ -152,7 +152,7 @@ export function createEntitlementsModule(db: Db, plans: Record<PlanId, PlanDefin
     },
     async newPaidOwners(since) {
       const rows = await db
-        .select({ ownerId: accessGrants.ownerId, plan: sql<PlanId>`min(${accessGrants.plan})` })
+        .select({ ownerId: accessGrants.ownerId, plan: sql<PlanId>`(array_agg(${accessGrants.plan} order by ${accessGrants.startsAt}))[1]` })
         .from(accessGrants)
         .where(sql`${accessGrants.source} <> 'manual'`)
         .groupBy(accessGrants.ownerId)

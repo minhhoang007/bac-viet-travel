@@ -44,6 +44,7 @@ describe("diagnose", () => {
     expect(failed({ ...ready, upstash: false })).toEqual(["No Upstash: rate limits count per server instance"]);
     expect(failed({ ...ready, emailFrom: "Test <onboarding@resend.dev>" })).toEqual([expect.stringContaining("resend.dev")]);
     expect(failed({ ...ready, emailFrom: undefined })).toEqual(["EMAIL_FROM not set"]);
+    expect(failed({ ...ready, emailFrom: "Shop" })).toEqual(["EMAIL_FROM has no email address"]);
     expect(failed({ ...ready, legalIsTemplate: true })).toEqual(["Terms and privacy are still the template"]);
   });
 
