@@ -1,6 +1,6 @@
 # Launch checklist
 
-Làm một lần trước khi công bố. Những mục có ⚙ đã được `pnpm launch:check https://<domain>` kiểm tự động.
+Làm một lần trước khi công bố. Những mục có ⚙ đã được `pnpm launch:check https://<domain>` kiểm tự động (DNS email: chạy với env production, ví dụ `node --env-file=.env.vercel ...`, để có `EMAIL_FROM`).
 Các mục còn lại phải làm bằng tay.
 
 ## 1. Domain và URL
@@ -13,10 +13,10 @@ Các mục còn lại phải làm bằng tay.
 Thiếu bước này thì email đăng nhập và email liên hệ sẽ vào thư rác, hoặc không gửi được.
 
 - [ ] Resend → Domains → Add domain. Nên dùng một subdomain, ví dụ `mail.<domain>`.
-- [ ] Thêm **đúng các bản ghi Resend hiển thị** vào DNS của domain:
+- [ ] ⚙ Thêm **đúng các bản ghi Resend hiển thị** vào DNS của domain:
   - **SPF** (TXT, và MX cho bounce): cho phép Resend gửi thay domain của bạn.
   - **DKIM** (TXT `resend._domainkey…`): ký email để chứng minh không bị sửa.
-- [ ] Thêm **DMARC** (TXT ở `_dmarc.<domain>`). Bắt đầu nhẹ:
+- [ ] ⚙ Thêm **DMARC** (TXT ở `_dmarc.<domain>`). Bắt đầu nhẹ:
   `v=DMARC1; p=none; rua=mailto:dmarc@<domain>`. Khi báo cáo đã sạch thì nâng lên `p=quarantine`.
 - [ ] Chờ Resend báo **Verified**, rồi đặt `EMAIL_FROM="Tên <noreply@mail.<domain>>"`.
   Domain thử nghiệm `resend.dev` chỉ gửi được tới email của chính chủ tài khoản Resend.
