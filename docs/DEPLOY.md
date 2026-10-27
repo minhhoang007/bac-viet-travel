@@ -28,7 +28,10 @@ Everything above, plus:
 ## Billing (jobs + entitlements + billing modules)
 
 1. **Cron:** `vercel.json` schedules `/api/jobs/run` daily. Set `CRON_SECRET` (Vercel sends it as a Bearer token).
-   Need more frequent runs? Vercel Pro or QStash calling the same URL (ADR-0002).
+   Need more frequent runs on Hobby? `.github/workflows/jobs-tick.yml` calls the same URL every hour: add the
+   repository secrets `CRON_SECRET` (same value as on Vercel) and `SITE_URL`, then the repository variable
+   `JOBS_TICK=on` (Settings → Secrets and variables → Actions). Run it once by hand (Actions → Jobs tick → Run
+   workflow) and expect a JSON result. Vercel Pro or QStash also work (ADR-0002).
 2. **Polar:** create products (Pro monthly/yearly) → set `POLAR_PRODUCT_PRO_MONTHLY/YEARLY`; create an organization
    access token → `POLAR_ACCESS_TOKEN`; add a webhook endpoint `https://<domain>/api/billing/webhooks/polar`
    (subscription.* events) → `POLAR_WEBHOOK_SECRET`. `POLAR_SERVER=production` in production.
