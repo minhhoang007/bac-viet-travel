@@ -1,0 +1,26 @@
+name: Jobs tick
+
+# Vercel Hobby runs its cron once a day (vercel.json). This calls the same endpoint every hour, so payment
+# reconciliation and renewal reminders run within the hour instead of the next morning. Hourly keeps a Neon
+# database asleep most of the time. Off until the repository variable JOBS_TICK is "on" (docs/DEPLOY.md).
+# Secrets: CRON_SECRET (same value as on Vercel), SITE_URL (https://your-domain, no trailing slash).
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  tick:
+    if: vars.JOBS_TICK == 'on'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Call /api/jobs/run
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SITE_URL: ${{ secrets.SITE_URL }}
+        run: |
+          curl --fail-with-body --silent --show-error --max-time 90 \
+            -H "Authorization: Bearer $CRON_SECRET" "$SITE_URL/api/jobs/run"
