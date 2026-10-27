@@ -4,7 +4,8 @@ export interface LegalPageProps {
   title: string;
   updatedLabel: string;
   updated: string;
-  notice: string;
+  /** Template notice; omitted once the text is real (content/legal.ts legalIsTemplate). */
+  notice?: string;
   sections: { heading: string; body: string }[];
 }
 
@@ -15,7 +16,11 @@ export function LegalPage({ title, updatedLabel, updated, notice, sections }: Le
       <p className="mt-2 text-sm text-muted-foreground">
         {updatedLabel}: {updated}
       </p>
-      <p className="mt-6 rounded-md border border-border bg-muted p-3 text-sm">{notice}</p>
+      {notice && (
+        <p data-demo="legal-template" className="mt-6 rounded-md border border-border bg-muted p-3 text-sm">
+          {notice}
+        </p>
+      )}
       {sections.map((s) => (
         <section key={s.heading} className="mt-8">
           <h2 className="text-xl font-semibold">{s.heading}</h2>

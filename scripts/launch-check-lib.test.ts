@@ -95,6 +95,14 @@ describe("checkLaunch", () => {
   });
 });
 
+describe("legal pages", () => {
+  it("fail while they still show the template notice", async () => {
+    const results = await checkLaunch(ORIGIN, fakeFetch({ ...healthySite, "/terms": { body: '<p data-demo="legal-template">x</p>' } }));
+    expect(results.find((r) => r.name === "Legal page /terms")).toMatchObject({ ok: false, detail: expect.stringContaining("legal-template") });
+    expect(results.find((r) => r.name === "Legal page /privacy")?.ok).toBe(true);
+  });
+});
+
 describe("checkEmailDns", () => {
   const dns = (records: Record<string, string[]>): ResolveTxt => async (name) => {
     const found = records[name];

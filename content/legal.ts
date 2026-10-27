@@ -5,7 +5,10 @@ export interface LegalDocument {
   sections: { heading: string; body: string }[];
 }
 
-// TEMPLATE ONLY — replace with text reviewed for your business and jurisdiction.
+// TEMPLATE ONLY — replace with text reviewed for your business and jurisdiction, then set legalIsTemplate to false.
+/** While true the pages show a "this is a template" notice (data-demo), which setup:check and launch:check flag. */
+export const legalIsTemplate = true;
+
 const legal: Record<Locale, { terms: LegalDocument; privacy: LegalDocument }> = {
   vi: {
     terms: {

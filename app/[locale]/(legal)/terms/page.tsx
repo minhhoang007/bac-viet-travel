@@ -3,7 +3,7 @@ import { setRequestLocale } from "next-intl/server";
 import { LegalPage } from "@/components/layout/legal-page";
 import type { Locale } from "@/config/app";
 import { getAppContent } from "@/content";
-import { getLegalDocument } from "@/content/legal";
+import { getLegalDocument, legalIsTemplate } from "@/content/legal";
 
 type Props = { params: Promise<{ locale: Locale }> };
 
@@ -17,5 +17,5 @@ export default async function TermsPage({ params }: Props) {
   setRequestLocale(locale);
   const c = getAppContent(locale).legal;
   const doc = getLegalDocument(locale, "terms");
-  return <LegalPage title={c.terms} updatedLabel={c.lastUpdated} updated={doc.updated} notice={c.templateNotice} sections={doc.sections} />;
+  return <LegalPage title={c.terms} updatedLabel={c.lastUpdated} updated={doc.updated} notice={legalIsTemplate ? c.templateNotice : undefined} sections={doc.sections} />;
 }
