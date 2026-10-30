@@ -66,5 +66,22 @@ export const billingOrders = pgTable(
   (t) => [uniqueIndex("billing_orders_txn_ref_idx").on(t.provider, t.txnRef), index("billing_orders_owner_idx").on(t.ownerId)],
 );
 
+/**
+ * Lifecycle emails already queued (receipt, welcome, renewal reminder, access ended): one row per (kind, ref), written
+ * in the same transaction as the email job, so each email is queued exactly once however often the sender runs.
+ */
+export const billingNotices = pgTable(
+  "billing_notices",
+  {
+    id: id(),
+    ownerId: uuid("owner_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    kind: text("kind", { enum: ["receipt", "welcome", "renewal_reminder", "access_ended"] }).notNull(),
+    /** Order id (receipt), user id (welcome), `<grant id>:<days>` (reminder) or grant id (access ended). */
+    ref: text("ref").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("billing_notices_kind_ref_idx").on(t.kind, t.ref), index("billing_notices_owner_idx").on(t.ownerId)],
+);
+
 export type SubscriptionRow = typeof subscriptions.$inferSelect;
 export type BillingOrder = typeof billingOrders.$inferSelect;

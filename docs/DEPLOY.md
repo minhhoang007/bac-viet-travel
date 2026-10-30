@@ -28,13 +28,21 @@ Everything above, plus:
 ## Billing (jobs + entitlements + billing modules)
 
 1. **Cron:** `vercel.json` schedules `/api/jobs/run` daily. Set `CRON_SECRET` (Vercel sends it as a Bearer token).
-   Need more frequent runs? Vercel Pro or QStash calling the same URL (ADR-0002).
+   Need more frequent runs on Hobby? `.github/workflows/jobs-tick.yml` calls the same URL every hour: add the
+   repository secrets `CRON_SECRET` (same value as on Vercel) and `SITE_URL`, then the repository variable
+   `JOBS_TICK=on` (Settings → Secrets and variables → Actions). Run it once by hand (Actions → Jobs tick → Run
+   workflow) and expect a JSON result. Vercel Pro or QStash also work (ADR-0002).
 2. **Polar:** create products (Pro monthly/yearly) → set `POLAR_PRODUCT_PRO_MONTHLY/YEARLY`; create an organization
    access token → `POLAR_ACCESS_TOKEN`; add a webhook endpoint `https://<domain>/api/billing/webhooks/polar`
    (subscription.* events) → `POLAR_WEBHOOK_SECRET`. `POLAR_SERVER=production` in production.
 3. **VNPay:** `VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET`; register the IPN URL `https://<domain>/api/billing/vnpay/ipn`
    with VNPay; production `VNPAY_PAYMENT_URL=https://pay.vnpay.vn/vpcpay.html` (confirm with VNPay).
-4. **Before going live:** one sandbox purchase per provider end to end (checkout → webhook/IPN → Pro shown on
+4. **Lifecycle emails** (email module on, `billingConfig.emails`, default true): VNPay receipt, welcome on the first
+   paid plan, renewal reminders 7/3/1 days before a VNPay period ends, "access ended". Sent by the periodic task
+   `billing.notices` (a paid IPN also queues one right away); with the daily cron a reminder can arrive up to a day
+   late, so turn on the hourly tick above. Only events of the last 2 days are mailed, so an upgrade never mails old
+   payments. Polar sends its own receipts.
+5. **Before going live:** one sandbox purchase per provider end to end (checkout → webhook/IPN → Pro shown on
    /dashboard/billing → Polar portal cancel → access until period end). Tests only simulate provider traffic.
 
 ## Admin, analytics, storage (V1.2)
@@ -60,7 +68,10 @@ Everything above, plus:
    answers), `local` (no Upstash: each instance counts on its own) or `error` (Upstash set but refusing or not
    answering: check `UPSTASH_REDIS_REST_URL` is the `https://…upstash.io` REST URL and the token is not read-only).
 2. **Errors:** every server error is one JSON log line `request.error` with a `digest`; users see the same digest as
-   "ref" on the error page. Search Vercel logs by digest. To get alerts, add an error tracker in `instrumentation.ts`.
+   "ref" on the error page. Search Vercel logs by digest. **Alerts:** set `SENTRY_DSN` (free Sentry project →
+   Settings → Client Keys) and every `logger.error` line — request errors, dead jobs, dead webhooks — is also sent to
+   Sentry, redacted like the logs, no SDK. Set an alert rule in Sentry to get an email. Limits: errors in the
+   browser only are not sent (the server error of the same digest is); sending is best effort (5 s, not retried).
 3. **Backups (Neon):** point-in-time restore is on by default (retention depends on the plan). Before a release with a
    starter or product migration, create a Neon branch, run `pnpm db:migrate` against it, then migrate production.
 4. **Dependencies:** Dependabot opens weekly PRs; merge only with CI green.

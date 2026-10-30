@@ -1,4 +1,5 @@
 // Pure part of `pnpm setup:check` (see scripts/setup-check.ts): turns facts about the machine and config into a report.
+import { emailDomain } from "./launch-check-lib";
 
 export interface SetupFacts {
   nodeVersion: string;
@@ -11,6 +12,8 @@ export interface SetupFacts {
   envProblems: string[];
   /** undefined: not checked (profile site or no DATABASE_URL). */
   database?: "ok" | "unreachable";
+  /** Present when checking production settings (--production or VERCEL_ENV=production). */
+  production?: { upstash: boolean; emailFrom?: string; legalIsTemplate: boolean };
 }
 
 export interface SetupLine {
@@ -38,6 +41,27 @@ export function diagnose(f: SetupFacts): { lines: SetupLine[]; ok: boolean } {
 
   if (f.database === "ok") lines.push({ ok: true, text: "Database reachable" });
   if (f.database === "unreachable") lines.push({ ok: false, text: "Database unreachable", hint: "pnpm db:up (local) or check DATABASE_URL" });
+
+  // Production mistakes seen in a real project: each one works in dev and fails quietly in production.
+  if (f.production) {
+    const p = f.production;
+    lines.push(
+      p.upstash
+        ? { ok: true, text: "Rate limits shared (Upstash)" }
+        : { ok: false, text: "No Upstash: rate limits count per server instance", hint: "set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN (docs/DEPLOY.md)" },
+    );
+    const domain = p.emailFrom === undefined ? undefined : emailDomain(p.emailFrom);
+    if (p.emailFrom === undefined) lines.push({ ok: false, text: "EMAIL_FROM not set", hint: "a sender on your verified domain (docs/LAUNCH.md §2)" });
+    else if (domain === undefined) lines.push({ ok: false, text: "EMAIL_FROM has no email address", hint: 'e.g. "Shop <noreply@mail.shop.vn>"' });
+    else if (domain === "resend.dev" || domain.endsWith(".resend.dev"))
+      lines.push({ ok: false, text: "EMAIL_FROM uses resend.dev: mail only reaches the Resend account owner", hint: "verify your domain in Resend (docs/LAUNCH.md §2)" });
+    else lines.push({ ok: true, text: `EMAIL_FROM on ${domain}` });
+    lines.push(
+      p.legalIsTemplate
+        ? { ok: false, text: "Terms and privacy are still the template", hint: "replace content/legal.ts and set legalIsTemplate = false" }
+        : { ok: true, text: "Legal pages" },
+    );
+  }
 
   return { lines, ok: lines.every((l) => l.ok) };
 }
