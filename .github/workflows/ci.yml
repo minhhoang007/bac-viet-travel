@@ -91,7 +91,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
         if: steps.repo.outputs.starter == 'true'
       # Browsers cached per lockfile; system packages are still installed each run.
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         id: pw
         if: steps.repo.outputs.starter == 'true'
         with:
@@ -141,7 +141,7 @@ jobs:
       - run: pnpm build
         env:
           E2E_UNOPTIMIZED_IMAGES: "1"
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         id: pw
         with:
           path: ~/.cache/ms-playwright
