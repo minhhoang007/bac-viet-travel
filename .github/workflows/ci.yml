@@ -104,7 +104,7 @@ jobs:
       - run: pnpm test:e2e:app
         if: steps.repo.outputs.starter == 'true'
       # Traces of failed tests (pnpm exec playwright show-trace <zip>).
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: e2e-app-traces
@@ -151,7 +151,7 @@ jobs:
       - run: pnpm exec playwright install-deps chromium
         if: steps.pw.outputs.cache-hit == 'true'
       - run: pnpm test:e2e
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: e2e-traces
